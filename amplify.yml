@@ -4,7 +4,7 @@ frontend:
     preBuild:
       commands:
         # Download the pre-built stable version of Flutter (bypasses slow Dart SDK download)
-        - if command -v yum &> /dev/null; then yum install -y xz; elif command -v apt-get &> /dev/null; then apt-get update && apt-get install -y xz-utils; fi
+        - if command -v yum &> /dev/null; then sudo yum install -y xz; elif command -v apt-get &> /dev/null; then sudo apt-get update && sudo apt-get install -y xz-utils; fi
         - wget -q https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.44.2-stable.tar.xz -O flutter.tar.xz
         - tar -xf flutter.tar.xz
         - export PATH="$PATH:`pwd`/flutter/bin"

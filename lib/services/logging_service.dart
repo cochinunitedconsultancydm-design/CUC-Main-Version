@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -28,7 +29,7 @@ class LoggingService {
         });
       }
     } catch (e) {
-      print('Logging error: $e');
+      debugPrint('Logging error: $e');
     }
   }
 }

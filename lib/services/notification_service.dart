@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -153,7 +154,7 @@ class NotificationService {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 20),
@@ -166,7 +167,7 @@ class NotificationService {
                   children: [
                     Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)),
                     const SizedBox(height: 2),
-                    Text(message, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.85)), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Text(message, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85)), maxLines: 2, overflow: TextOverflow.ellipsis),
                   ],
                 ),
               ),
@@ -348,7 +349,7 @@ class NotificationService {
   /// Checks and sends reminders with dynamic frequency based on urgency.
   Future<void> checkAndSendFrequentReminders() async {
     try {
-      print('Running Smart Escalation Reminder Cron...');
+      debugPrint('Running Smart Escalation Reminder Cron...');
 
       // 1. Remind Deals
       final deals = await _client
@@ -453,10 +454,10 @@ class NotificationService {
         }
       }
       
-      print('Smart Escalation Reminders processed.');
+      debugPrint('Smart Escalation Reminders processed.');
 
     } catch (e) {
-      print('Error running daily reminders: $e');
+      debugPrint('Error running daily reminders: $e');
     }
   }
 }

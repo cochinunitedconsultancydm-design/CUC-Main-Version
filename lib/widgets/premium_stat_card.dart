@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../theme.dart';
 
 class PremiumStatCard extends StatefulWidget {
@@ -45,12 +44,12 @@ class _PremiumStatCardState extends State<PremiumStatCard> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _isHovered ? widget.color.withOpacity(0.5) : AppTheme.primaryColor.withOpacity(0.1),
+              color: _isHovered ? widget.color.withValues(alpha: 0.5) : AppTheme.primaryColor.withValues(alpha: 0.1),
               width: _isHovered ? 1.5 : 1.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: _isHovered ? widget.color.withOpacity(0.15) : Colors.black.withOpacity(0.04),
+                color: _isHovered ? widget.color.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.04),
                 blurRadius: _isHovered ? 16 : 8,
                 offset: Offset(0, _isHovered ? 8 : 4),
               ),
@@ -81,7 +80,7 @@ class _PremiumStatCardState extends State<PremiumStatCard> {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: _isHovered ? widget.color.withOpacity(0.15) : widget.color.withOpacity(0.05),
+                        color: _isHovered ? widget.color.withValues(alpha: 0.15) : widget.color.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -109,7 +108,7 @@ class _PremiumStatCardState extends State<PremiumStatCard> {
                       width: 6,
                       height: 6,
                       decoration: BoxDecoration(
-                        color: widget.color.withOpacity(0.8),
+                        color: widget.color.withValues(alpha: 0.8),
                         shape: BoxShape.circle,
                       ),
                     ),

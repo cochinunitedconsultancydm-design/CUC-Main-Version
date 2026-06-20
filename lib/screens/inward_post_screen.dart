@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme.dart';
@@ -43,7 +44,7 @@ class _InwardPostScreenState extends State<InwardPostScreen> {
       final usersRes = await Supabase.instance.client.from('users').select('id, name, role').order('name', ascending: true);
       users = List<Map<String, dynamic>>.from(usersRes);
     } catch(e) {
-      print('Error fetching users: $e');
+      debugPrint('Error fetching users: $e');
     }
     
     if (mounted) {
@@ -174,7 +175,7 @@ class _InwardPostScreenState extends State<InwardPostScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: SingleChildScrollView(
@@ -270,7 +271,7 @@ class _InwardPostScreenState extends State<InwardPostScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -292,14 +293,14 @@ class _InwardPostScreenState extends State<InwardPostScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isPending ? Colors.redAccent.withOpacity(0.3) : Colors.green.withOpacity(0.3)),
+                    border: Border.all(color: isPending ? Colors.redAccent.withValues(alpha: 0.3) : Colors.green.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isPending ? Colors.redAccent.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                          color: isPending ? Colors.redAccent.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(isPending ? Icons.mark_email_unread_outlined : Icons.mark_email_read_outlined, 

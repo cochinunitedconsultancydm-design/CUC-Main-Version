@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
-import 'package:pdf/pdf.dart';
-import 'dart:ui';
-import '../theme.dart';
 import '../models/billing.dart';
 import '../services/billing_service.dart';
 import '../services/client_service.dart';
@@ -12,7 +9,6 @@ import '../services/excel_service.dart';
 import '../services/logging_service.dart';
 import '../services/invoice_pdf_service.dart';
 import '../services/deal_service.dart';
-import 'dart:convert';
 import '../utils/number_to_words.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,7 +31,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
   List<Billing> _billings = [];
   bool _isLoading = true;
-  int _limit = 50;
+  final int _limit = 50;
   int _offset = 0;
   bool _hasMore = true;
   String _searchTerm = '';
@@ -187,7 +183,7 @@ class _BillingScreenState extends State<BillingScreen> {
               SwitchListTile(
                 title: const Text('Full Payment Received?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 value: isFullPayment,
-                activeColor: Colors.green,
+                activeThumbColor: Colors.green,
                 onChanged: (val) {
                   setState(() {
                     isFullPayment = val;
@@ -433,7 +429,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 child: ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: items.length,
-                  separatorBuilder: (_, __) => const Divider(),
+                  separatorBuilder: (_, _) => const Divider(),
                   itemBuilder: (context, index) {
                     final b = items[index];
                     final isPaid = b.data?['payment_received'] == true;
@@ -709,7 +705,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 child: ListView.separated(
                   padding: EdgeInsets.zero,
                   itemCount: filtered.length + (_hasMore ? 1 : 0),
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, i) {
                     if (i == filtered.length) {
                       return Padding(
@@ -825,7 +821,7 @@ class _BillingScreenState extends State<BillingScreen> {
             ],
             IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 22), tooltip: 'Duplicate'),
             IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 28), tooltip: 'Edit'),
-            IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withOpacity(0.5), size: 24), tooltip: 'Delete'),
+            IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 24), tooltip: 'Delete'),
           ]),
         ])
       : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -894,7 +890,7 @@ class _BillingScreenState extends State<BillingScreen> {
                       ],
                       IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 20), tooltip: 'Duplicate', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 24), tooltip: 'Edit', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
-                      IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withOpacity(0.5), size: 20), tooltip: 'Delete', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
+                      IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 20), tooltip: 'Delete', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                     ],
                   ),
                 ),

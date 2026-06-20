@@ -1,12 +1,8 @@
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import 'package:flutter/foundation.dart';
-import '../utils/number_to_words.dart';
 
 class InvoicePdfService {
   static Future<Uint8List> generateInvoicePdf({
@@ -457,7 +453,7 @@ class InvoicePdfService {
       );
       await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdfBytes);
     } catch (e) {
-      print('Error printing invoice: $e');
+      debugPrint('Error printing invoice: $e');
     }
   }
 }

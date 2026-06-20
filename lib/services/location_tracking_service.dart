@@ -58,7 +58,7 @@ class LocationTrackingService {
     // Check permissions
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      print('Location services are disabled.');
+      debugPrint('Location services are disabled.');
       return;
     }
 
@@ -66,13 +66,13 @@ class LocationTrackingService {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        print('Location permissions are denied');
+        debugPrint('Location permissions are denied');
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      print('Location permissions are permanently denied.');
+      debugPrint('Location permissions are permanently denied.');
       return;
     }
 
@@ -140,11 +140,11 @@ void onStart(ServiceInstance service) async {
           await Supabase.instance.client.from('staff_attendance').update({
             'check_out_time': DateTime.now().toUtc().toIso8601String(),
           }).eq('id', res['id']);
-          print('Auto checked out user $finalUserId due to app kill.');
+          debugPrint('Auto checked out user $finalUserId due to app kill.');
         }
       }
     } catch (e) {
-      print('Auto checkout error: $e');
+      debugPrint('Auto checkout error: $e');
     }
     service.stopSelf();
   });
@@ -168,11 +168,13 @@ void onStart(ServiceInstance service) async {
         Position? position;
         try {
           position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high,
-            timeLimit: const Duration(seconds: 15),
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 15),
+            ),
           );
         } catch (e) {
-          print('Timeout or error getting current position: $e');
+          debugPrint('Timeout or error getting current position: $e');
           position = await Geolocator.getLastKnownPosition();
         }
 
@@ -195,13 +197,13 @@ void onStart(ServiceInstance service) async {
           'recorded_at': nowIso,
         });
         
-        print('Background location updated and recorded for user $finalUserId: ${position.latitude}, ${position.longitude}');
+        debugPrint('Background location updated and recorded for user $finalUserId: ${position.latitude}, ${position.longitude}');
         } else {
-          print('Failed to get background location for user $finalUserId');
+          debugPrint('Failed to get background location for user $finalUserId');
         }
       }
     } catch (e) {
-      print('Error tracking background location: $e');
+      debugPrint('Error tracking background location: $e');
     }
   });
 }

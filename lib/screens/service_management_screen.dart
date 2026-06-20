@@ -1,9 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../theme.dart';
-import '../models/service_item.dart';
 import '../theme.dart';
 import '../models/service_item.dart';
 import 'dart:io';
@@ -333,7 +330,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                       : ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                           itemCount: filtered.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1, indent: 70),
+                          separatorBuilder: (_, _) => const Divider(height: 1, indent: 70),
                           itemBuilder: (context, index) => _buildServiceListTile(filtered[index], index),
                         ),
               ),
@@ -353,7 +350,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -382,7 +379,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -424,7 +421,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
       onPressed: onTap,
       icon: Icon(icon, size: 20),
       style: IconButton.styleFrom(
-        backgroundColor: AppTheme.primaryColor.withOpacity(0.08),
+        backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.08),
         foregroundColor: AppTheme.primaryColor,
         padding: const EdgeInsets.all(12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -443,7 +440,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
           border: Border.all(color: Colors.grey.shade100),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 15,
               offset: const Offset(0, 5),
             )
@@ -485,7 +482,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -504,8 +501,8 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppTheme.primaryColor.withOpacity(0.1),
-                      AppTheme.primaryColor.withOpacity(0.05),
+                      AppTheme.primaryColor.withValues(alpha: 0.1),
+                      AppTheme.primaryColor.withValues(alpha: 0.05),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -547,14 +544,14 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
     return Container(
       decoration: BoxDecoration(
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Material(
         color: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.1)),
+          side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
         ),
         child: InkWell(
           onTap: () => _showEditForm(service),
@@ -564,7 +561,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
           Positioned(
             right: -20,
             bottom: -20,
-            child: Icon(Icons.business_center_rounded, size: 100, color: AppTheme.primaryColor.withOpacity(0.03)),
+            child: Icon(Icons.business_center_rounded, size: 100, color: AppTheme.primaryColor.withValues(alpha: 0.03)),
           ),
           Padding(
             padding: const EdgeInsets.all(20),
@@ -577,7 +574,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(_getServiceIcon(service.title), color: AppTheme.primaryColor, size: 20),
@@ -641,7 +638,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
           ElevatedButton(
             onPressed: () async {
               try {
-                await _client.from('service_content').delete().eq('id', service.id!);
+                await _client.from('service_content').delete().eq('id', service.id);
                 if (mounted) Navigator.pop(context);
                 _fetchServices();
                 _showSuccess('Service deleted');
@@ -765,7 +762,7 @@ class _EditServiceFormState extends State<_EditServiceForm> {
         'title': _titleController.text.trim(),
         'description': _descController.text.trim(),
         'details': _details,
-      }).eq('id', widget.service.id!);
+      }).eq('id', widget.service.id);
       
       widget.onSaved();
     } catch (e) {
@@ -832,9 +829,9 @@ class _EditServiceFormState extends State<_EditServiceForm> {
                       margin: const EdgeInsets.only(bottom: 32.0),
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.05),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+                        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
                       ),
                       child: Column(
                         children: [
@@ -925,7 +922,7 @@ class _EditServiceFormState extends State<_EditServiceForm> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.grey.shade200),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -980,7 +977,7 @@ class _EditServiceFormState extends State<_EditServiceForm> {
                         backgroundColor: AppTheme.primaryColor,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 8,
-                        shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                        shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
                       ),
                       child: _isLoading 
                         ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))

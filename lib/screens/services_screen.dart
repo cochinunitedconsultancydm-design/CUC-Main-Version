@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme.dart';
 import '../models/service_item.dart';
-import '../theme.dart';
-import '../models/service_item.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ServicesScreen extends StatefulWidget {
@@ -107,7 +105,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
           scale: 0.5,
         ),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 30, offset: const Offset(0, 15)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 30, offset: const Offset(0, 15)),
         ],
       ),
       child: Column(
@@ -115,13 +113,13 @@ class _ServicesScreenState extends State<ServicesScreen> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
             child: const Text('OUR EXPERTISE', style: TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2)),
           ),
           const SizedBox(height: 20),
           const Text('Premium Consultancy\nServices', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, height: 1.1)),
           const SizedBox(height: 12),
-          Text('Explore our wide range of business solutions tailored for your success.', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14)),
+          Text('Explore our wide range of business solutions tailored for your success.', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14)),
         ],
       ),
     );
@@ -135,7 +133,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 5))],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 5))],
             ),
             child: TextField(
               onChanged: (val) => setState(() => _searchTerm = val),
@@ -183,7 +181,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
       child: ClipRRect(
@@ -203,7 +201,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.1),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Icon(_getServiceIcon(service.title), color: AppTheme.primaryColor, size: 24),
@@ -277,7 +275,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                         children: [
                           Container(
                             padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), shape: BoxShape.circle),
+                            decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), shape: BoxShape.circle),
                             child: Icon(_getServiceIcon(service.title), color: AppTheme.primaryColor, size: 40),
                           ),
                           const SizedBox(height: 24),

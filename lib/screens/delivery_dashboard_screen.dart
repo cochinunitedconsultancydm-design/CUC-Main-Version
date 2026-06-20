@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
@@ -115,7 +116,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
         });
       }
     } catch (e) {
-      print('Error fetching attendance status: $e');
+      debugPrint('Error fetching attendance status: $e');
       if (mounted) setState(() => _isAttendanceLoading = false);
     }
   }
@@ -306,8 +307,9 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   Widget _buildHomeView() {
     final hour = DateTime.now().hour;
     String greeting = 'Good Morning';
-    if (hour >= 12 && hour < 17) greeting = 'Good Afternoon';
-    else if (hour >= 17) greeting = 'Good Evening';
+    if (hour >= 12 && hour < 17) {
+      greeting = 'Good Afternoon';
+    } else if (hour >= 17) greeting = 'Good Evening';
 
     return SingleChildScrollView(
       child: Column(
@@ -452,7 +454,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: const Color(0xFF2563EB).withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
       child: Column(
@@ -461,7 +463,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Text(
@@ -477,7 +479,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
           const SizedBox(height: 8),
           Text(
             'Manage your assigned tasks and communicate with the logistics team in real-time.',
-            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
           ),
           if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) ...[
             const SizedBox(height: 24),
@@ -500,7 +502,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 8,
-                  shadowColor: (_isCheckedIn ? const Color(0xFFEF4444) : const Color(0xFF10B981)).withOpacity(0.4),
+                  shadowColor: (_isCheckedIn ? const Color(0xFFEF4444) : const Color(0xFF10B981)).withValues(alpha: 0.4),
                 ),
               ),
             ),
@@ -509,7 +511,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -537,9 +539,9 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: color.withOpacity(0.1)),
+          border: Border.all(color: color.withValues(alpha: 0.1)),
           boxShadow: [
-            BoxShadow(color: color.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10)),
+            BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10)),
           ],
         ),
         child: Column(
@@ -550,12 +552,12 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
                   child: Icon(icon, color: color, size: 24),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
                   child: Text(trend, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
                 ),
               ],
@@ -585,7 +587,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
               child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(width: 16),
@@ -731,7 +733,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
       bottomNavigationBar: !isWide 
         ? Container(
             decoration: BoxDecoration(
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -5))],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))],
             ),
             child: BottomNavigationBar(
               currentIndex: _selectedIndex,

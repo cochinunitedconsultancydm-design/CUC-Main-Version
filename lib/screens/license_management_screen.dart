@@ -1,11 +1,10 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
 import '../models/client_license.dart';
 import '../models/license_billing.dart';
-import '../services/auth_service.dart';
 import '../services/excel_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -36,7 +35,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     12: 'DSC',
   };
 
-  Map<int, List<LicenseBilling>> _billings = {};
+  final Map<int, List<LicenseBilling>> _billings = {};
   bool _isLoading = true;
   String _searchTerm = '';
   String _filterType = 'All';
@@ -47,7 +46,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
       icon: Icon(icon, color: color, size: 20),
       tooltip: tooltip,
       style: IconButton.styleFrom(
-        backgroundColor: color.withOpacity(0.1),
+        backgroundColor: color.withValues(alpha: 0.1),
         padding: const EdgeInsets.all(12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -64,7 +63,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.1)),
+        side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
       ),
       child: ExpansionTile(
         onExpansionChanged: (expanded) {
@@ -74,7 +73,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
         leading: isWide ? Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: (isExpired ? Colors.red : (isExpiringSoon ? Colors.orange : Colors.green)).withOpacity(0.1),
+            color: (isExpired ? Colors.red : (isExpiringSoon ? Colors.orange : Colors.green)).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
@@ -154,7 +153,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
               trailing: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: b.status == 'Paid' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                  color: b.status == 'Paid' ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -234,7 +233,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
         _licenseTypes = List<Map<String, dynamic>>.from(res);
       });
     } catch (e) {
-      print('Error fetching types: $e');
+      debugPrint('Error fetching types: $e');
     }
     
     if (_licenseTypes.isEmpty) {
@@ -293,7 +292,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
         _billings[licenseId] = List<Map<String, dynamic>>.from(billResult).map((row) => LicenseBilling.fromMap(row)).toList();
       });
     } catch (e) {
-      print('Error fetching details for license $licenseId: $e');
+      debugPrint('Error fetching details for license $licenseId: $e');
     }
   }
 
@@ -314,7 +313,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                 title: const Text('New Expiry Date', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 subtitle: Text(DateFormat('dd/MM/yyyy').format(nextExpiry)),
                 trailing: const Icon(Icons.calendar_today, size: 18, color: AppTheme.primaryColor),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.2))),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.2))),
                 onTap: () async {
                   final picked = await showDatePicker(
                     context: context,
@@ -495,7 +494,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                             dense: true,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                             leading: CircleAvatar(
-                              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
                               child: const Icon(Icons.receipt_long_rounded, size: 16, color: AppTheme.primaryColor),
                             ),
                             title: Text(b['invoice_no'] ?? 'DRAFT', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -547,7 +546,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                 label: const Text('Link Bill', style: TextStyle(fontSize: 12)),
                 style: TextButton.styleFrom(
                   foregroundColor: AppTheme.primaryColor,
-                  backgroundColor: AppTheme.primaryColor.withOpacity(0.05),
+                  backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.05),
                 ),
               ),
             ],
@@ -567,7 +566,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: status,
+                initialValue: status,
                 decoration: const InputDecoration(labelText: 'Status', prefixIcon: Icon(Icons.info_outline_rounded)),
                 items: ['Pending', 'Paid'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                 onChanged: (v) => setModalState(() => status = v!),
@@ -658,7 +657,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                   TextField(controller: clientNameController, decoration: const InputDecoration(labelText: 'Client Name')),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
-                    value: selectedTypeId,
+                    initialValue: selectedTypeId,
                     decoration: const InputDecoration(labelText: 'Licence Type'),
                     items: _licenseTypes.map((t) => DropdownMenuItem<int>(
                       value: t['id'] as int,
@@ -916,7 +915,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.separated(
                     itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final license = filtered[index];
                       return _buildLicenseCard(license, isWide);

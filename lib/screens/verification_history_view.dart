@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'google_docs_webview_screen.dart';
 
 class VerificationHistoryView extends StatefulWidget {
-  const VerificationHistoryView({Key? key}) : super(key: key);
+  const VerificationHistoryView({super.key});
 
   @override
   State<VerificationHistoryView> createState() => _VerificationHistoryViewState();
@@ -62,14 +62,14 @@ class _VerificationHistoryViewState extends State<VerificationHistoryView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF2563EB).withOpacity(0.1),
+              color: const Color(0xFF2563EB).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.history_edu_rounded, color: Color(0xFF2563EB)),
@@ -100,13 +100,13 @@ class _VerificationHistoryViewState extends State<VerificationHistoryView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: ListView.separated(
           itemCount: _history.length,
-          separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
+          separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey.shade100),
           itemBuilder: (context, index) {
             final item = _history[index];
             final bool isVerified = item['status'] == 'Verified';

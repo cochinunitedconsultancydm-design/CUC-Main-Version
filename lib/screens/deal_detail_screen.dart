@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../models/deal.dart';
 import '../models/billing.dart';
 import '../models/deal_activity.dart';
@@ -10,10 +9,8 @@ import '../services/notification_service.dart';
 import 'billing_screen.dart';
 import '../theme.dart';
 import '../services/logging_service.dart';
-import 'login_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'client_files_dialog.dart';
@@ -35,7 +32,7 @@ class _DealDetailScreenState extends State<DealDetailScreen>
   final _dealService = DealService();
   final _client = Supabase.instance.client;
 
-  List<Map<String, String>> _connectedDocs = [];
+  final List<Map<String, String>> _connectedDocs = [];
   // Basic Controllers
   late TextEditingController _nameController;
   late TextEditingController _clientController;
@@ -51,7 +48,7 @@ class _DealDetailScreenState extends State<DealDetailScreen>
   late TextEditingController _filesAskedController;
   late TextEditingController _newFileAskedController;
   late TextEditingController _estAmountController;
-  List<Map<String, TextEditingController>> _expenseControllers = [];
+  final List<Map<String, TextEditingController>> _expenseControllers = [];
   late TextEditingController _invoiceAmountController;
   late TextEditingController _registerNoController;
   late TextEditingController _finalCommentsController;
@@ -539,7 +536,7 @@ final dLink = "";
             border: Border.all(color: headerBorder, width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: headerBorder.withOpacity(0.2),
+                color: headerBorder.withValues(alpha: 0.2),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -550,7 +547,7 @@ final dLink = "";
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: headerTextCol.withOpacity(0.1),
+                  color: headerTextCol.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(headerIcon, color: headerTextCol, size: isWide ? 28 : 22),
@@ -572,7 +569,7 @@ final dLink = "";
                     Text(
                       statusDesc,
                       style: TextStyle(
-                        color: headerTextCol.withOpacity(0.85),
+                        color: headerTextCol.withValues(alpha: 0.85),
                         fontSize: isWide ? 13 : 11,
                         height: 1.3,
                       ),
@@ -621,7 +618,7 @@ final dLink = "";
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<int>(
-                          value: _selectedVerifierId,
+                          initialValue: _selectedVerifierId,
                           hint: const Text('Select a staff member...'),
                           decoration: InputDecoration(
                             filled: true,
@@ -738,7 +735,7 @@ final dLink = "";
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<int>(
-                          value: _selectedVerifierId,
+                          initialValue: _selectedVerifierId,
                           hint: const Text('Select new verifier...'),
                           decoration: InputDecoration(
                             filled: true,
@@ -1819,8 +1816,8 @@ final dLink = "";
                       color: status == 'Vault' ? const Color(0xFFF8FAFC) : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 24, offset: const Offset(0, 8)),
-                        BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 4, offset: const Offset(0, 2))
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 24, offset: const Offset(0, 8)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 4, offset: const Offset(0, 2))
                       ]
                     ),
                     child: ClipRRect(
@@ -1882,7 +1879,7 @@ final dLink = "";
                                           padding: const EdgeInsets.only(left: 12, top: 6, bottom: 6, right: 12),
                                           decoration: BoxDecoration(
                                             border: Border(left: BorderSide(color: Colors.blue.shade400, width: 3)),
-                                            color: Colors.blue.shade50.withOpacity(0.5),
+                                            color: Colors.blue.shade50.withValues(alpha: 0.5),
                                             borderRadius: const BorderRadius.only(topRight: Radius.circular(8), bottomRight: Radius.circular(8)),
                                           ),
                                           child: Text(
@@ -2349,7 +2346,7 @@ final dLink = "";
                                           title: const Text('NOC from Irshad sir to start work', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryColor)),
                                           subtitle: const Text('Required if no part payment is received', style: TextStyle(fontSize: 11, color: AppTheme.mutedTextColor)),
                                           value: _nocObtained,
-                                          activeColor: AppTheme.primaryColor,
+                                          activeThumbColor: AppTheme.primaryColor,
                                           onChanged: (val) => _toggleNoc(val),
                                           contentPadding: EdgeInsets.zero,
                                         ),
@@ -2431,7 +2428,7 @@ final dLink = "";
                                       ),
                                       const SizedBox(height: 8),
                                       DropdownButtonFormField<int>(
-                                        value: _selectedVerifierId,
+                                        initialValue: _selectedVerifierId,
                                         hint: const Text('Select a staff member...'),
                                         decoration: InputDecoration(
                                           filled: true,
@@ -2747,7 +2744,7 @@ final dLink = "";
                               color: Colors.white,
                               border: Border(
                                 top: BorderSide(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                 ),
                               ),
                             ),
@@ -3054,7 +3051,7 @@ final dLink = "";
                                         title: const Text('NOC from Irshad sir to start work', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryColor)),
                                         subtitle: const Text('Required if no part payment is received', style: TextStyle(fontSize: 11, color: AppTheme.mutedTextColor)),
                                         value: _nocObtained,
-                                        activeColor: AppTheme.primaryColor,
+                                        activeThumbColor: AppTheme.primaryColor,
                                         onChanged: (val) => _toggleNoc(val),
                                         contentPadding: EdgeInsets.zero,
                                       ),
@@ -3133,7 +3130,7 @@ final dLink = "";
                                         ),
                                         const SizedBox(height: 8),
                                         DropdownButtonFormField<int>(
-                                          value: _selectedVerifierId,
+                                          initialValue: _selectedVerifierId,
                                           hint: const Text('Select a staff member...'),
                                           decoration: InputDecoration(
                                             filled: true,
@@ -3474,12 +3471,12 @@ final dLink = "";
                           border: Border(
                             left: isWide
                                 ? BorderSide(
-                                    color: Colors.black.withOpacity(0.05),
+                                    color: Colors.black.withValues(alpha: 0.05),
                                   )
                                 : BorderSide.none,
                             top: !isWide
                                 ? BorderSide(
-                                    color: Colors.black.withOpacity(0.05),
+                                    color: Colors.black.withValues(alpha: 0.05),
                                   )
                                 : BorderSide.none,
                           ),
@@ -3503,7 +3500,7 @@ final dLink = "";
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-          bottom: BorderSide(color: Colors.black.withOpacity(0.05)),
+          bottom: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
         ),
       ),
       child: Row(
@@ -3578,7 +3575,7 @@ final dLink = "";
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10),
         ],
       ),
       child: RawScrollbar(
@@ -3666,14 +3663,14 @@ final dLink = "";
                         ),
                         decoration: BoxDecoration(
                           color: isCurrent
-                              ? const Color(0xFF2563EB).withOpacity(0.1)
+                              ? const Color(0xFF2563EB).withValues(alpha: 0.1)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: isCurrent
                                 ? const Color(0xFF2563EB)
                                 : isPast
-                                ? const Color(0xFF2563EB).withOpacity(0.3)
+                                ? const Color(0xFF2563EB).withValues(alpha: 0.3)
                                 : Colors.transparent,
                             width: 1.5,
                           ),
@@ -3707,7 +3704,7 @@ final dLink = "";
                                 color: isCurrent
                                     ? const Color(0xFF2563EB)
                                     : isPast
-                                    ? const Color(0xFF2563EB).withOpacity(0.7)
+                                    ? const Color(0xFF2563EB).withValues(alpha: 0.7)
                                     : Colors.grey,
                                 fontWeight: isCurrent
                                     ? FontWeight.bold
@@ -3725,7 +3722,7 @@ final dLink = "";
                         height: 1,
                         margin: const EdgeInsets.symmetric(horizontal: 4),
                         color: isPast
-                            ? const Color(0xFF2563EB).withOpacity(0.3)
+                            ? const Color(0xFF2563EB).withValues(alpha: 0.3)
                             : Colors.grey.shade200,
                       ),
                   ],
@@ -3759,7 +3756,7 @@ final dLink = "";
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -3846,8 +3843,9 @@ final dLink = "";
         Autocomplete<Map<String, dynamic>>(
           initialValue: TextEditingValue(text: _clientController.text),
           optionsBuilder: (TextEditingValue textEditingValue) async {
-            if (textEditingValue.text.isEmpty)
+            if (textEditingValue.text.isEmpty) {
               return const Iterable<Map<String, dynamic>>.empty();
+            }
             final results = await ClientService().searchClients(textEditingValue.text);
             debugPrint(
               'Found ${results.length} clients for query: ${textEditingValue.text}',
@@ -3931,7 +3929,7 @@ final dLink = "";
                             radius: 14,
                             backgroundColor: const Color(
                               0xFF2563EB,
-                            ).withOpacity(0.1),
+                            ).withValues(alpha: 0.1),
                             child: Text(
                               name.isNotEmpty ? name[0].toUpperCase() : '?',
                               style: const TextStyle(
@@ -4028,9 +4026,9 @@ final dLink = "";
             padding: const EdgeInsets.symmetric(vertical: 16),
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.05),
+              color: Colors.grey.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.withOpacity(0.2)),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
             ),
             child: const Center(
               child: Text(
@@ -4103,7 +4101,7 @@ final dLink = "";
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }
@@ -4291,7 +4289,7 @@ final dLink = "";
             dealId: widget.deal!.id!,
             type: 'task',
             title: 'Lead Responsibility Changed',
-            description: 'Responsibility transferred to ${_responsibleName}',
+            description: 'Responsibility transferred to $_responsibleName',
             createdBy: 1, // Placeholder
           ),
         );
@@ -4354,8 +4352,8 @@ final dLink = "";
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              backgroundColor: const Color(0xFF2563EB).withOpacity(0.05),
-              side: BorderSide(color: const Color(0xFF2563EB).withOpacity(0.1)),
+              backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.05),
+              side: BorderSide(color: const Color(0xFF2563EB).withValues(alpha: 0.1)),
               onPressed: _addStaffMember,
             ),
           ],
@@ -4372,11 +4370,11 @@ final dLink = "";
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: isLead ? const Color(0xFF2563EB).withOpacity(0.1) : Colors.white,
+        color: isLead ? const Color(0xFF2563EB).withValues(alpha: 0.1) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isLead
-              ? const Color(0xFF2563EB).withOpacity(0.2)
+              ? const Color(0xFF2563EB).withValues(alpha: 0.2)
               : Colors.grey.shade200,
         ),
       ),
@@ -4571,7 +4569,7 @@ final dLink = "";
                 decoration: BoxDecoration(
                   color: AppTheme.surfaceColor,
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 30, spreadRadius: 5)],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: 5)],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -4653,7 +4651,7 @@ final dLink = "";
               color: AppTheme.surfaceColor,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 30, spreadRadius: 5),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: 5),
               ],
             ),
             child: Column(
@@ -4662,7 +4660,7 @@ final dLink = "";
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.document_scanner_rounded, size: 32, color: AppTheme.primaryColor),
@@ -4841,7 +4839,7 @@ final dLink = "";
                         final doc = docs[index];
                         return Card(
                           elevation: 0,
-                          color: AppTheme.primaryColor.withOpacity(0.03),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.03),
                           margin: const EdgeInsets.only(bottom: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
                           child: ListTile(
@@ -4959,7 +4957,7 @@ final dLink = "";
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: Colors.black.withOpacity(0.05)),
+              bottom: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
             ),
           ),
           child: Column(
@@ -5044,9 +5042,9 @@ final dLink = "";
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.2)),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -5112,7 +5110,7 @@ final dLink = "";
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFF2563EB).withOpacity(0.1),
+              color: const Color(0xFF2563EB).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -5188,7 +5186,7 @@ final dLink = "";
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.black.withOpacity(0.05))),
+        border: Border(top: BorderSide(color: Colors.black.withValues(alpha: 0.05))),
       ),
       child: Column(
         children: [

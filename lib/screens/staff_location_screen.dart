@@ -142,7 +142,7 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
                       children: [
                         Container(
                           padding: const EdgeInsets.all(16),
-                          color: AppTheme.primaryColor.withOpacity(0.1),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
                           width: double.infinity,
                           child: Text(
                             'Staff Locations (${_staffLocations.length})',
@@ -198,13 +198,13 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
                                           if (isActive)
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                              decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                                               child: const Text('Active', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
                                             )
                                           else
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                              decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                                               child: const Text('Offline', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
                                             ),
                                         ],
@@ -212,7 +212,7 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
                                       subtitle: Text('$role\nLast updated: $timeString'),
                                       isThreeLine: true,
                                       selected: _selectedUserId == loc['user_id'],
-                                      selectedTileColor: Colors.green.withOpacity(0.1),
+                                      selectedTileColor: Colors.green.withValues(alpha: 0.1),
                                       onTap: () {
                                         _fetchUserRoute(loc['user_id'] as int);
                                         _mapController.move(

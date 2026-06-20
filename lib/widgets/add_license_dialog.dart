@@ -143,7 +143,7 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-      prefixIcon: Icon(icon, color: AppTheme.primaryColor.withOpacity(0.7), size: 20),
+      prefixIcon: Icon(icon, color: AppTheme.primaryColor.withValues(alpha: 0.7), size: 20),
       filled: true,
       fillColor: const Color(0xFFF8FAFC), // Slate 50
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -195,7 +195,7 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.2),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(Icons.shield_rounded, color: AppTheme.primaryColor, size: 24),
@@ -231,7 +231,7 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
                     const SizedBox(height: 16),
                     
                     DropdownButtonFormField<int>(
-                      value: _selectedTypeId,
+                      initialValue: _selectedTypeId,
                       isExpanded: true,
                       decoration: _inputDecoration('Select License Type', Icons.category_rounded),
                       icon: const Icon(Icons.expand_more_rounded, color: Colors.grey),
@@ -249,7 +249,7 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
                     const SizedBox(height: 16),
 
                     DropdownButtonFormField<int>(
-                      value: _selectedClientId,
+                      initialValue: _selectedClientId,
                       isExpanded: true,
                       decoration: _inputDecoration('Select Registered Client', Icons.business_rounded),
                       icon: const Icon(Icons.expand_more_rounded, color: Colors.grey),
@@ -301,7 +301,7 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.event_busy_rounded, color: AppTheme.primaryColor.withOpacity(0.7), size: 20),
+                                Icon(Icons.event_busy_rounded, color: AppTheme.primaryColor.withValues(alpha: 0.7), size: 20),
                                 const SizedBox(width: 16),
                                 Text(
                                   _expiryDate == null ? 'Select Expiry Date' : DateFormat('dd MMM yyyy').format(_expiryDate!),

@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../theme.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart'; // To reuse StarryBackground

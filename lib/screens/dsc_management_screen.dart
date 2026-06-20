@@ -3,8 +3,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
 import '../models/dsc_record.dart';
-import '../theme.dart';
-import '../models/dsc_record.dart';
 import '../services/logging_service.dart';
 import '../services/excel_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -246,14 +244,14 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                         onPressed: _fetchRecords,
                         icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor, size: 20),
                         tooltip: 'Refresh',
-                        style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withOpacity(0.1), padding: const EdgeInsets.all(12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                        style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1), padding: const EdgeInsets.all(12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                       ),
                       const SizedBox(width: 8),
                       IconButton(
                         onPressed: _exportToExcel,
                         icon: const Icon(Icons.download_rounded, color: Colors.green, size: 20),
                         tooltip: 'Export',
-                        style: IconButton.styleFrom(backgroundColor: Colors.green.withOpacity(0.1), padding: const EdgeInsets.all(12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                        style: IconButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.1), padding: const EdgeInsets.all(12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                       ),
                       const SizedBox(width: 16),
                       ElevatedButton.icon(
@@ -289,14 +287,14 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                     onPressed: _fetchRecords,
                     icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor, size: 20),
                     tooltip: 'Refresh',
-                    style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withOpacity(0.1), padding: const EdgeInsets.all(12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1), padding: const EdgeInsets.all(12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   ),
                   const SizedBox(width: 8),
                   IconButton(
                     onPressed: _exportToExcel,
                     icon: const Icon(Icons.download_rounded, color: Colors.green, size: 20),
                     tooltip: 'Export',
-                    style: IconButton.styleFrom(backgroundColor: Colors.green.withOpacity(0.1), padding: const EdgeInsets.all(12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    style: IconButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.1), padding: const EdgeInsets.all(12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   ),
                 ],
               ),
@@ -317,7 +315,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.separated(
                     itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, index) => _buildDscCard(filtered[index], isWide),
                   ),
             ),
@@ -336,12 +334,12 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.1))),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.1))),
       child: ExpansionTile(
         tilePadding: EdgeInsets.symmetric(horizontal: isWide ? 24 : 16, vertical: 8),
         leading: isWide ? Container(
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
           child: Icon(Icons.vpn_key_outlined, color: statusColor),
         ) : null,
         title: Text(r.clientName ?? 'Unknown', style: TextStyle(fontWeight: FontWeight.bold, fontSize: isWide ? 16 : 14), maxLines: 1, overflow: TextOverflow.ellipsis),

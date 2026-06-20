@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
@@ -11,11 +12,9 @@ import 'login_screen.dart';
 import 'client_management_screen.dart';
 import 'dsc_management_screen.dart';
 import 'billing_screen.dart';
-import 'license_management_screen.dart';
 import 'license_dashboard_screen.dart';
 import 'services_screen.dart';
 import 'admin_dashboard_screen.dart';
-import 'chat_screen.dart';
 import 'work_management_screen.dart';
 import 'staff_chat_list_screen.dart';
 import 'task_management_screen.dart';
@@ -162,7 +161,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     } catch (e) {
-      print('Error fetching attendance status: $e');
+      debugPrint('Error fetching attendance status: $e');
       if (mounted) setState(() => _isAttendanceLoading = false);
     }
   }
@@ -373,7 +372,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } catch (_) {}
     }
 
-    if (mounted) setState(() {
+    if (mounted) {
+      setState(() {
       _isAdmin = role == 'admin';
       _userRole = role ?? 'user';
       String displayName = name ?? 'User';
@@ -383,6 +383,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _userName = displayName;
       }
     });
+    }
   }
 
   Future<void> _fetchStats({int retryCount = 0}) async {
@@ -617,7 +618,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF13131A), // Deep dark slate
         border: Border(
-          right: BorderSide(color: Colors.white.withOpacity(0.05)),
+          right: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
         ),
       ),
       child: Column(
@@ -699,7 +700,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               leading: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
               title: const Text('Logout', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              hoverColor: Colors.redAccent.withOpacity(0.1),
+              hoverColor: Colors.redAccent.withValues(alpha: 0.1),
               visualDensity: VisualDensity.compact,
             ),
           ),
@@ -708,9 +709,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
                   child: Row(
                     children: [
@@ -766,10 +767,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primaryColor.withOpacity(0.15) : Colors.transparent,
+            color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.15) : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isSelected ? AppTheme.primaryColor.withOpacity(0.3) : Colors.transparent,
+              color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.3) : Colors.transparent,
             ),
           ),
           child: Row(
@@ -821,7 +822,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: const Icon(Icons.arrow_back_rounded),
                   onPressed: () => setState(() => _selectedCategory = null),
                   style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                    backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
                     foregroundColor: AppTheme.primaryColor,
                   ),
                 ),
@@ -855,7 +856,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           icon: const Icon(Icons.refresh_rounded, size: 22),
           tooltip: 'Refresh Stats',
           style: IconButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+            backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
             foregroundColor: AppTheme.primaryColor,
             padding: const EdgeInsets.all(12),
           ),
@@ -1123,8 +1124,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }).toList();
 
     IconData categoryIcon = Icons.description_outlined;
-    if (_selectedCategory == 'Expiring Licences') categoryIcon = Icons.verified_user_rounded;
-    else if (_selectedCategory == 'Signature Expiry') categoryIcon = Icons.vpn_key_rounded;
+    if (_selectedCategory == 'Expiring Licences') {
+      categoryIcon = Icons.verified_user_rounded;
+    } else if (_selectedCategory == 'Signature Expiry') categoryIcon = Icons.vpn_key_rounded;
     else if (_selectedCategory == 'Bills to Receive') categoryIcon = Icons.account_balance_wallet_rounded;
     else if (_selectedCategory == 'Work Management') categoryIcon = Icons.work_rounded;
 
@@ -1147,7 +1149,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.black.withOpacity(0.05)),
+                borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 0),
               hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
@@ -1180,7 +1182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: ClipRRect(
@@ -1195,7 +1197,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 leading: Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.1),
+                                    color: statusColor.withValues(alpha: 0.1),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(categoryIcon, color: statusColor, size: 20),
@@ -1212,7 +1214,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: statusColor.withOpacity(0.1),
+                                        color: statusColor.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(item['status'], style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10)),
@@ -1259,7 +1261,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: statusColor.withOpacity(0.1),
+                      backgroundColor: statusColor.withValues(alpha: 0.1),
                       child: Icon(Icons.bolt_rounded, color: statusColor),
                     ),
                     const SizedBox(width: 16),
@@ -1348,7 +1350,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SwitchListTile(
                 title: const Text('Full Payment Received?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 value: isFullPayment,
-                activeColor: Colors.green,
+                activeThumbColor: Colors.green,
                 onChanged: (val) {
                   setState(() {
                     isFullPayment = val;
@@ -1501,7 +1503,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       contentPadding: EdgeInsets.zero,
       leading: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
         child: Icon(icon, color: color, size: 22),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
@@ -1554,8 +1556,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildWelcomeBanner() {
     final hour = DateTime.now().hour;
     String greeting = 'Good Morning';
-    if (hour >= 12 && hour < 17) greeting = 'Good Afternoon';
-    else if (hour >= 17) greeting = 'Good Evening';
+    if (hour >= 12 && hour < 17) {
+      greeting = 'Good Afternoon';
+    } else if (hour >= 17) greeting = 'Good Evening';
 
     final bool isNarrow = MediaQuery.of(context).size.width < 600;
     return Container(
@@ -1570,7 +1573,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -1589,7 +1592,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [AppTheme.primaryColor.withOpacity(0.3), Colors.transparent],
+                  colors: [AppTheme.primaryColor.withValues(alpha: 0.3), Colors.transparent],
                   stops: const [0.0, 1.0],
                 ),
               ),
@@ -1611,7 +1614,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text(
                 'You have ${_stats['pendingTasks']} tasks due and ${_stats['expiringLicences']} licenses expiring soon.',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
                 ),
@@ -1622,9 +1625,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.2),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: AppTheme.primaryColor.withOpacity(0.5)),
+                      border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.5)),
                     ),
                     child: Row(
                       children: [
@@ -1657,7 +1660,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                                 elevation: 4,
-                                shadowColor: (_isCheckedIn ? Colors.redAccent : Colors.green).withOpacity(0.5),
+                                shadowColor: (_isCheckedIn ? Colors.redAccent : Colors.green).withValues(alpha: 0.5),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -1671,7 +1674,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                                 elevation: 4,
-                                shadowColor: const Color(0xFF2563EB).withOpacity(0.5),
+                                shadowColor: const Color(0xFF2563EB).withValues(alpha: 0.5),
                               ),
                             ),
                           ],
@@ -1682,7 +1685,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Text(
                             'Total Time Today: ${_dailyTotalMinutes ~/ 60}h ${_dailyTotalMinutes % 60}m',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                             ),
@@ -1808,7 +1811,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(0.1),
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: AppTheme.primaryColor, size: 20),
@@ -1983,7 +1986,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 80, color: AppTheme.primaryColor.withOpacity(0.2)),
+                Icon(icon, size: 80, color: AppTheme.primaryColor.withValues(alpha: 0.2)),
                 const SizedBox(height: 24),
                 Text(
                   '$title module is coming soon.',

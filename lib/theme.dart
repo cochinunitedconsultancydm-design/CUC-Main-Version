@@ -31,14 +31,14 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 4,
-        shadowColor: Colors.black.withOpacity(0.05),
+        shadowColor: Colors.black.withValues(alpha: 0.05),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: primaryColor.withOpacity(0.1), width: 1),
+          side: BorderSide(color: primaryColor.withValues(alpha: 0.1), width: 1),
         ),
       ),
       dividerTheme: DividerThemeData(
-        color: Colors.black.withOpacity(0.05),
+        color: Colors.black.withValues(alpha: 0.05),
         thickness: 1,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -249,8 +248,9 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
       children: ['All', 'Task', 'License', 'DSC'].map((cat) {
         final isSelected = _selectedCategory == cat;
         Color chipColor;
-        if (cat == 'Task') chipColor = AppTheme.primaryColor;
-        else if (cat == 'License') chipColor = Colors.purple;
+        if (cat == 'Task') {
+          chipColor = AppTheme.primaryColor;
+        } else if (cat == 'License') chipColor = Colors.purple;
         else if (cat == 'DSC') chipColor = Colors.teal;
         else chipColor = Colors.blueGrey;
 
@@ -312,19 +312,20 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
           final expCount = dayEvents.where((e) => e.type == 'License' || e.type == 'DSC').length;
 
           Color borderColor = Colors.grey.shade200;
-          if (isSelected) borderColor = AppTheme.primaryColor;
-          else if (isToday) borderColor = AppTheme.primaryColor.withOpacity(0.4);
+          if (isSelected) {
+            borderColor = AppTheme.primaryColor;
+          } else if (isToday) borderColor = AppTheme.primaryColor.withValues(alpha: 0.4);
 
           return GestureDetector(
             onTap: () => setState(() => _selectedDay = currentDay),
             child: Container(
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryColor.withOpacity(0.08) : const Color(0xFFF8FAFC),
+                color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.08) : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: isSelected ? AppTheme.primaryColor : const Color(0xFFF1F5F9), width: isSelected ? 2 : 1),
                 boxShadow: isSelected 
-                  ? [BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 12, spreadRadius: 2)] 
-                  : [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))],
+                  ? [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 12, spreadRadius: 2)] 
+                  : [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
               ),
               child: Stack(
                 children: [
@@ -334,7 +335,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primaryColor : (isToday ? AppTheme.primaryColor.withOpacity(0.15) : Colors.grey.shade100),
+                        color: isSelected ? AppTheme.primaryColor : (isToday ? AppTheme.primaryColor.withValues(alpha: 0.15) : Colors.grey.shade100),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -361,7 +362,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                                 margin: const EdgeInsets.only(left: 4),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withOpacity(0.1),
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text('$taskCount Task', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.primaryColor), overflow: TextOverflow.ellipsis),
@@ -376,7 +377,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
                                   color: Colors.red.shade50,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(color: Colors.red.shade200),
-                                  boxShadow: [BoxShadow(color: Colors.red.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+                                  boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))],
                                 ),
                                 child: Text('$expCount Exp', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.red.shade700), overflow: TextOverflow.ellipsis),
                               ),
@@ -447,7 +448,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 4)),
         ],
       ),
       child: TextField(
@@ -478,7 +479,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, spreadRadius: 5),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20, spreadRadius: 5),
                     ],
                   ),
                   child: Padding(
@@ -518,7 +519,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, spreadRadius: 5),
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20, spreadRadius: 5),
                   ],
                 ),
                 child: Padding(
@@ -548,7 +549,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
                       Container(
                         decoration: BoxDecoration(
                           boxShadow: [
-                            BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 4)),
+                            BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 4)),
                           ],
                         ),
                         child: ElevatedButton.icon(
@@ -629,7 +630,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
                     leading: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.1),
+                        color: color.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -654,7 +655,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: color.withOpacity(0.1),
+                                color: color.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(

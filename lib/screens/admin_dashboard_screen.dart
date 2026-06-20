@@ -9,8 +9,6 @@ import 'login_screen.dart';
 import 'service_management_screen.dart';
 import 'staff_management_screen.dart';
 import 'monitor_screen.dart';
-import 'staff_chat_list_screen.dart';
-import 'task_management_screen.dart';
 import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/premium_app_bar.dart';
@@ -20,7 +18,6 @@ import '../services/auth_service.dart';
 import '../models/billing.dart';
 import '../services/excel_service.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'uploaded_files_screen.dart';
 import 'checklist_screen.dart';
 import 'reminder_calendar_screen.dart';
 import '../widgets/upcoming_reminders_widget.dart';
@@ -323,7 +320,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       decoration: BoxDecoration(
         color: AppTheme.surfaceColor,
         border: Border(
-          right: BorderSide(color: Colors.black.withOpacity(0.05)),
+          right: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
         ),
       ),
       child: _buildSidebarContent(isWide),
@@ -398,7 +395,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primaryColor.withOpacity(0.05) : Colors.transparent,
+            color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.05) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -459,7 +456,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 IconButton(
                   onPressed: _fetchAdminStats,
                   icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor),
-                  style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withOpacity(0.1)),
+                  style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1)),
                 ),
               ],
             ),
@@ -529,7 +526,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Row(
                       children: [
-                        Icon(Icons.table_chart_outlined, size: 18, color: AppTheme.primaryColor.withOpacity(0.5)),
+                        Icon(Icons.table_chart_outlined, size: 18, color: AppTheme.primaryColor.withValues(alpha: 0.5)),
                         const SizedBox(width: 16),
                         Expanded(child: Text(e.key.toUpperCase().replaceAll('_', ' '), style: const TextStyle(fontWeight: FontWeight.w600))),
                         Text('${e.value} records', style: const TextStyle(color: AppTheme.mutedTextColor, fontWeight: FontWeight.bold)),
@@ -539,7 +536,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           child: LinearProgressIndicator(
                             value: e.value / 1000,
                             backgroundColor: Colors.grey.shade100,
-                            color: AppTheme.primaryColor.withOpacity(0.3),
+                            color: AppTheme.primaryColor.withValues(alpha: 0.3),
                             minHeight: 6,
                             borderRadius: BorderRadius.circular(3),
                           ),
@@ -612,8 +609,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _healthCard(String title, String val, IconData icon, Color color) {
     return Card(
       elevation: 0,
-      color: color.withOpacity(0.05),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: color.withOpacity(0.1))),
+      color: color.withValues(alpha: 0.05),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: color.withValues(alpha: 0.1))),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -663,9 +660,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -717,7 +714,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
-                BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 20, spreadRadius: 5),
+                BoxShadow(color: Colors.grey.withValues(alpha: 0.05), blurRadius: 20, spreadRadius: 5),
               ],
             ),
             child: UpcomingRemindersWidget(
@@ -827,7 +824,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               flex: 2,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(color: (isPaid ? Colors.green : Colors.orange).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                decoration: BoxDecoration(color: (isPaid ? Colors.green : Colors.orange).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                                 child: Text(isPaid ? 'PAID' : 'PENDING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isPaid ? Colors.green : Colors.orange), textAlign: TextAlign.center),
                               ),
                             ),
@@ -846,7 +843,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 Text(b['amount'] ?? '0/-', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: isPaid ? Colors.green : Colors.black)),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(color: (isPaid ? Colors.green : Colors.orange).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                  decoration: BoxDecoration(color: (isPaid ? Colors.green : Colors.orange).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                                   child: Text(isPaid ? 'PAID' : 'PENDING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isPaid ? Colors.green : Colors.orange)),
                                 ),
                               ],
@@ -888,7 +885,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             Expanded(
               child: ListView.separated(
                 itemCount: logsList.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final logRow = logsList[index];
                   final log = Map<String, dynamic>.from(logRow);
@@ -904,7 +901,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           flex: 2, 
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                            decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                             child: Text(log['action'] ?? '-', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryColor), textAlign: TextAlign.center),
                           ),
                         ),
@@ -933,7 +930,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: AppTheme.primaryColor.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
       child: isWide
@@ -946,13 +943,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
                       child: const Text('SYSTEM GOVERNANCE', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                     ),
                     const SizedBox(height: 16),
                     const Text('Central Intelligence Dashboard', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Text('Monitor system health, manage infrastructure, and oversee audit transparency across all business units.', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14)),
+                    Text('Monitor system health, manage infrastructure, and oversee audit transparency across all business units.', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14)),
                   ],
                 ),
               ),
@@ -965,13 +962,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
                 child: const Text('SYSTEM GOVERNANCE', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
               ),
               const SizedBox(height: 16),
               const Text('Central Intelligence Dashboard', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text('Monitor system health, manage infrastructure, and oversee audit transparency across all business units.', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14)),
+              Text('Monitor system health, manage infrastructure, and oversee audit transparency across all business units.', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14)),
               const SizedBox(height: 24),
               Opacity(opacity: 0.2, child: Image.asset('assets/CUnitedGold.png', height: 60)),
             ],
@@ -985,10 +982,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: color.withOpacity(0.1)),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.05),
+            color: color.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -1003,7 +1000,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Container(
                 padding: EdgeInsets.all(isWide ? 12 : 10),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(icon, color: color, size: isWide ? 24 : 20),
@@ -1011,7 +1008,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(

@@ -36,7 +36,7 @@ class NumberToWords {
       result = other[i] + result;
       count++;
       if (count == 2 && i > 0) {
-        result = ',' + result;
+        result = ',$result';
         count = 0;
       }
     }

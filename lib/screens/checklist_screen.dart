@@ -162,7 +162,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -260,7 +260,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             const Text("Task Details", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
               child: Text(checklist.status, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
             ),
           ],
@@ -446,7 +446,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                       subtitle: Text(DateFormat('dd MMM yyyy').format(_selectedDate), style: const TextStyle(fontSize: 16)),
                       trailing: Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                        decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                         child: const Icon(Icons.calendar_month, color: AppTheme.primaryColor),
                       ),
                       onTap: () async {
@@ -632,7 +632,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                         backgroundColor: AppTheme.primaryColor,
                         foregroundColor: Colors.white,
                         elevation: 4,
-                        shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                        shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),

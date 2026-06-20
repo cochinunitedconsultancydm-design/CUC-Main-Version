@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/notification_service.dart';
-import '../services/auth_service.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -85,7 +84,7 @@ class _NotificationBellState extends State<NotificationBell> {
               ? const Center(child: Text('No new notifications!', style: TextStyle(color: Colors.grey)))
               : ListView.separated(
                   itemCount: _notifications.length,
-                  separatorBuilder: (_, __) => const Divider(),
+                  separatorBuilder: (_, _) => const Divider(),
                   itemBuilder: (context, index) {
                     final n = _notifications[index];
                     IconData icon = Icons.notifications;
@@ -106,7 +105,7 @@ class _NotificationBellState extends State<NotificationBell> {
                     }
 
                     return ListTile(
-                      leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color, size: 20)),
+                      leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color, size: 20)),
                       title: Text(n.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

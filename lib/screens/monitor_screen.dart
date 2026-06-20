@@ -286,14 +286,14 @@ class _MonitorScreenState extends State<MonitorScreen> {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     leading: CircleAvatar(
                       radius: 18,
-                      backgroundColor: userColor.withOpacity(0.15),
+                      backgroundColor: userColor.withValues(alpha: 0.15),
                       child: Text(s['user_name']?[0] ?? '?', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: userColor)),
                     ),
                     title: Text(s['user_name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     subtitle: Text('${DateFormat('dd MMM, HH:mm').format(loginTime)} • $duration', style: const TextStyle(fontSize: 12, color: AppTheme.mutedTextColor)),
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: (isActive ? Colors.green : Colors.grey).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                      decoration: BoxDecoration(color: (isActive ? Colors.green : Colors.grey).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                       child: Text(isActive ? 'ACTIVE' : 'OFFLINE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isActive ? Colors.green : Colors.grey)),
                     ),
                   );
@@ -310,23 +310,23 @@ class _MonitorScreenState extends State<MonitorScreen> {
                         flex: 2,
                         child: Row(
                           children: [
-                            CircleAvatar(radius: 16, backgroundColor: userColor.withOpacity(0.15), child: Text(s['user_name']?[0] ?? '?', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: userColor))),
+                            CircleAvatar(radius: 16, backgroundColor: userColor.withValues(alpha: 0.15), child: Text(s['user_name']?[0] ?? '?', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: userColor))),
                             const SizedBox(width: 12),
                             Expanded(child: Text(s['user_name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textColor))),
                           ],
                         ),
                       ),
                       Expanded(flex: 2, child: Text(DateFormat('dd MMM yyyy, hh:mm a').format(loginTime), style: const TextStyle(fontSize: 13, color: AppTheme.textColor, fontWeight: FontWeight.w500))),
-                      Expanded(flex: 2, child: Text(logoutTime != null ? DateFormat('dd MMM yyyy, hh:mm a').format(logoutTime) : '--', style: TextStyle(fontSize: 13, color: logoutTime != null ? AppTheme.textColor.withOpacity(0.7) : Colors.grey.shade400, fontStyle: logoutTime == null ? FontStyle.italic : FontStyle.normal))),
+                      Expanded(flex: 2, child: Text(logoutTime != null ? DateFormat('dd MMM yyyy, hh:mm a').format(logoutTime) : '--', style: TextStyle(fontSize: 13, color: logoutTime != null ? AppTheme.textColor.withValues(alpha: 0.7) : Colors.grey.shade400, fontStyle: logoutTime == null ? FontStyle.italic : FontStyle.normal))),
                       Expanded(flex: 1, child: Text(duration, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
                       Expanded(
                         flex: 1,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: isActive ? Colors.green.withOpacity(0.1) : Colors.grey.shade100, 
+                            color: isActive ? Colors.green.withValues(alpha: 0.1) : Colors.grey.shade100, 
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: isActive ? Colors.green.withOpacity(0.3) : Colors.grey.shade300)
+                            border: Border.all(color: isActive ? Colors.green.withValues(alpha: 0.3) : Colors.grey.shade300)
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -389,7 +389,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     leading: CircleAvatar(
-                      backgroundColor: actionColor.withOpacity(0.15),
+                      backgroundColor: actionColor.withValues(alpha: 0.15),
                       child: Icon(_getLogIcon(l['target_type']), color: actionColor, size: 18),
                     ),
                     title: Text(l['user_name'] ?? 'System', style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -415,7 +415,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
                         flex: 2,
                         child: Row(
                           children: [
-                            CircleAvatar(radius: 16, backgroundColor: userColor.withOpacity(0.15), child: Text(l['user_name']?[0] ?? '?', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: userColor))),
+                            CircleAvatar(radius: 16, backgroundColor: userColor.withValues(alpha: 0.15), child: Text(l['user_name']?[0] ?? '?', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: userColor))),
                             const SizedBox(width: 12),
                             Expanded(child: Text(l['user_name'] ?? 'System', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
                           ],
@@ -425,7 +425,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
                         flex: 2,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: actionColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6), border: Border.all(color: actionColor.withOpacity(0.2))),
+                          decoration: BoxDecoration(color: actionColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6), border: Border.all(color: actionColor.withValues(alpha: 0.2))),
                           child: Text(l['action'], style: TextStyle(color: actionColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5), textAlign: TextAlign.center),
                         ),
                       ),
@@ -462,7 +462,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Peak Activity (Last 24h)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-              Text('${_logs.length} Actions Logged', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+              Text('${_logs.length} Actions Logged', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
             ],
           ),
           const SizedBox(height: 24),
@@ -490,7 +490,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
                         width: 12,
                         height: count > 0 ? (100 * heightFactor) : 4.0, // Small stub if empty
                         decoration: BoxDecoration(
-                          color: count > 0 ? AppTheme.primaryColor.withOpacity(heightFactor * 0.7 + 0.3) : Colors.white.withOpacity(0.05),
+                          color: count > 0 ? AppTheme.primaryColor.withValues(alpha: heightFactor * 0.7 + 0.3) : Colors.white.withValues(alpha: 0.05),
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
                         ),
                       ),
@@ -504,9 +504,9 @@ class _MonitorScreenState extends State<MonitorScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('00:00', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10)),
-              Text('12:00', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10)),
-              Text('23:59', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10)),
+              Text('00:00', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10)),
+              Text('12:00', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10)),
+              Text('23:59', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10)),
             ],
           ),
         ],

@@ -1,1 +1,0 @@
-import 'package:flutter/material.dart'; void main() { Autocomplete<String>(optionsBuilder: (t) => const [], fieldViewBuilder: (c, t, f, o) => TextField(), optionsViewBuilder: (c, o, it) => Container()); }

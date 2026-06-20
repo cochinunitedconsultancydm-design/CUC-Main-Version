@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -7,7 +8,6 @@ import 'dashboard_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'manager_dashboard_screen.dart';
 import 'delivery_dashboard_screen.dart';
-import 'accountant_dashboard_screen.dart';
 import '../services/auth_service.dart';
 import 'forgot_password_screen.dart';
 
@@ -47,19 +47,19 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       
-      print('Calling login service...');
+      debugPrint('Calling login service...');
       final success = await _auth.login(
         _userController.text.trim(),
         _passwordController.text,
       );
       
-      print('Login service result: $success');
+      debugPrint('Login service result: $success');
       setState(() => _isLoading = false);
 
       if (success) {
         await _auth.saveRememberMe(_userController.text.trim(), _rememberMe);
         final role = await _auth.getUserRole();
-        print('User role after login: $role');
+        debugPrint('User role after login: $role');
         if (mounted) {
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
@@ -68,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (role == 'manager') return const ManagerDashboardScreen();
                 if (role == 'delivery') return const DeliveryDashboardScreen();
                 if (role == 'accountant') return const DashboardScreen();
-                print('Defaulting to DashboardScreen for role: $role');
+                debugPrint('Defaulting to DashboardScreen for role: $role');
                 return const DashboardScreen();
               },
               transitionsBuilder: (context, animation, secondaryAnimation, child) {

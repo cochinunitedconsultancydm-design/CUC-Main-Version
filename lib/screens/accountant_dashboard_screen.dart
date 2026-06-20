@@ -3,14 +3,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
 import 'login_screen.dart';
-import 'billing_screen.dart';
-import 'client_management_screen.dart';
-import 'company_bill_management_screen.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
-import 'work_management_screen.dart';
-import 'task_management_screen.dart';
 import '../services/excel_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -287,8 +282,9 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
   Widget _buildGreeting(bool isWide) {
     final hour = DateTime.now().hour;
     String greeting = 'Good Morning';
-    if (hour >= 12 && hour < 17) greeting = 'Good Afternoon';
-    else if (hour >= 17) greeting = 'Good Evening';
+    if (hour >= 12 && hour < 17) {
+      greeting = 'Good Afternoon';
+    } else if (hour >= 17) greeting = 'Good Evening';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,7 +322,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
               ),
               child: Row(
                 children: [
@@ -357,7 +353,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
       child: Stack(
@@ -372,7 +368,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
               const SizedBox(height: 8),
               Text(
                 'Track revenue, manage company expenses, and monitor client outstanding in real-time.',
-                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 16),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 16),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
@@ -410,7 +406,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
           ),
           if (isWide) Positioned(
             right: 0, top: 0, bottom: 0,
-            child: Icon(Icons.auto_graph_rounded, size: 100, color: Colors.white.withOpacity(0.1)),
+            child: Icon(Icons.auto_graph_rounded, size: 100, color: Colors.white.withValues(alpha: 0.1)),
           ),
         ],
       ),
@@ -423,15 +419,15 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20)],
-        border: Border.all(color: color.withOpacity(0.05)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20)],
+        border: Border.all(color: color.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: EdgeInsets.all(isWide ? 12 : 10),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
             child: Icon(icon, color: color, size: isWide ? 24 : 20),
           ),
           const Spacer(),
@@ -454,7 +450,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,7 +470,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: color.withOpacity(0.1),
+              backgroundColor: color.withValues(alpha: 0.1),
               valueColor: AlwaysStoppedAnimation<Color>(color),
               minHeight: 10,
             ),
@@ -490,7 +486,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -550,7 +546,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -566,9 +562,9 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.02),
+                color: Colors.red.withValues(alpha: 0.02),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.red.withOpacity(0.05)),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.05)),
               ),
               child: Row(
                 children: [
@@ -607,7 +603,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
                     },
                     child: Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.1), shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), shape: BoxShape.circle),
                       child: const Icon(Icons.send_rounded, color: Colors.redAccent, size: 16),
                     ),
                   ),
@@ -634,14 +630,14 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.black.withOpacity(0.03)),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(height: 8),

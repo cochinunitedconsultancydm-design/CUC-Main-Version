@@ -185,7 +185,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
     try {
       final res = await _client.from('client_licenses').select('*, clients(name), license_types(name)');
       final licenses = res.map((row) {
-        final map = Map<String, dynamic>.from(row as Map<String, dynamic>);
+        final map = Map<String, dynamic>.from(row);
         if (map['clients'] != null) {
           final c = map['clients'];
           map['client_name'] = (c is List && c.isNotEmpty) ? c[0]['name'] : (c is Map ? c['name'] : null);
@@ -458,8 +458,9 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
                 itemBuilder: (context, index) {
                   final item = items[index];
                   Color statusColor = Colors.green;
-                  if (item['isExpired'] == true) statusColor = Colors.red;
-                  else if (item['isExpiringSoon'] == true) statusColor = Colors.orange;
+                  if (item['isExpired'] == true) {
+                    statusColor = Colors.red;
+                  } else if (item['isExpiringSoon'] == true) statusColor = Colors.orange;
                   
                   return Card(
                     elevation: 0,

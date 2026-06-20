@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis/docs/v1.dart' as docs;
 import 'package:googleapis_auth/auth_io.dart';
@@ -43,7 +44,7 @@ class GoogleDocsService {
         );
       }
     } catch (e) {
-      print('Error loading credentials: $e');
+      debugPrint('Error loading credentials: $e');
     }
     return null;
   }
@@ -63,7 +64,7 @@ class GoogleDocsService {
       });
       await prefs.setString(_credentialsKey, jsonString);
     } catch (e) {
-      print('Error saving credentials: $e');
+      debugPrint('Error saving credentials: $e');
     }
   }
 
@@ -102,7 +103,7 @@ class GoogleDocsService {
       
       return 'Authenticated User';
     } catch (e) {
-      print('Google Sign-In Error: $e');
+      debugPrint('Google Sign-In Error: $e');
       return null;
     }
   }
@@ -135,7 +136,7 @@ class GoogleDocsService {
       );
       return response.files ?? [];
     } catch (e) {
-      print('Error fetching drive files: $e');
+      debugPrint('Error fetching drive files: $e');
       return [];
     }
   }
@@ -173,7 +174,7 @@ class GoogleDocsService {
       }
       return null;
     } catch (e) {
-      print('Error creating document: $e');
+      debugPrint('Error creating document: $e');
       return null;
     }
   }
@@ -202,7 +203,7 @@ class GoogleDocsService {
       }
       return null;
     } catch (e) {
-      print('Error uploading document: $e');
+      debugPrint('Error uploading document: $e');
       return null;
     }
   }
@@ -216,7 +217,7 @@ class GoogleDocsService {
       await driveApi.files.delete(documentId);
       return true;
     } catch (e) {
-      print('Error deleting document: $e');
+      debugPrint('Error deleting document: $e');
       return false;
     }
   }

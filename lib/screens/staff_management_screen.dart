@@ -96,7 +96,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     final password = TextEditingController();
     String role = user?['role'] ?? 'staff';
 
-    InputDecoration _inputDec(String label, IconData icon) {
+    InputDecoration inputDec(String label, IconData icon) {
       return InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w500),
@@ -110,7 +110,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       );
     }
 
-    Widget _roleChip(String label, String value, bool isSelected, Color color, Function(String) onSelect) {
+    Widget roleChip(String label, String value, bool isSelected, Color color, Function(String) onSelect) {
       return Expanded(
         child: InkWell(
           onTap: () => onSelect(value),
@@ -165,33 +165,33 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  TextField(controller: name, decoration: _inputDec('Full Name', Icons.person_outline_rounded)),
+                  TextField(controller: name, decoration: inputDec('Full Name', Icons.person_outline_rounded)),
                   const SizedBox(height: 16),
-                  TextField(controller: username, decoration: _inputDec('Username', Icons.alternate_email_rounded)),
+                  TextField(controller: username, decoration: inputDec('Username', Icons.alternate_email_rounded)),
                   const SizedBox(height: 16),
-                  TextField(controller: email, decoration: _inputDec('Email Address', Icons.email_outlined), keyboardType: TextInputType.emailAddress),
+                  TextField(controller: email, decoration: inputDec('Email Address', Icons.email_outlined), keyboardType: TextInputType.emailAddress),
                   if (user == null) ...[
                     const SizedBox(height: 16),
-                    TextField(controller: password, decoration: _inputDec('Initial Password', Icons.lock_outline_rounded), obscureText: true),
+                    TextField(controller: password, decoration: inputDec('Initial Password', Icons.lock_outline_rounded), obscureText: true),
                   ],
                   const SizedBox(height: 32),
                   const Text('Access Level', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      _roleChip('Admin', 'admin', role == 'admin', Colors.purple, (v) => setModalState(() => role = v)),
+                      roleChip('Admin', 'admin', role == 'admin', Colors.purple, (v) => setModalState(() => role = v)),
                       const SizedBox(width: 12),
-                      _roleChip('Manager', 'manager', role == 'manager', Colors.indigo, (v) => setModalState(() => role = v)),
+                      roleChip('Manager', 'manager', role == 'manager', Colors.indigo, (v) => setModalState(() => role = v)),
                       const SizedBox(width: 12),
-                      _roleChip('Accountant', 'accountant', role == 'accountant', Colors.teal, (v) => setModalState(() => role = v)),
+                      roleChip('Accountant', 'accountant', role == 'accountant', Colors.teal, (v) => setModalState(() => role = v)),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      _roleChip('Staff', 'staff', role == 'staff', AppTheme.primaryColor, (v) => setModalState(() => role = v)),
+                      roleChip('Staff', 'staff', role == 'staff', AppTheme.primaryColor, (v) => setModalState(() => role = v)),
                       const SizedBox(width: 12),
-                      _roleChip('Delivery', 'delivery', role == 'delivery', Colors.orange, (v) => setModalState(() => role = v)),
+                      roleChip('Delivery', 'delivery', role == 'delivery', Colors.orange, (v) => setModalState(() => role = v)),
                     ],
                   ),
                   const SizedBox(height: 32),
@@ -305,7 +305,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       content: const Text('Remove this staff member?'),
       actions: [
         TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-        TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete'), style: TextButton.styleFrom(foregroundColor: Colors.red)),
+        TextButton(onPressed: () => Navigator.pop(c, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: const Text('Delete')),
       ],
     ));
     if (ok == true) {
@@ -368,7 +368,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           child: _isLoadingDirectory ? const Center(child: CircularProgressIndicator())
           : ListView.separated(
               itemCount: _staff.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final s = _staff[index];
                 final role = s['role']?.toString() ?? 'staff';
@@ -673,7 +673,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: DropdownButton<String>(
@@ -720,7 +720,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: DropdownButton<String>(
@@ -743,7 +743,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                   onPressed: () => setState(() {}),
                   icon: const Icon(Icons.refresh, color: AppTheme.primaryColor),
                   tooltip: 'Refresh',
-                  style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withOpacity(0.1)),
+                  style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1)),
                 ),
               ],
             ),
@@ -769,8 +769,9 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                   final String status = u['status'];
                   
                   Color statusColor = Colors.grey;
-                  if (status == 'Active') statusColor = Colors.green;
-                  else if (status == 'Minimized') statusColor = Colors.orange;
+                  if (status == 'Active') {
+                    statusColor = Colors.green;
+                  } else if (status == 'Minimized') statusColor = Colors.orange;
                   else if (status == 'Idle') statusColor = Colors.redAccent;
                   
                   final activeMins = (u['active_seconds'] as int) ~/ 60;
@@ -796,7 +797,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 20,
-                                backgroundColor: statusColor.withOpacity(0.1),
+                                backgroundColor: statusColor.withValues(alpha: 0.1),
                                 child: Text(u['name']?[0] ?? '?', style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 16)),
                               ),
                               const SizedBox(width: 12),
@@ -820,7 +821,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                               Container(
                                 margin: const EdgeInsets.only(top: 4),
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                                decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                                 child: Text(status, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold)),
                               ),
                             ],

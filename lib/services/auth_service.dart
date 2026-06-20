@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
@@ -16,7 +17,7 @@ class AuthService {
 
   Future<bool> login(String username, String password) async {
     try {
-      print('Attempting login for: $username');
+      debugPrint('Attempting login for: $username');
       final res = await _supabase
           .from('users')
           .select()
@@ -26,7 +27,7 @@ class AuthService {
           .timeout(const Duration(seconds: 15));
 
       if (res != null) {
-        print('User found: ${res['id']}, Role: ${res['role']}');
+        debugPrint('User found: ${res['id']}, Role: ${res['role']}');
         
         int? sessionId;
         try {
@@ -38,9 +39,9 @@ class AuthService {
               .single()
               .timeout(const Duration(seconds: 5));
           sessionId = sessionRes['id'];
-          print('Session created: $sessionId (Type: ${sessionId.runtimeType})');
+          debugPrint('Session created: $sessionId (Type: ${sessionId.runtimeType})');
         } catch (e) {
-          print('Optional session recording failed: $e');
+          debugPrint('Optional session recording failed: $e');
         }
 
         final prefs = await SharedPreferences.getInstance();
@@ -49,7 +50,7 @@ class AuthService {
         await prefs.setString(_roleKey, res['role'] ?? 'staff');
         
         // Safer ID storage
-        if (sessionId != null && sessionId is int) {
+        if (sessionId != null) {
           await prefs.setInt(_sessionIdKey, sessionId);
           TimeTrackingService.instance.startTracking(sessionId);
         } else if (sessionId != null && sessionId is String) {
@@ -69,15 +70,15 @@ class AuthService {
 
         final String userRole = res['role'] ?? 'staff';
 
-        print('Login successful for: ${res['name']}');
+        debugPrint('Login successful for: ${res['name']}');
         return true;
       } else {
-        print('No user found with those credentials');
+        debugPrint('No user found with those credentials');
       }
     } catch (e) {
-      print('Login error: $e');
+      debugPrint('Login error: $e');
       if (e is TimeoutException) {
-        print('Connection timed out. Please check your internet connection.');
+        debugPrint('Connection timed out. Please check your internet connection.');
       }
     }
     return false;
@@ -96,7 +97,7 @@ class AuthService {
             .update({'logout_time': DateTime.now().toIso8601String(), 'is_active': false})
             .eq('id', sessionId);
       } catch (e) {
-        print('Logout session error: $e');
+        debugPrint('Logout session error: $e');
       }
     }
     
@@ -165,7 +166,7 @@ class AuthService {
   Future<bool> sendPasswordResetCode(String email) async {
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 2));
-    print('Stub: Sent reset code to $email');
+    debugPrint('Stub: Sent reset code to $email');
     // In a real app, this would call an Edge Function to send an email
     return true; // Return true if successful
   }
@@ -173,7 +174,7 @@ class AuthService {
   Future<bool> verifyResetCode(String email, String code) async {
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 2));
-    print('Stub: Verifying code $code for $email');
+    debugPrint('Stub: Verifying code $code for $email');
     // In a real app, this would verify the code against a DB record or OTP table
     // For now, accept any code that is 6 digits
     return code.length == 6;
@@ -182,14 +183,14 @@ class AuthService {
   Future<bool> updatePassword(String email, String newPassword) async {
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 2));
-    print('Stub: Updating password for $email');
+    debugPrint('Stub: Updating password for $email');
     try {
       // In a real app, this should securely update the user table
       // e.g., await _supabase.from('users').update({'password': newPassword}).eq('email', email);
       // NOTE: Using raw passwords is not recommended, consider hashing in backend!
       return true;
     } catch (e) {
-      print('Failed to update password: $e');
+      debugPrint('Failed to update password: $e');
       return false;
     }
   }

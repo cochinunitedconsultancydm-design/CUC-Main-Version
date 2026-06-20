@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme.dart';
@@ -12,14 +13,107 @@ class StaffChatListScreen extends StatefulWidget {
 }
 
 class _StaffChatListScreenState extends State<StaffChatListScreen> {
+  int? _selectedUserId;
+  String? _selectedUserName;
+
+  void _onUserSelected(int id, String name) {
+    setState(() {
+      _selectedUserId = id;
+      _selectedUserName = name;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isWide = constraints.maxWidth > 800;
+
+        if (isWide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 380,
+                child: _ChatListView(
+                  onUserSelected: _onUserSelected,
+                  selectedUserId: _selectedUserId,
+                  isSplitView: true,
+                ),
+              ),
+              Container(width: 1, color: Colors.grey.shade200),
+              Expanded(
+                child: _selectedUserId == null
+                    ? Container(
+                        color: const Color(0xFFF4F7FB),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.chat_bubble_outline_rounded, size: 80, color: Colors.grey.shade300),
+                              const SizedBox(height: 24),
+                              Text('Select a conversation to start chatting', style: TextStyle(fontSize: 18, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+                            ],
+                          ).animate().fadeIn(),
+                        ),
+                      )
+                    : ChatScreen(
+                        key: ValueKey(_selectedUserId),
+                        targetUserId: _selectedUserId,
+                        targetUserName: _selectedUserName,
+                        isSplitView: true,
+                      ),
+              ),
+            ],
+          );
+        } else {
+          if (_selectedUserId != null) {
+            return ChatScreen(
+              key: ValueKey(_selectedUserId),
+              targetUserId: _selectedUserId,
+              targetUserName: _selectedUserName,
+              isSplitView: false,
+              onBackPressed: () => setState(() => _selectedUserId = null),
+            );
+          }
+          return _ChatListView(
+            onUserSelected: _onUserSelected,
+            isSplitView: false,
+          );
+        }
+      },
+    );
+  }
+}
+
+class _ChatListView extends StatefulWidget {
+  final Function(int, String)? onUserSelected;
+  final int? selectedUserId;
+  final bool isSplitView;
+
+  const _ChatListView({this.onUserSelected, this.selectedUserId, this.isSplitView = false});
+
+  @override
+  State<_ChatListView> createState() => _ChatListViewState();
+}
+
+class _ChatListViewState extends State<_ChatListView> {
   final _client = Supabase.instance.client;
   List<Map<String, dynamic>> _staff = [];
   bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _fetchStaff();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchStaff() async {
@@ -29,7 +123,6 @@ class _StaffChatListScreenState extends State<StaffChatListScreen> {
       final prefs = await SharedPreferences.getInstance();
       final myId = prefs.getInt('current_user_id') ?? 1;
 
-      // Fetch all users except self
       final usersRes = await _client
           .from('users')
           .select('id, name, username, role')
@@ -37,7 +130,6 @@ class _StaffChatListScreenState extends State<StaffChatListScreen> {
           .order('role', ascending: true)
           .order('name', ascending: true);
       
-      // Fetch unread counts for all users
       final unreadRes = await _client
           .from('messages')
           .select('sender_id')
@@ -50,11 +142,23 @@ class _StaffChatListScreenState extends State<StaffChatListScreen> {
         unreadCounts[senderId] = (unreadCounts[senderId] ?? 0) + 1;
       }
 
+      final sessionsRes = await _client
+          .from('user_sessions')
+          .select('user_id, is_active, status')
+          .order('login_time', ascending: false);
+          
       final List<Map<String, dynamic>> staffList = [];
       for (var u in usersRes) {
+        final session = (sessionsRes as List).firstWhere(
+          (s) => s['user_id'] == u['id'],
+          orElse: () => <String, dynamic>{'is_active': false, 'status': 'Offline'},
+        ) as Map<String, dynamic>;
+
         staffList.add({
           ...u,
           'unread_count': unreadCounts[u['id']] ?? 0,
+          'is_active': session['is_active'] == true,
+          'status': session['status'] ?? 'Offline',
         });
       }
 
@@ -69,82 +173,215 @@ class _StaffChatListScreenState extends State<StaffChatListScreen> {
     }
   }
 
+  Color _getRoleColor(String role) {
+    switch (role) {
+      case 'admin': return Colors.redAccent;
+      case 'manager': return Colors.indigo;
+      case 'accountant': return Colors.teal;
+      case 'delivery': return Colors.orange;
+      default: return AppTheme.primaryColor;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final filteredStaff = _staff.where((s) {
+      final name = (s['name'] ?? '').toString().toLowerCase();
+      final username = (s['username'] ?? '').toString().toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      return name.contains(query) || username.contains(query);
+    }).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (MediaQuery.of(context).size.width > 600)
+        if (!widget.isSplitView) ...[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text('Internal Chat', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -1)),
-              IconButton(
-                onPressed: _fetchStaff,
-                icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor),
-                style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withOpacity(0.1), padding: const EdgeInsets.all(12)),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Internal Chat', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: -1)),
+                  SizedBox(height: 4),
+                  Text('Connect and collaborate with your team', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                ],
               ),
-            ],
-          )
-        else
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Internal Chat', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -1)),
-              const SizedBox(height: 16),
               IconButton(
                 onPressed: _fetchStaff,
                 icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor),
-                style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withOpacity(0.1), padding: const EdgeInsets.all(12)),
+                tooltip: 'Refresh List',
+                style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1), padding: const EdgeInsets.all(12)),
               ),
             ],
           ),
-        const SizedBox(height: 32),
-        Expanded(
-          child: _isLoading ? const Center(child: CircularProgressIndicator())
-          : Card(
-              child: ListView.separated(
-                itemCount: _staff.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final s = _staff[index];
-                  final unread = s['unread_count'] as int;
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    leading: CircleAvatar(
-                      backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                      child: Text(s['name']?[0] ?? '?', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
-                    ),
-                    title: Row(
-                      children: [
-                        Expanded(
-                          child: Text(s['name'] ?? 'No Name', style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ),
-                        if (s['role'] == 'admin')
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.red.shade200)),
-                            child: const Text('ADMIN', style: TextStyle(color: Colors.red, fontSize: 8, fontWeight: FontWeight.bold)),
-                          )
-                      ],
-                    ),
-                    subtitle: Text('Click to chat with ${s['username']}'),
-                    trailing: unread > 0 ? Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
-                      child: Text(unread.toString(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ) : const Icon(Icons.chevron_right_rounded, color: AppTheme.mutedTextColor),
-                    onTap: () {
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => ChatScreen(targetUserId: s['id'], targetUserName: s['name']),
-                      )).then((_) => _fetchStaff());
-                    },
-                  );
-                },
-              ),
+          const SizedBox(height: 24),
+        ] else ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Messages', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
+                IconButton(
+                  onPressed: _fetchStaff,
+                  icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor, size: 20),
+                  tooltip: 'Refresh List',
+                  style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1), padding: const EdgeInsets.all(8)),
+                ),
+              ],
             ),
+          ),
+        ],
+        
+        // Search Bar
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (value) => setState(() => _searchQuery = value),
+            decoration: InputDecoration(
+              hintText: 'Search staff...',
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+              prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primaryColor, size: 20),
+              suffixIcon: _searchQuery.isNotEmpty 
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, color: Colors.grey, size: 20),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            ),
+          ),
+        ).animate().fadeIn(),
+        
+        const SizedBox(height: 16),
+        
+        Expanded(
+          child: _isLoading 
+            ? const Center(child: CircularProgressIndicator())
+            : filteredStaff.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.search_off_rounded, size: 48, color: Colors.grey.shade300),
+                      const SizedBox(height: 16),
+                      Text('No staff found', style: TextStyle(fontSize: 16, color: Colors.grey.shade500, fontWeight: FontWeight.bold)),
+                    ],
+                  ).animate().fadeIn(),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  itemCount: filteredStaff.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final s = filteredStaff[index];
+                    final unread = s['unread_count'] as int;
+                    final role = (s['role'] ?? 'staff').toString().toLowerCase();
+                    final roleColor = _getRoleColor(role);
+                    final isActive = s['is_active'] == true;
+                    final isSelected = s['id'] == widget.selectedUserId;
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.05) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.3) : Colors.grey.shade100, width: 1.5),
+                        boxShadow: isSelected ? null : [
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2)),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          hoverColor: AppTheme.primaryColor.withValues(alpha: 0.02),
+                          onTap: () {
+                            if (widget.onUserSelected != null) {
+                              widget.onUserSelected!(s['id'], s['name']);
+                            } else {
+                              Navigator.of(context).push(MaterialPageRoute(
+                                builder: (context) => ChatScreen(targetUserId: s['id'], targetUserName: s['name']),
+                              )).then((_) => _fetchStaff());
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                Stack(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 24,
+                                      backgroundColor: roleColor.withValues(alpha: 0.1),
+                                      child: Text(s['name']?[0] ?? '?', style: TextStyle(color: roleColor, fontWeight: FontWeight.bold, fontSize: 18)),
+                                    ),
+                                    Positioned(
+                                      right: 0,
+                                      bottom: 0,
+                                      child: Container(
+                                        width: 12,
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          color: isActive ? Colors.green : Colors.grey.shade400,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.white, width: 2),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(s['name'] ?? 'No Name', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                          ),
+                                          if (role == 'admin') ...[
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(6)),
+                                              child: const Text('ADMIN', style: TextStyle(color: Colors.red, fontSize: 8, fontWeight: FontWeight.bold)),
+                                            ),
+                                          ]
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text('@${s['username']}', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                                    ],
+                                  ),
+                                ),
+                                if (unread > 0)
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                                    child: Text(unread.toString(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  )
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ).animate().fadeIn(delay: (index * 20).ms).slideX(begin: 0.02, end: 0);
+                  },
+                ),
         ),
       ],
     );

@@ -216,7 +216,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                     TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Phone Number (Optional)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone_outlined))),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<int>(
-                      value: assignedTo,
+                      initialValue: assignedTo,
                       decoration: const InputDecoration(labelText: 'Assign To', border: OutlineInputBorder()),
                       items: _allUsers.map((u) => DropdownMenuItem<int>(
                         value: u['id'] as int,
@@ -335,7 +335,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                     IconButton(
                       onPressed: _fetchTasks,
                       icon: const Icon(Icons.refresh, color: AppTheme.primaryColor),
-                      style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withOpacity(0.1)),
+                      style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1)),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
@@ -361,7 +361,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                 IconButton(
                   onPressed: _fetchTasks,
                   icon: const Icon(Icons.refresh, color: AppTheme.primaryColor),
-                  style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withOpacity(0.1)),
+                  style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -476,7 +476,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     return ListView.separated(
       padding: const EdgeInsets.only(bottom: 100),
       itemCount: filteredTasks.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final t = filteredTasks[index];
         final isCompleted = t.status == 'Completed';
@@ -510,7 +510,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isCompleted ? Colors.green.withOpacity(0.1) : AppTheme.primaryColor.withOpacity(0.1),
+                          color: isCompleted ? Colors.green.withValues(alpha: 0.1) : AppTheme.primaryColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -549,7 +549,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                                             ? Colors.blue 
                                             : (t.status == 'Adjourned' 
                                                 ? Colors.amber 
-                                                : Colors.grey))).withOpacity(0.1),
+                                                : Colors.grey))).withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(

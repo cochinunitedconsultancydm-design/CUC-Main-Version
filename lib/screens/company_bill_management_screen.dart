@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
-import '../theme.dart';
 import '../models/company_bill.dart';
 import '../services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -59,7 +58,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     int? selectedStaffId = bill?.spentBy;
     String? selectedStaffName = bill?.spentByName;
 
-    InputDecoration _inputDec(String label, IconData icon) {
+    InputDecoration inputDec(String label, IconData icon) {
       return InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppTheme.primaryColor, size: 20),
@@ -72,7 +71,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
       );
     }
 
-    Widget _statusChip(String label, bool isSelected, Function(String) onSelect) {
+    Widget statusChip(String label, bool isSelected, Function(String) onSelect) {
       final color = label == 'Paid' ? Colors.green : Colors.orange;
       final icon = label == 'Paid' ? Icons.check_circle_rounded : Icons.pending_actions_rounded;
       return Expanded(
@@ -82,7 +81,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected ? color.withOpacity(0.1) : Colors.grey.shade50,
+              color: isSelected ? color.withValues(alpha: 0.1) : Colors.grey.shade50,
               border: Border.all(color: isSelected ? color : Colors.grey.shade200),
               borderRadius: BorderRadius.circular(12),
             ),
@@ -126,8 +125,8 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: category,
-                    decoration: _inputDec('Category', Icons.category_rounded),
+                    initialValue: category,
+                    decoration: inputDec('Category', Icons.category_rounded),
                     icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.primaryColor),
                     dropdownColor: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -135,9 +134,9 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                     onChanged: (v) => setModalState(() => category = v!),
                   ),
                   const SizedBox(height: 16),
-                  TextField(controller: title, decoration: _inputDec('Title (e.g. March 2024)', Icons.title_rounded)),
+                  TextField(controller: title, decoration: inputDec('Title (e.g. March 2024)', Icons.title_rounded)),
                   const SizedBox(height: 16),
-                  TextField(controller: amount, decoration: _inputDec('Amount (₹)', Icons.currency_rupee_rounded), keyboardType: TextInputType.number),
+                  TextField(controller: amount, decoration: inputDec('Amount (₹)', Icons.currency_rupee_rounded), keyboardType: TextInputType.number),
                   const SizedBox(height: 16),
                   
                   // Date Picker styled like an input field
@@ -191,15 +190,15 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                       ),
                       Row(
                         children: [
-                          _statusChip('Pending', status == 'Pending', (v) => setModalState(() => status = v)),
+                          statusChip('Pending', status == 'Pending', (v) => setModalState(() => status = v)),
                           const SizedBox(width: 12),
-                          _statusChip('Paid', status == 'Paid', (v) => setModalState(() => status = v)),
+                          statusChip('Paid', status == 'Paid', (v) => setModalState(() => status = v)),
                         ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  TextField(controller: desc, decoration: _inputDec('Description', Icons.description_rounded), maxLines: 2),
+                  TextField(controller: desc, decoration: inputDec('Description', Icons.description_rounded), maxLines: 2),
                   const SizedBox(height: 16),
                   const Text('Attributed to Staff', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
                   const SizedBox(height: 12),
@@ -309,7 +308,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
       content: const Text('Remove this bill record?'),
       actions: [
         TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-        TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete'), style: TextButton.styleFrom(foregroundColor: Colors.red)),
+        TextButton(onPressed: () => Navigator.pop(c, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: const Text('Delete')),
       ],
     ));
     if (ok == true) {
@@ -341,7 +340,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
             onPressed: _fetchBills, 
             icon: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20)
             )
           ),
@@ -369,7 +368,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                         child: ListView.separated(
                             padding: EdgeInsets.zero,
                             itemCount: filteredBills.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            separatorBuilder: (_, _) => const Divider(height: 1),
                             itemBuilder: (context, index) {
                               return _buildBillCard(filteredBills[index], index);
                             },
@@ -402,7 +401,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: const Color(0xFF0F172A).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
       child: Row(
@@ -428,7 +427,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.white10),
             ),
@@ -475,7 +474,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
               ),
               showCheckmark: false,
               elevation: isSelected ? 4 : 0,
-              shadowColor: Colors.blue.withOpacity(0.3),
+              shadowColor: Colors.blue.withValues(alpha: 0.3),
             ),
           );
         },
@@ -497,7 +496,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(_getCategoryIcon(bill.category), color: color, size: 24),
@@ -541,7 +540,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: (isPaid ? Colors.green : Colors.orange).withOpacity(0.1),
+                      color: (isPaid ? Colors.green : Colors.orange).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -650,7 +649,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                       child: ListView.separated(
                         shrinkWrap: true,
                         itemCount: (searchCtrl.text.isEmpty ? filtered.length + 1 : filtered.length),
-                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        separatorBuilder: (_, _) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           if (searchCtrl.text.isEmpty && index == 0) {
                             return ListTile(

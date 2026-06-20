@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -123,7 +124,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
         });
       }
     } catch (e) {
-      print('Error fetching reminders: $e');
+      debugPrint('Error fetching reminders: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -183,9 +184,9 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: color.withOpacity(0.3)),
+                border: Border.all(color: color.withValues(alpha: 0.3)),
                 boxShadow: [
-                  BoxShadow(color: color.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                  BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
                 ],
               ),
               child: Row(
@@ -193,7 +194,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: color.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(r['icon'] as IconData, color: color, size: 20),

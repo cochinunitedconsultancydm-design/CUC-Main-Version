@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/inward_post_model.dart';
 
@@ -25,7 +26,7 @@ class InwardPostService {
         ),
       )).toList();
     } catch (e) {
-      print('Error fetching inward posts: $e');
+      debugPrint('Error fetching inward posts: $e');
       return [];
     }
   }
@@ -42,7 +43,7 @@ class InwardPostService {
         'received_date': post.receivedDate.toIso8601String(),
       });
     } catch (e) {
-      print('Error adding inward post: $e');
+      debugPrint('Error adding inward post: $e');
     }
   }
   
@@ -53,7 +54,7 @@ class InwardPostService {
         'status': status.toString(),
       }).eq('id', id);
     } catch (e) {
-      print('Error updating inward post status: $e');
+      debugPrint('Error updating inward post status: $e');
     }
   }
 }

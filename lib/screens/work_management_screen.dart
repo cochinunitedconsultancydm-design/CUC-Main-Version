@@ -308,7 +308,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
       decoration: BoxDecoration(
         gradient: const LinearGradient(colors: [Color(0xFF00C16C), Color(0xFF00A35B)]),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: const Color(0xFF00C16C).withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: const Color(0xFF00C16C).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: ElevatedButton.icon(
         onPressed: () => _openDealDetail(),
@@ -505,8 +505,8 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
-        border: Border.all(color: Colors.black.withOpacity(0.03)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+        border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
       ),
       child: InkWell(
         onTap: () => _openDealDetail(deal),
@@ -620,7 +620,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                     children: [
                       CircleAvatar(
                         radius: 12,
-                        backgroundColor: const Color(0xFF2563EB).withOpacity(0.1),
+                        backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.1),
                         child: Text(deal.responsibleName?[0].toUpperCase() ?? '?', style: const TextStyle(fontSize: 10, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
                       ),
                       const SizedBox(width: 8),
@@ -741,7 +741,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 40)],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 40)],
               ),
               child: Icon(
                 isVerification ? Icons.verified_user_rounded : Icons.work_history_outlined,

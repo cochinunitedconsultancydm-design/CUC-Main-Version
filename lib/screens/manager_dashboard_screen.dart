@@ -5,12 +5,10 @@ import '../theme.dart';
 import 'login_screen.dart';
 import 'service_management_screen.dart';
 import 'staff_management_screen.dart';
-import 'monitor_screen.dart';
 import 'staff_chat_list_screen.dart';
 import 'task_management_screen.dart';
 import 'billing_screen.dart';
 import 'client_management_screen.dart';
-import 'license_management_screen.dart';
 import 'license_dashboard_screen.dart';
 import 'dsc_management_screen.dart';
 import 'work_management_screen.dart';
@@ -201,12 +199,12 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
 
           for (var u in staffUsers) {
             final userId = u['id'] as int;
-            final latestSession = (sessions as List).firstWhere(
+            final latestSession = (sessions).firstWhere(
               (s) => s['user_id'] == userId, 
               orElse: () => <String, dynamic>{'login_time': null, 'is_active': false}
             ) as Map<String, dynamic>;
             
-            final currentTask = (tasks as List).firstWhere(
+            final currentTask = (tasks).firstWhere(
               (t) => t['assigned_to'] == userId, 
               orElse: () => <String, dynamic>{'title': null}
             ) as Map<String, dynamic>;
@@ -418,7 +416,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF13131A), // Deep dark slate
         border: Border(
-          right: BorderSide(color: Colors.white.withOpacity(0.05)),
+          right: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
         ),
       ),
       child: _buildSidebarContent(isWide),
@@ -506,10 +504,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primaryColor.withOpacity(0.15) : Colors.transparent,
+            color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.15) : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isSelected ? AppTheme.primaryColor.withOpacity(0.3) : Colors.transparent,
+              color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.3) : Colors.transparent,
             ),
           ),
           child: Row(
@@ -571,7 +569,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 IconButton(
                   onPressed: _fetchAdminStats,
                   icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor),
-                  style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withOpacity(0.1)),
+                  style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1)),
                 ),
               ],
             ),
@@ -612,9 +610,9 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -673,7 +671,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 16,
-                                backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
                                 child: Text(staff['name']?[0] ?? '?', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                               ),
                               const SizedBox(width: 12),
@@ -702,7 +700,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.1),
+                              color: statusColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -768,7 +766,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
-                            BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 20, spreadRadius: 5),
+                            BoxShadow(color: Colors.grey.withValues(alpha: 0.05), blurRadius: 20, spreadRadius: 5),
                           ],
                         ),
                         child: UpcomingRemindersWidget(
@@ -991,7 +989,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(color: (isPaid ? Colors.green : Colors.orange).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                    decoration: BoxDecoration(color: (isPaid ? Colors.green : Colors.orange).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                                     child: Text(isPaid ? 'PAID' : 'PENDING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isPaid ? Colors.green : Colors.orange), textAlign: TextAlign.center),
                                   ),
                                   if (!isPaid)
@@ -1036,7 +1034,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(color: (isPaid ? Colors.green : Colors.orange).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                  decoration: BoxDecoration(color: (isPaid ? Colors.green : Colors.orange).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                                   child: Text(isPaid ? 'PAID' : 'PENDING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isPaid ? Colors.green : Colors.orange)),
                                 ),
                               ],
@@ -1078,7 +1076,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             Expanded(
               child: ListView.separated(
                 itemCount: logsList.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final log = logsList[index];
                   final userName = (log['users'] as Map<String, dynamic>?)?['name'] ?? 'Unknown';
@@ -1093,7 +1091,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                           flex: 2, 
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                            decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                             child: Text(log['action'] ?? '-', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryColor), textAlign: TextAlign.center),
                           ),
                         ),
@@ -1122,7 +1120,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 24, offset: const Offset(0, 12)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 12)),
         ],
       ),
       child: Stack(
@@ -1137,7 +1135,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [AppTheme.primaryColor.withOpacity(0.2), Colors.transparent],
+                  colors: [AppTheme.primaryColor.withValues(alpha: 0.2), Colors.transparent],
                   stops: const [0.0, 1.0],
                 ),
               ),
@@ -1149,9 +1147,9 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.15),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+                  border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1170,7 +1168,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               const SizedBox(height: 12),
               Text(
                 'Oversee full-cycle business operations, financial payables, and high-level staff productivity metrics.',
-                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: isWide ? 15 : 14, height: 1.5),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: isWide ? 15 : 14, height: 1.5),
               ),
               const SizedBox(height: 32),
               // Integrated Quick Actions
@@ -1198,9 +1196,9 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1225,9 +1223,9 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
           boxShadow: [
-            BoxShadow(color: color.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4)),
+            BoxShadow(color: color.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4)),
           ],
         ),
         child: Column(
@@ -1235,7 +1233,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(height: 12),
@@ -1393,8 +1391,9 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     }).toList();
 
     IconData categoryIcon = Icons.description_outlined;
-    if (_selectedCategory == 'Expiring Licences') categoryIcon = Icons.verified_user_rounded;
-    else if (_selectedCategory == 'Bills to Receive') categoryIcon = Icons.account_balance_wallet_rounded;
+    if (_selectedCategory == 'Expiring Licences') {
+      categoryIcon = Icons.verified_user_rounded;
+    } else if (_selectedCategory == 'Bills to Receive') categoryIcon = Icons.account_balance_wallet_rounded;
     else if (_selectedCategory == 'Work Management') categoryIcon = Icons.work_rounded;
     else if (_selectedCategory == 'Clients') categoryIcon = Icons.people_rounded;
 
@@ -1416,7 +1415,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.black.withOpacity(0.05)),
+                borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 0),
               hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
@@ -1454,7 +1453,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: ClipRRect(
@@ -1469,7 +1468,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                 leading: Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.1),
+                                    color: statusColor.withValues(alpha: 0.1),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(categoryIcon, color: statusColor, size: 20),
@@ -1486,7 +1485,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: statusColor.withOpacity(0.1),
+                                        color: statusColor.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(item['status'], style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10)),
@@ -1534,7 +1533,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: statusColor.withOpacity(0.1),
+                      backgroundColor: statusColor.withValues(alpha: 0.1),
                       child: Icon(Icons.bolt_rounded, color: statusColor),
                     ),
                     const SizedBox(width: 16),
@@ -1724,7 +1723,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               SwitchListTile(
                 title: const Text('Full Payment Received?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 value: isFullPayment,
-                activeColor: AppTheme.primaryColor,
+                activeThumbColor: AppTheme.primaryColor,
                 onChanged: (val) {
                   setState(() {
                     isFullPayment = val;
@@ -1877,7 +1876,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       contentPadding: EdgeInsets.zero,
       leading: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
         child: Icon(icon, color: color, size: 22),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),

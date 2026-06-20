@@ -11,7 +11,7 @@ void main() {
         if (RegExp(r'\bprint\(').hasMatch(content)) {
           content = content.replaceAll(RegExp(r'\bprint\('), 'debugPrint(');
           if (!content.contains("import 'package:flutter/foundation.dart';")) {
-            content = "import 'package:flutter/foundation.dart';\n" + content;
+            content = "import 'package:flutter/foundation.dart';\n$content";
           }
           entity.writeAsStringSync(content);
           print('Fixed ${entity.path}');
@@ -25,7 +25,7 @@ void main() {
       if (entity is File && entity.path.endsWith('.dart')) {
         var content = entity.readAsStringSync();
         if (!content.contains('avoid_print') && RegExp(r'\bprint\(').hasMatch(content)) {
-          content = '// ignore_for_file: avoid_print\n' + content;
+          content = '// ignore_for_file: avoid_print\n$content';
           entity.writeAsStringSync(content);
           print('Ignored print in ${entity.path}');
         }

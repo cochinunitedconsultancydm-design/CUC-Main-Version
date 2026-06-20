@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:async';
 import 'dart:io' show Platform;
 import '../theme.dart';

@@ -14,7 +14,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/premium_app_bar.dart';
 import 'package:intl/intl.dart';
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import '../services/attendance_service.dart';

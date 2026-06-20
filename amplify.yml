@@ -3,8 +3,9 @@ frontend:
   phases:
     preBuild:
       commands:
-        # Download the stable version of Flutter
-        - git clone https://github.com/flutter/flutter.git -b stable
+        # Download the pre-built stable version of Flutter (bypasses slow Dart SDK download)
+        - wget -q https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.44.2-stable.tar.xz -O flutter.tar.xz
+        - tar -xf flutter.tar.xz
         - export PATH="$PATH:`pwd`/flutter/bin"
         # Optional: enable web just to be sure
         - flutter config --enable-web

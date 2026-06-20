@@ -1,0 +1,24 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        # Download the stable version of Flutter
+        - git clone https://github.com/flutter/flutter.git -b stable
+        - export PATH="$PATH:`pwd`/flutter/bin"
+        # Optional: enable web just to be sure
+        - flutter config --enable-web
+        - flutter pub get
+    build:
+      commands:
+        # Build the Flutter web app
+        - flutter build web
+  artifacts:
+    # Tell Amplify where the compiled web files are
+    baseDirectory: build/web
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - .pub-cache/**/*
+      - flutter/**/*

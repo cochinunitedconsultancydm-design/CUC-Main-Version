@@ -195,7 +195,8 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
                       );
                     },
                   );
-                  if (d != null && mounted) {
+                  if (d != null) {
+                    if (!mounted) return;
                     final t = await showTimePicker(
                       context: context,
                       initialTime: TimeOfDay.fromDateTime(_dueDate ?? DateTime.now()),

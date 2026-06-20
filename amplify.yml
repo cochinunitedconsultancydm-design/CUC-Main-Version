@@ -10,6 +10,7 @@ frontend:
         - export PATH="$PATH:`pwd`/flutter/bin"
         # Optional: enable web just to be sure
         - flutter config --enable-web
+        - flutter create . --platforms web
         - flutter pub get
     build:
       commands:

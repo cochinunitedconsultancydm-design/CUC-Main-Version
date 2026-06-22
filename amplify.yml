@@ -13,7 +13,7 @@ frontend:
     build:
       commands:
         # Build the Flutter web app
-        - flutter build web
+        - flutter build web --release --no-wasm-dry-run --no-tree-shake-icons
   artifacts:
     # Tell Amplify where the compiled web files are
     baseDirectory: build/web

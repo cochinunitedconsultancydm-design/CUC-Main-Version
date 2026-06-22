@@ -21,6 +21,7 @@ import 'services/time_tracking_service.dart';
 import 'services/location_tracking_service.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+String? _amplifyStartupError;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,19 +51,19 @@ Future<void> main() async {
   try {
     final apiPlugin = AmplifyAPI(options: APIPluginOptions(modelProvider: ModelProvider.instance));
     final authPlugin = AmplifyAuthCognito();
-    final storagePlugin = AmplifyStorageS3();
+    // Note: AmplifyStorageS3 removed - storage config causes ConfigurationError
+    // and aborts the entire configure() before API/Auth can initialize.
+    // Add storage back once the S3 bucket config format is confirmed.
     
-    await Amplify.addPlugins([apiPlugin, authPlugin, storagePlugin]);
+    await Amplify.addPlugins([apiPlugin, authPlugin]);
     await Amplify.configure(amplifyConfig);
     debugPrint('✅ Amplify configured successfully');
   } on AmplifyAlreadyConfiguredException {
-    // This is OK during development hot restarts - plugins are already initialized
-    debugPrint('⚠️ Amplify already configured (hot restart detected) - continuing');
+    debugPrint('⚠️ Amplify already configured (hot restart) - continuing');
   } catch (e, stacktrace) {
-    debugPrint('====================================');
-    debugPrint('❌ Could not configure Amplify: $e');
-    debugPrint('Stacktrace: $stacktrace');
-    debugPrint('====================================');
+    final errMsg = 'AMPLIFY CONFIG ERROR:\n$e\n\n$stacktrace';
+    debugPrint(errMsg);
+    _amplifyStartupError = errMsg;
   }
 
   // Initialize local notifications for mobile
@@ -78,11 +79,12 @@ Future<void> main() async {
   // This also gracefully logs out any session that was previously killed unexpectedly
   await AuthService().logout();
 
-  runApp(const MyApp());
+  runApp(MyApp(startupError: _amplifyStartupError));
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.startupError});
+  final String? startupError;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -139,7 +141,20 @@ class _MyAppState extends State<MyApp> with WindowListener, WidgetsBindingObserv
         debugShowCheckedModeBanner: false,
         scaffoldMessengerKey: _scaffoldMessengerKey,
         theme: AppTheme.lightTheme(),
-        home: const AuthWrapper(),
+        home: widget.startupError != null
+            ? Scaffold(
+                backgroundColor: Colors.red.shade900,
+                body: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: SelectableText(
+                      '⚠️ AMPLIFY STARTUP ERROR\n\n${widget.startupError}',
+                      style: const TextStyle(color: Colors.white, fontFamily: 'monospace', fontSize: 12),
+                    ),
+                  ),
+                ),
+              )
+            : const AuthWrapper(),
       ),
     );
   }

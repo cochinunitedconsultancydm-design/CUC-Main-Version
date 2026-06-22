@@ -11,6 +11,8 @@ frontend:
         - flutter pub get
     build:
       commands:
+        # Force Dart VM to use a maximum of 3072 MB of heap to prevent Docker OOM kills
+        - export DART_VM_OPTIONS="--old_gen_heap_size=3072"
         - flutter build web --release -v -O1 --no-wasm-dry-run --no-tree-shake-icons
   artifacts:
     baseDirectory: build/web

@@ -137,15 +137,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         };
         _recentActivity = activityRes.map((b) => {
             'id': b.id,
-            'invoice_no': b.invoiceNo,
-            'client_name': b.clientName,
+            'invoice_no': b.invoice_no,
+            'client_name': b.client_name,
             'created_at': b.createdAt?.toString(),
             'type': b.type
         }).toList();
         _globalBillings = billingRes.map((b) => {
             'id': b.id,
-            'invoice_no': b.invoiceNo,
-            'client_name': b.clientName,
+            'invoice_no': b.invoice_no,
+            'client_name': b.client_name,
             'type': b.type,
             'amount': b.amount,
             'status': b.status,
@@ -488,13 +488,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ping = sw.elapsedMilliseconds;
       syncStatus = 'Healthy';
       
-      stats['clients'] = (await Amplify.API.query(request: ModelQueries.list(Clients.classType))).response.data?.items.length ?? 0;
-      stats['billings'] = (await Amplify.API.query(request: ModelQueries.list(Billings.classType))).response.data?.items.length ?? 0;
-      stats['deals'] = (await Amplify.API.query(request: ModelQueries.list(Deals.classType))).response.data?.items.length ?? 0;
-      stats['tasks'] = (await Amplify.API.query(request: ModelQueries.list(Tasks.classType))).response.data?.items.length ?? 0;
-      stats['activity_logs'] = (await Amplify.API.query(request: ModelQueries.list(ActivityLogs.classType))).response.data?.items.length ?? 0;
-      stats['dsc_records'] = (await Amplify.API.query(request: ModelQueries.list(DscRecords.classType))).response.data?.items.length ?? 0;
-      stats['user_sessions'] = (await Amplify.API.query(request: ModelQueries.list(UserSessions.classType))).response.data?.items.length ?? 0;
+      stats['clients'] = (await Amplify.API.query(request: ModelQueries.list(Clients.classType)).response).data?.items.length ?? 0;
+      stats['billings'] = (await Amplify.API.query(request: ModelQueries.list(Billings.classType)).response).data?.items.length ?? 0;
+      stats['deals'] = (await Amplify.API.query(request: ModelQueries.list(Deals.classType)).response).data?.items.length ?? 0;
+      stats['tasks'] = (await Amplify.API.query(request: ModelQueries.list(Tasks.classType)).response).data?.items.length ?? 0;
+      stats['activity_logs'] = (await Amplify.API.query(request: ModelQueries.list(ActivityLogs.classType)).response).data?.items.length ?? 0;
+      stats['dsc_records'] = (await Amplify.API.query(request: ModelQueries.list(DscRecords.classType)).response).data?.items.length ?? 0;
+      stats['user_sessions'] = (await Amplify.API.query(request: ModelQueries.list(UserSessions.classType)).response).data?.items.length ?? 0;
     } catch (e) {
       syncStatus = 'Error';
     }
@@ -809,7 +809,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final log = logsList[index];
-                  final userName = log.userId ?? 'Unknown';
+                  final userName = log.user_id?.toString() ?? 'Unknown';
                   final dateStr = log.createdAt?.toString() ?? DateTime.now().toIso8601String();
                   final date = DateTime.parse(dateStr).toLocal();
                   return Padding(

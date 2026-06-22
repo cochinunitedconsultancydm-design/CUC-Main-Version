@@ -74,7 +74,7 @@ class BillingService {
     if (cRes.data?.items.isNotEmpty == true) {
       final client = cRes.data!.items.first!;
       final updated = client.copyWith(balance_due: finalBalance);
-      await Amplify.API.mutate(request: ModelMutations.update(updated));
+      await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
     }
   }
 
@@ -179,7 +179,7 @@ class BillingService {
         authorities: updates['authorities'] ?? b.authorities,
         status: updates['status'] ?? b.status,
       );
-      await Amplify.API.mutate(request: ModelMutations.update(updated));
+      await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
     }
   }
 
@@ -188,7 +188,7 @@ class BillingService {
     final res = await Amplify.API.query(request: req).response;
     if (res.data?.items.isNotEmpty == true) {
       final b = res.data!.items.first!;
-      await Amplify.API.mutate(request: ModelMutations.delete(b));
+      await Amplify.API.mutate(request: ModelMutations.delete(b)).response;
     }
   }
 

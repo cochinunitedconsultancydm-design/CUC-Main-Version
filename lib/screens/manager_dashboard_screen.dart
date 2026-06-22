@@ -1,4 +1,5 @@
 import 'package:amplify_api/amplify_api.dart';
+import 'package:amplify_core/amplify_core.dart' as amplify_core;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
@@ -1430,7 +1431,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final req = ModelQueries.list(amplify_models.Clients.classType);
         final res = await Amplify.API.query(request: req).response;
         final list = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
-        list.sort((a, b) => (a.name).compareTo(b.name));
+        list.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
         return list.map((l) => l.toJson()).toList();
         
       default:
@@ -1669,6 +1670,17 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     );
   }
 
+  Future<List<Map<String, dynamic>>> _fetchClientHistory(String title) async {
+    final req = ModelQueries.list(
+      amplify_models.ActivityLogs.classType,
+      where: amplify_models.ActivityLogs.DETAILS.contains(title),
+    );
+    final res = await amplify_core.Amplify.API.query(request: req).response;
+    final logs = res.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
+    logs.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
+    return logs.map((l) => l.toJson()).toList();
+  }
+
   void _showClientHistory(BuildContext context, Map<String, dynamic> item) {
     showDialog(
       context: context,
@@ -1678,12 +1690,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           width: 500,
           height: 400,
           child: FutureBuilder<List<Map<String, dynamic>>>(
-            future: _client
-              .from('activity_logs')
-              .select('action, details, created_at')
-              .ilike('details', '%${item['title']}%')
-              .order('created_at', ascending: false)
-              .limit(50),
+            future: _fetchClientHistory(item['title'] ?? ''),
             builder: (context, snapshot) {
               if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
               final logs = snapshot.data!;
@@ -1745,7 +1752,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final billing = res.data?.items.first;
         if (billing != null) {
           final updatedBilling = billing.copyWith(data: jsonEncode(d));
-          await Amplify.API.mutate(request: ModelMutations.update(updatedBilling));
+          await Amplify.API.mutate(request: ModelMutations.update(updatedBilling)).response;
         }
         _fetchAdminStats();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deadline updated successfully')));
@@ -1846,7 +1853,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final billing = res.data?.items.first;
         if (billing != null) {
           final updatedBilling = billing.copyWith(status: isPaid ? 'Received' : 'Pending', data: jsonEncode(d));
-          await Amplify.API.mutate(request: ModelMutations.update(updatedBilling));
+          await Amplify.API.mutate(request: ModelMutations.update(updatedBilling)).response;
         }
         
         if (b.clientName != null && b.clientName!.isNotEmpty) {
@@ -1854,8 +1861,8 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
            final cRes = await Amplify.API.query(request: cReq).response;
            final client = cRes.data?.items.isNotEmpty == true ? cRes.data?.items.first : null;
            if (client != null) {
-             final updatedClient = client.copyWith(balanceDue: double.tryParse(d['balance_due'].toString().replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0);
-             await Amplify.API.mutate(request: ModelMutations.update(updatedClient));
+             final updatedClient = client.copyWith(balance_due: d['balance_due'].toString());
+             await Amplify.API.mutate(request: ModelMutations.update(updatedClient)).response;
            }
         }
 
@@ -1887,7 +1894,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final res = await Amplify.API.query(request: req).response;
         final billing = res.data?.items.first;
         if (billing != null) {
-          await Amplify.API.mutate(request: ModelMutations.delete(billing));
+          await Amplify.API.mutate(request: ModelMutations.delete(billing)).response;
         }
         _fetchAdminStats();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice deleted successfully')));
@@ -1904,13 +1911,11 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     if (auth.isNotEmpty) {
       final prefix = auth.split(' ').first;
       try {
-        final res = await _client
-            .from('billings')
-            .select('invoice_no')
-            .eq('authorities', prefix)
-            .order('id', ascending: false)
-            .limit(1)
-            .maybeSingle();
+        final q = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.AUTHORITIES.eq(prefix));
+        final r = await amplify_core.Amplify.API.query(request: q).response;
+        final billList = r.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
+        billList.sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
+        final res = billList.isNotEmpty ? {'invoice_no': billList.first.invoice_no} : null;
         if (res != null) {
           final last = res['invoice_no'] as String;
           final match = RegExp(r'(\d+)$').firstMatch(last);
@@ -2253,7 +2258,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                         name: nameController.text.trim(),
                                         email: emailController.text.trim(),
                                       );
-                                      await Amplify.API.mutate(request: ModelMutations.update(updatedUser));
+                                      await Amplify.API.mutate(request: ModelMutations.update(updatedUser)).response;
                                     }
                                     
                                     if (context.mounted) {
@@ -2514,7 +2519,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                   // Update password
                                   if (userObj != null) {
                                     final updatedUser = userObj.copyWith(password: newPass);
-                                    await Amplify.API.mutate(request: ModelMutations.update(updatedUser));
+                                    await Amplify.API.mutate(request: ModelMutations.update(updatedUser)).response;
                                   }
                                   
                                   if (context.mounted) {

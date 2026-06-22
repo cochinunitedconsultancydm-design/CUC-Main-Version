@@ -123,7 +123,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
         final file = File(filePath);
         
         await Amplify.Storage.uploadFile(
-          localFile: AWSFile.fromFile(file),
+          localFile: AWSFile.fromPath(file.path),
           path: StoragePath.fromString(path),
         ).result;
         
@@ -513,7 +513,8 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
       padding: const EdgeInsets.all(32),
       itemCount: files.length,
       itemBuilder: (context, index) {
-        final itemName = file.path.split('/').last;
+        final f = files[index];
+        final itemName = f.path.split('/').last;
         final isFolder = category == 'work' && _currentWorkFolder == null;
 
         if (isFolder) {
@@ -568,7 +569,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                 child: Icon(icon, color: iconColor),
               ),
               title: Text(itemName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-              subtitle: Text('${(file.size ?? 0) ~/ 1024} KB', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+              subtitle: Text('${(f.size ?? 0) ~/ 1024} KB', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

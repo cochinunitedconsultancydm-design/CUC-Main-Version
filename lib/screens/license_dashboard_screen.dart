@@ -96,13 +96,13 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
           if (matchedType.name != null && matchedType.name!.isNotEmpty && matchedType.name != 'License') {
             typeName = matchedType.name!;
           } else {
-            typeName = _fallbackLicenseTypes[int.tryParse(l.license_type_id ?? '')] ?? 'License';
+            typeName = _fallbackLicenseTypes[l.license_type_id] ?? 'License';
           }
         }
         
         final String fileNo = l.file_no ?? '-';
         
-        DateTime? expiryDate = l.expiry_date?.getDateTimeInUtc();
+        DateTime? expiryDate = l.expiry_date != null ? DateTime.tryParse(l.expiry_date!) : null;
         
         final status = l.status?.toString().toLowerCase() ?? '';
         
@@ -131,7 +131,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
         
         final displayData = {
           'id': l.id,
-          'clientId': int.tryParse(l.client_id ?? ''),
+          'clientId': l.client_id,
           'clientName': clientName,
           'typeName': typeName,
           'fileNo': fileNo,
@@ -204,12 +204,12 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
         
         return ClientLicense(
           id: int.tryParse(row.id),
-          clientId: int.tryParse(row.client_id ?? ''),
+          clientId: row.client_id,
           clientName: client.name,
-          licenseTypeId: int.tryParse(row.license_type_id ?? ''),
+          licenseTypeId: row.license_type_id,
           licenseTypeName: type.name,
-          serviceDate: row.service_date?.getDateTimeInUtc(),
-          expiryDate: row.expiry_date?.getDateTimeInUtc(),
+          serviceDate: row.service_date != null ? DateTime.tryParse(row.service_date!) : null,
+          expiryDate: row.expiry_date != null ? DateTime.tryParse(row.expiry_date!) : null,
           fileNo: row.file_no,
           notes: row.notes,
           status: row.status,

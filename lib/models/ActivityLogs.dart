@@ -205,7 +205,7 @@ class ActivityLogs extends amplify_core.Model {
     modelSchemaDefinition.authRules = [
       amplify_core.AuthRule(
         authStrategy: amplify_core.AuthStrategy.PUBLIC,
-        provider: amplify_core.AuthRuleProvider.IDENTITYPOOL,
+        provider: amplify_core.AuthRuleProvider.IAM,
         operations: const [
           amplify_core.ModelOperation.CREATE,
           amplify_core.ModelOperation.UPDATE,

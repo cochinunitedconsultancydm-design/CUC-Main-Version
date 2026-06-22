@@ -47,7 +47,6 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
           password: row.password,
           dscTakenDate: row.dsc_taken_date != null ? DateTime.tryParse(row.dsc_taken_date!) : null,
           dscExpiryDate: row.dsc_expiry_date != null ? DateTime.tryParse(row.dsc_expiry_date!) : null,
-          createdAt: row.createdAt?.getDateTimeInUtc(),
         )).toList();
       });
     } catch (e) {

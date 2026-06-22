@@ -129,11 +129,11 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
           _expenseBreakdown = breakdownList;
           _overdueInvoices = overdueRes.map((r) => {
             'id': r.id,
-            'no': r.invoiceNo,
-            'client': r.clientName,
+            'no': r.invoice_no,
+            'client': r.client_name,
             'amount': r.amount,
             'date': r.createdAt?.toString(),
-            'phone': clientPhones[r.clientName ?? '']
+            'phone': clientPhones[r.client_name ?? '']
           }).toList();
           _isLoading = false;
         });

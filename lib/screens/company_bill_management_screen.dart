@@ -38,7 +38,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
       final staffRes = await Amplify.API.query(request: staffReq).response;
       
       final billsList = res.data?.items.whereType<amplify_models.CompanyBills>().toList() ?? [];
-      billsList.sort((a, b) => (b.bill_date?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.bill_date?.getDateTimeInUtc() ?? DateTime.now()));
+      billsList.sort((a, b) => (DateTime.tryParse(b.bill_date ?? '') ?? DateTime.now()).compareTo(DateTime.tryParse(a.bill_date ?? '') ?? DateTime.now()));
       
       final usersList = staffRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       usersList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
@@ -49,7 +49,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
           category: m.category ?? 'Other',
           title: m.title ?? 'No Title',
           amount: m.amount ?? 0.0,
-          billDate: m.bill_date?.getDateTimeInUtc() ?? DateTime.now(),
+          billDate: m.bill_date != null ? DateTime.tryParse(m.bill_date!) ?? DateTime.now() : DateTime.now(),
           status: m.status ?? 'Pending',
           description: m.description,
           spentBy: m.spent_by,
@@ -305,10 +305,10 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                       category: newBill.category,
                       title: newBill.title,
                       amount: newBill.amount,
-                      bill_date: amplify_models.TemporalDate(newBill.billDate),
+                      bill_date: newBill.billDate.toIso8601String(),
                       status: newBill.status,
                       description: newBill.description,
-                      spent_by: newBill.spentBy?.toString(),
+                      spent_by: int.tryParse(newBill.spentBy?.toString() ?? ''),
                       spent_by_name: newBill.spentByName,
                     );
                     final req = ModelMutations.create(model);
@@ -319,10 +319,10 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                       category: newBill.category,
                       title: newBill.title,
                       amount: newBill.amount,
-                      bill_date: amplify_models.TemporalDate(newBill.billDate),
+                      bill_date: newBill.billDate.toIso8601String(),
                       status: newBill.status,
                       description: newBill.description,
-                      spent_by: newBill.spentBy?.toString(),
+                      spent_by: int.tryParse(newBill.spentBy?.toString() ?? ''),
                       spent_by_name: newBill.spentByName,
                     );
                     final req = ModelMutations.update(model);

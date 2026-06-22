@@ -1,5 +1,6 @@
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
@@ -26,7 +27,7 @@ class BillingScreen extends StatefulWidget {
 
 class _BillingScreenState extends State<BillingScreen> {
   final _billingService = BillingService();
-  final _clientService = ClientService();
+  
   final _excel = ExcelService();
   final _log = LoggingService();
 
@@ -382,8 +383,8 @@ class _BillingScreenState extends State<BillingScreen> {
       final clientObj = (res.data?.items ?? []).isNotEmpty ? res.data!.items.first : null;
       
       String totalBal = '0/-';
-      if (clientObj != null && clientObj.balanceDue != null) {
-         totalBal = clientObj.balanceDue.toString();
+      if (clientObj != null && clientObj.balance_due != null) {
+         totalBal = clientObj.balance_due.toString();
       }
 
       if (!mounted) return;
@@ -988,8 +989,8 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   String _totalAmount = '0/-', _amountInWords = 'Zero', _grandTotal = '', _balanceDue = '';
   final _log = LoggingService();
   final _billingService = BillingService();
-  final _clientService = ClientService();
-  final _clientService = ClientService();
+  
+  
 
   static const cats = ['Consultancy', 'Legal', 'Digital Marketing'];
 
@@ -1085,6 +1086,8 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           final list = dataMap['items'] as List<dynamic>?;
           if (list != null) {
              for (var item in list) {
+               final numStr = dataMap['balance_due']?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '0';
+               final bal = double.tryParse(numStr) ?? 0;
                final desc = item['description']?.toString() ?? '';
                final amt = item['amount']?.toString() ?? '';
                if (desc.isNotEmpty && !seen.contains(desc)) {
@@ -1722,7 +1725,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         displayStringForOption: (option) => option['name'],
         optionsBuilder: (textEditingValue) async {
           if (textEditingValue.text.isEmpty) return const Iterable.empty();
-          return await _clientService.searchClients(textEditingValue.text);
+          return await ClientService().searchClients(textEditingValue.text);
         },
         onSelected: (option) {
           setState(() {

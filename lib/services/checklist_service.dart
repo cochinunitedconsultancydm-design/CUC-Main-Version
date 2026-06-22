@@ -145,7 +145,7 @@ class ChecklistService {
         responsible_id: respId,
       );
       
-      await Amplify.API.mutate(request: ModelMutations.update(updated));
+      await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
 
       if (c.manager_id != null) {
         String responsibleName = 'Staff';
@@ -203,7 +203,7 @@ class ChecklistService {
       final req = ModelQueries.list(Checklists.classType, where: Checklists.ID.eq(id.toString()));
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
-        await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!));
+        await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!)).response;
       }
     } catch (e) {
       safePrint('Error deleteChecklist: $e');

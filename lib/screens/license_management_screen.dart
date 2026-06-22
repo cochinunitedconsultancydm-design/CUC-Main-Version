@@ -258,7 +258,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
       final clientsList = clientRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
       
       final licenseList = res.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
-      licenseList.sort((a, b) => (a.expiry_date?.getDateTimeInUtc() ?? DateTime.now()).compareTo(b.expiry_date?.getDateTimeInUtc() ?? DateTime.now()));
+      licenseList.sort((a, b) => (DateTime.tryParse(a.expiry_date ?? '') ?? DateTime.now()).compareTo(DateTime.tryParse(b.expiry_date ?? '') ?? DateTime.now()));
       
       setState(() {
         _licenses = licenseList.map((row) {
@@ -267,17 +267,16 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
           
           return ClientLicense(
             id: int.tryParse(row.id), // Dynamic -> int for legacy compatibility
-            clientId: int.tryParse(row.client_id ?? ''),
+            clientId: row.client_id,
             clientName: client.name,
-            licenseTypeId: int.tryParse(row.license_type_id ?? ''),
+            licenseTypeId: row.license_type_id,
             licenseTypeName: type['name'],
-            serviceDate: row.service_date?.getDateTimeInUtc(),
-            expiryDate: row.expiry_date?.getDateTimeInUtc(),
+            serviceDate: row.service_date != null ? DateTime.tryParse(row.service_date!) : null,
+            expiryDate: row.expiry_date != null ? DateTime.tryParse(row.expiry_date!) : null,
             fileNo: row.file_no,
             notes: row.notes,
             status: row.status,
             manualClientName: row.manual_client_name,
-            createdAt: row.createdAt?.getDateTimeInUtc(),
           );
         }).toList();
       });
@@ -296,13 +295,12 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
       
       setState(() {
         _billings[licenseId] = billingList.map((row) => LicenseBilling(
-          id: int.tryParse(row.id),
-          clientLicenseId: int.tryParse(row.client_license_id ?? ''),
+          id: int.tryParse(row.id) ?? 0,
+          clientLicenseId: int.tryParse(row.client_license_id?.toString() ?? '') ?? 0,
           amount: row.amount ?? 0.0,
           invoiceNo: row.invoice_no,
-          paymentStatus: row.payment_status ?? 'Pending',
-          paymentDate: row.payment_date?.getDateTimeInUtc(),
-          createdAt: row.createdAt?.getDateTimeInUtc(),
+          status: row.payment_status ?? 'Pending',
+          paymentDate: row.payment_date != null ? DateTime.tryParse(row.payment_date!) : null,
         )).toList();
       });
     } catch (e) {
@@ -355,6 +353,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     );
 
     if (confirmed == true) {
+      try {
         final updatedModel = amplify_models.ClientLicenses(
           id: license.id.toString(),
           status: 'Renewed'
@@ -362,10 +361,10 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
         await Amplify.API.mutate(request: ModelMutations.update(updatedModel)).response;
         
         final newLicense = amplify_models.ClientLicenses(
-          client_id: license.clientId.toString(),
-          license_type_id: license.licenseTypeId.toString(),
-          service_date: amplify_models.TemporalDate(DateTime.now()),
-          expiry_date: amplify_models.TemporalDate(nextExpiry),
+          client_id: license.clientId,
+          license_type_id: license.licenseTypeId,
+          service_date: DateTime.now().toIso8601String(),
+          expiry_date: nextExpiry?.toIso8601String(),
           file_no: license.fileNo,
           notes: 'Renewal of ${license.fileNo}',
           status: 'Active',
@@ -632,11 +631,11 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                 setModalState(() => isSaving = true);
                 try {
                   final newBilling = amplify_models.LicenseBilling(
-                    client_license_id: licenseId.toString(),
+                    client_license_id: licenseId,
                     amount: amtVal,
                     invoice_no: invNo.text.trim(),
                     payment_status: status,
-                    payment_date: amplify_models.TemporalDate(date),
+                    payment_date: date.toIso8601String(),
                   );
                   await Amplify.API.mutate(request: ModelMutations.create(newBilling)).response;
                   if (mounted) Navigator.pop(context);
@@ -751,10 +750,10 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                   if (license == null) {
                     final newLic = amplify_models.ClientLicenses(
                       manual_client_name: clientNameController.text,
-                      license_type_id: selectedTypeId?.toString(),
+                      license_type_id: selectedTypeId,
                       file_no: fileNoController.text,
-                      service_date: serviceDate != null ? amplify_models.TemporalDate(serviceDate!) : null,
-                      expiry_date: expiryDate != null ? amplify_models.TemporalDate(expiryDate!) : null,
+                      service_date: serviceDate?.toIso8601String(),
+                      expiry_date: expiryDate?.toIso8601String(),
                       notes: notesController.text,
                       status: 'Active',
                     );
@@ -763,10 +762,10 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                     final updateLic = amplify_models.ClientLicenses(
                       id: license.id.toString(),
                       manual_client_name: clientNameController.text,
-                      license_type_id: selectedTypeId?.toString(),
+                      license_type_id: selectedTypeId,
                       file_no: fileNoController.text,
-                      service_date: serviceDate != null ? amplify_models.TemporalDate(serviceDate!) : null,
-                      expiry_date: expiryDate != null ? amplify_models.TemporalDate(expiryDate!) : null,
+                      service_date: serviceDate?.toIso8601String(),
+                      expiry_date: expiryDate?.toIso8601String(),
                       notes: notesController.text,
                     );
                     await Amplify.API.mutate(request: ModelMutations.update(updateLic)).response;
@@ -963,6 +962,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     },
   );
 }
+
 
 
 }

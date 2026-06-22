@@ -32,9 +32,9 @@ class AuthService {
         String? sessionId;
         try {
           final session = UserSessions(
-            userId: int.tryParse(res.id) ?? 0, 
-            loginTime: DateTime.now().toIso8601String(), 
-            isActive: true
+            user_id: int.tryParse(res.id) ?? 0, 
+            login_time: DateTime.now().toIso8601String(), 
+            is_active: true
           );
           final sessionReq = ModelMutations.create(session);
           final sessionRes = await Amplify.API.mutate(request: sessionReq).response;
@@ -83,7 +83,7 @@ class AuthService {
         final response = await Amplify.API.query(request: request).response;
         final session = response.data;
         if (session != null) {
-           final updatedSession = session.copyWith(logoutTime: DateTime.now().toIso8601String(), isActive: false);
+           final updatedSession = session.copyWith(logout_time: DateTime.now().toIso8601String(), is_active: false);
            await Amplify.API.mutate(request: ModelMutations.update(updatedSession)).response;
         }
       } catch (e) {

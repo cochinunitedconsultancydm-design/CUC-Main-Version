@@ -7,6 +7,7 @@ import '../models/client_document.dart';
 import '../models/ModelProvider.dart';
 import '../theme.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 
 class UploadedFilesScreen extends StatefulWidget {
   const UploadedFilesScreen({super.key});
@@ -80,7 +81,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
         } else if (field == 'remarks') {
           updated = doc.copyWith(remarks: value);
         }
-        await Amplify.API.mutate(request: ModelMutations.update(updated));
+        await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
       }
       
       if (mounted) {
@@ -142,7 +143,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
         final req = ModelQueries.list(ClientDocuments.classType, where: ClientDocuments.ID.eq(doc.id));
         final res = await Amplify.API.query(request: req).response;
         if (res.data?.items.isNotEmpty == true) {
-          await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!));
+          await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!)).response;
         }
         _fetchDocuments();
       } catch (e) {
@@ -158,10 +159,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.05),
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: const Icon(Icons.folder_open_rounded, size: 64, color: AppTheme.primaryColor),
           ),
           const SizedBox(height: 24),

@@ -125,7 +125,7 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
         status: 'Active',
       );
 
-      await Amplify.API.mutate(request: ModelMutations.create(license));
+      await Amplify.API.mutate(request: ModelMutations.create(license)).response;
 
       if (mounted) {
         Navigator.of(context).pop(true);

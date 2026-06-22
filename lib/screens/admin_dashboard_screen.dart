@@ -631,83 +631,117 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ].animate(interval: 100.ms).fadeIn().slideY(begin: 0.1),
           ),
           const SizedBox(height: 32),
-          // Reminders Box
-          Container(
-            padding: EdgeInsets.all(isWide ? 24 : 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(color: Colors.grey.withValues(alpha: 0.05), blurRadius: 20, spreadRadius: 5),
+          // Reminders and Recent Activity
+          if (isWide)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(color: Colors.grey.withValues(alpha: 0.05), blurRadius: 20, spreadRadius: 5),
+                      ],
+                    ),
+                    child: UpcomingRemindersWidget(
+                      isWide: isWide,
+                      onNavigateToCalendar: () => setState(() => _selectedIndex = 17),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 24),
+                Expanded(
+                  child: _buildRecentActivityCard(isWide),
+                ),
+              ],
+            )
+          else
+            Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(color: Colors.grey.withValues(alpha: 0.05), blurRadius: 20, spreadRadius: 5),
+                    ],
+                  ),
+                  child: UpcomingRemindersWidget(
+                    isWide: isWide,
+                    onNavigateToCalendar: () => setState(() => _selectedIndex = 17),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                _buildRecentActivityCard(isWide),
               ],
             ),
-            child: UpcomingRemindersWidget(
-              isWide: isWide,
-              onNavigateToCalendar: () => setState(() => _selectedIndex = 17),
-            ),
-          ),
-          const SizedBox(height: 32),
-          // Recent Activity Table
-          Card(
-            child: Padding(
-              padding: EdgeInsets.all(isWide ? 24 : 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Recent System Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 20),
-                    _recentActivity.isEmpty 
-                      ? const Center(child: Padding(padding: EdgeInsets.all(40), child: Text('No recent activity', style: TextStyle(color: AppTheme.mutedTextColor))))
-                      : Column(
-                          children: _recentActivity.map((log) {
-                            final userName = (log['users'] as Map<String, dynamic>?)?['name'] ?? 'System';
-                            final date = log['created_at'] != null ? DateFormat('hh:mm a • dd MMM').format(DateTime.parse(log['created_at'].toString())) : '-';
-                            final isQuote = log['type'] == 'QUOTATION';
-                            final accentColor = isQuote ? Colors.purple : AppTheme.primaryColor;
-                            
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey.shade100),
-                                boxShadow: [BoxShadow(color: Colors.black.withAlpha(5), blurRadius: 8, offset: const Offset(0, 2))],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  decoration: BoxDecoration(border: Border(left: BorderSide(color: accentColor, width: 4))),
-                                  child: ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                    leading: Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(color: accentColor.withAlpha(25), borderRadius: BorderRadius.circular(8)),
-                                      child: Icon(isQuote ? Icons.request_quote_rounded : Icons.receipt_long_rounded, color: accentColor, size: 20),
-                                    ),
-                                    title: Text('New ${log['type']} for ${log['client_name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                                    subtitle: Padding(
-                                      padding: const EdgeInsets.only(top: 4.0),
-                                      child: Text('Inv: ${log['invoice_no']} \n$date', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                                    ),
-                                    trailing: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(color: Colors.grey.shade50, shape: BoxShape.circle),
-                                      child: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey, size: 12),
-                                    ),
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Activity: New ${log['type']} for ${log['client_name']}')));
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.1);
-                          }).toList(),
-                        ),
-                ],
-              ),
-            ),
-          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRecentActivityCard(bool isWide) {
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(isWide ? 24 : 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Recent System Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            _recentActivity.isEmpty 
+              ? const Center(child: Padding(padding: EdgeInsets.all(40), child: Text('No recent activity', style: TextStyle(color: AppTheme.mutedTextColor))))
+              : Column(
+                  children: _recentActivity.map((log) {
+                    final userName = (log['users'] as Map<String, dynamic>?)?['name'] ?? 'System';
+                    final date = log['created_at'] != null ? DateFormat('hh:mm a • dd MMM').format(DateTime.parse(log['created_at'].toString())) : '-';
+                    final isQuote = log['type'] == 'QUOTATION';
+                    final accentColor = isQuote ? Colors.purple : AppTheme.primaryColor;
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade100),
+                        boxShadow: [BoxShadow(color: Colors.black.withAlpha(5), blurRadius: 8, offset: const Offset(0, 2))],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          decoration: BoxDecoration(border: Border(left: BorderSide(color: accentColor, width: 4))),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            leading: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(color: accentColor.withAlpha(25), borderRadius: BorderRadius.circular(8)),
+                              child: Icon(isQuote ? Icons.request_quote_rounded : Icons.receipt_long_rounded, color: accentColor, size: 20),
+                            ),
+                            title: Text('New ${log['type']} for ${log['client_name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text('Inv: ${log['invoice_no']} \n$date', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                            ),
+                            trailing: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(color: Colors.grey.shade50, shape: BoxShape.circle),
+                              child: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey, size: 12),
+                            ),
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Activity: New ${log['type']} for ${log['client_name']}')));
+                            },
+                          ),
+                        ),
+                      ),
+                    ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.1);
+                  }).toList(),
+                ),
+          ],
+        ),
       ),
     );
   }

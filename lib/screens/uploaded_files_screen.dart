@@ -80,7 +80,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
         } else if (field == 'remarks') {
           updated = doc.copyWith(remarks: value);
         }
-        await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+        await Amplify.API.mutate(request: ModelMutations.update(updated));
       }
       
       if (mounted) {
@@ -142,7 +142,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
         final req = ModelQueries.list(ClientDocuments.classType, where: ClientDocuments.ID.eq(doc.id));
         final res = await Amplify.API.query(request: req).response;
         if (res.data?.items.isNotEmpty == true) {
-          await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!).response);
+          await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!));
         }
         _fetchDocuments();
       } catch (e) {

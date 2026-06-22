@@ -211,7 +211,7 @@ class NotificationService {
       if (res.data?.items.isNotEmpty == true) {
         final notif = res.data!.items.first!;
         final updated = notif.copyWith(is_read: true);
-        await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+        await Amplify.API.mutate(request: ModelMutations.update(updated));
       }
     } catch (e) {
       debugPrint('Error marking notification as read: $e');
@@ -227,7 +227,7 @@ class NotificationService {
       
       for (var notif in unread) {
         final updated = notif.copyWith(is_read: true);
-        await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+        await Amplify.API.mutate(request: ModelMutations.update(updated));
       }
     } catch (e) {
       debugPrint('Error marking all as read: $e');
@@ -253,7 +253,7 @@ class NotificationService {
         is_read: false,
         created_at: DateTime.now().toIso8601String()
       );
-      await Amplify.API.mutate(request: ModelMutations.create(notif).response);
+      await Amplify.API.mutate(request: ModelMutations.create(notif));
 
       // Show local/desktop notification on sender device (skip for chat — receiver gets it via realtime)
       if (type != 'chat') {

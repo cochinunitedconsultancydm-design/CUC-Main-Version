@@ -234,7 +234,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                                 password: password.text,
                                 role: role,
                               );
-                              await Amplify.API.mutate(request: ModelMutations.create(newUser).response);
+                              await Amplify.API.mutate(request: ModelMutations.create(newUser));
                               await LoggingService().logAction(action: 'CREATE_STAFF', targetType: 'Staff', targetId: username.text, details: 'Added new staff member: ${name.text}');
                             } else {
                               final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()));
@@ -247,7 +247,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                                   email: email.text,
                                   role: role,
                                 );
-                                await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+                                await Amplify.API.mutate(request: ModelMutations.update(updated));
                                 await LoggingService().logAction(action: 'UPDATE_STAFF', targetType: 'Staff', targetId: username.text, details: 'Updated staff member: ${name.text}');
                               }
                             }
@@ -303,7 +303,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                   if (res.data?.items.isNotEmpty == true) {
                     final existing = res.data!.items.first!;
                     final updated = existing.copyWith(password: passController.text);
-                    await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+                    await Amplify.API.mutate(request: ModelMutations.update(updated));
                   }
                   await LoggingService().logAction(action: 'RESET_PASSWORD', targetType: 'Staff', targetId: user['username'], details: 'Reset password for ${user['name']}');
                   if (mounted) Navigator.pop(context);
@@ -336,7 +336,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
         final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(id.toString()));
         final res = await Amplify.API.query(request: req).response;
         if (res.data?.items.isNotEmpty == true) {
-          await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!).response);
+          await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!));
         }
         await LoggingService().logAction(action: 'DELETE_STAFF', targetType: 'Staff', targetId: id.toString(), details: 'Deleted staff member');
         _fetchStaff();

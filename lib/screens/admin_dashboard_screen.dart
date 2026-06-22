@@ -483,18 +483,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     
     try {
       final sw = Stopwatch()..start();
-      await Amplify.API.query(request: ModelQueries.list(Users.classType, limit: 1).response).response;
+      await Amplify.API.query(request: ModelQueries.list(Users.classType, limit: 1)).response;
       sw.stop();
       ping = sw.elapsedMilliseconds;
       syncStatus = 'Healthy';
       
-      stats['clients'] = (await Amplify.API.query(request: ModelQueries.list(Clients.classType).response)).response.data?.items.length ?? 0;
-      stats['billings'] = (await Amplify.API.query(request: ModelQueries.list(Billings.classType).response)).response.data?.items.length ?? 0;
-      stats['deals'] = (await Amplify.API.query(request: ModelQueries.list(Deals.classType).response)).response.data?.items.length ?? 0;
-      stats['tasks'] = (await Amplify.API.query(request: ModelQueries.list(Tasks.classType).response)).response.data?.items.length ?? 0;
-      stats['activity_logs'] = (await Amplify.API.query(request: ModelQueries.list(ActivityLogs.classType).response)).response.data?.items.length ?? 0;
-      stats['dsc_records'] = (await Amplify.API.query(request: ModelQueries.list(DscRecords.classType).response)).response.data?.items.length ?? 0;
-      stats['user_sessions'] = (await Amplify.API.query(request: ModelQueries.list(UserSessions.classType).response)).response.data?.items.length ?? 0;
+      stats['clients'] = (await Amplify.API.query(request: ModelQueries.list(Clients.classType))).response.data?.items.length ?? 0;
+      stats['billings'] = (await Amplify.API.query(request: ModelQueries.list(Billings.classType))).response.data?.items.length ?? 0;
+      stats['deals'] = (await Amplify.API.query(request: ModelQueries.list(Deals.classType))).response.data?.items.length ?? 0;
+      stats['tasks'] = (await Amplify.API.query(request: ModelQueries.list(Tasks.classType))).response.data?.items.length ?? 0;
+      stats['activity_logs'] = (await Amplify.API.query(request: ModelQueries.list(ActivityLogs.classType))).response.data?.items.length ?? 0;
+      stats['dsc_records'] = (await Amplify.API.query(request: ModelQueries.list(DscRecords.classType))).response.data?.items.length ?? 0;
+      stats['user_sessions'] = (await Amplify.API.query(request: ModelQueries.list(UserSessions.classType))).response.data?.items.length ?? 0;
     } catch (e) {
       syncStatus = 'Error';
     }
@@ -784,7 +784,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildAuditLogView(bool isWide) {
     return FutureBuilder<GraphQLResponse<PaginatedResult<ActivityLogs>>>(
-      future: Amplify.API.query(request: ModelQueries.list(ActivityLogs.classType, limit: 200).response).response,
+      future: Amplify.API.query(request: ModelQueries.list(ActivityLogs.classType, limit: 200)).response,
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         var logsList = snapshot.data?.data?.items.where((e) => e != null).cast<ActivityLogs>().toList() ?? [];

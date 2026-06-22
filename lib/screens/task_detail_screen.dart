@@ -57,7 +57,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           description: desc,
         );
 
-        await Amplify.API.mutate(request: ModelMutations.update(updatedAmplifyTask).response);
+        await Amplify.API.mutate(request: ModelMutations.update(updatedAmplifyTask));
 
         // Re-fetch to get joined user data for UI mapping
         final fetchedUpdatedTask = await _fetchTask(_task.id.toString());
@@ -523,7 +523,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                               final updatedAmplifyTask = existingTask.copyWith(
                                                 description: newDesc,
                                               );
-                                              await Amplify.API.mutate(request: ModelMutations.update(updatedAmplifyTask).response);
+                                              await Amplify.API.mutate(request: ModelMutations.update(updatedAmplifyTask));
                                             }
                                             
                                             await _updateStatus('Adjourned');

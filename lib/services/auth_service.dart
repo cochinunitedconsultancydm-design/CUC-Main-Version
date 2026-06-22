@@ -84,7 +84,7 @@ class AuthService {
         final session = response.data;
         if (session != null) {
            final updatedSession = session.copyWith(logoutTime: DateTime.now().toIso8601String(), isActive: false);
-           await Amplify.API.mutate(request: ModelMutations.update(updatedSession).response).response;
+           await Amplify.API.mutate(request: ModelMutations.update(updatedSession)).response;
         }
       } catch (e) {
         debugPrint('Logout session error: $e');

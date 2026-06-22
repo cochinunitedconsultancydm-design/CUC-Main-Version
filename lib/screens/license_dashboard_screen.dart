@@ -102,7 +102,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
         
         final String fileNo = l.file_no ?? '-';
         
-        DateTime? expiryDate = l.expiry_date?.getDateTime();
+        DateTime? expiryDate = l.expiry_date?.getDateTimeInUtc();
         
         final status = l.status?.toString().toLowerCase() ?? '';
         
@@ -208,8 +208,8 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
           clientName: client.name,
           licenseTypeId: int.tryParse(row.license_type_id ?? ''),
           licenseTypeName: type.name,
-          serviceDate: row.service_date?.getDateTime(),
-          expiryDate: row.expiry_date?.getDateTime(),
+          serviceDate: row.service_date?.getDateTimeInUtc(),
+          expiryDate: row.expiry_date?.getDateTimeInUtc(),
           fileNo: row.file_no,
           notes: row.notes,
           status: row.status,

@@ -38,7 +38,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
       final staffRes = await Amplify.API.query(request: staffReq).response;
       
       final billsList = res.data?.items.whereType<amplify_models.CompanyBills>().toList() ?? [];
-      billsList.sort((a, b) => (b.bill_date?.getDateTime() ?? DateTime.now()).compareTo(a.bill_date?.getDateTime() ?? DateTime.now()));
+      billsList.sort((a, b) => (b.bill_date?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.bill_date?.getDateTimeInUtc() ?? DateTime.now()));
       
       final usersList = staffRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       usersList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
@@ -49,12 +49,12 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
           category: m.category ?? 'Other',
           title: m.title ?? 'No Title',
           amount: m.amount ?? 0.0,
-          billDate: m.bill_date?.getDateTime() ?? DateTime.now(),
+          billDate: m.bill_date?.getDateTimeInUtc() ?? DateTime.now(),
           status: m.status ?? 'Pending',
           description: m.description,
           spentBy: m.spent_by,
           spentByName: m.spent_by_name,
-          createdAt: m.createdAt?.getDateTime(),
+          createdAt: m.createdAt?.getDateTimeInUtc(),
         )).toList();
         _staffList = usersList.map((u) => {
           'id': u.id,

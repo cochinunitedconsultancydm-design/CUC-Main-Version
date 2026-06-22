@@ -137,7 +137,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
             og_copy: details['og_copy'],
             remarks: details['remarks'],
           );
-          await Amplify.API.mutate(request: ModelMutations.create(newDoc).response).response;
+          await Amplify.API.mutate(request: ModelMutations.create(newDoc)).response;
         } catch (dbError) {
           debugPrint('Failed to log document to DB: $dbError');
         }

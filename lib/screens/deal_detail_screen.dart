@@ -1045,7 +1045,7 @@ final dLink = "";
             data['balance_due'] = balance.toString();
 
             final updatedBill = billObj.copyWith(data: jsonEncode(data));
-            await Amplify.API.mutate(request: ModelMutations.update(updatedBill).response).response;
+            await Amplify.API.mutate(request: ModelMutations.update(updatedBill)).response;
           }
           }
         }
@@ -1115,7 +1115,7 @@ final dLink = "";
               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
               if (dealObj != null) {
                 final updatedDeal = dealObj.copyWith(billing_id: id);
-                await Amplify.API.mutate(request: ModelMutations.update(updatedDeal).response).response;
+                await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
               }
               
               if (mounted) {
@@ -1200,7 +1200,7 @@ final dLink = "";
               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
               if (dealObj != null) {
                 final updatedDeal = dealObj.copyWith(quotation_id: id);
-                await Amplify.API.mutate(request: ModelMutations.update(updatedDeal).response).response;
+                await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
               }
               
               if (mounted) {
@@ -1356,7 +1356,7 @@ final dLink = "";
           final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
           if (dealObj != null) {
             final updatedDeal = dealObj.copyWith(billing_id: selectedId);
-            await Amplify.API.mutate(request: ModelMutations.update(updatedDeal).response).response;
+            await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
           }
           
           if (mounted) {
@@ -1545,7 +1545,7 @@ final dLink = "";
           final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
           if (dealObj != null) {
             final updatedDeal = dealObj.copyWith(quotation_id: selectedId);
-            await Amplify.API.mutate(request: ModelMutations.update(updatedDeal).response).response;
+            await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
           }
           
           if (mounted) {
@@ -2259,7 +2259,7 @@ final dLink = "";
                                                 final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
                                                 if (dealObj != null) {
                                                   final updatedDeal = dealObj.copyWith(quotation_id: null);
-                                                  await Amplify.API.mutate(request: ModelMutations.update(updatedDeal).response).response;
+                                                  await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
                                                 }
                                                 
                                                 setState(() {
@@ -2603,7 +2603,7 @@ final dLink = "";
                                                 // Realistically:
                                                 if (dealObj != null) {
                                                   final updatedDeal = dealObj.copyWith(billing_id: 0);
-                                                  await Amplify.API.mutate(request: ModelMutations.update(updatedDeal).response).response;
+                                                  await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
                                                 }
 
                                                 setState(() {
@@ -2987,7 +2987,7 @@ final dLink = "";
                                               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
                                               if (dealObj != null) {
                                                 final updatedDeal = dealObj.copyWith(quotation_id: 0);
-                                                await Amplify.API.mutate(request: ModelMutations.update(updatedDeal).response).response;
+                                                await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
                                               }
 
                                               setState(() {
@@ -3311,7 +3311,7 @@ final dLink = "";
                                               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
                                               if (dealObj != null) {
                                                 final updatedDeal = dealObj.copyWith(billing_id: 0);
-                                                await Amplify.API.mutate(request: ModelMutations.update(updatedDeal).response).response;
+                                                await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
                                               }
 
                                               setState(() {
@@ -5529,7 +5529,7 @@ final dLink = "";
                                 status: taskData['status'] as String,
                               );
                               
-                              final res = await Amplify.API.mutate(request: ModelMutations.create(newTask).response).response;
+                              final res = await Amplify.API.mutate(request: ModelMutations.create(newTask)).response;
                               final newTaskId = int.tryParse(res.data?.id ?? '0') ?? 0;
 
                               // Trigger Notification

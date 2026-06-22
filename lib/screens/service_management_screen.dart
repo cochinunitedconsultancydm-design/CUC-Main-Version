@@ -168,7 +168,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                'document_url': file.uri.toString(),
             })
           );
-          await Amplify.API.mutate(request: ModelMutations.create(newService).response);
+          await Amplify.API.mutate(request: ModelMutations.create(newService));
           imported++;
         } catch (e) {
           debugPrint('Failed to import ${file.path}: $e');
@@ -276,7 +276,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                               description: descController.text.trim(),
                               service_id: 1,
                             );
-                            await Amplify.API.mutate(request: ModelMutations.create(newService).response);
+                            await Amplify.API.mutate(request: ModelMutations.create(newService));
                             if (mounted) Navigator.pop(context);
                             _fetchServices();
                             _showSuccess('Service created successfully');
@@ -792,7 +792,7 @@ class _EditServiceFormState extends State<_EditServiceForm> {
         details: jsonEncode(_details),
       );
       
-      await Amplify.API.mutate(request: ModelMutations.update(updatedService).response);
+      await Amplify.API.mutate(request: ModelMutations.update(updatedService));
       
       widget.onSaved();
     } catch (e) {

@@ -63,7 +63,7 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
         status: 'Pending',
       );
 
-      final res = await Amplify.API.mutate(request: ModelMutations.create(task).response).response;
+      final res = await Amplify.API.mutate(request: ModelMutations.create(task)).response;
       final newTask = res.data;
       final newId = newTask?.id;
 

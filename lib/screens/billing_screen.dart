@@ -1331,7 +1331,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           status: _status,
           data: jsonEncode(d),
         );
-        final res = await Amplify.API.mutate(request: ModelMutations.create(newBilling).response).response;
+        final res = await Amplify.API.mutate(request: ModelMutations.create(newBilling)).response;
         savedId = res.data?.id;
         await _log.logAction(action: 'INVOICE_CREATED', targetType: 'Invoice', targetId: _invoiceNo.text, details: 'Created for ${_clientName.text}');
       }
@@ -1349,7 +1349,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           status: _status,
           data: jsonEncode(d),
         );
-        await Amplify.API.mutate(request: ModelMutations.update(updateBilling).response).response;
+        await Amplify.API.mutate(request: ModelMutations.update(updateBilling)).response;
         await _log.logAction(action: 'INVOICE_UPDATED', targetType: 'Invoice', targetId: _invoiceNo.text, details: 'Updated for ${_clientName.text}');
       }
       // Update client's balance in the clients table

@@ -235,7 +235,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                             user_id: userId,
                             destination: dest,
                           );
-                          await Amplify.API.mutate(request: ModelMutations.create(newLog).response).response;
+                          await Amplify.API.mutate(request: ModelMutations.create(newLog)).response;
                           if (mounted) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(

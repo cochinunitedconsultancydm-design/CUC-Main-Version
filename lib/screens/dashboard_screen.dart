@@ -280,7 +280,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             user_id: userId,
                             destination: dest,
                           );
-                          await Amplify.API.mutate(request: ModelMutations.create(newLog).response);
+                          await Amplify.API.mutate(request: ModelMutations.create(newLog));
                           if (mounted) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -1109,7 +1109,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed'));
         final res = await Amplify.API.query(request: req).response;
         final list = res.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
-        list.sort((a, b) => (b.updatedAt?.getDateTime() ?? DateTime.now()).compareTo(a.updatedAt?.getDateTime() ?? DateTime.now()));
+        list.sort((a, b) => (b.updatedAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.updatedAt?.getDateTimeInUtc() ?? DateTime.now()));
         return list.take(20).map((l) => l.toJson()).toList();
         
       case 'Bills to Receive':

@@ -369,7 +369,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
         final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
         if (dealObj != null) {
           final updatedDeal = dealObj.copyWith(drive_link: url);
-          await Amplify.API.mutate(request: ModelMutations.update(updatedDeal).response).response;
+          await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
         }
       } catch (e) {
         debugPrint('Failed to update deal: $e');
@@ -387,7 +387,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
           og_copy: 'Original',
           remarks: 'Google Doc',
         );
-        await Amplify.API.mutate(request: ModelMutations.create(newClientDoc).response).response;
+        await Amplify.API.mutate(request: ModelMutations.create(newClientDoc)).response;
       } catch (e) {
         debugPrint('Failed to update client docs: $e');
       }

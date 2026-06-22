@@ -146,21 +146,21 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     try {
       
       // 1. Basic Stats
-      final clientsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Clients.classType).response).response;
+      final clientsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Clients.classType)).response;
       final clientsCount = (clientsRes.data?.items ?? []).length;
       
-      final licensesRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ClientLicenses.classType, where: amplify_models.ClientLicenses.STATUS.eq('Active').response)).response;
+      final licensesRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ClientLicenses.classType, where: amplify_models.ClientLicenses.STATUS.eq('Active'))).response;
       final licensesCount = (licensesRes.data?.items ?? []).length;
       
-      final tasksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.STATUS.ne('Completed').response)).response;
+      final tasksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.STATUS.ne('Completed'))).response;
       final pendingTasksCount = (tasksRes.data?.items ?? []).length;
       
-      final worksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed').response)).response;
+      final worksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed'))).response;
       final pendingWorksCount = (worksRes.data?.items ?? []).length;
       
-      final billingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.STATUS.eq('Received').response.and(amplify_models.Billings.TYPE.eq('INVOICE')))).response;
+      final billingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.STATUS.eq('Received').and(amplify_models.Billings.TYPE.eq('INVOICE')))).response;
       
-      final companyBillsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.CompanyBills.classType).response).response;
+      final companyBillsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.CompanyBills.classType)).response;
 
       // Calculate Revenue
       double totalRevenue = 0;
@@ -181,15 +181,15 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       }
 
       // 2. Recent Activity & Billings
-      final allBillingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType).response).response;
+      final allBillingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType)).response;
       final allBillings = (allBillingsRes.data?.items.whereType<amplify_models.Billings>().toList() ?? []);
-      allBillings.sort((a, b) => (b.createdAt?.getDateTime() ?? DateTime.now()).compareTo(a.createdAt?.getDateTime() ?? DateTime.now()));
+      allBillings.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
       
       final activityRes = allBillings.take(5).map((e) => {
         'id': e.id,
         'invoice_no': e.invoice_no,
         'client_name': e.client_name,
-        'created_at': e.createdAt?.getDateTime().toIso8601String(),
+        'created_at': e.createdAt?.getDateTimeInUtc().toIso8601String(),
         'type': e.type,
       }).toList();
       
@@ -209,15 +209,15 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       // 3. Staff Activity (Handle potential empty staff list)
       List<Map<String, dynamic>> combinedStaffActivity = [];
       try {
-        final staffUsersRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Users.classType).response).response;
+        final staffUsersRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Users.classType)).response;
         final staffUsers = (staffUsersRes.data?.items ?? []).where((u) => u != null && ['staff', 'delivery', 'accountant'].contains(u.role)).take(20).toList();
         final staffIds = staffUsers.map((u) => u!.id).toList();
         
         if (staffIds.isNotEmpty) {
-          final sessionsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.UserSessions.classType).response).response;
+          final sessionsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.UserSessions.classType)).response;
           final sessions = (sessionsRes.data?.items ?? []).where((s) => s != null && staffIds.contains(s.user_id)).toList();
           
-          final tasksQueryRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.STATUS.eq('In Progress').response)).response;
+          final tasksQueryRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.STATUS.eq('In Progress'))).response;
           final tasks = (tasksQueryRes.data?.items ?? []).where((t) => t != null && staffIds.contains(t.assigned_to)).toList();
 
           for (var u in staffUsers) {
@@ -247,14 +247,14 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       List<Map<String, dynamic>> staffLogs = [];
       List<Map<String, dynamic>> peakActivity = [];
       try {
-        final staffLogsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ActivityLogs.classType).response).response;
+        final staffLogsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ActivityLogs.classType)).response;
         final allLogs = (staffLogsRes.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? []);
-        allLogs.sort((a, b) => (b.createdAt?.getDateTime() ?? DateTime.now()).compareTo(a.createdAt?.getDateTime() ?? DateTime.now()));
+        allLogs.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
         
         final latestLogs = allLogs.take(5).toList();
         
         // Fetch user names for logs
-        final allUsersRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Users.classType).response).response;
+        final allUsersRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Users.classType)).response;
         final allUsers = allUsersRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
         final userMap = {for (var u in allUsers) u.id: u.name};
         
@@ -264,17 +264,17 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             'details': m.details,
             'target_type': m.target_type,
             'target_id': m.target_id,
-            'created_at': m.createdAt?.getDateTime().toIso8601String(),
+            'created_at': m.createdAt?.getDateTimeInUtc().toIso8601String(),
             'user_name': userMap[m.user_id] ?? 'Unknown',
           };
         }).toList();
 
         final yesterday = DateTime.now().subtract(const Duration(hours: 24));
-        final recentLogs = allLogs.where((l) => (l.createdAt?.getDateTime() ?? DateTime.now()).isAfter(yesterday)).toList();
+        final recentLogs = allLogs.where((l) => (l.createdAt?.getDateTimeInUtc() ?? DateTime.now()).isAfter(yesterday)).toList();
         
         final Map<int, int> hourCounts = {};
         for (var log in recentLogs) {
-          final createdAt = log.createdAt?.getDateTime();
+          final createdAt = log.createdAt?.getDateTimeInUtc();
           if (createdAt != null) {
             final hour = createdAt.toLocal().hour;
             hourCounts[hour] = (hourCounts[hour] ?? 0) + 1;
@@ -1085,7 +1085,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     final req = ModelQueries.list(amplify_models.ActivityLogs.classType, limit: 200);
     final res = await Amplify.API.query(request: req).response;
     final allLogs = res.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
-    allLogs.sort((a, b) => (b.createdAt?.getDateTime() ?? DateTime.now()).compareTo(a.createdAt?.getDateTime() ?? DateTime.now()));
+    allLogs.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
     
     final usersReq = ModelQueries.list(amplify_models.Users.classType);
     final usersRes = await Amplify.API.query(request: usersReq).response;
@@ -1094,7 +1094,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     return allLogs.map((m) => {
       ...m.toJson(),
       'users': {'name': usersMap[m.user_id] ?? 'Unknown'},
-      'created_at': m.createdAt?.getDateTime().toIso8601String(),
+      'created_at': m.createdAt?.getDateTimeInUtc().toIso8601String(),
     }).toList();
   }
 
@@ -1745,7 +1745,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final billing = res.data?.items.first;
         if (billing != null) {
           final updatedBilling = billing.copyWith(data: jsonEncode(d));
-          await Amplify.API.mutate(request: ModelMutations.update(updatedBilling).response);
+          await Amplify.API.mutate(request: ModelMutations.update(updatedBilling));
         }
         _fetchAdminStats();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deadline updated successfully')));
@@ -1846,7 +1846,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final billing = res.data?.items.first;
         if (billing != null) {
           final updatedBilling = billing.copyWith(status: isPaid ? 'Received' : 'Pending', data: jsonEncode(d));
-          await Amplify.API.mutate(request: ModelMutations.update(updatedBilling).response);
+          await Amplify.API.mutate(request: ModelMutations.update(updatedBilling));
         }
         
         if (b.clientName != null && b.clientName!.isNotEmpty) {
@@ -1855,7 +1855,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
            final client = cRes.data?.items.isNotEmpty == true ? cRes.data?.items.first : null;
            if (client != null) {
              final updatedClient = client.copyWith(balanceDue: double.tryParse(d['balance_due'].toString().replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0);
-             await Amplify.API.mutate(request: ModelMutations.update(updatedClient).response);
+             await Amplify.API.mutate(request: ModelMutations.update(updatedClient));
            }
         }
 
@@ -1887,7 +1887,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final res = await Amplify.API.query(request: req).response;
         final billing = res.data?.items.first;
         if (billing != null) {
-          await Amplify.API.mutate(request: ModelMutations.delete(billing).response);
+          await Amplify.API.mutate(request: ModelMutations.delete(billing));
         }
         _fetchAdminStats();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice deleted successfully')));
@@ -2253,7 +2253,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                         name: nameController.text.trim(),
                                         email: emailController.text.trim(),
                                       );
-                                      await Amplify.API.mutate(request: ModelMutations.update(updatedUser).response);
+                                      await Amplify.API.mutate(request: ModelMutations.update(updatedUser));
                                     }
                                     
                                     if (context.mounted) {
@@ -2514,7 +2514,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                   // Update password
                                   if (userObj != null) {
                                     final updatedUser = userObj.copyWith(password: newPass);
-                                    await Amplify.API.mutate(request: ModelMutations.update(updatedUser).response);
+                                    await Amplify.API.mutate(request: ModelMutations.update(updatedUser));
                                   }
                                   
                                   if (context.mounted) {

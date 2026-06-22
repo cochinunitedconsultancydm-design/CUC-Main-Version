@@ -47,7 +47,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
           password: row.password,
           dscTakenDate: row.dsc_taken_date != null ? DateTime.tryParse(row.dsc_taken_date!) : null,
           dscExpiryDate: row.dsc_expiry_date != null ? DateTime.tryParse(row.dsc_expiry_date!) : null,
-          createdAt: row.createdAt?.getDateTime(),
+          createdAt: row.createdAt?.getDateTimeInUtc(),
         )).toList();
       });
     } catch (e) {
@@ -76,7 +76,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
 
     if (confirmed == true) {
       try {
-        await Amplify.API.mutate(request: ModelMutations.deleteById(amplify_models.DscRecords.classType, amplify_models.DscRecordsModelIdentifier(id: id.toString().response))).response;
+        await Amplify.API.mutate(request: ModelMutations.deleteById(amplify_models.DscRecords.classType, amplify_models.DscRecordsModelIdentifier(id: id.toString()))).response;
         _fetchRecords();
       } catch (e) {
         _showError('Delete failed: $e');
@@ -190,7 +190,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                       dsc_taken_date: takenDate?.toIso8601String(),
                       dsc_expiry_date: expiryDate?.toIso8601String(),
                     );
-                    await Amplify.API.mutate(request: ModelMutations.create(newDsc).response).response;
+                    await Amplify.API.mutate(request: ModelMutations.create(newDsc)).response;
                     await LoggingService().logAction(action: 'SIGNATURE_CREATED', targetType: 'Signature', targetId: clientNameController.text, details: 'Added new digital signature');
                   } else {
                     final updateDsc = amplify_models.DscRecords(
@@ -203,7 +203,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                       dsc_taken_date: takenDate?.toIso8601String(),
                       dsc_expiry_date: expiryDate?.toIso8601String(),
                     );
-                    await Amplify.API.mutate(request: ModelMutations.update(updateDsc).response).response;
+                    await Amplify.API.mutate(request: ModelMutations.update(updateDsc)).response;
                     await LoggingService().logAction(action: 'SIGNATURE_UPDATED', targetType: 'Signature', targetId: record.id.toString(), details: 'Updated signature for ${clientNameController.text}');
                   }
                   if (mounted) Navigator.pop(context);

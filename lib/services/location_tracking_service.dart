@@ -149,7 +149,7 @@ void onStart(ServiceInstance service) async {
           final item = res.data!.items.firstWhere((element) => element?.check_out_time == null, orElse: () => null);
           if (item != null) {
             final updated = item.copyWith(check_out_time: DateTime.now().toUtc().toIso8601String());
-            await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+            await Amplify.API.mutate(request: ModelMutations.update(updated));
             debugPrint('Auto checked out user $finalUserId due to app kill.');
           }
         }
@@ -202,7 +202,7 @@ void onStart(ServiceInstance service) async {
               longitude: position.longitude,
               updated_at: nowIso
             );
-            await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+            await Amplify.API.mutate(request: ModelMutations.update(updated));
           } else {
             final newLoc = StaffLocations(
               user_id: finalUserId,
@@ -210,7 +210,7 @@ void onStart(ServiceInstance service) async {
               longitude: position.longitude,
               updated_at: nowIso
             );
-            await Amplify.API.mutate(request: ModelMutations.create(newLoc).response);
+            await Amplify.API.mutate(request: ModelMutations.create(newLoc));
           }
 
           // 2. Append to route history
@@ -220,7 +220,7 @@ void onStart(ServiceInstance service) async {
             longitude: position.longitude,
             recorded_at: nowIso
           );
-          await Amplify.API.mutate(request: ModelMutations.create(newHist).response);
+          await Amplify.API.mutate(request: ModelMutations.create(newHist));
           
           debugPrint('Background location updated and recorded for user $finalUserId: ${position.latitude}, ${position.longitude}');
         } else {

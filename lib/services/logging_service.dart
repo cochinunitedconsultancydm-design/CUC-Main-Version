@@ -27,7 +27,7 @@ class LoggingService {
           target_id: targetId,
           details: details,
         );
-        await Amplify.API.mutate(request: ModelMutations.create(logEntry).response);
+        await Amplify.API.mutate(request: ModelMutations.create(logEntry));
       }
     } catch (e) {
       debugPrint('Logging error: $e');

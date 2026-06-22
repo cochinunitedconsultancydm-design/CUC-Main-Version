@@ -109,7 +109,7 @@ class TimeTrackingService with WindowListener {
           );
         }
 
-        await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+        await Amplify.API.mutate(request: ModelMutations.update(updated));
       }
     } catch (e) {
       debugPrint('Error syncing time tracker: $e');

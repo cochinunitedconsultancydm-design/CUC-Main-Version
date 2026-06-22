@@ -258,7 +258,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
       final clientsList = clientRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
       
       final licenseList = res.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
-      licenseList.sort((a, b) => (a.expiry_date?.getDateTime() ?? DateTime.now()).compareTo(b.expiry_date?.getDateTime() ?? DateTime.now()));
+      licenseList.sort((a, b) => (a.expiry_date?.getDateTimeInUtc() ?? DateTime.now()).compareTo(b.expiry_date?.getDateTimeInUtc() ?? DateTime.now()));
       
       setState(() {
         _licenses = licenseList.map((row) {
@@ -271,13 +271,13 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
             clientName: client.name,
             licenseTypeId: int.tryParse(row.license_type_id ?? ''),
             licenseTypeName: type['name'],
-            serviceDate: row.service_date?.getDateTime(),
-            expiryDate: row.expiry_date?.getDateTime(),
+            serviceDate: row.service_date?.getDateTimeInUtc(),
+            expiryDate: row.expiry_date?.getDateTimeInUtc(),
             fileNo: row.file_no,
             notes: row.notes,
             status: row.status,
             manualClientName: row.manual_client_name,
-            createdAt: row.createdAt?.getDateTime(),
+            createdAt: row.createdAt?.getDateTimeInUtc(),
           );
         }).toList();
       });
@@ -301,8 +301,8 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
           amount: row.amount ?? 0.0,
           invoiceNo: row.invoice_no,
           paymentStatus: row.payment_status ?? 'Pending',
-          paymentDate: row.payment_date?.getDateTime(),
-          createdAt: row.createdAt?.getDateTime(),
+          paymentDate: row.payment_date?.getDateTimeInUtc(),
+          createdAt: row.createdAt?.getDateTimeInUtc(),
         )).toList();
       });
     } catch (e) {
@@ -359,7 +359,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
           id: license.id.toString(),
           status: 'Renewed'
         );
-        await Amplify.API.mutate(request: ModelMutations.update(updatedModel).response).response;
+        await Amplify.API.mutate(request: ModelMutations.update(updatedModel)).response;
         
         final newLicense = amplify_models.ClientLicenses(
           client_id: license.clientId.toString(),
@@ -371,7 +371,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
           status: 'Active',
           manual_client_name: license.manualClientName,
         );
-        await Amplify.API.mutate(request: ModelMutations.create(newLicense).response).response;
+        await Amplify.API.mutate(request: ModelMutations.create(newLicense)).response;
         _fetchLicenses();
         _showSuccess('License renewed successfully');
       } catch (e) {
@@ -414,7 +414,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
           id: license.id.toString(),
           status: 'Not Interested'
         );
-        await Amplify.API.mutate(request: ModelMutations.update(updatedModel).response).response;
+        await Amplify.API.mutate(request: ModelMutations.update(updatedModel)).response;
         _fetchLicenses();
         _showSuccess('License marked as Not Interested');
       } catch (e) {
@@ -442,7 +442,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
 
     if (confirmed == true) {
       try {
-        await Amplify.API.mutate(request: ModelMutations.deleteById(amplify_models.ClientLicenses.classType, amplify_models.ClientLicensesModelIdentifier(id: id.toString().response))).response;
+        await Amplify.API.mutate(request: ModelMutations.deleteById(amplify_models.ClientLicenses.classType, amplify_models.ClientLicensesModelIdentifier(id: id.toString()))).response;
         _fetchLicenses();
         _showSuccess('License deleted successfully');
       } catch (e) {
@@ -468,7 +468,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
       final req = ModelQueries.list(amplify_models.Billings.classType);
       final res = await Amplify.API.query(request: req).response;
       final billList = res.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
-      billList.sort((a, b) => (b.createdAt?.getDateTime() ?? DateTime.now()).compareTo(a.createdAt?.getDateTime() ?? DateTime.now()));
+      billList.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
       
       allBills = billList.take(50).map((b) => {
         'invoice_no': b.invoice_no,
@@ -638,7 +638,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                     payment_status: status,
                     payment_date: amplify_models.TemporalDate(date),
                   );
-                  await Amplify.API.mutate(request: ModelMutations.create(newBilling).response).response;
+                  await Amplify.API.mutate(request: ModelMutations.create(newBilling)).response;
                   if (mounted) Navigator.pop(context);
                   _fetchDetails(licenseId);
                   _showSuccess('Billing record added successfully');
@@ -758,7 +758,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                       notes: notesController.text,
                       status: 'Active',
                     );
-                    await Amplify.API.mutate(request: ModelMutations.create(newLic).response).response;
+                    await Amplify.API.mutate(request: ModelMutations.create(newLic)).response;
                   } else {
                     final updateLic = amplify_models.ClientLicenses(
                       id: license.id.toString(),
@@ -769,7 +769,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                       expiry_date: expiryDate != null ? amplify_models.TemporalDate(expiryDate!) : null,
                       notes: notesController.text,
                     );
-                    await Amplify.API.mutate(request: ModelMutations.update(updateLic).response).response;
+                    await Amplify.API.mutate(request: ModelMutations.update(updateLic)).response;
                   }
                   if (mounted) Navigator.pop(context);
                   _fetchLicenses();

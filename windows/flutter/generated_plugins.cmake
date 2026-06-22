@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   geolocator_windows
+  passkeys_windows
   permission_handler_windows
   printing
   screen_retriever_windows

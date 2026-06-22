@@ -50,10 +50,9 @@ Future<void> main() async {
   try {
     final apiPlugin = AmplifyAPI(options: APIPluginOptions(modelProvider: ModelProvider.instance));
     final authPlugin = AmplifyAuthCognito();
-    // Temporarily disabled so you can log in without the storage config crash
-    // final storagePlugin = AmplifyStorageS3();
+    final storagePlugin = AmplifyStorageS3();
     
-    await Amplify.addPlugins([apiPlugin, authPlugin]);
+    await Amplify.addPlugins([apiPlugin, authPlugin, storagePlugin]);
     await Amplify.configure(amplifyConfig);
   } catch (e) {
     debugPrint('Could not configure Amplify: $e');

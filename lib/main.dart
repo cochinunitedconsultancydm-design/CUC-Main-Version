@@ -51,7 +51,7 @@ Future<void> main() async {
     // Inject the external S3 bucket into the Amplify configuration
     final String modifiedConfig = amplifyConfig.replaceFirst(
       '"data": {',
-      '"storage": {\n    "aws_region": "ap-south-1",\n    "bucket_name": "cochin-united-documents"\n  },\n  "data": {'
+      '"storage": {\n    "plugins": {\n      "awsS3StoragePlugin": {\n        "bucket": "cochin-united-documents",\n        "region": "ap-south-1",\n        "defaultAccessLevel": "guest"\n      }\n    }\n  },\n  "data": {'
     );
 
     final apiPlugin = AmplifyAPI(options: APIPluginOptions(modelProvider: ModelProvider.instance));

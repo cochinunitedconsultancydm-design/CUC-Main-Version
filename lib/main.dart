@@ -54,8 +54,10 @@ Future<void> main() async {
     
     await Amplify.addPlugins([apiPlugin, authPlugin, storagePlugin]);
     await Amplify.configure(amplifyConfig);
-  } catch (e) {
+  } catch (e, stacktrace) {
     debugPrint('Could not configure Amplify: $e');
+    debugPrint('Stacktrace: $stacktrace');
+    rethrow;
   }
 
   // Initialize local notifications for mobile

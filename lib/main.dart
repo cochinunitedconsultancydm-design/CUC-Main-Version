@@ -54,10 +54,15 @@ Future<void> main() async {
     
     await Amplify.addPlugins([apiPlugin, authPlugin, storagePlugin]);
     await Amplify.configure(amplifyConfig);
+    debugPrint('✅ Amplify configured successfully');
+  } on AmplifyAlreadyConfiguredException {
+    // This is OK during development hot restarts - plugins are already initialized
+    debugPrint('⚠️ Amplify already configured (hot restart detected) - continuing');
   } catch (e, stacktrace) {
-    debugPrint('Could not configure Amplify: $e');
+    debugPrint('====================================');
+    debugPrint('❌ Could not configure Amplify: $e');
     debugPrint('Stacktrace: $stacktrace');
-    rethrow;
+    debugPrint('====================================');
   }
 
   // Initialize local notifications for mobile

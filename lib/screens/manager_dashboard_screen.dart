@@ -315,7 +315,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         setState(() {
           _errorMessage = e.toString().contains('connection') 
               ? 'Connection error. Please check your internet.' 
-              : 'Failed to load dashboard data. Please try refreshing.';
+              : 'Failed to load dashboard data: $e';
           _isLoading = false;
         });
       }

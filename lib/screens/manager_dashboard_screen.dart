@@ -204,7 +204,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         'category': e.category,
         'authorities': e.authorities,
         'status': e.status,
-        'data': e.data != null ? jsonDecode(e.data!) : null,
+        'data': e.data,
       }).toList();
 
       // 3. Staff Activity (Handle potential empty staff list)

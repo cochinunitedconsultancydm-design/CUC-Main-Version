@@ -1,24 +1,11 @@
 version: 1
 frontend:
   phases:
-    preBuild:
-      commands:
-        - if command -v yum &> /dev/null; then sudo yum install -y xz; elif command -v apt-get &> /dev/null; then sudo apt-get update && sudo apt-get install -y xz-utils; fi
-        - if [ ! -d "flutter" ]; then git clone https://github.com/flutter/flutter.git -b stable; fi
-        - export PATH="`pwd`/flutter/bin:$PATH"
-        - flutter --version
-        - flutter config --enable-web
-        - flutter pub get
     build:
       commands:
-        # Force Dart VM to use a maximum of 3072 MB of heap to prevent Docker OOM kills
-        - export DART_VM_OPTIONS="--old_gen_heap_size=3072"
-        - flutter build web --release -v -O1 --no-wasm-dry-run --no-tree-shake-icons
+        - echo "Skipping AWS Amplify build phase."
+        - echo "Using pre-compiled web artifacts from the build/web directory."
   artifacts:
     baseDirectory: build/web
     files:
       - '**/*'
-  cache:
-    paths:
-      - .pub-cache/**/*
-      - flutter/**/*

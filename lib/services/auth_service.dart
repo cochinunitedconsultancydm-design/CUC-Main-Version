@@ -18,6 +18,20 @@ class AuthService {
   Future<bool> login(String username, String password) async {
     try {
       debugPrint('Attempting login for: $username');
+      
+      // DIAGNOSTIC 1: Fetch user without checking password first
+      final testReq = ModelQueries.list(Users.classType, where: Users.USERNAME.eq(username));
+      final testRes = await Amplify.API.query(request: testReq).response;
+      if (testRes.data?.items.isNotEmpty == true) {
+        debugPrint('DIAGNOSTIC: User found in DB. Stored password is: "${testRes.data!.items.first!.password}"');
+        debugPrint('DIAGNOSTIC: You entered password: "$password"');
+        if (testRes.data!.items.first!.password != password) {
+          debugPrint('DIAGNOSTIC ERROR: Passwords do not match!');
+        }
+      } else {
+        debugPrint('DIAGNOSTIC ERROR: User "$username" does NOT exist in the database!');
+      }
+
       final request = ModelQueries.list(
         Users.classType,
         where: Users.USERNAME.eq(username).and(Users.PASSWORD.eq(password)),
@@ -65,8 +79,8 @@ class AuthService {
       } else {
         debugPrint('No user found with those credentials');
       }
-    } catch (e) {
-      debugPrint('Login error: $e');
+    } catch (e, stack) {
+      debugPrint('Login error: $e\n$stack');
     }
     return false;
   }

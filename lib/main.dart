@@ -48,18 +48,13 @@ Future<void> main() async {
   }
 
   try {
-    // Inject the external S3 bucket into the Amplify configuration
-    final String modifiedConfig = amplifyConfig.replaceFirst(
-      '"data": {',
-      '"storage": {\n    "plugins": {\n      "awsS3StoragePlugin": {\n        "bucket": "cochin-united-documents",\n        "region": "ap-south-1",\n        "defaultAccessLevel": "guest"\n      }\n    }\n  },\n  "data": {'
-    );
-
     final apiPlugin = AmplifyAPI(options: APIPluginOptions(modelProvider: ModelProvider.instance));
     final authPlugin = AmplifyAuthCognito();
-    final storagePlugin = AmplifyStorageS3();
+    // Temporarily disabled so you can log in without the storage config crash
+    // final storagePlugin = AmplifyStorageS3();
     
-    await Amplify.addPlugins([apiPlugin, authPlugin, storagePlugin]);
-    await Amplify.configure(modifiedConfig);
+    await Amplify.addPlugins([apiPlugin, authPlugin]);
+    await Amplify.configure(amplifyConfig);
   } catch (e) {
     debugPrint('Could not configure Amplify: $e');
   }

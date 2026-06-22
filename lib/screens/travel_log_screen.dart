@@ -1,5 +1,7 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
 
@@ -23,14 +25,36 @@ class _TravelLogScreenState extends State<TravelLogScreen> {
   Future<void> _fetchLogs() async {
     setState(() => _isLoading = true);
     try {
-      final res = await Supabase.instance.client
-          .from('travel_logs')
-          .select('*, users(name, role)')
-          .order('created_at', ascending: false);
-          
+      final req = ModelQueries.list(TravelLogs.classType);
+      final res = await Amplify.API.query(request: req).response;
+      var logs = res.data?.items.whereType<TravelLogs>().toList() ?? [];
+      
+      logs.sort((a, b) {
+        final dateA = a.createdAt?.getDateTimeInUtc() ?? DateTime(2000);
+        final dateB = b.createdAt?.getDateTimeInUtc() ?? DateTime(2000);
+        return dateB.compareTo(dateA);
+      });
+      
+      // Also fetch users to join
+      final uReq = ModelQueries.list(Users.classType);
+      final uRes = await Amplify.API.query(request: uReq).response;
+      final users = uRes.data?.items.whereType<Users>().toList() ?? [];
+      final userMap = {for (var u in users) u.id.toString(): u};
+
       if (mounted) {
         setState(() {
-          _logs = List<Map<String, dynamic>>.from(res);
+          _logs = logs.map((log) {
+            final user = userMap[log.user_id?.toString()];
+            return {
+              'id': log.id,
+              'destination': log.destination,
+              'created_at': log.createdAt?.getDateTimeInUtc().toIso8601String() ?? DateTime.now().toIso8601String(),
+              'users': user != null ? {
+                'name': user.name,
+                'role': user.role,
+              } : null,
+            };
+          }).toList();
           _isLoading = false;
         });
       }

@@ -1,3 +1,4 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -5,7 +6,8 @@ import '../theme.dart';
 import '../models/client_license.dart';
 import '../models/license_billing.dart';
 import '../services/excel_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 
 class LicenseManagementScreen extends StatefulWidget {
   final String? initialFilter;
@@ -16,7 +18,7 @@ class LicenseManagementScreen extends StatefulWidget {
 }
 
 class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
-  final _client = Supabase.instance.client;
+  // final _client = Supabase.instance.client;
   final _excel = ExcelService();
   List<ClientLicense> _licenses = [];
   List<Map<String, dynamic>> _licenseTypes = [];
@@ -227,9 +229,12 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
 
   Future<void> _fetchLicenseTypes() async {
     try {
-      final res = await _client.from('license_types').select('id, name').order('name', ascending: true);
+      final req = ModelQueries.list(amplify_models.LicenseTypes.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final typesList = res.data?.items.whereType<amplify_models.LicenseTypes>().toList() ?? [];
+      typesList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       setState(() {
-        _licenseTypes = List<Map<String, dynamic>>.from(res);
+        _licenseTypes = typesList.map((t) => {'id': t.id, 'name': t.name}).toList();
       });
     } catch (e) {
       debugPrint('Error fetching types: $e');
@@ -245,35 +250,35 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
   Future<void> _fetchLicenses() async {
     setState(() => _isLoading = true);
     try {
-      final result = await _client.from('client_licenses').select('''
-        *,
-        clients(name),
-        license_types(name)
-      ''').order('expiry_date', ascending: true);
+      final req = ModelQueries.list(amplify_models.ClientLicenses.classType);
+      final res = await Amplify.API.query(request: req).response;
+      
+      final clientReq = ModelQueries.list(amplify_models.Clients.classType);
+      final clientRes = await Amplify.API.query(request: clientReq).response;
+      final clientsList = clientRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+      
+      final licenseList = res.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
+      licenseList.sort((a, b) => (a.expiry_date?.getDateTime() ?? DateTime.now()).compareTo(b.expiry_date?.getDateTime() ?? DateTime.now()));
       
       setState(() {
-        _licenses = List<Map<String, dynamic>>.from(result).map((row) {
-          final map = Map<String, dynamic>.from(row);
+        _licenses = licenseList.map((row) {
+          final client = clientsList.firstWhere((c) => c.id == row.client_id, orElse: () => amplify_models.Clients(name: 'Unknown'));
+          final type = _licenseTypes.firstWhere((t) => t['id'] == row.license_type_id, orElse: () => {'name': null});
           
-          if (row['clients'] != null) {
-            final c = row['clients'];
-            map['client_name'] = (c is List && c.isNotEmpty) ? c[0]['name'] : (c is Map ? c['name'] : null);
-          }
-          
-          if (row['license_types'] != null) {
-            final lt = row['license_types'];
-            map['license_type_name'] = (lt is List && lt.isNotEmpty) ? lt[0]['name'] : (lt is Map ? lt['name'] : null);
-          }
-          
-          if (map['license_type_name'] == null && map['license_type_id'] != null) {
-            final typeId = map['license_type_id'];
-            final match = _licenseTypes.where((t) => t['id'] == typeId).firstOrNull;
-            if (match != null) {
-              map['license_type_name'] = match['name'];
-            }
-          }
-          
-          return ClientLicense.fromMap(map);
+          return ClientLicense(
+            id: int.tryParse(row.id), // Dynamic -> int for legacy compatibility
+            clientId: int.tryParse(row.client_id ?? ''),
+            clientName: client.name,
+            licenseTypeId: int.tryParse(row.license_type_id ?? ''),
+            licenseTypeName: type['name'],
+            serviceDate: row.service_date?.getDateTime(),
+            expiryDate: row.expiry_date?.getDateTime(),
+            fileNo: row.file_no,
+            notes: row.notes,
+            status: row.status,
+            manualClientName: row.manual_client_name,
+            createdAt: row.createdAt?.getDateTime(),
+          );
         }).toList();
       });
     } catch (e) {
@@ -285,10 +290,20 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
 
   Future<void> _fetchDetails(int licenseId) async {
     try {
-      final billResult = await _client.from('license_billing').select().eq('client_license_id', licenseId);
+      final req = ModelQueries.list(amplify_models.LicenseBilling.classType, where: amplify_models.LicenseBilling.CLIENT_LICENSE_ID.eq(licenseId.toString()));
+      final res = await Amplify.API.query(request: req).response;
+      final billingList = res.data?.items.whereType<amplify_models.LicenseBilling>().toList() ?? [];
       
       setState(() {
-        _billings[licenseId] = List<Map<String, dynamic>>.from(billResult).map((row) => LicenseBilling.fromMap(row)).toList();
+        _billings[licenseId] = billingList.map((row) => LicenseBilling(
+          id: int.tryParse(row.id),
+          clientLicenseId: int.tryParse(row.client_license_id ?? ''),
+          amount: row.amount ?? 0.0,
+          invoiceNo: row.invoice_no,
+          paymentStatus: row.payment_status ?? 'Pending',
+          paymentDate: row.payment_date?.getDateTime(),
+          createdAt: row.createdAt?.getDateTime(),
+        )).toList();
       });
     } catch (e) {
       debugPrint('Error fetching details for license $licenseId: $e');
@@ -340,18 +355,23 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     );
 
     if (confirmed == true) {
-      try {
-        await _client.from('client_licenses').update({'status': 'Renewed'}).eq('id', license.id!);
-        await _client.from('client_licenses').insert({
-          'client_id': license.clientId,
-          'license_type_id': license.licenseTypeId,
-          'service_date': DateTime.now().toIso8601String(),
-          'expiry_date': nextExpiry.toIso8601String(),
-          'file_no': license.fileNo,
-          'notes': 'Renewal of ${license.fileNo}',
-          'status': 'Active',
-          'manual_client_name': license.manualClientName,
-        });
+        final updatedModel = amplify_models.ClientLicenses(
+          id: license.id.toString(),
+          status: 'Renewed'
+        );
+        await Amplify.API.mutate(request: ModelMutations.update(updatedModel).response).response;
+        
+        final newLicense = amplify_models.ClientLicenses(
+          client_id: license.clientId.toString(),
+          license_type_id: license.licenseTypeId.toString(),
+          service_date: amplify_models.TemporalDate(DateTime.now()),
+          expiry_date: amplify_models.TemporalDate(nextExpiry),
+          file_no: license.fileNo,
+          notes: 'Renewal of ${license.fileNo}',
+          status: 'Active',
+          manual_client_name: license.manualClientName,
+        );
+        await Amplify.API.mutate(request: ModelMutations.create(newLicense).response).response;
         _fetchLicenses();
         _showSuccess('License renewed successfully');
       } catch (e) {
@@ -390,7 +410,11 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
 
     if (confirmed == true) {
       try {
-        await _client.from('client_licenses').update({'status': 'Not Interested'}).eq('id', license.id!);
+        final updatedModel = amplify_models.ClientLicenses(
+          id: license.id.toString(),
+          status: 'Not Interested'
+        );
+        await Amplify.API.mutate(request: ModelMutations.update(updatedModel).response).response;
         _fetchLicenses();
         _showSuccess('License marked as Not Interested');
       } catch (e) {
@@ -418,7 +442,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
 
     if (confirmed == true) {
       try {
-        await _client.from('client_licenses').delete().eq('id', id);
+        await Amplify.API.mutate(request: ModelMutations.deleteById(amplify_models.ClientLicenses.classType, amplify_models.ClientLicensesModelIdentifier(id: id.toString().response))).response;
         _fetchLicenses();
         _showSuccess('License deleted successfully');
       } catch (e) {
@@ -441,8 +465,16 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     bool pickerLoading = true;
 
     try {
-      final res = await _client.from('billings').select('invoice_no, amount, client_name').order('id', ascending: false).limit(50);
-      allBills = List<Map<String, dynamic>>.from(res);
+      final req = ModelQueries.list(amplify_models.Billings.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final billList = res.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
+      billList.sort((a, b) => (b.createdAt?.getDateTime() ?? DateTime.now()).compareTo(a.createdAt?.getDateTime() ?? DateTime.now()));
+      
+      allBills = billList.take(50).map((b) => {
+        'invoice_no': b.invoice_no,
+        'amount': b.amount,
+        'client_name': b.client_name,
+      }).toList();
       pickerLoading = false;
     } catch (e) { 
       debugPrint('Error fetching invoices: $e'); 
@@ -599,13 +631,14 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
 
                 setModalState(() => isSaving = true);
                 try {
-                  await _client.from('license_billing').insert({
-                    'client_license_id': licenseId,
-                    'amount': amtVal,
-                    'invoice_no': invNo.text.trim(),
-                    'payment_status': status,
-                    'payment_date': date.toIso8601String(),
-                  });
+                  final newBilling = amplify_models.LicenseBilling(
+                    client_license_id: licenseId.toString(),
+                    amount: amtVal,
+                    invoice_no: invNo.text.trim(),
+                    payment_status: status,
+                    payment_date: amplify_models.TemporalDate(date),
+                  );
+                  await Amplify.API.mutate(request: ModelMutations.create(newBilling).response).response;
                   if (mounted) Navigator.pop(context);
                   _fetchDetails(licenseId);
                   _showSuccess('Billing record added successfully');
@@ -716,24 +749,27 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
               onPressed: () async {
                 try {
                   if (license == null) {
-                    await _client.from('client_licenses').insert({
-                      'manual_client_name': clientNameController.text,
-                      'license_type_id': selectedTypeId,
-                      'file_no': fileNoController.text,
-                      'service_date': serviceDate?.toIso8601String(),
-                      'expiry_date': expiryDate?.toIso8601String(),
-                      'notes': notesController.text,
-                      'status': 'Active',
-                    });
+                    final newLic = amplify_models.ClientLicenses(
+                      manual_client_name: clientNameController.text,
+                      license_type_id: selectedTypeId?.toString(),
+                      file_no: fileNoController.text,
+                      service_date: serviceDate != null ? amplify_models.TemporalDate(serviceDate!) : null,
+                      expiry_date: expiryDate != null ? amplify_models.TemporalDate(expiryDate!) : null,
+                      notes: notesController.text,
+                      status: 'Active',
+                    );
+                    await Amplify.API.mutate(request: ModelMutations.create(newLic).response).response;
                   } else {
-                    await _client.from('client_licenses').update({
-                      'manual_client_name': clientNameController.text,
-                      'license_type_id': selectedTypeId,
-                      'file_no': fileNoController.text,
-                      'service_date': serviceDate?.toIso8601String(),
-                      'expiry_date': expiryDate?.toIso8601String(),
-                      'notes': notesController.text,
-                    }).eq('id', license.id!);
+                    final updateLic = amplify_models.ClientLicenses(
+                      id: license.id.toString(),
+                      manual_client_name: clientNameController.text,
+                      license_type_id: selectedTypeId?.toString(),
+                      file_no: fileNoController.text,
+                      service_date: serviceDate != null ? amplify_models.TemporalDate(serviceDate!) : null,
+                      expiry_date: expiryDate != null ? amplify_models.TemporalDate(expiryDate!) : null,
+                      notes: notesController.text,
+                    );
+                    await Amplify.API.mutate(request: ModelMutations.update(updateLic).response).response;
                   }
                   if (mounted) Navigator.pop(context);
                   _fetchLicenses();

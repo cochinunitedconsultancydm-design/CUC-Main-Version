@@ -1,12 +1,12 @@
 class CompanyBill {
-  final int? id;
+  final dynamic id;
   final String category;
   final String title;
   final double amount;
   final DateTime billDate;
   final String status;
   final String? description;
-  final int? spentBy;
+  final dynamic spentBy;
   final String? spentByName;
   final DateTime? createdAt;
 
@@ -25,7 +25,7 @@ class CompanyBill {
 
   factory CompanyBill.fromMap(Map<String, dynamic> map) {
     return CompanyBill(
-      id: map['id'] is int ? map['id'] : int.tryParse(map['id']?.toString() ?? ''),
+      id: map['id'],
       category: map['category']?.toString() ?? 'Other',
       title: map['title']?.toString() ?? 'No Title',
       amount: double.tryParse(map['amount']?.toString() ?? '0') ?? 0.0,
@@ -34,7 +34,7 @@ class CompanyBill {
           : DateTime.now(),
       status: map['status']?.toString() ?? 'Pending',
       description: map['description']?.toString(),
-      spentBy: map['spent_by'] is int ? map['spent_by'] : int.tryParse(map['spent_by']?.toString() ?? ''),
+      spentBy: map['spent_by'],
       spentByName: map['spent_by_name']?.toString(),
       createdAt: map['created_at'] != null 
           ? DateTime.parse(map['created_at'].toString()) 

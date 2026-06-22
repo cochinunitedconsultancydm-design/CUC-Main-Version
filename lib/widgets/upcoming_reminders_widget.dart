@@ -1,6 +1,8 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:intl/intl.dart';
+import '../models/ModelProvider.dart';
 import '../theme.dart';
 
 class UpcomingRemindersWidget extends StatefulWidget {
@@ -18,7 +20,6 @@ class UpcomingRemindersWidget extends StatefulWidget {
 }
 
 class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
-  final _client = Supabase.instance.client;
   List<Map<String, dynamic>> _reminders = [];
   bool _isLoading = true;
 
@@ -34,19 +35,18 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       final List<Map<String, dynamic>> items = [];
 
       // 1. Fetch Tasks (Overdue or Due in next 7 days)
-      final tasksRes = await _client
-          .from('tasks')
-          .select('id, title, due_date, status')
-          .neq('status', 'Completed');
+      final tReq = ModelQueries.list(Tasks.classType, where: Tasks.STATUS.ne('Completed'));
+      final tRes = await Amplify.API.query(request: tReq).response;
+      final tasksRes = tRes.data?.items.whereType<Tasks>() ?? [];
       
       for (var t in tasksRes) {
-        if (t['due_date'] != null) {
+        if (t.due_date != null) {
           try {
-            final date = DateTime.parse(t['due_date'].toString()).toLocal();
+            final date = DateTime.parse(t.due_date.toString()).toLocal();
             final diff = date.difference(now).inDays;
             if (diff <= 7) {
               items.add({
-                'title': t['title'] ?? 'Task',
+                'title': t.title ?? 'Task',
                 'date': date,
                 'type': 'Task',
                 'color': AppTheme.primaryColor,
@@ -58,29 +58,19 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       }
 
       // 2. Fetch Licenses Expiry (Expired or Expiring in next 30 days)
-      final licenseRes = await _client
-          .from('client_licenses')
-          .select('id, expiry_date, manual_client_name, clients(name), license_types(name)')
-          .eq('status', 'Active');
+      final lReq = ModelQueries.list(ClientLicenses.classType, where: ClientLicenses.STATUS.eq('Active'));
+      final lRes = await Amplify.API.query(request: lReq).response;
+      final licenseRes = lRes.data?.items.whereType<ClientLicenses>() ?? [];
       
       for (var l in licenseRes) {
-        if (l['expiry_date'] != null) {
+        if (l.expiry_date != null) {
           try {
-            final date = DateTime.parse(l['expiry_date'].toString()).toLocal();
+            final date = DateTime.parse(l.expiry_date.toString()).toLocal();
             final diff = date.difference(now).inDays;
             if (diff <= 30) {
-              String clientName = l['manual_client_name'] ?? 'Unknown Client';
-              if (l['clients'] != null) {
-                final c = l['clients'];
-                clientName = (c is List && c.isNotEmpty) ? c[0]['name'] : (c is Map ? c['name'] : clientName);
-              }
-              String licenseType = 'License';
-              if (l['license_types'] != null) {
-                final lt = l['license_types'];
-                licenseType = (lt is List && lt.isNotEmpty) ? lt[0]['name'] : (lt is Map ? lt['name'] : licenseType);
-              }
+              String clientName = l.manual_client_name ?? 'Unknown Client';
               items.add({
-                'title': '$clientName - $licenseType',
+                'title': '$clientName - License',
                 'date': date,
                 'type': 'License',
                 'color': Colors.purple,
@@ -92,18 +82,18 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       }
 
       // 3. Fetch DSC Expiry (Expired or Expiring in next 30 days)
-      final dscRes = await _client
-          .from('dsc_records')
-          .select('id, client_name, dsc_expiry_date');
+      final dReq = ModelQueries.list(DscRecords.classType);
+      final dRes = await Amplify.API.query(request: dReq).response;
+      final dscRes = dRes.data?.items.whereType<DscRecords>() ?? [];
       
       for (var d in dscRes) {
-        if (d['dsc_expiry_date'] != null) {
+        if (d.dsc_expiry_date != null) {
           try {
-            final date = DateTime.parse(d['dsc_expiry_date'].toString()).toLocal();
+            final date = DateTime.parse(d.dsc_expiry_date.toString()).toLocal();
             final diff = date.difference(now).inDays;
             if (diff <= 30) {
               items.add({
-                'title': '${d['client_name']} - DSC',
+                'title': '${d.client_name ?? 'Unknown Client'} - DSC',
                 'date': date,
                 'type': 'DSC',
                 'color': Colors.teal,

@@ -1,10 +1,12 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
 import '../models/company_bill.dart';
 import '../services/auth_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import '../widgets/premium_app_bar.dart';
 class CompanyBillManagementScreen extends StatefulWidget {
   const CompanyBillManagementScreen({super.key});
@@ -14,7 +16,7 @@ class CompanyBillManagementScreen extends StatefulWidget {
 }
 
 class _CompanyBillManagementScreenState extends State<CompanyBillManagementScreen> {
-  final _client = Supabase.instance.client;
+  // final _client = Supabase.instance.client;
   List<CompanyBill> _bills = [];
   List<Map<String, dynamic>> _staffList = [];
   bool _isLoading = true;
@@ -30,12 +32,35 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
   Future<void> _fetchBills() async {
     setState(() => _isLoading = true);
     try {
-      final res = await _client.from('company_bills').select().order('bill_date', ascending: false);
-      final staffRes = await _client.from('users').select('id, name, role').order('name', ascending: true);
+      final req = ModelQueries.list(amplify_models.CompanyBills.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final staffReq = ModelQueries.list(amplify_models.Users.classType);
+      final staffRes = await Amplify.API.query(request: staffReq).response;
       
+      final billsList = res.data?.items.whereType<amplify_models.CompanyBills>().toList() ?? [];
+      billsList.sort((a, b) => (b.bill_date?.getDateTime() ?? DateTime.now()).compareTo(a.bill_date?.getDateTime() ?? DateTime.now()));
+      
+      final usersList = staffRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      usersList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+
       setState(() {
-        _bills = List<Map<String, dynamic>>.from(res).map((r) => CompanyBill.fromMap(r)).toList();
-        _staffList = List<Map<String, dynamic>>.from(staffRes);
+        _bills = billsList.map((m) => CompanyBill(
+          id: m.id,
+          category: m.category ?? 'Other',
+          title: m.title ?? 'No Title',
+          amount: m.amount ?? 0.0,
+          billDate: m.bill_date?.getDateTime() ?? DateTime.now(),
+          status: m.status ?? 'Pending',
+          description: m.description,
+          spentBy: m.spent_by,
+          spentByName: m.spent_by_name,
+          createdAt: m.createdAt?.getDateTime(),
+        )).toList();
+        _staffList = usersList.map((u) => {
+          'id': u.id,
+          'name': u.name,
+          'role': u.role,
+        }).toList();
       });
     } catch (e) {
       _msg('Failed to fetch data: $e', false);
@@ -55,7 +80,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     String category = bill?.category ?? 'Electricity';
     DateTime selectedDate = bill?.billDate ?? DateTime.now();
     String status = bill?.status ?? 'Pending';
-    int? selectedStaffId = bill?.spentBy;
+    dynamic selectedStaffId = bill?.spentBy;
     String? selectedStaffName = bill?.spentByName;
 
     InputDecoration inputDec(String label, IconData icon) {
@@ -276,9 +301,32 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                   );
 
                   if (bill == null) {
-                    await _client.from('company_bills').insert(newBill.toMap());
+                    final model = amplify_models.CompanyBills(
+                      category: newBill.category,
+                      title: newBill.title,
+                      amount: newBill.amount,
+                      bill_date: amplify_models.TemporalDate(newBill.billDate),
+                      status: newBill.status,
+                      description: newBill.description,
+                      spent_by: newBill.spentBy?.toString(),
+                      spent_by_name: newBill.spentByName,
+                    );
+                    final req = ModelMutations.create(model);
+                    await Amplify.API.mutate(request: req).response;
                   } else {
-                    await _client.from('company_bills').update(newBill.toMap()).eq('id', bill.id!);
+                    final model = amplify_models.CompanyBills(
+                      id: newBill.id,
+                      category: newBill.category,
+                      title: newBill.title,
+                      amount: newBill.amount,
+                      bill_date: amplify_models.TemporalDate(newBill.billDate),
+                      status: newBill.status,
+                      description: newBill.description,
+                      spent_by: newBill.spentBy?.toString(),
+                      spent_by_name: newBill.spentByName,
+                    );
+                    final req = ModelMutations.update(model);
+                    await Amplify.API.mutate(request: req).response;
                   }
                   if (mounted) Navigator.pop(context);
                   _fetchBills();
@@ -302,7 +350,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     );
   }
 
-  Future<void> _delete(int id) async {
+  Future<void> _delete(String id) async {
     final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
       title: const Text('Confirm Delete'),
       content: const Text('Remove this bill record?'),
@@ -313,7 +361,8 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     ));
     if (ok == true) {
       try {
-        await _client.from('company_bills').delete().eq('id', id);
+        final req = ModelMutations.deleteById(amplify_models.CompanyBills.classType, amplify_models.CompanyBillsModelIdentifier(id: id));
+        await Amplify.API.mutate(request: req).response;
         _fetchBills();
         _msg('Removed', true);
       } catch (e) { _msg('Error: $e', false); }
@@ -488,7 +537,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
 
     return InkWell(
         onTap: () => _showForm(bill),
-        onLongPress: () => _delete(bill.id!),
+        onLongPress: () => _delete(bill.id.toString()),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -667,7 +716,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                             title: Text(s['name'] ?? 'Unknown'),
                             subtitle: Text(s['role']?.toString().toUpperCase() ?? '', style: const TextStyle(fontSize: 10)),
                             onTap: () => Navigator.pop(context, {
-                              'id': int.tryParse(s['id'].toString()),
+                              'id': s['id'],
                               'name': s['name']
                             }),
                           );

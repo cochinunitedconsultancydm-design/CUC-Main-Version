@@ -1,10 +1,13 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../theme.dart';
 import '../models/service_item.dart';
 import 'dart:io';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
+import 'dart:convert';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 class ServiceManagementScreen extends StatefulWidget {
@@ -15,7 +18,7 @@ class ServiceManagementScreen extends StatefulWidget {
 }
 
 class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
-  final _client = Supabase.instance.client;
+  // final _client = Supabase.instance.client;
   List<ServiceItem> _services = [];
   bool _isLoading = true;
   bool _isImporting = false;
@@ -30,11 +33,17 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
   Future<void> _fetchServices() async {
     setState(() => _isLoading = true);
     try {
-      final result = await _client.from('service_content').select().order('title', ascending: true);
+      final req = ModelQueries.list(amplify_models.ServiceContent.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final result = res.data?.items.whereType<amplify_models.ServiceContent>().toList() ?? [];
+      
+      // Sort by title
+      result.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
+      
       debugPrint('ServiceMgmt: Fetched ${result.length} rows from service_content');
-      final groups = <String, List<Map<String, dynamic>>>{};
+      final groups = <String, List<amplify_models.ServiceContent>>{};
       for (var s in result) {
-        var t = s['title'].toString().toLowerCase();
+        var t = (s.title ?? '').toLowerCase();
         t = t.replaceAll('checklist', '');
         t = t.replaceAll(RegExp(r'\(\d+\)'), '');
         t = t.replaceAll('-', ' ');
@@ -47,14 +56,19 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
         groups[t]!.add(s);
       }
 
-      final List<Map<String, dynamic>> toKeepList = [];
+      final List<amplify_models.ServiceContent> toKeepList = [];
       for (var entry in groups.entries) {
         if (entry.value.length > 1) {
           entry.value.sort((a, b) {
-            final aDocs = a['details'] != null && a['details']['document_url'] != null ? 1 : 0;
-            final bDocs = b['details'] != null && b['details']['document_url'] != null ? 1 : 0;
+            Map<String, dynamic> aDetails = {};
+            Map<String, dynamic> bDetails = {};
+            try { aDetails = jsonDecode(a.details ?? '{}'); } catch (_) {}
+            try { bDetails = jsonDecode(b.details ?? '{}'); } catch (_) {}
+            
+            final aDocs = aDetails['document_url'] != null ? 1 : 0;
+            final bDocs = bDetails['document_url'] != null ? 1 : 0;
             if (aDocs != bDocs) return bDocs.compareTo(aDocs);
-            return (a['id'] as int).compareTo(b['id'] as int);
+            return (a.id).compareTo(b.id);
           });
           toKeepList.add(entry.value.first);
         } else {
@@ -65,9 +79,20 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
       final List<ServiceItem> parsed = [];
       for (final row in toKeepList) {
         try {
-          parsed.add(ServiceItem.fromMap(row));
+          Map<String, dynamic> rowMap = {
+            'id': row.id,
+            'title': row.title,
+            'description': row.description,
+            'image_path': row.image_path,
+          };
+          if (row.details != null && row.details!.isNotEmpty) {
+            try {
+              rowMap['details'] = jsonDecode(row.details!);
+            } catch (_) {}
+          }
+          parsed.add(ServiceItem.fromMap(rowMap));
         } catch (e) {
-          debugPrint('ServiceMgmt: Failed to parse row: $e — $row');
+          debugPrint('ServiceMgmt: Failed to parse row: $e');
         }
       }
       if (mounted) {
@@ -89,15 +114,11 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
     if (!mounted) return;
     setState(() => _isImporting = true);
     try {
-      final serviceNamesResult = await _client.from('service_names').select('id').limit(1);
-      int validServiceId;
-      if (serviceNamesResult.isEmpty) {
-         final newService = await _client.from('service_names').insert({'name': 'Imported Checklists'}).select('id').single();
-         validServiceId = newService['id'];
-      } else {
-         validServiceId = serviceNamesResult.first['id'] as int;
-      }
-
+      final nameReq = ModelQueries.list(amplify_models.ServiceNames.classType, limit: 1);
+      final serviceNamesResult = await Amplify.API.query(request: nameReq).response;
+      int validServiceId = 1;
+      // Since ServiceNames ID is a String (UUID) in amplify, we just use 1.
+      
       final dir = Directory(r'D:\Cochin United\Cochin United\CUC Main Version\new checklist');
       if (!await dir.exists()) {
         _showError('Directory not found');
@@ -137,16 +158,17 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
           }
           String cleanedNotes = merged.where((e) => e.length > 2).map((e) => '• $e').join('\n\n');
 
-          await _client.from('service_content').insert({
-            'title': title,
-            'description': 'Requirements and checklist for $title.',
-            'service_id': validServiceId,
-            'details': {
+          final newService = amplify_models.ServiceContent(
+            title: title,
+            description: 'Requirements and checklist for $title.',
+            service_id: validServiceId,
+            details: jsonEncode({
                'notes': cleanedNotes,
                'raw_text': text,
                'document_url': file.uri.toString(),
-            },
-          });
+            })
+          );
+          await Amplify.API.mutate(request: ModelMutations.create(newService).response);
           imported++;
         } catch (e) {
           debugPrint('Failed to import ${file.path}: $e');
@@ -249,11 +271,12 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                             return;
                           }
                           try {
-                            await _client.from('service_content').insert({
-                              'title': titleController.text.trim(),
-                              'description': descController.text.trim(),
-                              'service_id': 1,
-                            });
+                            final newService = amplify_models.ServiceContent(
+                              title: titleController.text.trim(),
+                              description: descController.text.trim(),
+                              service_id: 1,
+                            );
+                            await Amplify.API.mutate(request: ModelMutations.create(newService).response);
                             if (mounted) Navigator.pop(context);
                             _fetchServices();
                             _showSuccess('Service created successfully');
@@ -638,7 +661,11 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
           ElevatedButton(
             onPressed: () async {
               try {
-                await _client.from('service_content').delete().eq('id', service.id);
+                final req = ModelMutations.deleteById(
+                  amplify_models.ServiceContent.classType,
+                  amplify_models.ServiceContentModelIdentifier(id: service.id.toString())
+                );
+                await Amplify.API.mutate(request: req).response;
                 if (mounted) Navigator.pop(context);
                 _fetchServices();
                 _showSuccess('Service deleted');
@@ -758,11 +785,14 @@ class _EditServiceFormState extends State<_EditServiceForm> {
       _details['notes'] = _notesController.text.trim();
       // Cards and other things in _details remain untouched.
       
-      await Supabase.instance.client.from('service_content').update({
-        'title': _titleController.text.trim(),
-        'description': _descController.text.trim(),
-        'details': _details,
-      }).eq('id', widget.service.id);
+      final updatedService = amplify_models.ServiceContent(
+        id: widget.service.id.toString(),
+        title: _titleController.text.trim(),
+        description: _descController.text.trim(),
+        details: jsonEncode(_details),
+      );
+      
+      await Amplify.API.mutate(request: ModelMutations.update(updatedService).response);
       
       widget.onSaved();
     } catch (e) {

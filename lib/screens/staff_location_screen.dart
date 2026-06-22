@@ -1,7 +1,9 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import 'package:intl/intl.dart';
 import '../theme.dart';
 
@@ -17,7 +19,7 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
   List<Map<String, dynamic>> _staffLocations = [];
   bool _isLoading = true;
   
-  int? _selectedUserId;
+  dynamic _selectedUserId;
   List<LatLng> _selectedUserRoute = [];
   DateTime _selectedDate = DateTime.now();
 
@@ -30,13 +32,33 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
   Future<void> _fetchLocations() async {
     setState(() => _isLoading = true);
     try {
-      final res = await Supabase.instance.client
-          .from('staff_locations')
-          .select('*, users(name, role)');
-      
+      final uReq = ModelQueries.list(amplify_models.Users.classType);
+      final uRes = await Amplify.API.query(request: uReq).response;
+      final users = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      final userMap = {for (var u in users) u.id.toString(): u};
+
+      final lReq = ModelQueries.list(amplify_models.StaffLocations.classType);
+      final lRes = await Amplify.API.query(request: lReq).response;
+      final locations = lRes.data?.items.whereType<amplify_models.StaffLocations>().toList() ?? [];
+
+      final List<Map<String, dynamic>> combined = locations.map((loc) {
+        final u = userMap[loc.user_id?.toString()];
+        return {
+          'id': loc.id,
+          'user_id': loc.user_id,
+          'latitude': loc.latitude,
+          'longitude': loc.longitude,
+          'updated_at': loc.updated_at,
+          'users': u != null ? {
+            'name': u.name,
+            'role': u.role,
+          } : null,
+        };
+      }).toList();
+
       if (mounted) {
         setState(() {
-          _staffLocations = List<Map<String, dynamic>>.from(res);
+          _staffLocations = combined;
           _isLoading = false;
         });
 
@@ -64,7 +86,7 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
     }
   }
 
-  Future<void> _fetchUserRoute(int userId) async {
+  Future<void> _fetchUserRoute(dynamic userId) async {
     setState(() {
       _selectedUserId = userId;
       _selectedUserRoute = [];
@@ -74,18 +96,28 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
       final startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
       final endOfDay = startOfDay.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
       
-      final res = await Supabase.instance.client
-          .from('location_history')
-          .select()
-          .eq('user_id', userId)
-          .gte('recorded_at', startOfDay.toUtc().toIso8601String())
-          .lte('recorded_at', endOfDay.toUtc().toIso8601String())
-          .order('recorded_at', ascending: true);
+      final req = ModelQueries.list(amplify_models.LocationHistory.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final allHist = res.data?.items.whereType<amplify_models.LocationHistory>().toList() ?? [];
+      
+      final filtered = allHist.where((h) {
+        if (h.user_id?.toString() != userId?.toString()) return false;
+        if (h.recorded_at == null) return false;
+        final t = DateTime.tryParse(h.recorded_at!)?.toLocal();
+        if (t == null) return false;
+        return t.isAfter(startOfDay) && t.isBefore(endOfDay);
+      }).toList();
+      
+      filtered.sort((a, b) {
+        final ta = DateTime.tryParse(a.recorded_at!) ?? DateTime(2000);
+        final tb = DateTime.tryParse(b.recorded_at!) ?? DateTime(2000);
+        return ta.compareTo(tb);
+      });
           
       if (mounted) {
         setState(() {
-          _selectedUserRoute = (res as List).map((row) {
-            return LatLng(row['latitude'] as double, row['longitude'] as double);
+          _selectedUserRoute = filtered.map((row) {
+            return LatLng(row.latitude ?? 0.0, row.longitude ?? 0.0);
           }).toList();
         });
       }
@@ -159,7 +191,7 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
                                     final user = loc['users'] as Map<String, dynamic>?;
                                     final name = user?['name'] ?? 'Unknown Staff';
                                     final role = user?['role'] ?? 'Staff';
-                                    String dateString = loc['updated_at'];
+                                    String dateString = loc['updated_at']?.toString() ?? DateTime.now().toIso8601String();
                                     if (!dateString.endsWith('Z') && !dateString.contains('+')) {
                                       dateString += 'Z';
                                     }
@@ -214,7 +246,7 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
                                       selected: _selectedUserId == loc['user_id'],
                                       selectedTileColor: Colors.green.withValues(alpha: 0.1),
                                       onTap: () {
-                                        _fetchUserRoute(loc['user_id'] as int);
+                                        _fetchUserRoute(loc['user_id']);
                                         _mapController.move(
                                           LatLng(loc['latitude'] as double, loc['longitude'] as double),
                                           15.0,
@@ -256,6 +288,10 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
                         markers: _staffLocations.map((loc) {
                           final user = loc['users'] as Map<String, dynamic>?;
                           final name = user?['name'] ?? 'Staff';
+                          String dateStr = loc['updated_at']?.toString() ?? DateTime.now().toIso8601String();
+                          if (!dateStr.endsWith('Z') && !dateStr.contains('+')) {
+                            dateStr += 'Z';
+                          }
                           return Marker(
                             point: LatLng(loc['latitude'] as double, loc['longitude'] as double),
                             width: 80,
@@ -269,7 +305,7 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
                                     borderRadius: BorderRadius.circular(4),
                                     boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
                                     border: Border.all(
-                                      color: DateTime.now().difference(DateTime.parse(loc['updated_at']).toLocal()).inMinutes < 15 
+                                      color: DateTime.now().difference(DateTime.parse(dateStr).toLocal()).inMinutes < 15 
                                           ? Colors.green 
                                           : Colors.grey,
                                       width: 1.5,
@@ -281,7 +317,7 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                Icon(Icons.location_on, color: DateTime.now().difference(DateTime.parse(loc['updated_at']).toLocal()).inMinutes < 15 ? Colors.green : Colors.grey, size: 40),
+                                Icon(Icons.location_on, color: DateTime.now().difference(DateTime.parse(dateStr).toLocal()).inMinutes < 15 ? Colors.green : Colors.grey, size: 40),
                               ],
                             ),
                           );
@@ -295,3 +331,4 @@ class _StaffLocationScreenState extends State<StaffLocationScreen> {
     );
   }
 }
+

@@ -1,7 +1,9 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import '../models/task.dart';
 import '../theme.dart';
 import '../services/notification_service.dart';
@@ -11,7 +13,7 @@ class TaskDetailScreen extends StatefulWidget {
   final Task task;
   final bool isMyTask;
   final VoidCallback onStatusUpdate;
-  final int? currentUserId;
+  final dynamic currentUserId;
 
   const TaskDetailScreen({
     super.key,
@@ -26,7 +28,6 @@ class TaskDetailScreen extends StatefulWidget {
 }
 
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
-  final _client = Supabase.instance.client;
   late Task _task;
   bool _isLoading = false;
 
@@ -39,73 +40,104 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   Future<void> _updateStatus(String newStatus) async {
     setState(() => _isLoading = true);
     try {
-      Map<String, dynamic> updateData = {
-        'status': newStatus,
-        'updated_at': DateTime.now().toIso8601String(),
-      };
-      
-      // Clean description when resuming from Adjourned status
-      if (newStatus == 'In Progress' && _task.status == 'Adjourned') {
-        final parsed = AdjournmentDetails.parse(_task.description);
-        updateData['description'] = parsed.cleanDescription;
-      }
+      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(_task.id.toString()));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data?.items.isNotEmpty == true) {
+        final existingTask = res.data!.items.first!;
+        
+        String? desc = existingTask.description;
+        // Clean description when resuming from Adjourned status
+        if (newStatus == 'In Progress' && _task.status == 'Adjourned') {
+          final parsed = AdjournmentDetails.parse(_task.description);
+          desc = parsed.cleanDescription;
+        }
 
-      await _client.from('tasks').update(updateData).eq('id', _task.id!);
-      
-      final res = await _client
-          .from('tasks')
-          .select('*, assigned_by_user:users!tasks_assigned_by_fkey(name), assigned_to_user:users!tasks_assigned_to_fkey(name)')
-          .eq('id', _task.id!)
-          .single();
-
-      final assignedByMap = res['assigned_by_user'] as Map<String, dynamic>?;
-      final assignedToMap = res['assigned_to_user'] as Map<String, dynamic>?;
-      final updatedTask = Task.fromMap({
-        ...res,
-        'assigned_by_name': assignedByMap?['name'],
-        'assigned_to_name': assignedToMap?['name'],
-      });
-      
-      // Notify creator on completion
-      if (newStatus == 'Completed' && updatedTask.assignedBy != null) {
-        await NotificationService().sendNotification(
-          userId: updatedTask.assignedBy!,
-          title: 'Task Completed',
-          message: 'Your task "${updatedTask.title}" has been completed by ${updatedTask.assignedToName}.',
-          type: 'completion',
-          taskId: updatedTask.id,
+        final updatedAmplifyTask = existingTask.copyWith(
+          status: newStatus,
+          description: desc,
         );
-      } else if (newStatus == 'In Progress' && updatedTask.assignedBy != null) {
-        await NotificationService().sendNotification(
-          userId: updatedTask.assignedBy!,
-          title: 'Task Started',
-          message: '${updatedTask.assignedToName} has started work on "${updatedTask.title}".',
-          type: 'info',
-          taskId: updatedTask.id,
-        );
-      }
 
-      setState(() {
-        _task = updatedTask;
-      });
+        await Amplify.API.mutate(request: ModelMutations.update(updatedAmplifyTask).response);
 
-      // Notify the assigner if someone else updates the status
-      if (_task.assignedBy != null && _task.assignedBy != widget.currentUserId) {
-        await NotificationService().sendNotification(
-          userId: _task.assignedBy!,
-          title: 'Task Status Updated',
-          message: 'Task "${_task.title}" is now ${_task.status} by ${_task.assignedToName ?? "Staff"}',
-          type: 'status_update',
-          taskId: _task.id,
-        );
+        // Re-fetch to get joined user data for UI mapping
+        final fetchedUpdatedTask = await _fetchTask(_task.id.toString());
+        if (fetchedUpdatedTask != null) {
+          // Notify creator on completion
+          if (newStatus == 'Completed' && fetchedUpdatedTask.assignedBy != null) {
+            await NotificationService().notifyStakeholders(
+              taskId: fetchedUpdatedTask.id,
+              title: 'Task Completed',
+              message: 'Your task "${fetchedUpdatedTask.title}" has been completed by ${fetchedUpdatedTask.assignedToName}.',
+              type: 'completion',
+            );
+          } else if (newStatus == 'In Progress' && fetchedUpdatedTask.assignedBy != null) {
+            await NotificationService().notifyStakeholders(
+              taskId: fetchedUpdatedTask.id,
+              title: 'Task Started',
+              message: '${fetchedUpdatedTask.assignedToName} has started work on "${fetchedUpdatedTask.title}".',
+              type: 'info',
+            );
+          }
+
+          if (mounted) {
+            setState(() {
+              _task = fetchedUpdatedTask;
+            });
+          }
+
+          // Notify the assigner if someone else updates the status
+          if (_task.assignedBy != null && _task.assignedBy.toString() != widget.currentUserId.toString()) {
+            await NotificationService().notifyStakeholders(
+              taskId: _task.id,
+              title: 'Task Status Updated',
+              message: 'Task "${_task.title}" is now ${_task.status} by ${_task.assignedToName ?? "Staff"}',
+              type: 'status_update',
+            );
+          }
+        }
       }
       
       widget.onStatusUpdate();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<Task?> _fetchTask(String id) async {
+    final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(id));
+    final res = await Amplify.API.query(request: req).response;
+    if (res.data?.items.isNotEmpty == true) {
+      final t = res.data!.items.first!;
+      
+      // Fetch users
+      final uReq = ModelQueries.list(amplify_models.Users.classType);
+      final uRes = await Amplify.API.query(request: uReq).response;
+      final users = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      final userMap = {for (var u in users) u.id.toString(): u};
+      
+      final assignedByUser = userMap[t.assigned_by?.toString()];
+      final assignedToUser = userMap[t.assigned_to?.toString()];
+      
+      return Task.fromMap({
+        'id': t.id,
+        'title': t.title,
+        'description': t.description,
+        'assigned_by': t.assigned_by,
+        'assigned_to': t.assigned_to,
+        'status': t.status,
+        'due_date': t.due_date,
+        'created_at': t.createdAt?.getDateTimeInUtc().toIso8601String(),
+        'updated_at': t.updatedAt?.getDateTimeInUtc().toIso8601String(),
+        'location': t.location,
+        'client_name': t.client_name,
+        'phone_number': t.phone_number,
+        'assigned_by_name': assignedByUser?.name,
+        'assigned_to_name': assignedToUser?.name,
+      });
+    }
+    return null;
   }
 
   Future<void> _launchUrl(String urlString) async {
@@ -484,10 +516,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                           
                                           setState(() => _isLoading = true);
                                           try {
-                                            await _client.from('tasks').update({
-                                              'description': newDesc,
-                                              'updated_at': DateTime.now().toIso8601String(),
-                                            }).eq('id', _task.id!);
+                                            final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(_task.id.toString()));
+                                            final res = await Amplify.API.query(request: req).response;
+                                            if (res.data?.items.isNotEmpty == true) {
+                                              final existingTask = res.data!.items.first!;
+                                              final updatedAmplifyTask = existingTask.copyWith(
+                                                description: newDesc,
+                                              );
+                                              await Amplify.API.mutate(request: ModelMutations.update(updatedAmplifyTask).response);
+                                            }
                                             
                                             await _updateStatus('Adjourned');
                                           } catch (e) {

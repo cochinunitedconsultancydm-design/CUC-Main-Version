@@ -1,3 +1,4 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -8,7 +9,8 @@ import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
 import '../services/excel_service.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart';
 import '../widgets/premium_app_bar.dart';
 
 class AccountantDashboardScreen extends StatefulWidget {
@@ -21,7 +23,6 @@ class AccountantDashboardScreen extends StatefulWidget {
 }
 
 class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
-  final _client = Supabase.instance.client;
   final _excel = ExcelService();
   bool _isLoading = true;
   String _userName = 'Accountant';
@@ -55,61 +56,64 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
     try {
       final name = await AuthService().getUserName();
       
-      // Revenue
-      final revenueRes = await _client.from('billings').select('amount').eq('status', 'Received').eq('type', 'INVOICE');
+      final reqRev = ModelQueries.list(Billings.classType, where: Billings.STATUS.eq('Received').and(Billings.TYPE.eq('INVOICE')));
+      final resRev = await Amplify.API.query(request: reqRev).response;
+      final revenueRes = resRev.data?.items ?? [];
       double totalRev = 0;
       for (var r in revenueRes) {
-        final amt = r['amount']?.toString() ?? '0';
+        if (r == null) continue;
+        final amt = r.amount?.toString() ?? '0';
         totalRev += double.tryParse(amt.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
       }
 
-      // Expenses
-      final expenseRes = await _client.from('company_bills').select('amount');
+      final reqExp = ModelQueries.list(CompanyBills.classType);
+      final resExp = await Amplify.API.query(request: reqExp).response;
+      final expenseRes = resExp.data?.items ?? [];
       double totalExp = 0;
       for (var r in expenseRes) {
-        totalExp += double.tryParse(r['amount'].toString()) ?? 0.0;
+        if (r == null) continue;
+        totalExp += r.amount ?? 0.0;
       }
 
-      // Pending Invoices
-      final pendingInvCount = await _client.from('billings').select('id').neq('status', 'Received').eq('type', 'INVOICE');
-      final pendingBillCount = await _client.from('company_bills').select('id').neq('status', 'Paid');
-      final clientCount = await _client.from('clients').select('id');
+      final reqPendingInv = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Received').and(Billings.TYPE.eq('INVOICE')));
+      final resPendingInv = await Amplify.API.query(request: reqPendingInv).response;
+      final pendingInvCount = resPendingInv.data?.items ?? [];
 
-      // Outstanding
-      final outstandingRes = await _client.from('billings').select('amount').neq('status', 'Received').eq('type', 'INVOICE');
+      final reqPendingBill = ModelQueries.list(CompanyBills.classType, where: CompanyBills.STATUS.ne('Paid'));
+      final resPendingBill = await Amplify.API.query(request: reqPendingBill).response;
+      final pendingBillCount = resPendingBill.data?.items ?? [];
+
+      final reqClient = ModelQueries.list(Clients.classType);
+      final resClient = await Amplify.API.query(request: reqClient).response;
+      final clientCount = resClient.data?.items ?? [];
+
       double totalOut = 0;
-      for (var r in outstandingRes) {
-        final amt = r['amount']?.toString() ?? '0';
+      for (var r in pendingInvCount) {
+        if (r == null) continue;
+        final amt = r.amount?.toString() ?? '0';
         totalOut += double.tryParse(amt.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
       }
       
-      // Fetch Clients for phone numbers (since billings doesn't have a direct join)
-      final clientsRes = await _client.from('clients').select('name, phone');
       final Map<String, String> clientPhones = {
-        for (var c in clientsRes) c['name'].toString(): c['phone']?.toString() ?? ''
+        for (var c in clientCount) if (c != null && c.name != null) c.name!: c.phone ?? ''
       };
       
-      // Breakdown
-      final allBills = await _client.from('company_bills').select('category, amount');
       final Map<String, double> breakdownMap = {};
-      for (var b in allBills) {
-        final cat = b['category']?.toString() ?? 'Other';
-        final amt = double.tryParse(b['amount'].toString()) ?? 0.0;
+      for (var b in expenseRes) {
+        if (b == null) continue;
+        final cat = b.category ?? 'Other';
+        final amt = b.amount ?? 0.0;
         breakdownMap[cat] = (breakdownMap[cat] ?? 0) + amt;
       }
       final sortedBreakdown = breakdownMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
       final breakdownList = sortedBreakdown.take(5).map((e) => {'category': e.key, 'total': e.value}).toList();
 
-      // Overdue
       final fifteenDaysAgo = DateTime.now().subtract(const Duration(days: 15)).toIso8601String();
-      final overdueRes = await _client
-          .from('billings')
-          .select('id, invoice_no, client_name, amount, created_at')
-          .neq('status', 'Received')
-          .eq('type', 'INVOICE')
-          .lt('created_at', fifteenDaysAgo)
-          .order('created_at', ascending: true)
-          .limit(3);
+      final reqOverdue = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Received').and(Billings.TYPE.eq('INVOICE')).and(Billings.CREATED_AT.lt(fifteenDaysAgo)));
+      final resOverdue = await Amplify.API.query(request: reqOverdue).response;
+      var overdueList = (resOverdue.data?.items ?? []).where((e) => e != null).cast<Billings>().toList();
+      overdueList.sort((a, b) => (a.createdAt?.toString() ?? '').compareTo(b.createdAt?.toString() ?? ''));
+      final overdueRes = overdueList.take(3).toList();
 
       if (mounted) {
         setState(() {
@@ -123,13 +127,13 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
             'outstandingBalance': totalOut,
           };
           _expenseBreakdown = breakdownList;
-          _overdueInvoices = List<Map<String, dynamic>>.from(overdueRes).map((r) => {
-            'id': r['id'],
-            'no': r['invoice_no'],
-            'client': r['client_name'],
-            'amount': r['amount'],
-            'date': r['created_at'],
-            'phone': clientPhones[r['client_name']]
+          _overdueInvoices = overdueRes.map((r) => {
+            'id': r.id,
+            'no': r.invoiceNo,
+            'client': r.clientName,
+            'amount': r.amount,
+            'date': r.createdAt?.toString(),
+            'phone': clientPhones[r.clientName ?? '']
           }).toList();
           _isLoading = false;
         });

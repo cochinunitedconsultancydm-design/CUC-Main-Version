@@ -1,5 +1,5 @@
 class Checklist {
-  final int? id;
+  final dynamic id;
   final String title;
   final String? description;
   final int? managerId;
@@ -16,7 +16,7 @@ class Checklist {
   final String? responsibleName;
 
   // Connected Work
-  final int? dealId;
+  final dynamic dealId;
   final String? dealName;
 
   Checklist({
@@ -39,7 +39,7 @@ class Checklist {
 
   factory Checklist.fromMap(Map<String, dynamic> map) {
     final rawDesc = map['description'] as String? ?? '';
-    int? parsedDealId;
+    dynamic parsedDealId;
     String? parsedDealName;
     String cleanDesc = rawDesc;
 
@@ -51,7 +51,7 @@ class Checklist {
 
     final match = regExp.firstMatch(rawDesc);
     if (match != null) {
-      parsedDealId = int.tryParse(match.group(1) ?? '');
+      parsedDealId = match.group(1);
       parsedDealName = match.group(2)?.trim();
       final index = rawDesc.indexOf('[CONNECTED_WORK]');
       if (index != -1) {

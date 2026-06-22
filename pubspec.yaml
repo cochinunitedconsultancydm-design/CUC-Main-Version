@@ -44,7 +44,10 @@ dependencies:
   pdf: ^3.11.1
   printing: ^5.14.3
   encrypt: ^5.0.3
-  supabase_flutter: ^2.12.4
+  amplify_flutter: ^2.4.1
+  amplify_api: ^2.4.1
+  amplify_auth_cognito: ^2.4.1
+  amplify_storage_s3: ^2.4.1
   window_manager: ^0.5.1
   url_launcher: ^6.3.2
   flutter_local_notifications: ^21.0.0
@@ -61,7 +64,6 @@ dependencies:
   googleapis_auth: ^2.3.2
   extension_google_sign_in_as_googleapis_auth: ^3.0.0
   webview_windows: 0.4.0
-  supabase: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

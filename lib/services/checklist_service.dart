@@ -1,140 +1,213 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/checklist.dart';
+import 'package:amplify_api/amplify_api.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart';
+import '../models/checklist.dart' as old;
 import 'auth_service.dart';
 import 'notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ChecklistService {
-  final _client = Supabase.instance.client;
 
-  Future<List<Checklist>> getChecklistsForUser(int userId, {String? date}) async {
+  Future<List<old.Checklist>> getChecklistsForUser(int userId, {String? date}) async {
     final targetDate = date ?? DateTime.now().toIso8601String().split('T')[0];
     
-    final response = await _client
-        .from('checklists')
-        .select('*, manager:users!manager_id(name), responsible:users!responsible_id(name)')
-        .eq('responsible_id', userId)
-        .or('due_date.eq.$targetDate,and(status.eq.Pending,due_date.lt.$targetDate)')
-        .order('created_at', ascending: false);
-    
-    return response.map((map) {
-      final manager = map['manager'] as Map<String, dynamic>?;
-      final responsible = map['responsible'] as Map<String, dynamic>?;
-      if (manager != null) map['manager_name'] = manager['name'];
-      if (responsible != null) map['responsible_name'] = responsible['name'];
-      return Checklist.fromMap(map);
-    }).toList();
+    try {
+      final req = ModelQueries.list(
+        Checklists.classType,
+        where: Checklists.RESPONSIBLE_ID.eq(userId).and(
+          Checklists.DUE_DATE.eq(targetDate).or(Checklists.STATUS.eq('Pending').and(Checklists.DUE_DATE.lt(targetDate)))
+        )
+      );
+      final res = await Amplify.API.query(request: req).response;
+      var items = res.data?.items.where((e) => e != null).cast<Checklists>().toList() ?? [];
+      
+      items.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
+      
+      List<old.Checklist> mapped = [];
+      for (var c in items) {
+        String? mName, rName;
+        if (c.manager_id != null) {
+          final mReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.manager_id));
+          final mRes = await Amplify.API.query(request: mReq).response;
+          if (mRes.data?.items.isNotEmpty == true) mName = mRes.data!.items.first?.name;
+        }
+        if (c.responsible_id != null) {
+          final rReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.responsible_id));
+          final rRes = await Amplify.API.query(request: rReq).response;
+          if (rRes.data?.items.isNotEmpty == true) rName = rRes.data!.items.first?.name;
+        }
+        mapped.add(old.Checklist.fromMap({
+          ...c.toJson(),
+          'manager_name': mName,
+          'responsible_name': rName,
+        }));
+      }
+      return mapped;
+    } catch (e) {
+      safePrint('Error getChecklistsForUser: $e');
+      return [];
+    }
   }
 
-  Future<List<Checklist>> getAllChecklists({String? date}) async {
+  Future<List<old.Checklist>> getAllChecklists({String? date}) async {
     final targetDate = date ?? DateTime.now().toIso8601String().split('T')[0];
-    
-    final response = await _client
-        .from('checklists')
-        .select('*, manager:users!manager_id(name), responsible:users!responsible_id(name)')
-        .or('due_date.eq.$targetDate,and(status.eq.Pending,due_date.lt.$targetDate)')
-        .order('created_at', ascending: false);
-    
-    return response.map((map) {
-      final manager = map['manager'] as Map<String, dynamic>?;
-      final responsible = map['responsible'] as Map<String, dynamic>?;
-      if (manager != null) map['manager_name'] = manager['name'];
-      if (responsible != null) map['responsible_name'] = responsible['name'];
-      return Checklist.fromMap(map);
-    }).toList();
+    try {
+      final req = ModelQueries.list(
+        Checklists.classType,
+        where: Checklists.DUE_DATE.eq(targetDate).or(Checklists.STATUS.eq('Pending').and(Checklists.DUE_DATE.lt(targetDate)))
+      );
+      final res = await Amplify.API.query(request: req).response;
+      var items = res.data?.items.where((e) => e != null).cast<Checklists>().toList() ?? [];
+      items.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
+      
+      List<old.Checklist> mapped = [];
+      for (var c in items) {
+        String? mName, rName;
+        if (c.manager_id != null) {
+          final mReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.manager_id));
+          final mRes = await Amplify.API.query(request: mReq).response;
+          if (mRes.data?.items.isNotEmpty == true) mName = mRes.data!.items.first?.name;
+        }
+        if (c.responsible_id != null) {
+          final rReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.responsible_id));
+          final rRes = await Amplify.API.query(request: rReq).response;
+          if (rRes.data?.items.isNotEmpty == true) rName = rRes.data!.items.first?.name;
+        }
+        mapped.add(old.Checklist.fromMap({
+          ...c.toJson(),
+          'manager_name': mName,
+          'responsible_name': rName,
+        }));
+      }
+      return mapped;
+    } catch (e) {
+      safePrint('Error getAllChecklists: $e');
+      return [];
+    }
   }
 
-  Future<int> createChecklist(Checklist checklist) async {
+  Future<dynamic> createChecklist(old.Checklist checklist) async {
     final prefs = await SharedPreferences.getInstance();
     final managerId = prefs.getInt('current_user_id');
     
     final Map<String, dynamic> values = checklist.toMap();
-    values.remove('id');
-    if (values['manager_id'] == null) values['manager_id'] = managerId;
-    if (values['due_date'] == null) values['due_date'] = DateTime.now().toIso8601String().split('T')[0];
-
-    final response = await _client
-        .from('checklists')
-        .insert(values)
-        .select('id')
-        .single();
+    final mId = values['manager_id'] ?? managerId;
+    final dDate = values['due_date'] ?? DateTime.now().toIso8601String().split('T')[0];
     
-    final checklistId = response['id'] as int;
+    final newChecklist = Checklists(
+      title: values['title'] ?? '',
+      description: values['description'],
+      manager_id: mId,
+      responsible_id: values['responsible_id'],
+      status: values['status'] ?? 'Pending',
+      remarks: values['remarks'],
+      reason: values['reason'],
+      due_date: dDate,
+    );
 
-    if (checklist.responsibleId != null) {
-      final managerName = await AuthService().getUserName();
-      await NotificationService().sendNotification(
-        userId: checklist.responsibleId!,
-        title: "New Checklist Assigned",
-        message: "${managerName ?? 'Manager'} assigned you a new checklist: ${checklist.title}",
-        type: 'checklist',
-      );
+    try {
+      final res = await Amplify.API.mutate(request: ModelMutations.create(newChecklist).response).response;
+      final checklistId = res.data?.id;
+
+      if (checklist.responsibleId != null) {
+        final managerName = await AuthService().getUserName();
+        await NotificationService().sendNotification(
+          userId: checklist.responsibleId!,
+          title: "New Checklist Assigned",
+          message: "${managerName ?? 'Manager'} assigned you a new checklist: ${checklist.title}",
+          type: 'checklist',
+        );
+      }
+      return checklistId;
+    } catch (e) {
+      safePrint('Error createChecklist: $e');
+      throw e;
     }
-
-    return checklistId;
   }
 
-  Future<void> updateChecklistStatus(int id, String status, {String? remarks, String? reason, String? newDueDate, bool reassignToManager = false}) async {
-    final Map<String, dynamic> updateData = {
-      'status': status,
-      'updated_at': DateTime.now().toIso8601String(),
-    };
-    if (remarks != null) updateData['remarks'] = remarks;
-    if (reason != null) updateData['reason'] = reason;
-    if (newDueDate != null) updateData['due_date'] = newDueDate;
+  Future<void> updateChecklistStatus(dynamic id, String status, {String? remarks, String? reason, String? newDueDate, bool reassignToManager = false}) async {
+    try {
+      final req = ModelQueries.list(Checklists.classType, where: Checklists.ID.eq(id.toString()));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data?.items.isEmpty == true) return;
+      
+      final c = res.data!.items.first!;
+      int? respId = c.responsible_id;
+      if (reassignToManager && c.manager_id != null) {
+        respId = c.manager_id;
+      }
 
-    // Fetch existing checklist data if we need it for reassignment or notification
-    final checklistRes = await _client
-        .from('checklists')
-        .select('manager_id, title, responsible_id, users!responsible_id(name)')
-        .eq('id', id)
-        .single();
-    
-    final managerId = checklistRes['manager_id'] as int?;
-    final title = checklistRes['title'];
-    final responsibleName = checklistRes['users']?['name'] ?? 'Staff';
-
-    if (reassignToManager && managerId != null) {
-      updateData['responsible_id'] = managerId;
-    }
-
-    await _client
-        .from('checklists')
-        .update(updateData)
-        .eq('id', id);
-        
-    // Notify the manager
-    if (managerId != null) {
-      await NotificationService().sendNotification(
-        userId: managerId,
-        title: "Checklist $status",
-        message: "$responsibleName marked \"$title\" as $status${reassignToManager ? ' and assigned it back to you' : ''}.",
-        type: 'checklist_update',
+      final updated = c.copyWith(
+        status: status,
+        remarks: remarks,
+        reason: reason,
+        due_date: newDueDate,
+        responsible_id: respId,
       );
+      
+      await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+
+      if (c.manager_id != null) {
+        String responsibleName = 'Staff';
+        if (c.responsible_id != null) {
+          final rReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.responsible_id));
+          final rRes = await Amplify.API.query(request: rReq).response;
+          if (rRes.data?.items.isNotEmpty == true) responsibleName = rRes.data!.items.first?.name ?? 'Staff';
+        }
+
+        await NotificationService().sendNotification(
+          userId: c.manager_id!,
+          title: "Checklist $status",
+          message: "$responsibleName marked \"${c.title}\" as $status${reassignToManager ? ' and assigned it back to you' : ''}.",
+          type: 'checklist_update',
+        );
+      }
+    } catch (e) {
+      safePrint('Error updateChecklistStatus: $e');
+      throw e;
     }
   }
 
   Future<int> getPendingCountForUser(int userId) async {
     final today = DateTime.now().toIso8601String().split('T')[0];
-    final response = await _client
-        .from('checklists')
-        .select('id')
-        .eq('responsible_id', userId)
-        .eq('due_date', today)
-        .eq('status', 'Pending');
-    
-    return response.length;
+    try {
+      final req = ModelQueries.list(
+        Checklists.classType, 
+        where: Checklists.RESPONSIBLE_ID.eq(userId)
+          .and(Checklists.DUE_DATE.eq(today))
+          .and(Checklists.STATUS.eq('Pending'))
+      );
+      final res = await Amplify.API.query(request: req).response;
+      return res.data?.items.length ?? 0;
+    } catch (e) {
+      safePrint('Error getPendingCountForUser: $e');
+      return 0;
+    }
   }
 
   Future<List<Map<String, dynamic>>> getAllUsers() async {
-    final response = await _client
-        .from('users')
-        .select('id, name, username, role')
-        .order('name', ascending: true);
-    return List<Map<String, dynamic>>.from(response);
+    try {
+      final req = ModelQueries.list(Users.classType);
+      final res = await Amplify.API.query(request: req).response;
+      var items = res.data?.items.where((e) => e != null).cast<Users>().toList() ?? [];
+      items.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+      return items.map((u) => u.toJson()).toList();
+    } catch (e) {
+      safePrint('Error getAllUsers: $e');
+      return [];
+    }
   }
 
-  Future<void> deleteChecklist(int id) async {
-    await _client.from('checklists').delete().eq('id', id);
+  Future<void> deleteChecklist(dynamic id) async {
+    try {
+      final req = ModelQueries.list(Checklists.classType, where: Checklists.ID.eq(id.toString()));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data?.items.isNotEmpty == true) {
+        await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!).response);
+      }
+    } catch (e) {
+      safePrint('Error deleteChecklist: $e');
+      throw e;
+    }
   }
 }

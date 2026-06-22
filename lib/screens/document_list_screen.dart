@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:amplify_api/amplify_api.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import '../models/deal.dart';
 import '../services/deal_service.dart';
@@ -69,20 +71,23 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
     final docs = await GoogleDocsService.getDriveFiles();
     
     try {
-      final dealsResponse = await Supabase.instance.client.from('deals').select('name, drive_link').not('drive_link', 'is', null);
-      final clientsResponse = await Supabase.instance.client.from('client_documents').select('client_name, file_url').not('file_url', 'is', null);
+      final dealsReq = ModelQueries.list(amplify_models.Deals.classType);
+      final dealsRes = await Amplify.API.query(request: dealsReq).response;
+      
+      final clientsReq = ModelQueries.list(amplify_models.ClientDocuments.classType);
+      final clientsRes = await Amplify.API.query(request: clientsReq).response;
 
       final newDealMappings = <String, String>{};
-      for (var deal in dealsResponse) {
-        if (deal['drive_link'] != null && deal['drive_link'].toString().isNotEmpty) {
-          newDealMappings[deal['drive_link']] = deal['name'] ?? 'Unknown Work';
+      for (var deal in dealsRes.data?.items ?? []) {
+        if (deal != null && deal.drive_link != null && deal.drive_link!.isNotEmpty) {
+          newDealMappings[deal.drive_link!] = deal.name;
         }
       }
 
       final newClientMappings = <String, String>{};
-      for (var clientDoc in clientsResponse) {
-        if (clientDoc['file_url'] != null && clientDoc['file_url'].toString().isNotEmpty) {
-          newClientMappings[clientDoc['file_url']] = clientDoc['client_name'] ?? 'Unknown Client';
+      for (var clientDoc in clientsRes.data?.items ?? []) {
+        if (clientDoc != null && clientDoc.storage_path != null && clientDoc.storage_path!.isNotEmpty) {
+          newClientMappings[clientDoc.storage_path!] = clientDoc.client_name ?? 'Unknown Client';
         }
       }
 
@@ -342,7 +347,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
       if (mounted) setState(() => _isLoading = false);
 
       if (url != null) {
-        await _linkDocumentToSupabase(url, nameController.text, selectedClient, selectedDeal);
+        await _linkDocument(url, nameController.text, selectedClient, selectedDeal);
         _openUrl(url, nameController.text);
         _loadDocuments();
       } else {
@@ -355,14 +360,17 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
     }
   }
 
-  Future<void> _linkDocumentToSupabase(String url, String docName, Map<String, dynamic>? selectedClient, Deal? selectedDeal) async {
+  Future<void> _linkDocument(String url, String docName, Map<String, dynamic>? selectedClient, Deal? selectedDeal) async {
     // Link to Work/Deal if selected
     if (selectedDeal != null) {
       try {
-        await Supabase.instance.client
-            .from('deals')
-            .update({'drive_link': url})
-            .eq('id', selectedDeal.id!);
+        final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(selectedDeal.id.toString()));
+        final res = await Amplify.API.query(request: req).response;
+        final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
+        if (dealObj != null) {
+          final updatedDeal = dealObj.copyWith(drive_link: url);
+          await Amplify.API.mutate(request: ModelMutations.update(updatedDeal).response).response;
+        }
       } catch (e) {
         debugPrint('Failed to update deal: $e');
       }
@@ -371,16 +379,15 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
     // Link to Client if selected
     if (selectedClient != null) {
       try {
-        await Supabase.instance.client
-            .from('client_documents')
-            .insert({
-              'client_id': selectedClient['id'].toString(),
-              'client_name': selectedClient['name'],
-              'document_name': docName,
-              'storage_path': url, // Storing Google Doc URL
-              'og_copy': 'Original',
-              'remarks': 'Google Doc',
-            });
+        final newClientDoc = amplify_models.ClientDocuments(
+          client_id: selectedClient['id'].toString(),
+          client_name: selectedClient['name'],
+          document_name: docName,
+          storage_path: url,
+          og_copy: 'Original',
+          remarks: 'Google Doc',
+        );
+        await Amplify.API.mutate(request: ModelMutations.create(newClientDoc).response).response;
       } catch (e) {
         debugPrint('Failed to update client docs: $e');
       }
@@ -635,7 +642,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
           if (mounted) {
             setState(() => _isLoading = false);
             if (url != null) {
-              await _linkDocumentToSupabase(url, fileName, selectedClient, selectedDeal);
+              await _linkDocument(url, fileName, selectedClient, selectedDeal);
               _openUrl(url, fileName);
               _loadDocuments();
             } else {

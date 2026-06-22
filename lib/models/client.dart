@@ -1,5 +1,5 @@
 class Client {
-  final int? id;
+  final dynamic id;
   final String name;
   final String? email;
   final String? phone;

@@ -1,6 +1,8 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart';
 import 'package:window_manager/window_manager.dart';
 
 class TimeTrackingService with WindowListener {
@@ -18,9 +20,9 @@ class TimeTrackingService with WindowListener {
   String _status = 'Active'; // Active, Idle, Minimized, Offline
   
   bool _isTracking = false;
-  int? _currentSessionId;
+  dynamic _currentSessionId;
 
-  void startTracking(int sessionId) {
+  void startTracking(dynamic sessionId) {
     if (_isTracking) stopTracking();
     debugPrint('Started TimeTracking for session $sessionId');
     _isTracking = true;
@@ -89,22 +91,26 @@ class TimeTrackingService with WindowListener {
   Future<void> syncToDatabase({bool isLogout = false}) async {
     if (_currentSessionId == null) return;
 
-    final updateData = {
-      'status': _status,
-      'active_seconds': _activeSeconds,
-      'idle_seconds': _idleSeconds,
-    };
-
-    if (isLogout) {
-      updateData['logout_time'] = DateTime.now().toIso8601String();
-      updateData['is_active'] = false;
-    }
-
     try {
-      await Supabase.instance.client
-          .from('user_sessions')
-          .update(updateData)
-          .eq('id', _currentSessionId!);
+      final req = ModelQueries.list(UserSessions.classType, where: UserSessions.ID.eq(_currentSessionId.toString()));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data?.items.isNotEmpty == true) {
+        final session = res.data!.items.first!;
+        var updated = session.copyWith(
+          status: _status,
+          active_seconds: _activeSeconds,
+          idle_seconds: _idleSeconds,
+        );
+
+        if (isLogout) {
+          updated = updated.copyWith(
+            logout_time: DateTime.now().toIso8601String(),
+            is_active: false,
+          );
+        }
+
+        await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+      }
     } catch (e) {
       debugPrint('Error syncing time tracker: $e');
     }

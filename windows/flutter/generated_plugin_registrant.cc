@@ -6,9 +6,9 @@
 
 #include "generated_plugin_registrant.h"
 
-#include <app_links/app_links_plugin_c_api.h>
+#include <amplify_db_common/amplify_db_common_plugin.h>
+#include <connectivity_plus/connectivity_plus_windows_plugin.h>
 #include <geolocator_windows/geolocator_windows.h>
-#include <passkeys_windows/passkeys_windows_plugin.h>
 #include <permission_handler_windows/permission_handler_windows_plugin.h>
 #include <printing/printing_plugin.h>
 #include <screen_retriever_windows/screen_retriever_windows_plugin_c_api.h>
@@ -17,12 +17,12 @@
 #include <window_manager/window_manager_plugin.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
-  AppLinksPluginCApiRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("AppLinksPluginCApi"));
+  AmplifyDbCommonPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("AmplifyDbCommonPlugin"));
+  ConnectivityPlusWindowsPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("ConnectivityPlusWindowsPlugin"));
   GeolocatorWindowsRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("GeolocatorWindows"));
-  PasskeysWindowsPluginRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("PasskeysWindowsPlugin"));
   PermissionHandlerWindowsPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("PermissionHandlerWindowsPlugin"));
   PrintingPluginRegisterWithRegistrar(

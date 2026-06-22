@@ -1,40 +1,17 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'dart:io';
 import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import '../models/client.dart';
 import '../services/logging_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Uploads bytes to Supabase Storage in a fresh isolate.
-/// This bypasses the global HTTP state corruption caused by Supabase.initialize().
-Future<void> _isolateUploadBytes({
-  required String supabaseUrl,
-  required String serviceRoleKey,
-  required String storagePath,
-  required List<int> bytes,
-  required String contentType,
-}) async {
-  await Isolate.run(() async {
-    final httpClient = HttpClient();
-    final url = Uri.parse('$supabaseUrl/storage/v1/object/client-files/$storagePath');
-    final request = await httpClient.postUrl(url);
-    request.headers.set('Authorization', 'Bearer $serviceRoleKey');
-    request.headers.set('apikey', serviceRoleKey);
-    request.headers.set('x-upsert', 'true');
-    request.headers.contentType = ContentType.parse(contentType);
-    request.add(bytes);
-    final response = await request.close();
-    if (response.statusCode >= 400) {
-      final body = await response.transform(SystemEncoding().decoder).join();
-      throw Exception('HTTP ${response.statusCode}: $body');
-    }
-    httpClient.close();
-  });
-}
+// Isolate upload bytes was removed because Amplify Storage handles its own isolate/upload management.
 
 class ClientFilesDialog extends StatefulWidget {
   final Client client;
@@ -46,28 +23,20 @@ class ClientFilesDialog extends StatefulWidget {
 }
 
 class _ClientFilesDialogState extends State<ClientFilesDialog> {
-  static const _supabaseUrl = 'https://bzxtgiqjgfojblezdubd.supabase.co';
-  static const _serviceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6eHRnaXFqZ2ZvamJsZXpkdWJkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTc5MzEzMiwiZXhwIjoyMDgxMzY5MTMyfQ.w15N2FZ8xHeDBDcwj79Kl-JBXi1h0QnB9UDNRbAhVZ4';
-
-  late final SupabaseClient _serviceClient;
-  late final StorageFileApi _storage;
   bool _isLoading = true;
-  List<FileObject> _personalFiles = [];
-  List<FileObject> _workItems = [];
+  List<StorageItem> _personalFiles = [];
+  List<StorageItem> _workItems = [];
   String? _currentWorkFolder;
   String _currentTab = 'personal'; // 'personal' or 'work'
 
   @override
   void initState() {
     super.initState();
-    _serviceClient = SupabaseClient(_supabaseUrl, _serviceRoleKey);
-    _storage = _serviceClient.storage.from('client-files');
     _loadFiles();
   }
 
   @override
   void dispose() {
-    _serviceClient.dispose();
     super.dispose();
   }
 
@@ -76,18 +45,22 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
     setState(() => _isLoading = true);
     
     try {
-      final pFiles = await _storage.list(path: '${widget.client.id}/personal');
+      final pFilesRes = await Amplify.Storage.list(
+        path: StoragePath.fromString('${widget.client.id}/personal/'),
+      ).result;
       
       final workPath = _currentWorkFolder == null 
-          ? '${widget.client.id}/work' 
-          : '${widget.client.id}/work/$_currentWorkFolder';
+          ? '${widget.client.id}/work/' 
+          : '${widget.client.id}/work/$_currentWorkFolder/';
           
-      final wFiles = await _storage.list(path: workPath);
+      final wFilesRes = await Amplify.Storage.list(
+        path: StoragePath.fromString(workPath),
+      ).result;
       
       if (!mounted) return;
       setState(() {
-        _personalFiles = pFiles.where((f) => f.name != '.emptyPlaceholder').toList();
-        _workItems = wFiles.where((f) => f.name != '.emptyPlaceholder').toList();
+        _personalFiles = pFilesRes.items.where((f) => !f.path.contains('.emptyPlaceholder')).toList();
+        _workItems = wFilesRes.items.where((f) => !f.path.contains('.emptyPlaceholder')).toList();
       });
     } catch (e) {
       debugPrint("Load files error: $e");
@@ -104,14 +77,10 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
     try {
       final path = '${widget.client.id}/work/${folder.replaceAll('/', '_')}/.emptyPlaceholder';
       
-      // Upload in a fresh isolate to bypass Supabase.initialize() HTTP corruption
-      await _isolateUploadBytes(
-        supabaseUrl: _supabaseUrl,
-        serviceRoleKey: _serviceRoleKey,
-        storagePath: path,
-        bytes: 'folder_placeholder'.codeUnits,
-        contentType: 'text/plain',
-      );
+      await Amplify.Storage.uploadData(
+        data: StorageDataPayload.string('folder_placeholder'),
+        path: StoragePath.fromString(path),
+      ).result;
       
       await _logUpload('work', 'Folder Created: $folder');
       await _loadFiles();
@@ -150,37 +119,25 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
           path = '${widget.client.id}/$category/$fileName';
         }
         
-        // Read file bytes and upload in a fresh isolate
-        final fileBytes = await File(filePath).readAsBytes();
-        final ext = fileName.split('.').last.toLowerCase();
-        final contentType = {
-          'pdf': 'application/pdf',
-          'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
-          'png': 'image/png',
-          'doc': 'application/msword',
-          'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'xls': 'application/vnd.ms-excel',
-          'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        }[ext] ?? 'application/octet-stream';
+        // Read file bytes and upload
+        final file = File(filePath);
         
-        await _isolateUploadBytes(
-          supabaseUrl: _supabaseUrl,
-          serviceRoleKey: _serviceRoleKey,
-          storagePath: path,
-          bytes: fileBytes,
-          contentType: contentType,
-        );
+        await Amplify.Storage.uploadFile(
+          localFile: AWSFile.fromFile(file),
+          path: StoragePath.fromString(path),
+        ).result;
         
         // Record in client_documents table
         try {
-          await Supabase.instance.client.from('client_documents').insert({
-            'client_id': widget.client.id.toString(),
-            'client_name': widget.client.name,
-            'document_name': fileName,
-            'storage_path': path,
-            'og_copy': details['og_copy'],
-            'remarks': details['remarks'],
-          });
+          final newDoc = amplify_models.ClientDocuments(
+            client_id: widget.client.id.toString(),
+            client_name: widget.client.name,
+            document_name: fileName,
+            storage_path: path,
+            og_copy: details['og_copy'],
+            remarks: details['remarks'],
+          );
+          await Amplify.API.mutate(request: ModelMutations.create(newDoc).response).response;
         } catch (dbError) {
           debugPrint('Failed to log document to DB: $dbError');
         }
@@ -317,19 +274,16 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
       setState(() => _isLoading = true);
       try {
         if (isFolder) {
-          // Supabase storage folder deletion requires deleting all files inside it.
-          // For simplicity, we assume folder is empty or user is deleting the files manually first.
-          // Wait, if we want to delete a folder, we must list its files and delete them.
-          final files = await _storage.list(path: '${widget.client.id}/work/$fileName');
-          List<String> paths = files.map((f) => '${widget.client.id}/work/$fileName/${f.name}').toList();
-          if (paths.isNotEmpty) {
-             await _storage.remove(paths);
+          final folderPath = '${widget.client.id}/work/$fileName/';
+          final filesRes = await Amplify.Storage.list(path: StoragePath.fromString(folderPath)).result;
+          for (var f in filesRes.items) {
+            await Amplify.Storage.remove(path: StoragePath.fromString(f.path)).result;
           }
         } else {
           String pathToDelete = category == 'work' && _currentWorkFolder != null 
               ? '${widget.client.id}/work/$_currentWorkFolder/$fileName'
               : '${widget.client.id}/$category/$fileName';
-          await _storage.remove([pathToDelete]);
+          await Amplify.Storage.remove(path: StoragePath.fromString(pathToDelete)).result;
         }
         await _loadFiles();
       } catch (e) {
@@ -344,9 +298,9 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
       String pathToDownload = category == 'work' && _currentWorkFolder != null 
           ? '${widget.client.id}/work/$_currentWorkFolder/$fileName'
           : '${widget.client.id}/$category/$fileName';
-      final url = await _storage.createSignedUrl(pathToDownload, 60 * 60);
-      if (await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(Uri.parse(url));
+      final res = await Amplify.Storage.getUrl(path: StoragePath.fromString(pathToDownload)).result;
+      if (await canLaunchUrl(res.url)) {
+        await launchUrl(res.url);
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open file: $e'), backgroundColor: Colors.redAccent));
@@ -529,7 +483,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
     );
   }
 
-  Widget _buildFileList(List<FileObject> files, String category) {
+  Widget _buildFileList(List<StorageItem> files, String category) {
     if (files.isEmpty) {
       return Center(
         child: Column(
@@ -559,8 +513,8 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
       padding: const EdgeInsets.all(32),
       itemCount: files.length,
       itemBuilder: (context, index) {
-        final file = files[index];
-        final isFolder = category == 'work' && _currentWorkFolder == null && (file.id == null || file.metadata == null);
+        final itemName = file.path.split('/').last;
+        final isFolder = category == 'work' && _currentWorkFolder == null;
 
         if (isFolder) {
           return Card(
@@ -570,7 +524,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
             margin: const EdgeInsets.only(bottom: 12),
             child: InkWell(
               onTap: () {
-                setState(() => _currentWorkFolder = file.name);
+                setState(() => _currentWorkFolder = itemName);
                 _loadFiles();
               },
               borderRadius: BorderRadius.circular(12),
@@ -582,7 +536,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                     decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(10)),
                     child: Icon(Icons.folder, color: Colors.amber.shade800),
                   ),
-                  title: Text(file.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  title: Text(itemName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                   trailing: Icon(Icons.chevron_right, color: Colors.amber.shade700),
                 ),
               ),
@@ -593,10 +547,10 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
         // File Item
         IconData icon = Icons.insert_drive_file;
         Color iconColor = Colors.blueGrey;
-        if (file.name.toLowerCase().endsWith('.pdf')) {
+        if (itemName.toLowerCase().endsWith('.pdf')) {
           icon = Icons.picture_as_pdf;
           iconColor = Colors.redAccent;
-        } else if (file.name.toLowerCase().endsWith('.jpg') || file.name.toLowerCase().endsWith('.png')) {
+        } else if (itemName.toLowerCase().endsWith('.jpg') || itemName.toLowerCase().endsWith('.png')) {
           icon = Icons.image;
           iconColor = Colors.purpleAccent;
         }
@@ -613,21 +567,21 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                 decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                 child: Icon(icon, color: iconColor),
               ),
-              title: Text(file.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-              subtitle: Text('${(file.metadata?['size'] ?? 0) ~/ 1024} KB', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+              title: Text(itemName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text('${(file.size ?? 0) ~/ 1024} KB', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
                     icon: const Icon(Icons.download_rounded, color: Colors.blueGrey, size: 20),
-                    onPressed: () => _downloadFile(category, file.name),
+                    onPressed: () => _downloadFile(category, itemName),
                     tooltip: "Download File",
                     style: IconButton.styleFrom(backgroundColor: Colors.grey.shade100),
                   ),
                   const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                    onPressed: () => _deleteFile(category, file.name),
+                    onPressed: () => _deleteFile(category, itemName),
                     tooltip: "Delete File",
                     style: IconButton.styleFrom(backgroundColor: Colors.red.shade50),
                   ),

@@ -1,5 +1,7 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import 'package:intl/intl.dart';
 import '../theme.dart';
 import '../models/client_license.dart';
@@ -18,7 +20,7 @@ class LicenseDashboardScreen extends StatefulWidget {
 }
 
 class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
-  final _client = Supabase.instance.client;
+  // final _client = Supabase.instance.client;
   final _excel = ExcelService();
   
   static const Map<int, String> _fallbackLicenseTypes = {
@@ -57,17 +59,19 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
       final thirtyDaysFromNow = now.add(const Duration(days: 30));
       
       // Fetch all license types first
-      final typesRes = await _client.from('license_types').select('id, name');
-      final List<Map<String, dynamic>> fetchedTypes = List<Map<String, dynamic>>.from(typesRes);
+      final typesReq = ModelQueries.list(amplify_models.LicenseTypes.classType);
+      final typesResRaw = await Amplify.API.query(request: typesReq).response;
+      final fetchedTypes = typesResRaw.data?.items.whereType<amplify_models.LicenseTypes>().toList() ?? [];
 
-      // Fetch all licenses with their clients and types
-      final licensesRes = await _client.from('client_licenses').select('''
-        id, status, expiry_date, file_no, manual_client_name, license_type_id,
-        clients(name),
-        license_types(name)
-      ''');
-      
-      final List<dynamic> licenses = licensesRes;
+      // Fetch all clients
+      final clientReq = ModelQueries.list(amplify_models.Clients.classType);
+      final clientRes = await Amplify.API.query(request: clientReq).response;
+      final clientsList = clientRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+
+      // Fetch all licenses
+      final licensesReq = ModelQueries.list(amplify_models.ClientLicenses.classType);
+      final licensesRes = await Amplify.API.query(request: licensesReq).response;
+      final licenses = licensesRes.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
       
       int total = 0;
       int active = 0;
@@ -77,34 +81,30 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
       Map<String, List<Map<String, dynamic>>> licensesByType = {};
       
       for (var l in licenses) {
-        final map = l as Map<String, dynamic>;
         
-        final String clientName = map['clients'] != null ? (map['clients'] is List ? map['clients'][0]['name'] : map['clients']['name']) : map['manual_client_name'] ?? 'Unknown';
-        
-        String? typeName;
-        if (map['license_types'] != null) {
-          typeName = (map['license_types'] is List && map['license_types'].isNotEmpty) ? map['license_types'][0]['name'] : (map['license_types'] is Map ? map['license_types']['name'] : null);
-        }
-        
-        if (typeName == null && map['license_type_id'] != null) {
-          final int tId = map['license_type_id'] as int;
-          final match = fetchedTypes.where((t) => t['id'] == tId).firstOrNull;
-          if (match != null) {
-            typeName = match['name'];
-          } else {
-            typeName = _fallbackLicenseTypes[tId];
+        String clientName = l.manual_client_name ?? 'Unknown';
+        if (l.client_id != null) {
+          final matchedClient = clientsList.firstWhere((c) => c.id == l.client_id, orElse: () => amplify_models.Clients(name: 'Unknown'));
+          if (matchedClient.name != null && matchedClient.name!.isNotEmpty) {
+            clientName = matchedClient.name!;
           }
         }
         
-        typeName ??= 'License';
-        final String fileNo = map['file_no'] ?? '-';
-        
-        DateTime? expiryDate;
-        if (map['expiry_date'] != null) {
-          expiryDate = DateTime.tryParse(map['expiry_date']);
+        String typeName = 'License';
+        if (l.license_type_id != null) {
+          final matchedType = fetchedTypes.firstWhere((t) => t.id == l.license_type_id, orElse: () => amplify_models.LicenseTypes(name: 'License'));
+          if (matchedType.name != null && matchedType.name!.isNotEmpty && matchedType.name != 'License') {
+            typeName = matchedType.name!;
+          } else {
+            typeName = _fallbackLicenseTypes[int.tryParse(l.license_type_id ?? '')] ?? 'License';
+          }
         }
         
-        final status = map['status']?.toString().toLowerCase() ?? '';
+        final String fileNo = l.file_no ?? '-';
+        
+        DateTime? expiryDate = l.expiry_date?.getDateTime();
+        
+        final status = l.status?.toString().toLowerCase() ?? '';
         
         bool isExpired = false;
         bool isExpiringSoon = false;
@@ -130,8 +130,8 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
         if (isExpiringSoon) expiringSoon++;
         
         final displayData = {
-          'id': map['id'],
-          'clientId': map['client_id'],
+          'id': l.id,
+          'clientId': int.tryParse(l.client_id ?? ''),
           'clientName': clientName,
           'typeName': typeName,
           'fileNo': fileNo,
@@ -144,10 +144,12 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
       }
       
       // Fetch Pending Amount
-      final billingRes = await _client.from('license_billing').select('amount').eq('payment_status', 'Pending');
+      final billingReq = ModelQueries.list(amplify_models.LicenseBilling.classType, where: amplify_models.LicenseBilling.PAYMENT_STATUS.eq('Pending'));
+      final billingRes = await Amplify.API.query(request: billingReq).response;
+      final billingItems = billingRes.data?.items.whereType<amplify_models.LicenseBilling>().toList() ?? [];
       double pending = 0;
-      for (var b in billingRes) {
-        pending += (b['amount'] as num?)?.toDouble() ?? 0.0;
+      for (var b in billingItems) {
+        pending += b.amount ?? 0.0;
       }
       
       // Sort lists within each type
@@ -183,18 +185,36 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
   Future<void> _exportData() async {
     // Basic export functionality placeholder or call the existing export
     try {
-      final res = await _client.from('client_licenses').select('*, clients(name), license_types(name)');
-      final licenses = res.map((row) {
-        final map = Map<String, dynamic>.from(row);
-        if (map['clients'] != null) {
-          final c = map['clients'];
-          map['client_name'] = (c is List && c.isNotEmpty) ? c[0]['name'] : (c is Map ? c['name'] : null);
-        }
-        if (map['license_types'] != null) {
-          final lt = map['license_types'];
-          map['license_type_name'] = (lt is List && lt.isNotEmpty) ? lt[0]['name'] : (lt is Map ? lt['name'] : null);
-        }
-        return ClientLicense.fromMap(map);
+      final req = ModelQueries.list(amplify_models.ClientLicenses.classType);
+      final res = await Amplify.API.query(request: req).response;
+      
+      final clientReq = ModelQueries.list(amplify_models.Clients.classType);
+      final clientRes = await Amplify.API.query(request: clientReq).response;
+      final clientsList = clientRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+
+      final typesReq = ModelQueries.list(amplify_models.LicenseTypes.classType);
+      final typesRes = await Amplify.API.query(request: typesReq).response;
+      final typesList = typesRes.data?.items.whereType<amplify_models.LicenseTypes>().toList() ?? [];
+
+      final licensesList = res.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
+      
+      final licenses = licensesList.map((row) {
+        final client = clientsList.firstWhere((c) => c.id == row.client_id, orElse: () => amplify_models.Clients(name: null));
+        final type = typesList.firstWhere((t) => t.id == row.license_type_id, orElse: () => amplify_models.LicenseTypes(name: null));
+        
+        return ClientLicense(
+          id: int.tryParse(row.id),
+          clientId: int.tryParse(row.client_id ?? ''),
+          clientName: client.name,
+          licenseTypeId: int.tryParse(row.license_type_id ?? ''),
+          licenseTypeName: type.name,
+          serviceDate: row.service_date?.getDateTime(),
+          expiryDate: row.expiry_date?.getDateTime(),
+          fileNo: row.file_no,
+          notes: row.notes,
+          status: row.status,
+          manualClientName: row.manual_client_name,
+        );
       }).toList();
       final path = await _excel.exportLicenses(licenses);
       if (path != null && mounted) {

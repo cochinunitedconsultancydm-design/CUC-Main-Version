@@ -1,6 +1,8 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import '../models/client.dart';
 import '../services/excel_service.dart';
@@ -15,7 +17,7 @@ class ClientManagementScreen extends StatefulWidget {
 }
 
 class _ClientManagementScreenState extends State<ClientManagementScreen> {
-  final _client = Supabase.instance.client;
+  // final _client = Supabase.instance.client;
   final _excel = ExcelService();
   List<Client> _clients = [];
   bool _isLoading = true;
@@ -31,10 +33,26 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      final result = await _client.from('clients').select().order('name', ascending: true);
+      final req = ModelQueries.list(amplify_models.Clients.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final clientsList = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+      clientsList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       if (!mounted) return;
       setState(() {
-        _clients = result.map((m) => Client.fromMap(m)).toList();
+        _clients = clientsList.map((m) => Client(
+          id: m.id,
+          name: m.name ?? '',
+          email: m.email,
+          phone: m.phone,
+          address: m.address,
+          typeOfWork: m.type_of_work,
+          caseNumber: m.case_number,
+          dob: m.dob,
+          fileNo: m.file_no,
+          fileDate: m.file_date,
+          isContacted: m.is_contacted ?? false,
+          balanceDue: m.balance_due,
+        )).toList();
       });
     } catch (e) {
       _showError('Failed to fetch clients: $e');
@@ -43,7 +61,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     }
   }
 
-  Future<void> _deleteClient(int id) async {
+  Future<void> _deleteClient(String id) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -62,7 +80,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
 
     if (confirmed == true) {
       try {
-        await _client.from('clients').delete().eq('id', id);
+        final req = ModelMutations.deleteById(amplify_models.Clients.classType, amplify_models.ClientsModelIdentifier(id: id));
+        await Amplify.API.mutate(request: req).response;
         _fetchClients();
       } catch (e) {
         _showError('Delete failed: $e');
@@ -231,22 +250,35 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                           balanceDue: client?.balanceDue,
                         );
                         try {
-                          final data = {
-                            'name': newClient.name,
-                            'email': newClient.email,
-                            'phone': newClient.phone,
-                            'address': newClient.address,
-                            'type_of_work': newClient.typeOfWork,
-                            'case_number': newClient.caseNumber,
-                            'file_no': newClient.fileNo,
-                            'file_date': newClient.fileDate,
-                            'is_contacted': newClient.isContacted,
-                          };
-
                           if (client == null) {
-                            await _client.from('clients').insert(data);
+                            final model = amplify_models.Clients(
+                              name: newClient.name,
+                              email: newClient.email,
+                              phone: newClient.phone,
+                              address: newClient.address,
+                              type_of_work: newClient.typeOfWork,
+                              case_number: newClient.caseNumber,
+                              file_no: newClient.fileNo,
+                              file_date: newClient.fileDate,
+                              is_contacted: newClient.isContacted,
+                            );
+                            final req = ModelMutations.create(model);
+                            await Amplify.API.mutate(request: req).response;
                           } else {
-                            await _client.from('clients').update(data).eq('id', newClient.id!);
+                            final model = amplify_models.Clients(
+                              id: newClient.id,
+                              name: newClient.name,
+                              email: newClient.email,
+                              phone: newClient.phone,
+                              address: newClient.address,
+                              type_of_work: newClient.typeOfWork,
+                              case_number: newClient.caseNumber,
+                              file_no: newClient.fileNo,
+                              file_date: newClient.fileDate,
+                              is_contacted: newClient.isContacted,
+                            );
+                            final req = ModelMutations.update(model);
+                            await Amplify.API.mutate(request: req).response;
                           }
                           
                           if (context.mounted) Navigator.pop(context);
@@ -595,7 +627,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                 ),
                 const SizedBox(width: 12),
                 OutlinedButton.icon(
-                  onPressed: () => _deleteClient(c.id!),
+                  onPressed: () => _deleteClient(c.id.toString()),
                   icon: const Icon(Icons.delete_outline, size: 16),
                   label: const Text('Delete'),
                   style: OutlinedButton.styleFrom(

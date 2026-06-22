@@ -1,7 +1,9 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import '../models/ModelProvider.dart';
 import 'time_tracking_service.dart';
 import 'logging_service.dart';
 import 'location_tracking_service.dart';
@@ -13,89 +15,77 @@ class AuthService {
   static const String _sessionIdKey = 'session_id';
   static const String _userIdKey = 'current_user_id';
 
-  final _supabase = Supabase.instance.client;
-
   Future<bool> login(String username, String password) async {
     try {
       debugPrint('Attempting login for: $username');
-      final res = await _supabase
-          .from('users')
-          .select()
-          .eq('username', username)
-          .eq('password', password)
-          .maybeSingle()
-          .timeout(const Duration(seconds: 15));
+      final request = ModelQueries.list(
+        Users.classType,
+        where: Users.USERNAME.eq(username).and(Users.PASSWORD.eq(password)),
+      );
+      final response = await Amplify.API.query(request: request).response;
+      final users = response.data?.items;
 
-      if (res != null) {
-        debugPrint('User found: ${res['id']}, Role: ${res['role']}');
+      if (users != null && users.isNotEmpty) {
+        final res = users.first!;
+        debugPrint('User found: ${res.id}, Role: ${res.role}');
         
-        int? sessionId;
+        String? sessionId;
         try {
-          // Record login session (optional, don't block login if it fails)
-          final sessionRes = await _supabase
-              .from('user_sessions')
-              .insert({'user_id': res['id']})
-              .select()
-              .single()
-              .timeout(const Duration(seconds: 5));
-          sessionId = sessionRes['id'];
-          debugPrint('Session created: $sessionId (Type: ${sessionId.runtimeType})');
+          final session = UserSessions(
+            userId: int.tryParse(res.id) ?? 0, 
+            loginTime: DateTime.now().toIso8601String(), 
+            isActive: true
+          );
+          final sessionReq = ModelMutations.create(session);
+          final sessionRes = await Amplify.API.mutate(request: sessionReq).response;
+          sessionId = sessionRes.data?.id;
+          debugPrint('Session created: $sessionId');
         } catch (e) {
           debugPrint('Optional session recording failed: $e');
         }
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_tokenKey, 'token-${res['id']}-${DateTime.now().millisecondsSinceEpoch}');
-        await prefs.setString(_userKey, res['name'] ?? res['username']);
-        await prefs.setString(_roleKey, res['role'] ?? 'staff');
+        await prefs.setString(_tokenKey, 'token-${res.id}-${DateTime.now().millisecondsSinceEpoch}');
+        await prefs.setString(_userKey, res.name ?? res.username ?? '');
+        await prefs.setString(_roleKey, res.role ?? 'staff');
         
-        // Safer ID storage
         if (sessionId != null) {
-          await prefs.setInt(_sessionIdKey, sessionId);
-          TimeTrackingService.instance.startTracking(sessionId);
-        } else if (sessionId != null && sessionId is String) {
-          await prefs.setString('${_sessionIdKey}_str', sessionId.toString());
-          // Assuming sessionId might be parsable or TimeTracker supports string IDs. 
-          // For now, we only track if it's an int.
+          await prefs.setString('${_sessionIdKey}_str', sessionId);
+          // Assuming TimeTrackingService uses integer ID or we skip for now
+          TimeTrackingService.instance.startTracking(int.tryParse(sessionId) ?? 0);
         }
 
-        final userId = res['id'];
-        if (userId is int) {
-          await prefs.setInt(_userIdKey, userId);
-        } else {
-          await prefs.setString('${_userIdKey}_str', userId.toString());
-        }
+        await prefs.setString('${_userIdKey}_str', res.id);
+        await prefs.setInt(_userIdKey, int.tryParse(res.id) ?? 0);
 
-        await LoggingService().logAction(action: 'LOGIN', targetType: 'System', targetId: res['username'], details: 'User logged in');
+        await LoggingService().logAction(action: 'LOGIN', targetType: 'System', targetId: res.username ?? '', details: 'User logged in');
 
-        final String userRole = res['role'] ?? 'staff';
-
-        debugPrint('Login successful for: ${res['name']}');
+        debugPrint('Login successful for: ${res.name}');
         return true;
       } else {
         debugPrint('No user found with those credentials');
       }
     } catch (e) {
       debugPrint('Login error: $e');
-      if (e is TimeoutException) {
-        debugPrint('Connection timed out. Please check your internet connection.');
-      }
     }
     return false;
   }
 
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    final sessionId = prefs.getInt(_sessionIdKey);
+    final sessionIdStr = prefs.getString('${_sessionIdKey}_str');
     
-    if (sessionId != null) {
+    if (sessionIdStr != null) {
       try {
         TimeTrackingService.instance.stopTracking();
         LocationTrackingService().stopTracking();
-        await _supabase
-            .from('user_sessions')
-            .update({'logout_time': DateTime.now().toIso8601String(), 'is_active': false})
-            .eq('id', sessionId);
+        final request = ModelQueries.get(UserSessions.classType, UserSessionsModelIdentifier(id: sessionIdStr));
+        final response = await Amplify.API.query(request: request).response;
+        final session = response.data;
+        if (session != null) {
+           final updatedSession = session.copyWith(logoutTime: DateTime.now().toIso8601String(), isActive: false);
+           await Amplify.API.mutate(request: ModelMutations.update(updatedSession).response).response;
+        }
       } catch (e) {
         debugPrint('Logout session error: $e');
       }
@@ -161,37 +151,21 @@ class AuthService {
     };
   }
 
-  // --- Forgot Password Stub Methods ---
-  
   Future<bool> sendPasswordResetCode(String email) async {
-    // Simulate network delay
     await Future.delayed(const Duration(seconds: 2));
     debugPrint('Stub: Sent reset code to $email');
-    // In a real app, this would call an Edge Function to send an email
-    return true; // Return true if successful
+    return true; 
   }
 
   Future<bool> verifyResetCode(String email, String code) async {
-    // Simulate network delay
     await Future.delayed(const Duration(seconds: 2));
     debugPrint('Stub: Verifying code $code for $email');
-    // In a real app, this would verify the code against a DB record or OTP table
-    // For now, accept any code that is 6 digits
     return code.length == 6;
   }
 
   Future<bool> updatePassword(String email, String newPassword) async {
-    // Simulate network delay
     await Future.delayed(const Duration(seconds: 2));
     debugPrint('Stub: Updating password for $email');
-    try {
-      // In a real app, this should securely update the user table
-      // e.g., await _supabase.from('users').update({'password': newPassword}).eq('email', email);
-      // NOTE: Using raw passwords is not recommended, consider hashing in backend!
-      return true;
-    } catch (e) {
-      debugPrint('Failed to update password: $e');
-      return false;
-    }
+    return true;
   }
 }

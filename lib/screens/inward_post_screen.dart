@@ -1,5 +1,7 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import '../models/inward_post_model.dart';
 import '../services/inward_post_service.dart';
@@ -40,8 +42,15 @@ class _InwardPostScreenState extends State<InwardPostScreen> {
     final posts = await InwardPostService.getPosts();
     List<Map<String, dynamic>> users = [];
     try {
-      final usersRes = await Supabase.instance.client.from('users').select('id, name, role').order('name', ascending: true);
-      users = List<Map<String, dynamic>>.from(usersRes);
+      final req = ModelQueries.list(amplify_models.Users.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final usersList = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      usersList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+      users = usersList.map((u) => {
+        'id': u.id,
+        'name': u.name,
+        'role': u.role,
+      }).toList();
     } catch(e) {
       debugPrint('Error fetching users: $e');
     }

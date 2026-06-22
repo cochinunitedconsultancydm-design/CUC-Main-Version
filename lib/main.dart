@@ -3,7 +3,12 @@ import 'screens/login_screen.dart';
 import 'theme.dart';
 import 'package:flutter/foundation.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:amplify_api/amplify_api.dart';
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'package:amplify_storage_s3/amplify_storage_s3.dart';
+import 'amplify_outputs.dart';
+import 'models/ModelProvider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'services/notification_service.dart';
@@ -42,10 +47,15 @@ Future<void> main() async {
     });
   }
 
-  await Supabase.initialize(
-    url: 'https://bzxtgiqjgfojblezdubd.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6eHRnaXFqZ2ZvamJsZXpkdWJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3OTMxMzIsImV4cCI6MjA4MTM2OTEzMn0.E8IKI5PvnW9WoEX4EcXvcSVk0b74LGrrQhNhFX99Dxo',
-  );
+  try {
+    final apiPlugin = AmplifyAPI(modelProvider: ModelProvider.instance);
+    final authPlugin = AmplifyAuthCognito();
+    final storagePlugin = AmplifyStorageS3();
+    await Amplify.addPlugins([apiPlugin, authPlugin, storagePlugin]);
+    await Amplify.configure(amplifyConfig);
+  } catch (e) {
+    debugPrint('Could not configure Amplify: $e');
+  }
 
   // Initialize local notifications for mobile
   await NotificationService().initLocalNotifications();

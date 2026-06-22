@@ -1,17 +1,34 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_api/amplify_api.dart';
+import 'dart:convert';
+import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:intl/intl.dart';
+import '../models/ModelProvider.dart';
 import '../models/billing.dart';
 import '../utils/number_to_words.dart';
 
 class BillingService {
-  final _client = Supabase.instance.client;
-
   Future<Map<String, int>> fetchStats() async {
-    final totalRes = await _client.from('billings').select('id');
-    final paidRes = await _client.from('billings').select('id').or("status.eq.Received,data->>payment_received.eq.true");
+    final req = ModelQueries.list(Billings.classType);
+    final res = await Amplify.API.query(request: req).response;
+    final all = res.data?.items.whereType<Billings>() ?? [];
     
-    final total = totalRes.length;
-    final paid = paidRes.length;
+    int total = all.length;
+    int paid = 0;
+    
+    for (var b in all) {
+      if (b.status == 'Received') {
+        paid++;
+        continue;
+      }
+      if (b.data != null) {
+        try {
+          final dataMap = jsonDecode(b.data!);
+          if (dataMap['payment_received'] == true || dataMap['payment_received'] == 'true') {
+            paid++;
+          }
+        } catch (_) {}
+      }
+    }
     
     return {
       'total': total,
@@ -23,25 +40,42 @@ class BillingService {
   Future<void> syncClientBalance(String clientName) async {
     if (clientName.isEmpty) return;
     
-    final res = await _client
-        .from('billings')
-        .select('data')
-        .eq('client_name', clientName)
-        .or("status.eq.Pending,data->>payment_received.eq.false,data->>payment_received.is.null");
+    final req = ModelQueries.list(Billings.classType, where: Billings.CLIENT_NAME.eq(clientName));
+    final res = await Amplify.API.query(request: req).response;
+    final all = res.data?.items.whereType<Billings>() ?? [];
     
     double totalDue = 0;
-    for (var row in res) {
-      final data = row['data'] as Map<String, dynamic>?;
-      String balStr = data?['balance_due']?.toString() ?? '0';
-      totalDue += NumberToWords.parseCurrency(balStr);
+    for (var b in all) {
+      bool isPending = b.status == 'Pending';
+      if (!isPending && b.data != null) {
+        try {
+          final dataMap = jsonDecode(b.data!);
+          if (dataMap['payment_received'] == false || dataMap['payment_received'] == 'false' || dataMap['payment_received'] == null) {
+            isPending = true;
+          }
+        } catch (_) {
+          isPending = true;
+        }
+      }
+      
+      if (isPending && b.data != null) {
+        try {
+          final dataMap = jsonDecode(b.data!);
+          String balStr = dataMap['balance_due']?.toString() ?? '0';
+          totalDue += NumberToWords.parseCurrency(balStr);
+        } catch (_) {}
+      }
     }
     
     String finalBalance = totalDue > 0 ? NumberToWords.formatIndianCurrency(totalDue) : '0/-';
     
-    await _client
-        .from('clients')
-        .update({'balance_due': finalBalance})
-        .eq('name', clientName);
+    final cReq = ModelQueries.list(Clients.classType, where: Clients.NAME.eq(clientName));
+    final cRes = await Amplify.API.query(request: cReq).response;
+    if (cRes.data?.items.isNotEmpty == true) {
+      final client = cRes.data!.items.first!;
+      final updated = client.copyWith(balance_due: finalBalance);
+      await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+    }
   }
 
   Future<List<Billing>> fetchBillings({
@@ -51,31 +85,50 @@ class BillingService {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    dynamic query = _client.from('billings').select();
+    final req = ModelQueries.list(Billings.classType);
+    final res = await Amplify.API.query(request: req).response;
+    var all = res.data?.items.whereType<Billings>() ?? [];
+    
+    // Sort descending by ID or date (using ID for now as original code used order by id)
+    var allList = all.toList()..sort((a, b) => b.id.compareTo(a.id));
 
-    if (statusFilter == 'Paid') {
-      query = query.or("status.eq.Received,data->>payment_received.eq.true");
-    } else if (statusFilter == 'Pending') {
-      query = query.or("status.eq.Pending,data->>payment_received.eq.false,data->>payment_received.is.null");
-    } else if (statusFilter == 'Overdue') {
-      // PostgREST doesn't support complex date arithmetic easily in filters without RPC or careful string formatting.
-      // For now, we'll filter Pending and then do manual filtering if needed, 
-      // or use a simpler filter if the 'date' column was ISO. 
-      // Since it's DD/MM/YYYY, it's hard to filter in DB without a function.
-      query = query.or("status.eq.Pending,data->>payment_received.eq.false,data->>payment_received.is.null");
-    } else if (statusFilter == 'Interested') {
-      query = query.eq('status', 'Interested');
-    } else if (statusFilter == 'Not Interested') {
-      query = query.eq('status', 'Not Interested');
+    List<Billings> filtered = [];
+    
+    for (var b in allList) {
+      bool match = false;
+      bool isPaid = b.status == 'Received';
+      if (!isPaid && b.data != null) {
+        try {
+          final dataMap = jsonDecode(b.data!);
+          if (dataMap['payment_received'] == true || dataMap['payment_received'] == 'true') {
+            isPaid = true;
+          }
+        } catch (_) {}
+      }
+      
+      bool isPending = b.status == 'Pending';
+      if (!isPending && !isPaid && b.data != null) {
+        try {
+          final dataMap = jsonDecode(b.data!);
+          if (dataMap['payment_received'] == false || dataMap['payment_received'] == 'false' || dataMap['payment_received'] == null) {
+            isPending = true;
+          }
+        } catch (_) {
+          isPending = true;
+        }
+      }
+
+      if (statusFilter == 'All') match = true;
+      else if (statusFilter == 'Paid' && isPaid) match = true;
+      else if (statusFilter == 'Pending' && isPending) match = true;
+      else if (statusFilter == 'Overdue' && isPending) match = true;
+      else if (statusFilter == 'Interested' && b.status == 'Interested') match = true;
+      else if (statusFilter == 'Not Interested' && b.status == 'Not Interested') match = true;
+      
+      if (match) filtered.add(b);
     }
 
-    // Date filtering (Note: 'date' is stored as DD/MM/YYYY string, which is sub-optimal for DB filtering)
-    // We'll fetch and filter in app if date range is specified, or use RPC.
-    
-    query = query.order('id', ascending: false).range(offset, offset + limit - 1);
-    
-    final response = await query;
-    var billings = List<Map<String, dynamic>>.from(response).map((m) => Billing.fromMap(m)).toList();
+    var billings = filtered.map((m) => Billing.fromMap(m.toMap())).toList();
 
     // Manual Overdue filtering if needed
     if (statusFilter == 'Overdue') {
@@ -105,28 +158,50 @@ class BillingService {
       }).toList();
     }
 
-    return billings;
+    // Apply pagination AFTER filtering
+    final paginated = billings.skip(offset).take(limit).toList();
+    return paginated;
   }
 
-  Future<void> updateBilling(int id, Map<String, dynamic> updates) async {
-    await _client.from('billings').update(updates).eq('id', id);
+  Future<void> updateBilling(dynamic id, Map<String, dynamic> updates) async {
+    final req = ModelQueries.list(Billings.classType, where: Billings.ID.eq(id.toString()));
+    final res = await Amplify.API.query(request: req).response;
+    if (res.data?.items.isNotEmpty == true) {
+      final b = res.data!.items.first!;
+      var updated = b.copyWith(
+        invoice_no: updates['invoice_no'] ?? b.invoice_no,
+        client_name: updates['client_name'] ?? b.client_name,
+        date: updates['date'] ?? b.date,
+        amount: updates['amount']?.toString() ?? b.amount,
+        type: updates['type'] ?? b.type,
+        data: updates['data'] != null ? (updates['data'] is String ? updates['data'] : jsonEncode(updates['data'])) : b.data,
+        category: updates['category'] ?? b.category,
+        authorities: updates['authorities'] ?? b.authorities,
+        status: updates['status'] ?? b.status,
+      );
+      await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+    }
   }
 
-  Future<void> deleteBilling(int id) async {
-    await _client.from('billings').delete().eq('id', id);
+  Future<void> deleteBilling(dynamic id) async {
+    final req = ModelQueries.list(Billings.classType, where: Billings.ID.eq(id.toString()));
+    final res = await Amplify.API.query(request: req).response;
+    if (res.data?.items.isNotEmpty == true) {
+      final b = res.data!.items.first!;
+      await Amplify.API.mutate(request: ModelMutations.delete(b).response);
+    }
   }
 
   Future<String?> getNextInvoiceNo(String prefix) async {
-    final res = await _client
-        .from('billings')
-        .select('invoice_no')
-        .ilike('invoice_no', '$prefix%')
-        .order('id', ascending: false)
-        .limit(1)
-        .maybeSingle();
+    final req = ModelQueries.list(Billings.classType);
+    final res = await Amplify.API.query(request: req).response;
+    final all = res.data?.items.whereType<Billings>() ?? [];
     
-    if (res != null) {
-      final last = res['invoice_no'] as String;
+    final matching = all.where((b) => b.invoice_no != null && b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
+    matching.sort((a, b) => b.id.compareTo(a.id));
+    
+    if (matching.isNotEmpty) {
+      final last = matching.first.invoice_no!;
       final match = RegExp(r'(\d+)$').firstMatch(last);
       if (match != null) {
         final numStr = match.group(1)!;
@@ -138,20 +213,20 @@ class BillingService {
   }
 
   Future<String?> getClientPhone(String clientName) async {
-    final res = await _client
-        .from('clients')
-        .select('phone')
-        .eq('name', clientName)
-        .maybeSingle();
-    return res?['phone']?.toString();
+    final req = ModelQueries.list(Clients.classType, where: Clients.NAME.eq(clientName));
+    final res = await Amplify.API.query(request: req).response;
+    if (res.data?.items.isNotEmpty == true) {
+      return res.data!.items.first!.phone;
+    }
+    return null;
   }
 
   Future<List<Billing>> getClientLedger(String clientName) async {
-    final res = await _client
-        .from('billings')
-        .select()
-        .eq('client_name', clientName)
-        .order('id', ascending: false);
-    return List<Map<String, dynamic>>.from(res).map((m) => Billing.fromMap(m)).toList();
+    final req = ModelQueries.list(Billings.classType, where: Billings.CLIENT_NAME.eq(clientName));
+    final res = await Amplify.API.query(request: req).response;
+    var all = res.data?.items.whereType<Billings>() ?? [];
+    
+    var allList = all.toList()..sort((a, b) => b.id.compareTo(a.id));
+    return allList.map((b) => Billing.fromMap(b.toMap())).toList();
   }
 }

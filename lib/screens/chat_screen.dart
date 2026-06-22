@@ -1,3 +1,4 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -9,8 +10,8 @@ import '../services/notification_service.dart';
 import '../services/deal_service.dart';
 import '../models/deal.dart';
 import 'deal_detail_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart';
 class ChatScreen extends StatefulWidget {
   final int? targetUserId; // If null, staff is chatting with Admin
   final String? targetUserName;
@@ -24,7 +25,6 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final _client = Supabase.instance.client;
   final _msgController = TextEditingController();
   final _scrollController = ScrollController();
   List<Map<String, dynamic>> _messages = [];
@@ -52,34 +52,72 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _fetchTargetInfo() async {
     final targetId = widget.targetUserId ?? 1;
     try {
-      final res = await _client.from('users').select('role').eq('id', targetId).maybeSingle();
-      if (res != null && mounted) {
-        setState(() => _targetRole = res['role']);
+      final req = ModelQueries.list(Users.classType, where: Users.ID.eq(targetId));
+      final res = await Amplify.API.query(request: req).response;
+      final u = (res.data?.items ?? []).isNotEmpty ? res.data!.items.first : null;
+      if (u != null && mounted) {
+        setState(() => _targetRole = u.role);
       }
     } catch (_) {}
   }
 
-  void _subscribeToMessages() {
+  void _subscribeToMessages() async {
     final targetId = widget.targetUserId ?? 1;
     if (_myId == null) return;
 
     setState(() => _isLoading = true);
 
-    _messagesSubscription = _client
-        .from('messages')
-        .stream(primaryKey: ['id'])
-        .order('created_at', ascending: true)
-        .listen((data) async {
-          final filtered = data.where((m) {
-            final sId = m['sender_id'] as int;
-            final rId = m['receiver_id'] as int;
+    try {
+      // Fetch initial messages
+      final req = ModelQueries.list(Messages.classType);
+      final res = await Amplify.API.query(request: req).response;
+      var allMsgs = res.data?.items.where((e) => e != null).cast<Messages>().toList() ?? [];
+      
+      allMsgs.sort((a, b) => (a.createdAt?.toString() ?? '').compareTo(b.createdAt?.toString() ?? ''));
+      
+      var filtered = allMsgs.where((m) {
+        final sId = m.sender_id;
+        final rId = m.receiver_id;
+        return (sId == _myId && rId == targetId) || (sId == targetId && rId == _myId);
+      }).toList();
+      
+      await _processMessages(filtered.map((m) => m.toJson()).toList());
+      
+      // Subscribe to new messages
+      _messagesSubscription = Amplify.API.subscribe(
+        GraphQLRequest<String>(document: '''
+          subscription OnCreateMessages {
+            onCreateMessages {
+              id
+              sender_id
+              receiver_id
+              content
+              is_read
+              created_at
+              attachment_type
+              attachment_id
+              createdAt
+              updatedAt
+            }
+          }
+        '''),
+        onData: (event) async {
+          final req = ModelQueries.list(Messages.classType);
+          final res = await Amplify.API.query(request: req).response;
+          var allMsgs = res.data?.items.where((e) => e != null).cast<Messages>().toList() ?? [];
+          allMsgs.sort((a, b) => (a.createdAt?.toString() ?? '').compareTo(b.createdAt?.toString() ?? ''));
+          var filtered = allMsgs.where((m) {
+            final sId = m.sender_id;
+            final rId = m.receiver_id;
             return (sId == _myId && rId == targetId) || (sId == targetId && rId == _myId);
           }).toList();
-          _processMessages(filtered);
-        }, onError: (e) {
-          debugPrint('Stream error: $e');
-          if (mounted) setState(() => _isLoading = false);
-        });
+          await _processMessages(filtered.map((m) => m.toJson()).toList());
+        }
+      );
+    } catch (e) {
+      debugPrint('Stream error: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _processMessages(List<Map<String, dynamic>> rawMessages) async {
@@ -87,11 +125,25 @@ class _ChatScreenState extends State<ChatScreen> {
       final targetId = widget.targetUserId ?? 1;
 
       if (_myId != null) {
-        await _client.from('users').update({'last_seen': DateTime.now().toIso8601String()}).eq('id', _myId!);
+        try {
+          final uReq = ModelQueries.list(Users.classType, where: Users.ID.eq(_myId));
+          final uRes = await Amplify.API.query(request: uReq).response;
+          if (uRes.data?.items.isNotEmpty == true) {
+             final u = uRes.data!.items.first!;
+             final updated = u.copyWith(last_seen: DateTime.now().toIso8601String());
+             await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+          }
+        } catch (_) {}
       }
 
-      final sessionRes = await _client.from('user_sessions').select('is_active').eq('user_id', targetId).maybeSingle();
-      bool isOnline = sessionRes != null && sessionRes['is_active'] == true;
+      bool isOnline = false;
+      try {
+        final sReq = ModelQueries.list(UserSessions.classType, where: UserSessions.USER_ID.eq(targetId));
+        final sRes = await Amplify.API.query(request: sReq).response;
+        if (sRes.data?.items.isNotEmpty == true) {
+          isOnline = sRes.data!.items.first?.is_active == true;
+        }
+      } catch (_) {}
 
       final processed = rawMessages.map((m) {
         return {
@@ -111,12 +163,17 @@ class _ChatScreenState extends State<ChatScreen> {
         // Mark messages as read
         final unreadMsgs = processed.where((m) => m['sender_id'] == targetId && m['is_read'] == false).toList();
         if (unreadMsgs.isNotEmpty) {
-           await _client
-              .from('messages')
-              .update({'is_read': true})
-              .eq('sender_id', targetId)
-              .eq('receiver_id', _myId!)
-              .eq('is_read', false);
+           for (var m in unreadMsgs) {
+             try {
+               final msgReq = ModelQueries.list(Messages.classType, where: Messages.ID.eq(m['id']));
+               final msgRes = await Amplify.API.query(request: msgReq).response;
+               if (msgRes.data?.items.isNotEmpty == true) {
+                 final msg = msgRes.data!.items.first!;
+                 final updated = msg.copyWith(is_read: true);
+                 await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+               }
+             } catch (_) {}
+           }
         }
       }
     } catch (e) {
@@ -158,13 +215,16 @@ class _ChatScreenState extends State<ChatScreen> {
       final targetId = widget.targetUserId ?? 1;
       final encryptedContent = EncryptionService().encryptText(content.isEmpty ? '[Attachment]' : content);
       
-      await _client.from('messages').insert({
-        'sender_id': _myId,
-        'receiver_id': targetId,
-        'content': encryptedContent,
-        'attachment_type': attachmentType,
-        'attachment_id': attachmentId,
-      });
+      final newMsg = Messages(
+        sender_id: _myId,
+        receiver_id: targetId,
+        content: encryptedContent,
+        attachment_type: attachmentType,
+        attachment_id: attachmentId,
+        is_read: false,
+        created_at: DateTime.now().toIso8601String(),
+      );
+      await Amplify.API.mutate(request: ModelMutations.create(newMsg).response);
 
       String senderName = await AuthService().getUserName() ?? 'Someone';
       String preview = content.isEmpty ? '📎 Attached a work' : content;

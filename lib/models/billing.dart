@@ -1,5 +1,7 @@
+import 'dart:convert';
+
 class Billing {
-  final int? id;
+  final dynamic id;
   final String? clientName;
   final String? invoiceNo;
   final String? date;
@@ -24,8 +26,17 @@ class Billing {
   });
 
   factory Billing.fromMap(Map<String, dynamic> map) {
+    dynamic parsedData;
+    if (map['data'] is Map) {
+      parsedData = Map<String, dynamic>.from(map['data']);
+    } else if (map['data'] is String) {
+      try {
+        parsedData = jsonDecode(map['data']);
+      } catch (_) {}
+    }
+
     return Billing(
-      id: map['id'] is int ? map['id'] : int.tryParse(map['id']?.toString() ?? ''),
+      id: map['id'],
       clientName: map['client_name']?.toString(),
       invoiceNo: map['invoice_no']?.toString(),
       date: map['date']?.toString(),
@@ -34,7 +45,7 @@ class Billing {
       category: map['category']?.toString(),
       authorities: map['authorities']?.toString(),
       status: map['status']?.toString(),
-      data: map['data'] is Map ? Map<String, dynamic>.from(map['data']) : null,
+      data: parsedData,
     );
   }
 

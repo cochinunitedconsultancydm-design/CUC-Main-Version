@@ -1,19 +1,21 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart';
 import 'dart:async';
 
 class AppNotification {
-  final int id;
-  final int userId;
+  final dynamic id;
+  final dynamic userId;
   final String title;
   final String message;
   final String type;
-  final int? dealId;
-  final int? taskId;
+  final dynamic dealId;
+  final dynamic taskId;
   final bool isRead;
   final DateTime createdAt;
 
@@ -56,13 +58,12 @@ class NotificationService {
   /// Global key for showing in-app notification toasts on desktop.
   static GlobalKey<ScaffoldMessengerState>? scaffoldMessengerKey;
 
-  final _client = Supabase.instance.client;
   final _localNotif = FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
   
   final _notificationController = StreamController<AppNotification>.broadcast();
   Stream<AppNotification> get notificationStream => _notificationController.stream;
-  RealtimeChannel? _notifChannel;
+  StreamSubscription<GraphQLResponse<Notifications>>? _subscription;
 
   Future<void> initLocalNotifications() async {
     if (_isInitialized) return;
@@ -185,98 +186,124 @@ class NotificationService {
     }
   }
 
-  Future<List<AppNotification>> getUnreadNotifications(int userId) async {
-    final response = await _client
-        .from('notifications')
-        .select()
-        .eq('user_id', userId)
-        .eq('is_read', false)
-        .order('created_at', ascending: false)
-        .limit(50);
-    return response.map((map) => AppNotification.fromMap(map)).toList();
-  }
-
-  Future<void> markAsRead(int notificationId) async {
-    await _client
-        .from('notifications')
-        .update({'is_read': true})
-        .eq('id', notificationId);
-  }
-
-  Future<void> markAllAsRead(int userId) async {
-    await _client
-        .from('notifications')
-        .update({'is_read': true})
-        .eq('user_id', userId);
-  }
-
-  Future<void> sendNotification({
-    required int userId,
-    required String title,
-    required String message,
-    String type = 'info',
-    int? dealId,
-    int? taskId,
-  }) async {
-    await _client.from('notifications').insert({
-      'user_id': userId,
-      'title': title,
-      'message': message,
-      'type': type,
-      'deal_id': dealId,
-      'task_id': taskId,
-      'is_read': false,
-    });
-
-    // Show local/desktop notification on sender device (skip for chat — receiver gets it via realtime)
-    if (type != 'chat') {
-      showLocalNotification(title: title, message: message);
+  Future<List<AppNotification>> getUnreadNotifications(dynamic userId) async {
+    try {
+      final req = ModelQueries.list(
+        Notifications.classType,
+        where: Notifications.IS_READ.eq(false) // Note: Filter by userId might require string match if dynamic
+      );
+      final res = await Amplify.API.query(request: req).response;
+      var items = res.data?.items.where((e) => e != null && e.user_id?.toString() == userId.toString()).cast<Notifications>().toList() ?? [];
+      
+      items.sort((a, b) => (b.created_at ?? '').compareTo(a.created_at ?? ''));
+      
+      return items.take(50).map((n) => AppNotification.fromMap(n.toMap())).toList();
+    } catch (e) {
+      debugPrint('Error getting unread notifications: $e');
+      return [];
     }
   }
 
-  void startRealtimeListener(int userId) {
-    if (_notifChannel != null) return;
+  Future<void> markAsRead(dynamic notificationId) async {
+    try {
+      final req = ModelQueries.list(Notifications.classType, where: Notifications.ID.eq(notificationId.toString()));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data?.items.isNotEmpty == true) {
+        final notif = res.data!.items.first!;
+        final updated = notif.copyWith(is_read: true);
+        await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+      }
+    } catch (e) {
+      debugPrint('Error marking notification as read: $e');
+    }
+  }
 
-    _notifChannel = _client
-        .channel('public:notifications')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'notifications',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
-          ),
-          callback: (payload) {
-            final newNotif = AppNotification.fromMap(payload.newRecord);
-            _notificationController.add(newNotif);
-            showLocalNotification(
-              title: newNotif.title,
-              message: newNotif.message,
-              payload: newNotif.taskId?.toString() ?? newNotif.dealId?.toString(),
-            );
-          },
-        )
-        .subscribe();
+  Future<void> markAllAsRead(dynamic userId) async {
+    try {
+      // Fetch all unread for user
+      final req = ModelQueries.list(Notifications.classType, where: Notifications.IS_READ.eq(false));
+      final res = await Amplify.API.query(request: req).response;
+      final unread = res.data?.items.where((e) => e != null && e.user_id?.toString() == userId.toString()).cast<Notifications>() ?? [];
+      
+      for (var notif in unread) {
+        final updated = notif.copyWith(is_read: true);
+        await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+      }
+    } catch (e) {
+      debugPrint('Error marking all as read: $e');
+    }
+  }
+
+  Future<void> sendNotification({
+    required dynamic userId,
+    required String title,
+    required String message,
+    String type = 'info',
+    dynamic dealId,
+    dynamic taskId,
+  }) async {
+    try {
+      final notif = Notifications(
+        user_id: int.tryParse(userId.toString()) ?? 0,
+        title: title,
+        message: message,
+        type: type,
+        deal_id: dealId != null ? int.tryParse(dealId.toString()) : null,
+        task_id: taskId != null ? int.tryParse(taskId.toString()) : null,
+        is_read: false,
+        created_at: DateTime.now().toIso8601String()
+      );
+      await Amplify.API.mutate(request: ModelMutations.create(notif).response);
+
+      // Show local/desktop notification on sender device (skip for chat — receiver gets it via realtime)
+      if (type != 'chat') {
+        showLocalNotification(title: title, message: message);
+      }
+    } catch (e) {
+      debugPrint('Error sending notification: $e');
+    }
+  }
+
+  void startRealtimeListener(dynamic userId) {
+    if (_subscription != null) return;
+
+    final subReq = ModelSubscriptions.onCreate(Notifications.classType);
+    _subscription = Amplify.API.subscribe(
+      subReq,
+      onEstablished: () => debugPrint('Notification subscription established'),
+    ).listen((event) {
+      final data = event.data;
+      if (data != null && data.user_id?.toString() == userId.toString()) {
+        final newNotif = AppNotification.fromMap(data.toMap());
+        _notificationController.add(newNotif);
+        showLocalNotification(
+          title: newNotif.title,
+          message: newNotif.message,
+          payload: newNotif.taskId?.toString() ?? newNotif.dealId?.toString(),
+        );
+      }
+    });
   }
 
   void stopRealtimeListener() {
-    _notifChannel?.unsubscribe();
-    _notifChannel = null;
+    _subscription?.cancel();
+    _subscription = null;
   }
 
   Future<void> notifyAdmins({
     required String title,
     required String message,
     String type = 'info',
-    int? dealId,
-    int? taskId,
+    dynamic dealId,
+    dynamic taskId,
   }) async {
     try {
-      final response = await _client.from('users').select('id').eq('role', 'admin');
-      for (var row in response) {
-        final adminId = row['id'] as int;
+      final req = ModelQueries.list(Users.classType, where: Users.ROLE.eq('admin'));
+      final response = await Amplify.API.query(request: req).response;
+      final items = response.data?.items.whereType<Users>() ?? [];
+      
+      for (var row in items) {
+        final adminId = row.id;
         await sendNotification(
           userId: adminId,
           title: title,
@@ -293,39 +320,50 @@ class NotificationService {
 
   /// Notifies only relevant stakeholders (Managers, Responsible Staff, and Participants/Collaborators).
   Future<void> notifyStakeholders({
-    int? dealId,
-    int? taskId,
+    dynamic dealId,
+    dynamic taskId,
     required String title,
     required String message,
     String type = 'info',
   }) async {
-    final Set<int> recipients = {};
+    final Set<String> recipients = {};
 
     try {
       // 1. Always include Managers
-      final managers = await _client.from('users').select('id').eq('role', 'manager');
+      final req = ModelQueries.list(Users.classType, where: Users.ROLE.eq('manager'));
+      final response = await Amplify.API.query(request: req).response;
+      final managers = response.data?.items.whereType<Users>() ?? [];
       for (var row in managers) {
-        recipients.add(row['id'] as int);
+        recipients.add(row.id);
       }
 
       // 2. If Deal, include Responsible and Assignees
       if (dealId != null) {
-        final dealRes = await _client.from('deals').select('responsible_id').eq('id', dealId).maybeSingle();
-        if (dealRes != null && dealRes['responsible_id'] != null) {
-          recipients.add(dealRes['responsible_id'] as int);
+        final dReq = ModelQueries.list(Deals.classType, where: Deals.ID.eq(dealId.toString()));
+        final dRes = await Amplify.API.query(request: dReq).response;
+        if (dRes.data?.items.isNotEmpty == true) {
+          final dealRes = dRes.data!.items.first!;
+          if (dealRes.responsible_id != null) {
+            recipients.add(dealRes.responsible_id.toString());
+          }
         }
-        final assignees = await _client.from('deal_assignees').select('user_id').eq('deal_id', dealId);
+        
+        final aReq = ModelQueries.list(DealAssignees.classType);
+        final aRes = await Amplify.API.query(request: aReq).response;
+        final assignees = aRes.data?.items.where((e) => e != null && e.deal_id?.toString() == dealId.toString()).cast<DealAssignees>() ?? [];
         for (var row in assignees) {
-          recipients.add(row['user_id'] as int);
+          if (row.user_id != null) recipients.add(row.user_id.toString());
         }
       }
 
       // 3. If Task, include AssignedTo and AssignedBy
       if (taskId != null) {
-        final taskRes = await _client.from('tasks').select('assigned_to, assigned_by').eq('id', taskId).maybeSingle();
-        if (taskRes != null) {
-          if (taskRes['assigned_to'] != null) recipients.add(taskRes['assigned_to'] as int);
-          if (taskRes['assigned_by'] != null) recipients.add(taskRes['assigned_by'] as int);
+        final tReq = ModelQueries.list(Tasks.classType, where: Tasks.ID.eq(taskId.toString()));
+        final tRes = await Amplify.API.query(request: tReq).response;
+        if (tRes.data?.items.isNotEmpty == true) {
+          final taskRes = tRes.data!.items.first!;
+          if (taskRes.assigned_to != null) recipients.add(taskRes.assigned_to.toString());
+          if (taskRes.assigned_by != null) recipients.add(taskRes.assigned_by.toString());
         }
       }
 
@@ -351,32 +389,28 @@ class NotificationService {
       debugPrint('Running Smart Escalation Reminder Cron...');
 
       // 1. Remind Deals
-      final deals = await _client
-          .from('deals')
-          .select('id, name, stage, responsible_id')
-          .neq('stage', 'Completed');
+      final reqDeals = ModelQueries.list(Deals.classType, where: Deals.STAGE.ne('Completed'));
+      final resDeals = await Amplify.API.query(request: reqDeals).response;
+      final deals = resDeals.data?.items.whereType<Deals>() ?? [];
 
       for (final dealMap in deals) {
-        if (dealMap['responsible_id'] == null) continue;
+        if (dealMap.responsible_id == null) continue;
         
-        final dealId = dealMap['id'] as int;
-        final resId = dealMap['responsible_id'] as int;
-        final name = dealMap['name'];
-        final stage = dealMap['stage'];
+        final dealId = dealMap.id;
+        final resId = dealMap.responsible_id;
+        final name = dealMap.name ?? '';
+        final stage = dealMap.stage ?? '';
 
         // Check frequency for Deal
-        final lastNotifRes = await _client
-            .from('notifications')
-            .select('created_at')
-            .eq('deal_id', dealId)
-            .eq('type', 'reminder')
-            .order('created_at', ascending: false)
-            .limit(1)
-            .maybeSingle();
-
+        final nReq = ModelQueries.list(Notifications.classType, where: Notifications.TYPE.eq('reminder'));
+        final nRes = await Amplify.API.query(request: nReq).response;
+        final notifs = nRes.data?.items.where((e) => e != null && e.deal_id?.toString() == dealId.toString()).cast<Notifications>().toList() ?? [];
+        notifs.sort((a, b) => (b.created_at ?? '').compareTo(a.created_at ?? ''));
+        
         bool shouldNotify = true;
-        if (lastNotifRes != null) {
-          final lastRun = DateTime.parse(lastNotifRes['created_at'].toString());
+        if (notifs.isNotEmpty) {
+          final lastNotifRes = notifs.first;
+          final lastRun = DateTime.tryParse(lastNotifRes.created_at ?? '') ?? DateTime.now();
           // Default frequency for deals: 12 hours
           if (DateTime.now().difference(lastRun).inHours < 12) {
             shouldNotify = false;
@@ -395,19 +429,18 @@ class NotificationService {
       }
 
       // 2. Remind Tasks
-      final tasks = await _client
-          .from('tasks')
-          .select('id, title, assigned_to, status, due_date')
-          .neq('status', 'Completed');
+      final reqTasks = ModelQueries.list(Tasks.classType, where: Tasks.STATUS.ne('Completed'));
+      final resTasks = await Amplify.API.query(request: reqTasks).response;
+      final tasks = resTasks.data?.items.whereType<Tasks>() ?? [];
 
       for (final taskMap in tasks) {
-        if (taskMap['assigned_to'] == null) continue;
+        if (taskMap.assigned_to == null) continue;
 
-        final taskId = taskMap['id'] as int;
-        final assignedTo = taskMap['assigned_to'] as int;
-        final title = taskMap['title'];
-        final status = taskMap['status'];
-        final dueDateStr = taskMap['due_date']?.toString();
+        final taskId = taskMap.id;
+        final assignedTo = taskMap.assigned_to;
+        final title = taskMap.title ?? '';
+        final status = taskMap.status ?? '';
+        final dueDateStr = taskMap.due_date?.toString();
         final dueDate = dueDateStr != null ? DateTime.tryParse(dueDateStr) : null;
         
         // Calculate dynamic frequency
@@ -424,18 +457,15 @@ class NotificationService {
         }
 
         // Check last notification for this task
-        final lastNotifRes = await _client
-            .from('notifications')
-            .select('created_at')
-            .eq('task_id', taskId)
-            .or('type.eq.reminder,type.eq.alert')
-            .order('created_at', ascending: false)
-            .limit(1)
-            .maybeSingle();
-
+        final nReq = ModelQueries.list(Notifications.classType);
+        final nRes = await Amplify.API.query(request: nReq).response;
+        final notifs = nRes.data?.items.where((e) => e != null && e.task_id?.toString() == taskId.toString() && (e.type == 'reminder' || e.type == 'alert')).cast<Notifications>().toList() ?? [];
+        notifs.sort((a, b) => (b.created_at ?? '').compareTo(a.created_at ?? ''));
+        
         bool shouldNotify = true;
-        if (lastNotifRes != null) {
-          final lastRun = DateTime.parse(lastNotifRes['created_at'].toString());
+        if (notifs.isNotEmpty) {
+          final lastNotifRes = notifs.first;
+          final lastRun = DateTime.tryParse(lastNotifRes.created_at ?? '') ?? DateTime.now();
           if (DateTime.now().difference(lastRun) < interval) {
             shouldNotify = false;
           }

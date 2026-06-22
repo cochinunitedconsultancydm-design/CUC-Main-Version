@@ -1,3 +1,4 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -5,7 +6,8 @@ import '../theme.dart';
 import '../models/dsc_record.dart';
 import '../services/logging_service.dart';
 import '../services/excel_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 
 class DscManagementScreen extends StatefulWidget {
   const DscManagementScreen({super.key});
@@ -15,7 +17,7 @@ class DscManagementScreen extends StatefulWidget {
 }
 
 class _DscManagementScreenState extends State<DscManagementScreen> {
-  final _client = Supabase.instance.client;
+  // final _client = Supabase.instance.client;
   final _excel = ExcelService();
   List<DscRecord> _records = [];
   bool _isLoading = true;
@@ -30,9 +32,23 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
   Future<void> _fetchRecords() async {
     setState(() => _isLoading = true);
     try {
-      final result = await _client.from('dsc_records').select().order('dsc_expiry_date', ascending: true);
+      final req = ModelQueries.list(amplify_models.DscRecords.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final recordsList = res.data?.items.whereType<amplify_models.DscRecords>().toList() ?? [];
+      recordsList.sort((a, b) => (a.dsc_expiry_date ?? '').compareTo(b.dsc_expiry_date ?? ''));
+      
       setState(() {
-        _records = List<Map<String, dynamic>>.from(result).map((row) => DscRecord.fromMap(row)).toList();
+        _records = recordsList.map((row) => DscRecord(
+          id: int.tryParse(row.id),
+          clientName: row.client_name,
+          emailId: row.email_id,
+          phoneNo: row.phone_no,
+          username: row.username,
+          password: row.password,
+          dscTakenDate: row.dsc_taken_date != null ? DateTime.tryParse(row.dsc_taken_date!) : null,
+          dscExpiryDate: row.dsc_expiry_date != null ? DateTime.tryParse(row.dsc_expiry_date!) : null,
+          createdAt: row.createdAt?.getDateTime(),
+        )).toList();
       });
     } catch (e) {
       _showError('Failed to fetch Digital Signature records: $e');
@@ -60,7 +76,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
 
     if (confirmed == true) {
       try {
-        await _client.from('dsc_records').delete().eq('id', id);
+        await Amplify.API.mutate(request: ModelMutations.deleteById(amplify_models.DscRecords.classType, amplify_models.DscRecordsModelIdentifier(id: id.toString().response))).response;
         _fetchRecords();
       } catch (e) {
         _showError('Delete failed: $e');
@@ -165,26 +181,29 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
               onPressed: () async {
                 try {
                   if (record == null) {
-                    await _client.from('dsc_records').insert({
-                      'client_name': clientNameController.text,
-                      'email_id': emailController.text,
-                      'phone_no': phoneController.text,
-                      'username': usernameController.text,
-                      'password': passwordController.text,
-                      'dsc_taken_date': takenDate?.toIso8601String(),
-                      'dsc_expiry_date': expiryDate?.toIso8601String(),
-                    });
+                    final newDsc = amplify_models.DscRecords(
+                      client_name: clientNameController.text,
+                      email_id: emailController.text,
+                      phone_no: phoneController.text,
+                      username: usernameController.text,
+                      password: passwordController.text,
+                      dsc_taken_date: takenDate?.toIso8601String(),
+                      dsc_expiry_date: expiryDate?.toIso8601String(),
+                    );
+                    await Amplify.API.mutate(request: ModelMutations.create(newDsc).response).response;
                     await LoggingService().logAction(action: 'SIGNATURE_CREATED', targetType: 'Signature', targetId: clientNameController.text, details: 'Added new digital signature');
                   } else {
-                    await _client.from('dsc_records').update({
-                      'client_name': clientNameController.text,
-                      'email_id': emailController.text,
-                      'phone_no': phoneController.text,
-                      'username': usernameController.text,
-                      'password': passwordController.text,
-                      'dsc_taken_date': takenDate?.toIso8601String(),
-                      'dsc_expiry_date': expiryDate?.toIso8601String(),
-                    }).eq('id', record.id!);
+                    final updateDsc = amplify_models.DscRecords(
+                      id: record.id.toString(),
+                      client_name: clientNameController.text,
+                      email_id: emailController.text,
+                      phone_no: phoneController.text,
+                      username: usernameController.text,
+                      password: passwordController.text,
+                      dsc_taken_date: takenDate?.toIso8601String(),
+                      dsc_expiry_date: expiryDate?.toIso8601String(),
+                    );
+                    await Amplify.API.mutate(request: ModelMutations.update(updateDsc).response).response;
                     await LoggingService().logAction(action: 'SIGNATURE_UPDATED', targetType: 'Signature', targetId: record.id.toString(), details: 'Updated signature for ${clientNameController.text}');
                   }
                   if (mounted) Navigator.pop(context);

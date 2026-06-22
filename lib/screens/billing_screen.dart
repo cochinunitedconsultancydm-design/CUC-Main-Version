@@ -1,3 +1,4 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -13,7 +14,8 @@ import '../utils/number_to_words.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart';
 import '../widgets/premium_app_bar.dart';
 
 class BillingScreen extends StatefulWidget {
@@ -27,7 +29,6 @@ class _BillingScreenState extends State<BillingScreen> {
   final _clientService = ClientService();
   final _excel = ExcelService();
   final _log = LoggingService();
-  final _client = Supabase.instance.client;
 
   List<Billing> _billings = [];
   bool _isLoading = true;
@@ -376,11 +377,13 @@ class _BillingScreenState extends State<BillingScreen> {
   Future<void> _showClientLedger(String clientName) async {
     try {
       final items = await _billingService.getClientLedger(clientName);
-      final clientRes = await _client.from('clients').select('balance_due').eq('name', clientName).maybeSingle();
+      final req = ModelQueries.list(Clients.classType, where: Clients.NAME.eq(clientName));
+      final res = await Amplify.API.query(request: req).response;
+      final clientObj = (res.data?.items ?? []).isNotEmpty ? res.data!.items.first : null;
       
       String totalBal = '0/-';
-      if (clientRes != null && clientRes['balance_due'] != null) {
-         totalBal = clientRes['balance_due'].toString();
+      if (clientObj != null && clientObj.balanceDue != null) {
+         totalBal = clientObj.balanceDue.toString();
       }
 
       if (!mounted) return;
@@ -932,7 +935,7 @@ class _BillingScreenState extends State<BillingScreen> {
       try {
         final d = Map<String, dynamic>.from(b.data ?? {});
         d['payment_deadline'] = controller.text;
-        await _client.from('billings').update({'data': d}).eq('id', b.id!);
+        await _billingService.updateBilling(b.id!, {'data': d});
         setState(() {
           final index = _billings.indexWhere((element) => element.id == b.id);
           if (index != -1) {
@@ -986,7 +989,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   final _log = LoggingService();
   final _billingService = BillingService();
   final _clientService = ClientService();
-  final _client = Supabase.instance.client;
+  final _clientService = ClientService();
 
   static const cats = ['Consultancy', 'Legal', 'Digital Marketing'];
 
@@ -1063,16 +1066,25 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
 
   Future<void> _fetchPastItems() async {
     try {
-      final res = await _client.from('billings').select('data').order('id', ascending: false).limit(100);
+      final req = ModelQueries.list(Billings.classType, limit: 100);
+      final res = await Amplify.API.query(request: req).response;
       final Set<String> seen = {};
       final List<Map<String, String>> items = [];
-      for (var row in res) {
-        final data = row['data'];
-        if (data != null) {
-          Map<String, dynamic> mapData = Map<String, dynamic>.from(data);
-          final invoiceItems = mapData['items'];
-          if (invoiceItems is List) {
-             for (var item in invoiceItems) {
+      final billingsList = res.data?.items.whereType<Billings>().toList() ?? [];
+      billingsList.sort((a, b) => b.id.compareTo(a.id));
+      
+      for (var row in billingsList) {
+        final dataStr = row.data;
+        if (dataStr != null) {
+          Map<String, dynamic> dataMap = {};
+          try {
+            if (dataStr is String) {
+              dataMap = jsonDecode(dataStr);
+            }
+          } catch (_) {}
+          final list = dataMap['items'] as List<dynamic>?;
+          if (list != null) {
+             for (var item in list) {
                final desc = item['description']?.toString() ?? '';
                final amt = item['amount']?.toString() ?? '';
                if (desc.isNotEmpty && !seen.contains(desc)) {
@@ -1235,13 +1247,9 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
 
   Future<bool> _isInvoiceNoDuplicate(String no) async {
     try {
-      final res = await _client
-          .from('billings')
-          .select('id')
-          .eq('invoice_no', no)
-          .neq('id', widget.billing?.id ?? -1)
-          .maybeSingle();
-      return res != null;
+      final req = ModelQueries.list(Billings.classType, where: Billings.INVOICE_NO.eq(no));
+      final res = await Amplify.API.query(request: req).response;
+      return (res.data?.items.where((i) => i!.id != widget.billing?.id.toString()).isNotEmpty) ?? false;
     } catch (e) {
       return false;
     }
@@ -1309,37 +1317,39 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         'payment_received': (NumberToWords.parseCurrency(_advanceReceived.text) > 0 && NumberToWords.parseCurrency(_advanceReceived.text) >= NumberToWords.parseCurrency(_grandTotal.isEmpty ? _totalAmount : _grandTotal)) || (widget.billing?.data?['payment_received'] == true), 
         'payment_date': widget.billing?.data?['payment_date']
       };
-      final prefix = _authorities.split(' ').first;
-      final Map<String, dynamic> v = {'inv': _invoiceNo.text, 'client': _clientName.text, 'date': _date.text, 'amt': _totalAmount, 'type': _type, 'cat': _category, 'auth': _authorities, 'status': _status, 'data': d};
-      int savedId;
+      
+      dynamic savedId;
       if (widget.billing == null || widget.billing!.id == null) { 
-        final res = await _client.from('billings').insert({
-          'invoice_no': _invoiceNo.text,
-          'client_name': _clientName.text,
-          'date': _date.text,
-          'amount': _totalAmount,
-          'type': _type,
-          'category': _category,
-          'authorities': _authorities,
-          'status': _status,
-          'data': d
-        }).select('id').single();
-        savedId = res['id'] as int;
+        final newBilling = Billings(
+          invoice_no: _invoiceNo.text,
+          client_name: _clientName.text,
+          date: _date.text,
+          amount: _totalAmount,
+          type: _type,
+          category: _category,
+          authorities: _authorities,
+          status: _status,
+          data: jsonEncode(d),
+        );
+        final res = await Amplify.API.mutate(request: ModelMutations.create(newBilling).response).response;
+        savedId = res.data?.id;
         await _log.logAction(action: 'INVOICE_CREATED', targetType: 'Invoice', targetId: _invoiceNo.text, details: 'Created for ${_clientName.text}');
       }
       else { 
         savedId = widget.billing!.id!;
-        await _client.from('billings').update({
-          'invoice_no': _invoiceNo.text,
-          'client_name': _clientName.text,
-          'date': _date.text,
-          'amount': _totalAmount,
-          'type': _type,
-          'category': _category,
-          'authorities': _authorities,
-          'status': _status,
-          'data': d
-        }).eq('id', savedId);
+        final updateBilling = Billings(
+          id: savedId.toString(),
+          invoice_no: _invoiceNo.text,
+          client_name: _clientName.text,
+          date: _date.text,
+          amount: _totalAmount,
+          type: _type,
+          category: _category,
+          authorities: _authorities,
+          status: _status,
+          data: jsonEncode(d),
+        );
+        await Amplify.API.mutate(request: ModelMutations.update(updateBilling).response).response;
         await _log.logAction(action: 'INVOICE_UPDATED', targetType: 'Invoice', targetId: _invoiceNo.text, details: 'Updated for ${_clientName.text}');
       }
       // Update client's balance in the clients table

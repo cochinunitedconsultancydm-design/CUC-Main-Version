@@ -1,3 +1,4 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +17,9 @@ import 'company_bill_management_screen.dart';
 import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
+import 'dart:convert';
 import '../widgets/premium_app_bar.dart';
 import '../services/auth_service.dart';
 import '../models/billing.dart';
@@ -44,7 +47,7 @@ class ManagerDashboardScreen extends StatefulWidget {
 }
 
 class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
-  final _client = Supabase.instance.client;
+  // removed Supabase client
   int _selectedIndex = 0;
   String? _selectedCategory;
   final _searchController = TextEditingController();
@@ -141,81 +144,98 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     });
 
     try {
-      final client = Supabase.instance.client;
       
-      // 1. Basic Stats (Parallelize for speed)
-      final statsFutures = await Future.wait([
-        client.from('clients').select('id'),
-        client.from('client_licenses').select('id').eq('status', 'Active'),
-        client.from('tasks').select('id').neq('status', 'Completed'),
-        client.from('deals').select('id').neq('stage', 'Completed'),
-        client.from('billings').select('amount').eq('status', 'Received').eq('type', 'INVOICE'),
-        client.from('company_bills').select('amount'),
-      ]);
-
-      final clientsCountRes = statsFutures[0];
-      final licensesCountRes = statsFutures[1];
-      final pendingTasksRes = statsFutures[2];
-      final pendingWorksRes = statsFutures[3];
-      final revenueRes = statsFutures[4];
-      final expenseRes = statsFutures[5];
+      // 1. Basic Stats
+      final clientsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Clients.classType).response).response;
+      final clientsCount = (clientsRes.data?.items ?? []).length;
+      
+      final licensesRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ClientLicenses.classType, where: amplify_models.ClientLicenses.STATUS.eq('Active').response)).response;
+      final licensesCount = (licensesRes.data?.items ?? []).length;
+      
+      final tasksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.STATUS.ne('Completed').response)).response;
+      final pendingTasksCount = (tasksRes.data?.items ?? []).length;
+      
+      final worksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed').response)).response;
+      final pendingWorksCount = (worksRes.data?.items ?? []).length;
+      
+      final billingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.STATUS.eq('Received').response.and(amplify_models.Billings.TYPE.eq('INVOICE')))).response;
+      
+      final companyBillsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.CompanyBills.classType).response).response;
 
       // Calculate Revenue
       double totalRevenue = 0;
-      for (var row in revenueRes) {
-        final amtStr = row['amount']?.toString() ?? '0';
-        final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
-        totalRevenue += double.tryParse(cleanAmt) ?? 0.0;
+      for (var row in billingsRes.data?.items ?? []) {
+        if (row != null) {
+          final amtStr = row.amount ?? '0';
+          final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
+          totalRevenue += double.tryParse(cleanAmt) ?? 0.0;
+        }
       }
 
       // Calculate Expenses
       double totalExpenses = 0;
-      for (var row in expenseRes) {
-        totalExpenses += double.tryParse(row['amount']?.toString() ?? '0') ?? 0.0;
+      for (var row in companyBillsRes.data?.items ?? []) {
+        if (row != null) {
+          totalExpenses += row.amount ?? 0.0;
+        }
       }
 
       // 2. Recent Activity & Billings
-      final activityRes = await client
-          .from('billings')
-          .select('id, invoice_no, client_name, created_at, type')
-          .order('created_at', ascending: false)
-          .limit(5);
-          
-      final billingRes = await client
-          .from('billings')
-          .select()
-          .order('id', ascending: false)
-          .limit(50);
+      final allBillingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType).response).response;
+      final allBillings = (allBillingsRes.data?.items.whereType<amplify_models.Billings>().toList() ?? []);
+      allBillings.sort((a, b) => (b.createdAt?.getDateTime() ?? DateTime.now()).compareTo(a.createdAt?.getDateTime() ?? DateTime.now()));
+      
+      final activityRes = allBillings.take(5).map((e) => {
+        'id': e.id,
+        'invoice_no': e.invoice_no,
+        'client_name': e.client_name,
+        'created_at': e.createdAt?.getDateTime().toIso8601String(),
+        'type': e.type,
+      }).toList();
+      
+      final billingRes = allBillings.take(50).map((e) => {
+        'id': e.id,
+        'invoice_no': e.invoice_no,
+        'client_name': e.client_name,
+        'date': e.date,
+        'amount': e.amount,
+        'type': e.type,
+        'category': e.category,
+        'authorities': e.authorities,
+        'status': e.status,
+        'data': e.data != null ? jsonDecode(e.data!) : null,
+      }).toList();
 
       // 3. Staff Activity (Handle potential empty staff list)
       List<Map<String, dynamic>> combinedStaffActivity = [];
       try {
-        final staffUsers = await client.from('users').select('id, name, username').inFilter('role', ['staff', 'delivery', 'accountant']).limit(20);
-        final staffIds = staffUsers.map((u) => u['id'] as int).toList();
+        final staffUsersRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Users.classType).response).response;
+        final staffUsers = (staffUsersRes.data?.items ?? []).where((u) => u != null && ['staff', 'delivery', 'accountant'].contains(u.role)).take(20).toList();
+        final staffIds = staffUsers.map((u) => u!.id).toList();
         
         if (staffIds.isNotEmpty) {
-          final List<dynamic> sessions = await client.from('user_sessions').select().inFilter('user_id', staffIds).order('login_time', ascending: false);
-          final List<dynamic> tasks = await client.from('tasks').select('assigned_to, title').inFilter('assigned_to', staffIds).eq('status', 'In Progress');
+          final sessionsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.UserSessions.classType).response).response;
+          final sessions = (sessionsRes.data?.items ?? []).where((s) => s != null && staffIds.contains(s.user_id)).toList();
+          
+          final tasksQueryRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.STATUS.eq('In Progress').response)).response;
+          final tasks = (tasksQueryRes.data?.items ?? []).where((t) => t != null && staffIds.contains(t.assigned_to)).toList();
 
           for (var u in staffUsers) {
-            final userId = u['id'] as int;
-            final latestSession = (sessions).firstWhere(
-              (s) => s['user_id'] == userId, 
-              orElse: () => <String, dynamic>{'login_time': null, 'is_active': false}
-            ) as Map<String, dynamic>;
+            final userId = u!.id;
+            final userSessions = sessions.where((s) => s!.user_id == userId).toList();
+            userSessions.sort((a, b) => (b!.login_time ?? '').compareTo(a!.login_time ?? ''));
+            final latestSession = userSessions.isNotEmpty ? userSessions.first : null;
             
-            final currentTask = (tasks).firstWhere(
-              (t) => t['assigned_to'] == userId, 
-              orElse: () => <String, dynamic>{'title': null}
-            ) as Map<String, dynamic>;
+            final userTasks = tasks.where((t) => t!.assigned_to == userId).toList();
+            final currentTask = userTasks.isNotEmpty ? userTasks.first : null;
             
             combinedStaffActivity.add({
               'id': userId,
-              'name': u['name'],
-              'username': u['username'],
-              'last_login': latestSession['login_time'],
-              'is_active': latestSession['is_active'] == true,
-              'current_task': currentTask['title'],
+              'name': u.name,
+              'username': u.username,
+              'last_login': latestSession?.login_time,
+              'is_active': latestSession?.is_active == true,
+              'current_task': currentTask?.title,
             });
           }
         }
@@ -227,24 +247,36 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       List<Map<String, dynamic>> staffLogs = [];
       List<Map<String, dynamic>> peakActivity = [];
       try {
-        final staffLogsRes = await client
-            .from('activity_logs')
-            .select('*, users(name)')
-            .order('created_at', ascending: false)
-            .limit(5);
-        staffLogs = List<Map<String, dynamic>>.from(staffLogsRes).map((m) {
-          final u = m['users'] as Map<String, dynamic>?;
-          return { ...m, 'user_name': u?['name'] ?? 'Unknown' };
+        final staffLogsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ActivityLogs.classType).response).response;
+        final allLogs = (staffLogsRes.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? []);
+        allLogs.sort((a, b) => (b.createdAt?.getDateTime() ?? DateTime.now()).compareTo(a.createdAt?.getDateTime() ?? DateTime.now()));
+        
+        final latestLogs = allLogs.take(5).toList();
+        
+        // Fetch user names for logs
+        final allUsersRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Users.classType).response).response;
+        final allUsers = allUsersRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+        final userMap = {for (var u in allUsers) u.id: u.name};
+        
+        staffLogs = latestLogs.map((m) {
+          return {
+            'action': m.action,
+            'details': m.details,
+            'target_type': m.target_type,
+            'target_id': m.target_id,
+            'created_at': m.createdAt?.getDateTime().toIso8601String(),
+            'user_name': userMap[m.user_id] ?? 'Unknown',
+          };
         }).toList();
 
-        final yesterday = DateTime.now().subtract(const Duration(hours: 24)).toIso8601String();
-        final recentLogs = await client.from('activity_logs').select('created_at').gt('created_at', yesterday);
+        final yesterday = DateTime.now().subtract(const Duration(hours: 24));
+        final recentLogs = allLogs.where((l) => (l.createdAt?.getDateTime() ?? DateTime.now()).isAfter(yesterday)).toList();
         
         final Map<int, int> hourCounts = {};
         for (var log in recentLogs) {
-          final createdAt = log['created_at'];
+          final createdAt = log.createdAt?.getDateTime();
           if (createdAt != null) {
-            final hour = DateTime.parse(createdAt.toString()).hour;
+            final hour = createdAt.toLocal().hour;
             hourCounts[hour] = (hourCounts[hour] ?? 0) + 1;
           }
         }
@@ -257,10 +289,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       if (!mounted) return;
       setState(() {
         _adminStats = {
-          'totalClients': clientsCountRes.length.toString(),
-          'activeLicenses': licensesCountRes.length.toString(),
-          'pendingTasks': pendingTasksRes.length.toString(),
-          'pendingWorks': pendingWorksRes.length.toString(),
+          'totalClients': clientsCount.toString(),
+          'activeLicenses': licensesCount.toString(),
+          'pendingTasks': pendingTasksCount.toString(),
+          'pendingWorks': pendingWorksCount.toString(),
           'monthlyRevenue': '₹${NumberFormat('#,##,###').format(totalRevenue)}',
           'totalExpenses': '₹${NumberFormat('#,##,###').format(totalExpenses)}',
         };
@@ -1049,13 +1081,26 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     );
   }
 
+  Future<List<Map<String, dynamic>>> _fetchAuditLogs() async {
+    final req = ModelQueries.list(amplify_models.ActivityLogs.classType, limit: 200);
+    final res = await Amplify.API.query(request: req).response;
+    final allLogs = res.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
+    allLogs.sort((a, b) => (b.createdAt?.getDateTime() ?? DateTime.now()).compareTo(a.createdAt?.getDateTime() ?? DateTime.now()));
+    
+    final usersReq = ModelQueries.list(amplify_models.Users.classType);
+    final usersRes = await Amplify.API.query(request: usersReq).response;
+    final usersMap = {for (var u in usersRes.data?.items ?? []) if (u != null) u.id: u.name};
+    
+    return allLogs.map((m) => {
+      ...m.toJson(),
+      'users': {'name': usersMap[m.user_id] ?? 'Unknown'},
+      'created_at': m.createdAt?.getDateTime().toIso8601String(),
+    }).toList();
+  }
+
   Widget _buildAuditLogView(bool isWide) {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: Supabase.instance.client
-          .from('activity_logs')
-          .select('*, users(name)')
-          .order('created_at', ascending: false)
-          .limit(200),
+      future: _fetchAuditLogs(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         final logsList = snapshot.data!;
@@ -1339,47 +1384,59 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _getCategoryData() async {
-    final client = Supabase.instance.client;
     switch (_selectedCategory) {
       case 'Expiring Licences':
-        final response = await client
-            .from('client_licenses')
-            .select('*, clients(name), license_types(name)')
-            .lte('expiry_date', DateTime.now().add(const Duration(days: 30)).toIso8601String())
-            .order('expiry_date', ascending: true);
-        return response.map((map) {
-          final c = map['clients'] as Map<String, dynamic>?;
-          final lt = map['license_types'] as Map<String, dynamic>?;
-          if (c != null) map['client_name'] = c['name'];
-          if (lt != null) map['license_type_name'] = lt['name'];
-          return map;
+        final req = ModelQueries.list(
+          amplify_models.ClientLicenses.classType,
+          where: amplify_models.ClientLicenses.EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
+        );
+        final res = await Amplify.API.query(request: req).response;
+        final list = res.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
+        list.sort((a, b) => (a.expiry_date ?? '').compareTo(b.expiry_date ?? ''));
+        return list.map((l) => {
+          'client_name': l.client_id, // Might need to resolve name
+          'license_type_name': l.license_type_id,
+          ...l.toJson(),
         }).toList();
+        
       case 'Signature Expiry':
-        return await client
-            .from('dsc_records')
-            .select()
-            .lte('dsc_expiry_date', DateTime.now().add(const Duration(days: 30)).toIso8601String())
-            .order('dsc_expiry_date', ascending: true);
+        final req = ModelQueries.list(
+          amplify_models.DscRecords.classType,
+          where: amplify_models.DscRecords.DSC_EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
+        );
+        final res = await Amplify.API.query(request: req).response;
+        final list = res.data?.items.whereType<amplify_models.DscRecords>().toList() ?? [];
+        list.sort((a, b) => (a.dsc_expiry_date ?? '').compareTo(b.dsc_expiry_date ?? ''));
+        return list.map((l) => l.toJson()).toList();
+        
       case 'Work Management':
-        return await client
-            .from('deals')
-            .select()
-            .neq('stage', 'Completed')
-            .order('id', ascending: false);
+        final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed'));
+        final res = await Amplify.API.query(request: req).response;
+        final list = res.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
+        list.sort((a, b) => (b.id).compareTo(a.id));
+        return list.map((l) => l.toJson()).toList();
+        
       case 'Bills to Receive':
-        return await client
-            .from('billings')
-            .select()
-            .neq('status', 'Received')
-            .eq('type', 'INVOICE')
-            .order('id', ascending: false);
+        final req = ModelQueries.list(
+          amplify_models.Billings.classType,
+          where: amplify_models.Billings.TYPE.eq('INVOICE').and(amplify_models.Billings.STATUS.ne('Received')),
+        );
+        final res = await Amplify.API.query(request: req).response;
+        final list = res.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
+        list.sort((a, b) => (b.id).compareTo(a.id));
+        return list.map((l) => l.toJson()).toList();
+        
       case 'Clients':
-        return await client
-            .from('clients')
-            .select()
-            .order('name', ascending: true);
+        final req = ModelQueries.list(amplify_models.Clients.classType);
+        final res = await Amplify.API.query(request: req).response;
+        final list = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+        list.sort((a, b) => (a.name).compareTo(b.name));
+        return list.map((l) => l.toJson()).toList();
+        
       default:
-        return await client.from('clients').select().limit(1);
+        final req = ModelQueries.list(amplify_models.Clients.classType, limit: 1);
+        final res = await Amplify.API.query(request: req).response;
+        return res.data?.items.whereType<amplify_models.Clients>().map((e) => e.toJson()).toList() ?? [];
     }
   }
 
@@ -1683,7 +1740,13 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       try {
         final d = Map<String, dynamic>.from(b.data ?? {});
         d['payment_deadline'] = controller.text;
-        await _client.from('billings').update({'data': d}).eq('id', b.id!);
+        final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(b.id));
+        final res = await Amplify.API.query(request: req).response;
+        final billing = res.data?.items.first;
+        if (billing != null) {
+          final updatedBilling = billing.copyWith(data: jsonEncode(d));
+          await Amplify.API.mutate(request: ModelMutations.update(updatedBilling).response);
+        }
         _fetchAdminStats();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deadline updated successfully')));
       } catch (e) {
@@ -1778,15 +1841,22 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         d['balance_due'] = updatedBalance > 0 ? NumberToWords.formatIndianCurrency(updatedBalance) : '0/-';
         if (isPaid) d['payment_date'] = DateTime.now().toIso8601String();
 
-        await _client.from('billings').update({
-          'status': isPaid ? 'Received' : 'Pending',
-          'data': d,
-        }).eq('id', b.id!);
+        final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(b.id));
+        final res = await Amplify.API.query(request: req).response;
+        final billing = res.data?.items.first;
+        if (billing != null) {
+          final updatedBilling = billing.copyWith(status: isPaid ? 'Received' : 'Pending', data: jsonEncode(d));
+          await Amplify.API.mutate(request: ModelMutations.update(updatedBilling).response);
+        }
         
         if (b.clientName != null && b.clientName!.isNotEmpty) {
-           await _client.from('clients').update({
-             'balance_due': d['balance_due'],
-           }).eq('name', b.clientName!);
+           final cReq = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.NAME.eq(b.clientName!));
+           final cRes = await Amplify.API.query(request: cReq).response;
+           final client = cRes.data?.items.isNotEmpty == true ? cRes.data?.items.first : null;
+           if (client != null) {
+             final updatedClient = client.copyWith(balanceDue: double.tryParse(d['balance_due'].toString().replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0);
+             await Amplify.API.mutate(request: ModelMutations.update(updatedClient).response);
+           }
         }
 
         _fetchAdminStats();
@@ -1813,7 +1883,12 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
 
     if (ok == true) {
       try {
-        await _client.from('billings').delete().eq('id', b.id!);
+        final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(b.id));
+        final res = await Amplify.API.query(request: req).response;
+        final billing = res.data?.items.first;
+        if (billing != null) {
+          await Amplify.API.mutate(request: ModelMutations.delete(billing).response);
+        }
         _fetchAdminStats();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice deleted successfully')));
       } catch (e) {
@@ -2028,7 +2103,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
 
     try {
       final userId = await AuthService().getUserId();
-      final res = await _client.from('users').select().eq('id', userId!).maybeSingle();
+      final userIdStr = userId.toString();
+      final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(userIdStr));
+      final resList = await Amplify.API.query(request: req).response;
+      final res = resList.data?.items.isNotEmpty == true ? resList.data?.items.first : null;
       
       if (!mounted) return;
       Navigator.pop(context); // Remove loader
@@ -2038,16 +2116,11 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         return;
       }
 
-      final nameController = TextEditingController(text: res['name']);
-      // We use a try-catch or safe access in case 'email' column isn't created yet
-      String initialEmail = '';
-      if (res.containsKey('email') && res['email'] != null) {
-        initialEmail = res['email'].toString();
-      }
-      final emailController = TextEditingController(text: initialEmail);
+      final nameController = TextEditingController(text: res.name);
+      final emailController = TextEditingController(text: res.email ?? '');
       
-      final username = res['username'] ?? '-';
-      final role = res['role']?.toString().toUpperCase() ?? '-';
+      final username = res.username ?? '-';
+      final role = res.role?.toUpperCase() ?? '-';
       bool isSaving = false;
 
       showDialog(
@@ -2172,10 +2245,16 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                 onPressed: isSaving ? null : () async {
                                   setState(() => isSaving = true);
                                   try {
-                                    await _client.from('users').update({
-                                      'name': nameController.text.trim(),
-                                      'email': emailController.text.trim(),
-                                    }).eq('id', userId);
+                                    final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(userId.toString()));
+                                    final resList = await Amplify.API.query(request: req).response;
+                                    final userObj = resList.data?.items.isNotEmpty == true ? resList.data?.items.first : null;
+                                    if (userObj != null) {
+                                      final updatedUser = userObj.copyWith(
+                                        name: nameController.text.trim(),
+                                        email: emailController.text.trim(),
+                                      );
+                                      await Amplify.API.mutate(request: ModelMutations.update(updatedUser).response);
+                                    }
                                     
                                     if (context.mounted) {
                                       Navigator.pop(context);
@@ -2420,8 +2499,11 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                   if (userId == null) throw Exception('Not logged in.');
                                   
                                   // Verify current password
-                                  final userRes = await _client.from('users').select('password').eq('id', userId).maybeSingle();
-                                  if (userRes == null || userRes['password'] != current) {
+                                  final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(userId.toString()));
+                                  final resList = await Amplify.API.query(request: req).response;
+                                  final userObj = resList.data?.items.isNotEmpty == true ? resList.data?.items.first : null;
+                                  
+                                  if (userObj == null || userObj.password != current) {
                                     setState(() {
                                       errorMessage = 'Incorrect current password.';
                                       isLoading = false;
@@ -2430,7 +2512,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                   }
                                   
                                   // Update password
-                                  await _client.from('users').update({'password': newPass}).eq('id', userId);
+                                  if (userObj != null) {
+                                    final updatedUser = userObj.copyWith(password: newPass);
+                                    await Amplify.API.mutate(request: ModelMutations.update(updatedUser).response);
+                                  }
                                   
                                   if (context.mounted) {
                                     Navigator.pop(context);

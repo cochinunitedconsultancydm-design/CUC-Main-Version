@@ -7,7 +7,10 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:amplify_api/amplify_api.dart';
+import '../models/ModelProvider.dart';
+import '../amplify_outputs.dart';
 
 class LocationTrackingService {
   static final LocationTrackingService _instance = LocationTrackingService._internal();
@@ -99,11 +102,17 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 void onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
 
-  // Initialize Supabase in background isolate
-  await Supabase.initialize(
-    url: 'https://bzxtgiqjgfojblezdubd.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6eHRnaXFqZ2ZvamJsZXpkdWJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3OTMxMzIsImV4cCI6MjA4MTM2OTEzMn0.E8IKI5PvnW9WoEX4EcXvcSVk0b74LGrrQhNhFX99Dxo',
-  );
+  // Initialize Amplify in background isolate
+  try {
+    if (!Amplify.isConfigured) {
+      await Amplify.addPlugins([
+        AmplifyAPI(modelProvider: ModelProvider.instance),
+      ]);
+      await Amplify.configure(amplifyConfig);
+    }
+  } catch (e) {
+    debugPrint('Amplify config error in background: $e');
+  }
 
   if (service is AndroidServiceInstance) {
     service.on('setAsForeground').listen((event) {
@@ -128,19 +137,21 @@ void onStart(ServiceInstance service) async {
 
       if (finalUserId != null) {
         // Find active check-in and check out
-        final res = await Supabase.instance.client
-            .from('staff_attendance')
-            .select()
-            .eq('user_id', finalUserId)
-            .eq('attendance_date', DateTime.now().toIso8601String().split('T')[0])
-            .isFilter('check_out_time', null)
-            .maybeSingle();
-
-        if (res != null) {
-          await Supabase.instance.client.from('staff_attendance').update({
-            'check_out_time': DateTime.now().toUtc().toIso8601String(),
-          }).eq('id', res['id']);
-          debugPrint('Auto checked out user $finalUserId due to app kill.');
+        final dateStr = DateTime.now().toIso8601String().split('T')[0];
+        
+        final req = ModelQueries.list(
+          StaffAttendance.classType, 
+          where: StaffAttendance.USER_ID.eq(finalUserId).and(StaffAttendance.ATTENDANCE_DATE.eq(dateStr))
+        );
+        final res = await Amplify.API.query(request: req).response;
+        
+        if (res.data?.items.isNotEmpty == true) {
+          final item = res.data!.items.firstWhere((element) => element?.check_out_time == null, orElse: () => null);
+          if (item != null) {
+            final updated = item.copyWith(check_out_time: DateTime.now().toUtc().toIso8601String());
+            await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+            debugPrint('Auto checked out user $finalUserId due to app kill.');
+          }
         }
       }
     } catch (e) {
@@ -181,23 +192,37 @@ void onStart(ServiceInstance service) async {
         if (position != null) {
           final nowIso = DateTime.now().toUtc().toIso8601String();
 
-        // 1. Update live location
-        await Supabase.instance.client.from('staff_locations').upsert({
-          'user_id': finalUserId,
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-          'updated_at': nowIso,
-        });
+          // 1. Update live location
+          final uReq = ModelQueries.list(StaffLocations.classType, where: StaffLocations.USER_ID.eq(finalUserId));
+          final uRes = await Amplify.API.query(request: uReq).response;
+          if (uRes.data?.items.isNotEmpty == true) {
+            final c = uRes.data!.items.first!;
+            final updated = c.copyWith(
+              latitude: position.latitude,
+              longitude: position.longitude,
+              updated_at: nowIso
+            );
+            await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+          } else {
+            final newLoc = StaffLocations(
+              user_id: finalUserId,
+              latitude: position.latitude,
+              longitude: position.longitude,
+              updated_at: nowIso
+            );
+            await Amplify.API.mutate(request: ModelMutations.create(newLoc).response);
+          }
 
-        // 2. Append to route history
-        await Supabase.instance.client.from('location_history').insert({
-          'user_id': finalUserId,
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-          'recorded_at': nowIso,
-        });
-        
-        debugPrint('Background location updated and recorded for user $finalUserId: ${position.latitude}, ${position.longitude}');
+          // 2. Append to route history
+          final newHist = LocationHistory(
+            user_id: finalUserId,
+            latitude: position.latitude,
+            longitude: position.longitude,
+            recorded_at: nowIso
+          );
+          await Amplify.API.mutate(request: ModelMutations.create(newHist).response);
+          
+          debugPrint('Background location updated and recorded for user $finalUserId: ${position.latitude}, ${position.longitude}');
         } else {
           debugPrint('Failed to get background location for user $finalUserId');
         }

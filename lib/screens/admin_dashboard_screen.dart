@@ -1,3 +1,4 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -13,7 +14,8 @@ import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/premium_app_bar.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart';
 import '../services/auth_service.dart';
 import '../models/billing.dart';
 import '../services/excel_service.dart';
@@ -104,31 +106,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _errorMessage = null;
     });
     try {
-      final client = Supabase.instance.client;
+      final req1 = ModelQueries.list(Clients.classType);
+      final res1 = await Amplify.API.query(request: req1).response;
+      final clientsCountRes = res1.data?.items ?? [];
       
-      final clientsCountRes = await client.from('clients').select('id');
-      final licensesCountRes = await client.from('client_licenses').select('id').eq('status', 'Active');
+      final req2 = ModelQueries.list(ClientLicenses.classType, where: ClientLicenses.STATUS.eq('Active'));
+      final res2 = await Amplify.API.query(request: req2).response;
+      final licensesCountRes = res2.data?.items ?? [];
       
-      // Revenue calculation: Sum of amount from billings where status is Received
-      final revenueRes = await client.from('billings').select('amount').eq('status', 'Received');
+      final req3 = ModelQueries.list(Billings.classType);
+      final res3 = await Amplify.API.query(request: req3).response;
+      var billingsList = (res3.data?.items ?? []).where((e) => e != null).cast<Billings>().toList();
+      billingsList.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
+      
       double totalRevenue = 0;
-      for (var row in revenueRes) {
-        final amtStr = row['amount']?.toString() ?? '0';
+      for (var row in billingsList.where((b) => b.status == 'Received')) {
+        final amtStr = row.amount?.toString() ?? '0';
         final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
         totalRevenue += double.tryParse(cleanAmt) ?? 0.0;
       }
 
-      final activityRes = await client
-          .from('billings')
-          .select('id, invoice_no, client_name, created_at, type')
-          .order('created_at', ascending: false)
-          .limit(5);
-          
-      final billingRes = await client
-          .from('billings')
-          .select()
-          .order('id', ascending: false)
-          .limit(50);
+      final activityRes = billingsList.take(5).toList();
+      final billingRes = billingsList.take(50).toList();
 
       setState(() {
         _adminStats = {
@@ -136,9 +135,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           'activeLicenses': licensesCountRes.length.toString(),
           'monthlyRevenue': '₹${NumberFormat('#,##,###').format(totalRevenue)}',
         };
-        _recentActivity = List<Map<String, dynamic>>.from(activityRes);
-        _globalBillings = billingRes.map((m) {
-          return Billing.fromMap(m).toMap();
+        _recentActivity = activityRes.map((b) => {
+            'id': b.id,
+            'invoice_no': b.invoiceNo,
+            'client_name': b.clientName,
+            'created_at': b.createdAt?.toString(),
+            'type': b.type
+        }).toList();
+        _globalBillings = billingRes.map((b) => {
+            'id': b.id,
+            'invoice_no': b.invoiceNo,
+            'client_name': b.clientName,
+            'type': b.type,
+            'amount': b.amount,
+            'status': b.status,
+            'created_at': b.createdAt?.toString(),
         }).toList();
         _errorMessage = null;
       });
@@ -161,102 +172,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _runBackup() async {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Starting full system backup...'), backgroundColor: AppTheme.primaryColor),
+      const SnackBar(content: Text('System backup is now handled automatically via AWS DynamoDB Point-In-Time Recovery. Please check the AWS Console.'), backgroundColor: AppTheme.primaryColor),
     );
-
-    try {
-      final tables = ['clients', 'billings', 'client_licenses', 'dsc_records', 'tasks', 'deals', 'activity_logs', 'service_content', 'users'];
-      final Map<String, List<Map<String, dynamic>>> backupData = {};
-
-      for (var table in tables) {
-        final res = await Supabase.instance.client.from(table).select().order('id', ascending: false);
-        backupData[table] = List<Map<String, dynamic>>.from(res);
-      }
-
-      // Generate Human-Readable Excel File
-      final excelPath = await ExcelService().generateFullBackup(backupData);
-      
-      // Generate System-Restore JSON File
-      final directory = await getApplicationDocumentsDirectory();
-      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final jsonPath = '${directory.path}/CUC_SystemBackup_$timestamp.json';
-      final file = File(jsonPath);
-      await file.writeAsString(jsonEncode(backupData));
-      
-      if (excelPath != null && mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Backup saved: ${excelPath.split('\\').last}\nSystem JSON saved: CUC_SystemBackup_$timestamp.json'),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 10),
-            action: SnackBarAction(
-              label: 'Open Folder',
-              onPressed: () async {
-                final folder = File(excelPath).parent.path;
-                if (await canLaunchUrl(Uri.directory(folder))) {
-                  await launchUrl(Uri.directory(folder));
-                }
-              },
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Backup failed: $e'), backgroundColor: Colors.redAccent),
-        );
-      }
-    }
   }
 
   Future<void> _restoreBackup() async {
-    try {
-      FilePickerResult? result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-        dialogTitle: 'Select CUC System Backup JSON File',
-      );
-
-      if (result != null && result.files.single.path != null) {
-        setState(() => _isLoading = true);
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Restoring database. Please wait...'), backgroundColor: Colors.orange),
-        );
-
-        final file = File(result.files.single.path!);
-        final contents = await file.readAsString();
-        final Map<String, dynamic> data = jsonDecode(contents);
-        
-        int totalRestored = 0;
-        for (var entry in data.entries) {
-          final table = entry.key;
-          final List rows = entry.value;
-          if (rows.isNotEmpty) {
-            await Supabase.instance.client.from(table).upsert(rows);
-            totalRestored += rows.length;
-          }
-        }
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Restore complete! $totalRestored records restored.'), backgroundColor: Colors.green),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Restore failed: $e'), backgroundColor: Colors.redAccent, duration: const Duration(seconds: 8)),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Database restore is managed via AWS DynamoDB.'), backgroundColor: Colors.orange),
+    );
   }
 
   @override
@@ -554,23 +477,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<Map<String, dynamic>> _fetchSystemMetrics() async {
-    final tables = ['clients', 'billings', 'deals', 'tasks', 'activity_logs', 'dsc_records', 'user_sessions'];
     final Map<String, int> stats = {};
-    
     int ping = 0;
     String syncStatus = 'Offline';
     
     try {
       final sw = Stopwatch()..start();
-      await Supabase.instance.client.from('users').select('id').limit(1);
+      await Amplify.API.query(request: ModelQueries.list(Users.classType, limit: 1).response).response;
       sw.stop();
       ping = sw.elapsedMilliseconds;
       syncStatus = 'Healthy';
       
-      for (var t in tables) {
-        final res = await Supabase.instance.client.from(t).select('id');
-        stats[t] = res.length;
-      }
+      stats['clients'] = (await Amplify.API.query(request: ModelQueries.list(Clients.classType).response)).response.data?.items.length ?? 0;
+      stats['billings'] = (await Amplify.API.query(request: ModelQueries.list(Billings.classType).response)).response.data?.items.length ?? 0;
+      stats['deals'] = (await Amplify.API.query(request: ModelQueries.list(Deals.classType).response)).response.data?.items.length ?? 0;
+      stats['tasks'] = (await Amplify.API.query(request: ModelQueries.list(Tasks.classType).response)).response.data?.items.length ?? 0;
+      stats['activity_logs'] = (await Amplify.API.query(request: ModelQueries.list(ActivityLogs.classType).response)).response.data?.items.length ?? 0;
+      stats['dsc_records'] = (await Amplify.API.query(request: ModelQueries.list(DscRecords.classType).response)).response.data?.items.length ?? 0;
+      stats['user_sessions'] = (await Amplify.API.query(request: ModelQueries.list(UserSessions.classType).response)).response.data?.items.length ?? 0;
     } catch (e) {
       syncStatus = 'Error';
     }
@@ -859,15 +783,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildAuditLogView(bool isWide) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: Supabase.instance.client
-          .from('activity_logs')
-          .select('*, users(name)')
-          .order('created_at', ascending: false)
-          .limit(200),
+    return FutureBuilder<GraphQLResponse<PaginatedResult<ActivityLogs>>>(
+      future: Amplify.API.query(request: ModelQueries.list(ActivityLogs.classType, limit: 200).response).response,
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        final logsList = snapshot.data!;
+        var logsList = snapshot.data?.data?.items.where((e) => e != null).cast<ActivityLogs>().toList() ?? [];
+        logsList.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
         return Column(
           children: [
             Padding(
@@ -887,25 +808,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 itemCount: logsList.length,
                 separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (context, index) {
-                  final logRow = logsList[index];
-                  final log = Map<String, dynamic>.from(logRow);
-                  if (logRow['users'] != null) log['user_name'] = logRow['users']['name'];
-                  final date = DateTime.parse(log['created_at'].toString()).toLocal();
+                  final log = logsList[index];
+                  final userName = log.userId ?? 'Unknown';
+                  final dateStr = log.createdAt?.toString() ?? DateTime.now().toIso8601String();
+                  final date = DateTime.parse(dateStr).toLocal();
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     child: Row(
                       children: [
                         Expanded(flex: 2, child: Text(DateFormat('HH:mm, dd MMM').format(date), style: const TextStyle(fontSize: 11))),
-                        Expanded(flex: 2, child: Text(log['user_name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                        Expanded(flex: 2, child: Text(userName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
                         if (isWide) Expanded(
                           flex: 2, 
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                            child: Text(log['action'] ?? '-', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryColor), textAlign: TextAlign.center),
+                            child: Text(log.action ?? '-', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryColor), textAlign: TextAlign.center),
                           ),
                         ),
-                        Expanded(flex: 4, child: Text(log['details'] ?? '-', style: const TextStyle(fontSize: 12, color: AppTheme.mutedTextColor))),
+                        Expanded(flex: 4, child: Text(log.details ?? '-', style: const TextStyle(fontSize: 12, color: AppTheme.mutedTextColor))),
                       ],
                     ),
                   );

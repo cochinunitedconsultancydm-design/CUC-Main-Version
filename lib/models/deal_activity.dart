@@ -1,12 +1,12 @@
 class DealActivity {
-  final int? id;
-  final int dealId;
+  final dynamic id;
+  final dynamic dealId;
   final String type; // 'call', 'meeting', 'email', 'task', 'comment'
   final String? title;
   final String? description;
   final DateTime? dueDate;
   final bool isCompleted;
-  final int? createdBy;
+  final dynamic createdBy;
   final DateTime? createdAt;
   final String? creatorName;
 

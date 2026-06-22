@@ -1,6 +1,8 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import '../services/logging_service.dart';
 import '../theme.dart';
 import '../models/task.dart';
@@ -9,6 +11,7 @@ import '../services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'task_detail_screen.dart';
+import 'dart:async';
 
 class TaskManagementScreen extends StatefulWidget {
   final String? initialStatus;
@@ -19,14 +22,13 @@ class TaskManagementScreen extends StatefulWidget {
 }
 
 class _TaskManagementScreenState extends State<TaskManagementScreen> with SingleTickerProviderStateMixin {
-  final _client = Supabase.instance.client;
   final _auth = AuthService();
   
   late TabController _tabController;
   
   bool _isLoading = true;
   bool _isAdmin = false;
-  int? _currentUserId;
+  dynamic _currentUserId;
   
   List<Task> _myTasks = [];
   List<Task> _delegatedTasks = [];
@@ -35,7 +37,10 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
   List<Map<String, dynamic>> _allUsers = [];
   final _searchController = TextEditingController();
   String _statusFilter = 'All';
-  RealtimeChannel? _tasksChannel;
+
+  StreamSubscription? _createSub;
+  StreamSubscription? _updateSub;
+  StreamSubscription? _deleteSub;
 
   @override
   void initState() {
@@ -47,7 +52,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
   }
 
   Future<void> _initData() async {
-    int? userId;
+    dynamic userId;
     bool isAdmin = false;
     
     try {
@@ -56,11 +61,15 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
       isAdmin = role == 'admin' || role == 'manager';
       
       final prefs = await SharedPreferences.getInstance();
-      userId = prefs.getInt('current_user_id');
+      final idInt = prefs.getInt('current_user_id');
+      final idStr = prefs.getString('current_user_id_str');
+      userId = idInt ?? idStr;
+      
       if (userId == null && name != null) {
-        final res = await _client.from('users').select('id').eq('username', name).maybeSingle();
-        if (res != null) {
-          userId = res['id'] as int;
+        final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.USERNAME.eq(name));
+        final res = await Amplify.API.query(request: req).response;
+        if (res.data?.items.isNotEmpty == true) {
+          userId = res.data!.items.first!.id;
         }
       }
     } catch (e) {
@@ -70,7 +79,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     if (mounted) {
       setState(() {
         _isAdmin = isAdmin;
-        _currentUserId = userId ?? 0;
+        _currentUserId = userId ?? '0';
         _tabController = TabController(length: _isAdmin ? 3 : 2, vsync: this);
       });
     }
@@ -84,20 +93,24 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
   }
 
   void _subscribeToTasks() {
-    _tasksChannel = _client.channel('public:tasks').onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'tasks',
-      callback: (payload) {
-        debugPrint('Change detected in tasks table: $payload');
-        _fetchTasks();
-      },
-    ).subscribe();
+    _createSub = Amplify.API.subscribe(
+      ModelSubscriptions.onCreate(amplify_models.Tasks.classType),
+    ).listen((event) => _fetchTasks());
+
+    _updateSub = Amplify.API.subscribe(
+      ModelSubscriptions.onUpdate(amplify_models.Tasks.classType),
+    ).listen((event) => _fetchTasks());
+
+    _deleteSub = Amplify.API.subscribe(
+      ModelSubscriptions.onDelete(amplify_models.Tasks.classType),
+    ).listen((event) => _fetchTasks());
   }
 
   @override
   void dispose() {
-    _tasksChannel?.unsubscribe();
+    _createSub?.cancel();
+    _updateSub?.cancel();
+    _deleteSub?.cancel();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -105,10 +118,16 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
 
   Future<void> _fetchUsers() async {
     try {
-      final res = await _client.from('users').select('id, name').order('name', ascending: true);
+      final req = ModelQueries.list(amplify_models.Users.classType);
+      final res = await Amplify.API.query(request: req).response;
+      var users = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      users.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       if (mounted) {
         setState(() {
-          _allUsers = List<Map<String, dynamic>>.from(res);
+          _allUsers = users.map((u) => {
+            'id': u.id,
+            'name': u.name,
+          }).toList();
         });
       }
     } catch (_) {}
@@ -118,18 +137,39 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      final res = await _client
-          .from('tasks')
-          .select('*, assigned_by_user:users!tasks_assigned_by_fkey(name), assigned_to_user:users!tasks_assigned_to_fkey(name)')
-          .order('created_at', ascending: false);
+      final req = ModelQueries.list(amplify_models.Tasks.classType);
+      final res = await Amplify.API.query(request: req).response;
+      var tasks = res.data?.items.whereType<amplify_models.Tasks>().toList() ?? [];
       
-      final List<Task> parsedTasks = res.map((m) {
-        final assignedByMap = m['assigned_by_user'] as Map<String, dynamic>?;
-        final assignedToMap = m['assigned_to_user'] as Map<String, dynamic>?;
+      tasks.sort((a, b) {
+        final dateA = a.createdAt?.getDateTimeInUtc() ?? DateTime(2000);
+        final dateB = b.createdAt?.getDateTimeInUtc() ?? DateTime(2000);
+        return dateB.compareTo(dateA);
+      });
+      
+      final uReq = ModelQueries.list(amplify_models.Users.classType);
+      final uRes = await Amplify.API.query(request: uReq).response;
+      final usersList = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      final userMap = {for (var u in usersList) u.id.toString(): u};
+
+      final List<Task> parsedTasks = tasks.map((m) {
+        final assignedByMap = userMap[m.assigned_by?.toString()];
+        final assignedToMap = userMap[m.assigned_to?.toString()];
         return Task.fromMap({
-          ...m,
-          'assigned_by_name': assignedByMap?['name'],
-          'assigned_to_name': assignedToMap?['name'],
+          'id': m.id,
+          'title': m.title,
+          'description': m.description,
+          'assigned_by': m.assigned_by,
+          'assigned_to': m.assigned_to,
+          'status': m.status,
+          'due_date': m.due_date,
+          'created_at': m.createdAt?.getDateTimeInUtc().toIso8601String(),
+          'location': m.location,
+          'client_name': m.client_name,
+          'phone_number': m.phone_number,
+          'updated_at': m.updatedAt?.getDateTimeInUtc().toIso8601String(),
+          'assigned_by_name': assignedByMap?.name,
+          'assigned_to_name': assignedToMap?.name,
         });
       }).toList();
 
@@ -137,8 +177,8 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
         setState(() {
           _allTasks = parsedTasks;
           if (_currentUserId != null) {
-            _myTasks = parsedTasks.where((t) => t.assignedTo == _currentUserId).toList();
-            _delegatedTasks = parsedTasks.where((t) => t.assignedBy == _currentUserId).toList();
+            _myTasks = parsedTasks.where((t) => t.assignedTo?.toString() == _currentUserId?.toString()).toList();
+            _delegatedTasks = parsedTasks.where((t) => t.assignedBy?.toString() == _currentUserId?.toString()).toList();
           } else {
             _myTasks = [];
             _delegatedTasks = [];
@@ -154,14 +194,20 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
 
   Future<void> _updateTaskStatus(Task task, String newStatus) async {
     try {
-      await _client.from('tasks').update({'status': newStatus}).eq('id', task.id!);
+      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(task.id.toString()));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data?.items.isNotEmpty == true) {
+        final existingTask = res.data!.items.first!;
+        final updated = existingTask.copyWith(status: newStatus);
+        await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+      }
       _fetchTasks();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
     }
   }
 
-  Future<void> _deleteTask(int id) async {
+  Future<void> _deleteTask(dynamic id) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
@@ -175,7 +221,11 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     );
     if (ok == true) {
       try {
-        await _client.from('tasks').delete().eq('id', id);
+        final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(id.toString()));
+        final res = await Amplify.API.query(request: req).response;
+        if (res.data?.items.isNotEmpty == true) {
+          await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!).response);
+        }
         _fetchTasks();
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
@@ -189,7 +239,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     final locCtrl = TextEditingController(text: task?.location);
     final clientCtrl = TextEditingController(text: task?.clientName);
     final phoneCtrl = TextEditingController(text: task?.phoneNumber);
-    int? assignedTo = task?.assignedTo;
+    dynamic assignedTo = task?.assignedTo;
     DateTime? dueDate = task?.dueDate != null ? DateTime.tryParse(task!.dueDate!) : null;
 
     showDialog(
@@ -215,11 +265,11 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                     const SizedBox(height: 16),
                     TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Phone Number (Optional)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone_outlined))),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<int>(
+                    DropdownButtonFormField<dynamic>(
                       initialValue: assignedTo,
                       decoration: const InputDecoration(labelText: 'Assign To', border: OutlineInputBorder()),
-                      items: _allUsers.map((u) => DropdownMenuItem<int>(
-                        value: u['id'] as int,
+                      items: _allUsers.map((u) => DropdownMenuItem<dynamic>(
+                        value: u['id'],
                         child: Text(u['name'].toString()),
                       )).toList(),
                       onChanged: (v) => setModalState(() => assignedTo = v),
@@ -263,30 +313,48 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                     return;
                   }
                   try {
-                    final data = {
-                      'title': titleCtrl.text,
-                      'description': descCtrl.text,
-                      'assigned_to': assignedTo,
-                      'due_date': dueDate?.toIso8601String(),
-                      'location': locCtrl.text.isEmpty ? null : locCtrl.text,
-                      'client_name': clientCtrl.text.isEmpty ? null : clientCtrl.text,
-                      'phone_number': phoneCtrl.text.isEmpty ? null : phoneCtrl.text,
-                    };
-
                     if (task == null) {
-                      data['assigned_by'] = _currentUserId;
-                      final res = await _client.from('tasks').insert(data).select('id').single();
-                      final newId = res['id'] as int;
-                      final tName = titleCtrl.text;
-                      await NotificationService().notifyStakeholders(
-                        taskId: newId,
-                        title: 'New Task Created',
-                        message: 'Task "$tName" has been created and assigned.',
-                        type: 'assignment',
+                      final newTask = amplify_models.Tasks(
+                        title: titleCtrl.text,
+                        description: descCtrl.text,
+                        assigned_to: int.tryParse(assignedTo.toString()),
+                        assigned_by: int.tryParse(_currentUserId.toString()),
+                        due_date: dueDate?.toIso8601String(),
+                        location: locCtrl.text.isEmpty ? null : locCtrl.text,
+                        client_name: clientCtrl.text.isEmpty ? null : clientCtrl.text,
+                        phone_number: phoneCtrl.text.isEmpty ? null : phoneCtrl.text,
+                        status: 'Pending',
                       );
+                      final res = await Amplify.API.mutate(request: ModelMutations.create(newTask).response).response;
+                      final newId = res.data?.id;
+                      final tName = titleCtrl.text;
+                      
+                      if (newId != null) {
+                        await NotificationService().notifyStakeholders(
+                          taskId: newId,
+                          title: 'New Task Created',
+                          message: 'Task "$tName" has been created and assigned.',
+                          type: 'assignment',
+                        );
+                      }
                       await LoggingService().logAction(action: 'TASK_CREATED', targetType: 'Task', targetId: tName, details: 'Assigned to ID: $assignedTo');
                     } else {
-                      await _client.from('tasks').update(data).eq('id', task.id!);
+                      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(task.id.toString()));
+                      final res = await Amplify.API.query(request: req).response;
+                      if (res.data?.items.isNotEmpty == true) {
+                        final existingTask = res.data!.items.first!;
+                        final updatedTask = existingTask.copyWith(
+                          title: titleCtrl.text,
+                          description: descCtrl.text,
+                          assigned_to: int.tryParse(assignedTo.toString()),
+                          due_date: dueDate?.toIso8601String(),
+                          location: locCtrl.text.isEmpty ? null : locCtrl.text,
+                          client_name: clientCtrl.text.isEmpty ? null : clientCtrl.text,
+                          phone_number: phoneCtrl.text.isEmpty ? null : phoneCtrl.text,
+                        );
+                        await Amplify.API.mutate(request: ModelMutations.update(updatedTask).response);
+                      }
+                      
                       await LoggingService().logAction(action: 'TASK_UPDATED', targetType: 'Task', targetId: task.id.toString(), details: 'Updated task: ${titleCtrl.text}');
                       await NotificationService().notifyStakeholders(
                         taskId: task.id,

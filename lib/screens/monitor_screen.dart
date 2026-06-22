@@ -1,8 +1,10 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 
 class MonitorScreen extends StatefulWidget {
   const MonitorScreen({super.key});
@@ -12,13 +14,13 @@ class MonitorScreen extends StatefulWidget {
 }
 
 class _MonitorScreenState extends State<MonitorScreen> {
-  final _client = Supabase.instance.client;
+  // final _client = Supabase.instance.client;
   List<Map<String, dynamic>> _sessions = [];
   List<Map<String, dynamic>> _logs = [];
   List<Map<String, dynamic>> _peakActivity = [];
   bool _isLoading = true;
   int _activeTab = 0; // 0 for Sessions, 1 for Logs
-  int? _selectedUserId;
+  dynamic _selectedUserId;
   List<Map<String, dynamic>> _staffList = [];
 
   @override
@@ -38,9 +40,12 @@ class _MonitorScreenState extends State<MonitorScreen> {
 
   Future<void> _fetchStaffList() async {
     try {
-      final res = await _client.from('users').select('id, name').order('name');
+      final req = ModelQueries.list(amplify_models.Users.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final staff = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      staff.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       setState(() {
-        _staffList = List<Map<String, dynamic>>.from(res);
+        _staffList = staff.map((u) => {'id': u.id, 'name': u.name}).toList();
       });
     } catch (e) {
       debugPrint('Staff fetch error: $e');
@@ -49,18 +54,22 @@ class _MonitorScreenState extends State<MonitorScreen> {
 
   Future<void> _fetchPeakActivity() async {
     try {
-      // Direct SQL for grouping by hour isn't available in PostgREST, 
-      // but we can fetch and group in Dart for the last 24h.
-      final twentyFourHoursAgo = DateTime.now().subtract(const Duration(hours: 24)).toIso8601String();
-      final res = await _client
-          .from('activity_logs')
-          .select('created_at')
-          .gt('created_at', twentyFourHoursAgo);
+      final twentyFourHoursAgo = DateTime.now().subtract(const Duration(hours: 24)).toUtc().toIso8601String();
+      final req = ModelQueries.list(
+        amplify_models.ActivityLogs.classType,
+        where: amplify_models.ActivityLogs.CREATED_AT.gt(twentyFourHoursAgo)
+      );
+      final res = await Amplify.API.query(request: req).response;
+      final logs = res.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
       
       final Map<int, int> hoursMap = {};
-      for (var row in res) {
-        final dt = DateTime.parse(row['created_at']).toLocal();
-        hoursMap[dt.hour] = (hoursMap[dt.hour] ?? 0) + 1;
+      for (var row in logs) {
+        if (row.created_at != null) {
+          try {
+            final dt = DateTime.parse(row.created_at!).toLocal();
+            hoursMap[dt.hour] = (hoursMap[dt.hour] ?? 0) + 1;
+          } catch (_) {}
+        }
       }
       
       setState(() {
@@ -73,22 +82,32 @@ class _MonitorScreenState extends State<MonitorScreen> {
 
   Future<void> _fetchLogs() async {
     try {
-      var query = _client
-          .from('activity_logs')
-          .select('*, users(name)');
+      var whereClause = _selectedUserId != null 
+          ? amplify_models.ActivityLogs.USER_ID.eq(int.tryParse(_selectedUserId.toString()) ?? 0)
+          : null;
           
-      if (_selectedUserId != null) {
-        query = query.eq('user_id', _selectedUserId!);
-      }
-          
-      final res = await query.order('created_at', ascending: false).limit(200);
-          
+      final req = ModelQueries.list(amplify_models.ActivityLogs.classType, where: whereClause, limit: 200);
+      final res = await Amplify.API.query(request: req).response;
+      final fetchedLogs = res.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
+      
+      // Sort in Dart by created_at desc
+      fetchedLogs.sort((a, b) => (b.created_at ?? '').compareTo(a.created_at ?? ''));
+
+      // Fetch users to map user names
+      final usersReq = ModelQueries.list(amplify_models.Users.classType);
+      final usersRes = await Amplify.API.query(request: usersReq).response;
+      final usersList = usersRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      final userMap = { for (var u in usersList) u.id.toString(): u };
+
       setState(() {
-        _logs = List<Map<String, dynamic>>.from(res).map((r) {
-          final user = r['users'] as Map<String, dynamic>?;
+        _logs = fetchedLogs.map((r) {
+          final u = userMap[r.user_id.toString()];
           return {
-            ...r,
-            'user_name': user?['name'] ?? 'System'
+            'action': r.action ?? '',
+            'target_type': r.target_type ?? '',
+            'details': r.details ?? '',
+            'created_at': r.created_at,
+            'user_name': u?.name ?? 'System'
           };
         }).toList();
       });
@@ -100,23 +119,32 @@ class _MonitorScreenState extends State<MonitorScreen> {
   Future<void> _fetchSessions() async {
     setState(() => _isLoading = true);
     try {
-      var query = _client
-          .from('user_sessions')
-          .select('*, users(name, role)');
+      var whereClause = _selectedUserId != null 
+          ? amplify_models.UserSessions.USER_ID.eq(int.tryParse(_selectedUserId.toString()) ?? 0)
+          : null;
           
-      if (_selectedUserId != null) {
-        query = query.eq('user_id', _selectedUserId!);
-      }
-          
-      final res = await query.order('login_time', ascending: false).limit(100);
-          
+      final req = ModelQueries.list(amplify_models.UserSessions.classType, where: whereClause, limit: 100);
+      final res = await Amplify.API.query(request: req).response;
+      final fetchedSessions = res.data?.items.whereType<amplify_models.UserSessions>().toList() ?? [];
+      
+      // Sort in Dart
+      fetchedSessions.sort((a, b) => (b.login_time ?? '').compareTo(a.login_time ?? ''));
+
+      // Fetch users
+      final usersReq = ModelQueries.list(amplify_models.Users.classType);
+      final usersRes = await Amplify.API.query(request: usersReq).response;
+      final usersList = usersRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      final userMap = { for (var u in usersList) u.id.toString(): u };
+
       setState(() {
-        _sessions = List<Map<String, dynamic>>.from(res).map((r) {
-          final user = r['users'] as Map<String, dynamic>?;
+        _sessions = fetchedSessions.map((r) {
+          final u = userMap[r.user_id.toString()];
           return {
-            ...r,
-            'user_name': user?['name'] ?? 'Unknown',
-            'role': user?['role']
+            'login_time': r.login_time,
+            'logout_time': r.logout_time,
+            'is_active': r.is_active,
+            'user_name': u?.name ?? 'Unknown',
+            'role': u?.role
           };
         }).toList();
       });
@@ -202,14 +230,14 @@ class _MonitorScreenState extends State<MonitorScreen> {
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<int?>(
+        child: DropdownButton<dynamic>(
           value: _selectedUserId,
           hint: const Text('All Staff', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
           icon: const Icon(Icons.arrow_drop_down_rounded, color: AppTheme.primaryColor),
           items: [
             const DropdownMenuItem(value: null, child: Text('All Staff', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold))),
-            ..._staffList.map((s) => DropdownMenuItem<int>(
-              value: s['id'] as int,
+            ..._staffList.map((s) => DropdownMenuItem<dynamic>(
+              value: s['id'],
               child: Text(s['name'] ?? 'Unknown', style: const TextStyle(fontSize: 13)),
             )),
           ],

@@ -1,3 +1,4 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -10,7 +11,8 @@ import 'inward_post_screen.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import '../widgets/premium_app_bar.dart';
 import 'package:intl/intl.dart';
 import 'dart:io' show Platform;
@@ -32,7 +34,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   int _completedTasks = 0;
   String _taskFilter = 'All';
   DateTime? _lastPressedAt;
-  final _client = Supabase.instance.client;
+  // final _client = Supabase.instance.client;
   bool _isCheckedIn = false;
   int? _attendanceId;
   String? _checkInTimeStr;
@@ -229,10 +231,11 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                       try {
                         final userId = await AuthService().getUserId();
                         if (userId != null) {
-                          await Supabase.instance.client.from('travel_logs').insert({
-                            'user_id': userId,
-                            'destination': dest,
-                          });
+                          final newLog = amplify_models.TravelLogs(
+                            user_id: userId,
+                            destination: dest,
+                          );
+                          await Amplify.API.mutate(request: ModelMutations.create(newLog).response).response;
                           if (mounted) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -271,12 +274,14 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
       final userId = await AuthService().getUserId();
       if (userId == null) return;
 
-      final res = await _client.from('tasks').select('status').eq('assigned_to', userId);
+      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ASSIGNED_TO.eq(userId));
+      final res = await Amplify.API.query(request: req).response;
+      final tasksList = res.data?.items.whereType<amplify_models.Tasks>().toList() ?? [];
 
       int pending = 0;
       int completed = 0;
-      for (var row in res) {
-        final status = row['status'].toString();
+      for (var row in tasksList) {
+        final status = row.status?.toString();
         if (status == 'Completed') {
           completed++;
         } else {

@@ -1,3 +1,4 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -26,7 +27,8 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import '../widgets/premium_app_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/billing.dart';
@@ -52,7 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isAdmin = false;
   String _userRole = 'user';
   String _userName = 'User';
-  final _client = Supabase.instance.client;
+  // final _client = Supabase.instance.client;
   DateTime? _lastPressedAt;
   StreamSubscription? _notifSubscription;
   bool _isCheckedIn = false;
@@ -274,10 +276,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       try {
                         final userId = await AuthService().getUserId();
                         if (userId != null) {
-                          await Supabase.instance.client.from('travel_logs').insert({
-                            'user_id': userId,
-                            'destination': dest,
-                          });
+                          final newLog = amplify_models.TravelLogs(
+                            user_id: userId,
+                            destination: dest,
+                          );
+                          await Amplify.API.mutate(request: ModelMutations.create(newLog).response);
                           if (mounted) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -360,13 +363,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // If name is missing or generic, try to fetch the real name from the DB
     if (name == null || name == 'admin' || name == 'user' || name == 'accountant') {
       try {
-        final res = await Supabase.instance.client
-            .from('users')
-            .select('name')
-            .eq('username', name ?? (role == 'admin' ? 'admin' : 'accountant'))
-            .maybeSingle();
-        if (res != null) {
-          name = res['name'].toString();
+        final req = ModelQueries.list(
+          amplify_models.Users.classType,
+          where: amplify_models.Users.USERNAME.eq(name ?? (role == 'admin' ? 'admin' : 'accountant'))
+        );
+        final res = await Amplify.API.query(request: req).response;
+        if (res.data?.items.isNotEmpty == true) {
+          name = res.data!.items.first?.name;
         }
       } catch (_) {}
     }
@@ -391,59 +394,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
     
     try {
       // 1. Expiring Licences (next 30 days)
-      final licCountRes = await Supabase.instance.client
-          .from('client_licenses')
-          .select('id')
-          .lte('expiry_date', DateTime.now().add(const Duration(days: 30)).toIso8601String());
-      final licCount = licCountRes.length;
+      final thirtyDaysStr = DateTime.now().add(const Duration(days: 30)).toIso8601String();
+      final licReq = ModelQueries.list(
+        amplify_models.ClientLicenses.classType,
+        where: amplify_models.ClientLicenses.EXPIRY_DATE.le(thirtyDaysStr)
+      );
+      final licCountRes = await Amplify.API.query(request: licReq).response;
+      final licCount = licCountRes.data?.items.length ?? 0;
 
       // 2. DSC Expiry (next 30 days)
-      final dscCountRes = await Supabase.instance.client
-          .from('dsc_records')
-          .select('id')
-          .lte('dsc_expiry_date', DateTime.now().add(const Duration(days: 30)).toIso8601String());
-      final dscCount = dscCountRes.length;
+      final dscReq = ModelQueries.list(
+        amplify_models.DscRecords.classType,
+        where: amplify_models.DscRecords.DSC_EXPIRY_DATE.le(thirtyDaysStr)
+      );
+      final dscCountRes = await Amplify.API.query(request: dscReq).response;
+      final dscCount = dscCountRes.data?.items.length ?? 0;
 
       // 3. Active Deals
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('current_user_id');
       
       int dealsCount = 0;
-      var dealsQuery = Supabase.instance.client
-          .from('deals')
-          .select('id')
-          .neq('stage', 'Completed');
-      
+      var dealsWhere = amplify_models.Deals.STAGE.ne('Completed');
       if (!_isAdmin && userId != null) {
-        dealsQuery = dealsQuery.eq('responsible_id', userId);
+        dealsWhere = dealsWhere.and(amplify_models.Deals.RESPONSIBLE_ID.eq(userId));
       }
-      final dealsRes = await dealsQuery;
-      dealsCount = dealsRes.length;
+      final dealsReq = ModelQueries.list(amplify_models.Deals.classType, where: dealsWhere);
+      final dealsRes = await Amplify.API.query(request: dealsReq).response;
+      dealsCount = dealsRes.data?.items.length ?? 0;
 
       // 4. Bills to Receive (Only pending INVOICES)
-      final billsResult = await Supabase.instance.client
-          .from('billings')
-          .select('amount')
-          .eq('type', 'INVOICE')
-          .neq('status', 'Received');
+      final billsReq = ModelQueries.list(
+        amplify_models.Billings.classType,
+        where: amplify_models.Billings.TYPE.eq('INVOICE').and(amplify_models.Billings.STATUS.ne('Received'))
+      );
+      final billsResult = await Amplify.API.query(request: billsReq).response;
+      final billsItems = billsResult.data?.items ?? [];
       
       double totalAmount = 0;
-      for (var row in billsResult) {
-        final amtStr = row['amount']?.toString() ?? '0';
-        final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
-        totalAmount += double.tryParse(cleanAmt) ?? 0.0;
+      for (var row in billsItems) {
+        if (row != null) {
+          final amtStr = row.amount?.toString() ?? '0';
+          final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
+          totalAmount += double.tryParse(cleanAmt) ?? 0.0;
+        }
       }
 
       // 5. Pending Tasks
       int pendingTasksCount = 0;
-      var tasksQuery = Supabase.instance.client
-          .from('tasks')
-          .select('id')
-          .neq('status', 'Completed');
-      
+      var tasksWhere = amplify_models.Tasks.STATUS.ne('Completed');
       if (!_isAdmin && userId != null) {
-        tasksQuery = tasksQuery.eq('assigned_to', userId);
+        tasksWhere = tasksWhere.and(amplify_models.Tasks.ASSIGNED_TO.eq(userId));
       }
+      final tasksReq = ModelQueries.list(amplify_models.Tasks.classType, where: tasksWhere);
+      final tasksRes = await Amplify.API.query(request: tasksReq).response;
+      pendingTasksCount = tasksRes.data?.items.length ?? 0;
+
       // 6. Pending Checklists
       int pendingChecklistsCount = 0;
       if (userId != null) {
@@ -462,7 +468,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'expiringLicencesDetail': '$licCount expiring soon',
           'dscExpiryDetail': '$dscCount renewal pending',
           'activeDealsDetail': '$dealsCount active deals',
-          'billsDetail': '${billsResult.length} total invoices',
+          'billsDetail': '${billsItems.length} total invoices',
           'tasksDetail': '$pendingTasksCount tasks due',
         };
         _isLoadingStats = false;
@@ -1074,42 +1080,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _getCategoryData() async {
-    final client = Supabase.instance.client;
     switch (_selectedCategory) {
       case 'Expiring Licences':
-        final response = await client
-            .from('client_licenses')
-            .select('*, clients(name), license_types(name)')
-            .lte('expiry_date', DateTime.now().add(const Duration(days: 30)).toIso8601String())
-            .order('expiry_date', ascending: true);
-        return response.map((map) {
-          final c = map['clients'] as Map<String, dynamic>?;
-          final lt = map['license_types'] as Map<String, dynamic>?;
-          if (c != null) map['client_name'] = c['name'];
-          if (lt != null) map['license_type_name'] = lt['name'];
-          return map;
+        final req = ModelQueries.list(
+          amplify_models.ClientLicenses.classType,
+          where: amplify_models.ClientLicenses.EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
+        );
+        final res = await Amplify.API.query(request: req).response;
+        final list = res.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
+        list.sort((a, b) => (a.expiry_date ?? '').compareTo(b.expiry_date ?? ''));
+        return list.map((l) => {
+          'client_name': l.client_id, // We might not have client_name easily without relational fetch, but let's use client_id or check if model has client_name
+          'license_type_name': l.license_type_id, 
+          ...l.toJson(),
         }).toList();
+        
       case 'Signature Expiry':
-        return await client
-            .from('dsc_records')
-            .select()
-            .lte('dsc_expiry_date', DateTime.now().add(const Duration(days: 30)).toIso8601String())
-            .order('dsc_expiry_date', ascending: true);
+        final req = ModelQueries.list(
+          amplify_models.DscRecords.classType,
+          where: amplify_models.DscRecords.DSC_EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
+        );
+        final res = await Amplify.API.query(request: req).response;
+        final list = res.data?.items.whereType<amplify_models.DscRecords>().toList() ?? [];
+        list.sort((a, b) => (a.dsc_expiry_date ?? '').compareTo(b.dsc_expiry_date ?? ''));
+        return list.map((l) => l.toJson()).toList();
+        
       case 'Work Management':
-        return await client
-            .from('deals')
-            .select()
-            .eq('is_won', false)
-            .order('updated_at', ascending: false)
-            .limit(20);
+        final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed'));
+        final res = await Amplify.API.query(request: req).response;
+        final list = res.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
+        list.sort((a, b) => (b.updatedAt?.getDateTime() ?? DateTime.now()).compareTo(a.updatedAt?.getDateTime() ?? DateTime.now()));
+        return list.take(20).map((l) => l.toJson()).toList();
+        
       case 'Bills to Receive':
-        return await client
-            .from('billings')
-            .select()
-            .neq('status', 'Received')
-            .eq('type', 'INVOICE')
-            .order('id', ascending: false)
-            .limit(20);
+        final req = ModelQueries.list(
+          amplify_models.Billings.classType,
+          where: amplify_models.Billings.TYPE.eq('INVOICE').and(amplify_models.Billings.STATUS.ne('Received')),
+        );
+        final res = await Amplify.API.query(request: req).response;
+        final list = res.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
+        list.sort((a, b) => (b.id).compareTo(a.id));
+        return list.take(20).map((l) => l.toJson()).toList();
+        
       default:
         throw Exception('Invalid category');
     }

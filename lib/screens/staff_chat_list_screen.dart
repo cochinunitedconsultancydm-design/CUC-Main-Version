@@ -1,7 +1,9 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import 'chat_screen.dart';
 
@@ -13,10 +15,10 @@ class StaffChatListScreen extends StatefulWidget {
 }
 
 class _StaffChatListScreenState extends State<StaffChatListScreen> {
-  int? _selectedUserId;
+  dynamic _selectedUserId;
   String? _selectedUserName;
 
-  void _onUserSelected(int id, String name) {
+  void _onUserSelected(dynamic id, String name) {
     setState(() {
       _selectedUserId = id;
       _selectedUserName = name;
@@ -87,8 +89,8 @@ class _StaffChatListScreenState extends State<StaffChatListScreen> {
 }
 
 class _ChatListView extends StatefulWidget {
-  final Function(int, String)? onUserSelected;
-  final int? selectedUserId;
+  final Function(dynamic, String)? onUserSelected;
+  final dynamic selectedUserId;
   final bool isSplitView;
 
   const _ChatListView({this.onUserSelected, this.selectedUserId, this.isSplitView = false});
@@ -98,7 +100,6 @@ class _ChatListView extends StatefulWidget {
 }
 
 class _ChatListViewState extends State<_ChatListView> {
-  final _client = Supabase.instance.client;
   List<Map<String, dynamic>> _staff = [];
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
@@ -123,42 +124,55 @@ class _ChatListViewState extends State<_ChatListView> {
       final prefs = await SharedPreferences.getInstance();
       final myId = prefs.getInt('current_user_id') ?? 1;
 
-      final usersRes = await _client
-          .from('users')
-          .select('id, name, username, role')
-          .neq('id', myId)
-          .order('role', ascending: true)
-          .order('name', ascending: true);
+      final uReq = ModelQueries.list(amplify_models.Users.classType);
+      final uRes = await Amplify.API.query(request: uReq).response;
+      var usersRes = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       
-      final unreadRes = await _client
-          .from('messages')
-          .select('sender_id')
-          .eq('receiver_id', myId)
-          .eq('is_read', false);
+      usersRes = usersRes.where((u) => u.id != myId).toList();
+      usersRes.sort((a, b) {
+        int r = (a.role ?? '').compareTo(b.role ?? '');
+        if (r != 0) return r;
+        return (a.name ?? '').compareTo(b.name ?? '');
+      });
+      
+      final mReq = ModelQueries.list(
+        amplify_models.Messages.classType,
+        where: amplify_models.Messages.RECEIVER_ID.eq(myId).and(amplify_models.Messages.IS_READ.eq(false))
+      );
+      final mRes = await Amplify.API.query(request: mReq).response;
+      final unreadRes = mRes.data?.items.whereType<amplify_models.Messages>().toList() ?? [];
       
       final Map<int, int> unreadCounts = {};
       for (var msg in unreadRes) {
-        final senderId = msg['sender_id'] as int;
-        unreadCounts[senderId] = (unreadCounts[senderId] ?? 0) + 1;
+        if (msg.sender_id != null) {
+          final senderId = msg.sender_id as int;
+          unreadCounts[senderId] = (unreadCounts[senderId] ?? 0) + 1;
+        }
       }
 
-      final sessionsRes = await _client
-          .from('user_sessions')
-          .select('user_id, is_active, status')
-          .order('login_time', ascending: false);
+      final sReq = ModelQueries.list(amplify_models.UserSessions.classType);
+      final sRes = await Amplify.API.query(request: sReq).response;
+      var sessionsRes = sRes.data?.items.whereType<amplify_models.UserSessions>().toList() ?? [];
+      
+      sessionsRes.sort((a, b) {
+        final dateA = a.login_time != null ? DateTime.tryParse(a.login_time!) ?? DateTime(2000) : DateTime(2000);
+        final dateB = b.login_time != null ? DateTime.tryParse(b.login_time!) ?? DateTime(2000) : DateTime(2000);
+        return dateB.compareTo(dateA); // descending
+      });
           
       final List<Map<String, dynamic>> staffList = [];
       for (var u in usersRes) {
-        final session = (sessionsRes as List).firstWhere(
-          (s) => s['user_id'] == u['id'],
-          orElse: () => <String, dynamic>{'is_active': false, 'status': 'Offline'},
-        ) as Map<String, dynamic>;
+        final userSessions = sessionsRes.where((s) => s.user_id?.toString() == u.id.toString()).toList();
+        final session = userSessions.isNotEmpty ? userSessions.first : null;
 
         staffList.add({
-          ...u,
-          'unread_count': unreadCounts[u['id']] ?? 0,
-          'is_active': session['is_active'] == true,
-          'status': session['status'] ?? 'Offline',
+          'id': u.id,
+          'name': u.name,
+          'username': u.username,
+          'role': u.role,
+          'unread_count': unreadCounts[u.id] ?? 0,
+          'is_active': session?.is_active ?? false,
+          'status': session?.status ?? 'Offline',
         });
       }
 
@@ -387,3 +401,4 @@ class _ChatListViewState extends State<_ChatListView> {
     );
   }
 }
+

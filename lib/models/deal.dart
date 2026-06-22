@@ -1,13 +1,13 @@
 class Deal {
-  final int? id;
+  final dynamic id;
   final String name;
-  final int? clientId;
+  final dynamic clientId;
   final String? clientName;
   final String? contactInfo;
   final String? company;
   final String? workType;
   final String stage;
-  final int? responsibleId;
+  final dynamic responsibleId;
   final String? responsibleName;
   final double amount;
   final String currency;
@@ -34,8 +34,8 @@ class Deal {
   final double? invoiceAmount;
   final String? paymentType;
   final String? driveLink;
-  final int? billingId;
-  final int? quotationId;
+  final dynamic billingId;
+  final dynamic quotationId;
   final double? paymentReceived;
   final bool isAdjourned;
   final String? adjournedReason;
@@ -227,9 +227,9 @@ class Deal {
 }
 
 class DealAssignee {
-  final int? id;
-  final int dealId;
-  final int userId;
+  final dynamic id;
+  final dynamic dealId;
+  final dynamic userId;
   final String? userName;
   final String role; // 'Lead', 'Collaborator'
 
@@ -246,10 +246,10 @@ class DealAssignee {
 }
 
 class DealHandover {
-  final int? id;
-  final int dealId;
-  final int fromUserId;
-  final int toUserId;
+  final dynamic id;
+  final dynamic dealId;
+  final dynamic fromUserId;
+  final dynamic toUserId;
   final String? note;
   final DateTime? createdAt;
 

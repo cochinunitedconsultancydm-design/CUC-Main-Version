@@ -1,8 +1,10 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../models/client_document.dart';
+import '../models/ModelProvider.dart';
 import '../theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -14,7 +16,6 @@ class UploadedFilesScreen extends StatefulWidget {
 }
 
 class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
-  final _client = Supabase.instance.client;
   List<ClientDocument> _documents = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -32,23 +33,35 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
     });
 
     try {
-      final res = await _client
-          .from('client_documents')
-          .select()
-          .order('created_at', ascending: false);
+      final req = ModelQueries.list(ClientDocuments.classType);
+      final res = await Amplify.API.query(request: req).response;
+      var all = res.data?.items.whereType<ClientDocuments>().toList() ?? [];
+      
+      all.sort((a, b) {
+        final dateA = a.createdAt?.getDateTimeInUtc() ?? DateTime(2000);
+        final dateB = b.createdAt?.getDateTimeInUtc() ?? DateTime(2000);
+        return dateB.compareTo(dateA);
+      });
 
       if (mounted) {
         setState(() {
-          _documents = (res as List).map((m) => ClientDocument.fromMap(m)).toList();
+          _documents = all.map((m) => ClientDocument.fromMap({
+            'id': m.id,
+            'client_id': m.client_id,
+            'client_name': m.client_name,
+            'document_name': m.document_name,
+            'storage_path': m.storage_path,
+            'og_copy': m.og_copy,
+            'remarks': m.remarks,
+            'created_at': m.createdAt?.getDateTimeInUtc().toIso8601String(),
+          })).toList();
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString().contains('relation "client_documents" does not exist')
-              ? 'Please create the "client_documents" table in Supabase first.'
-              : 'Failed to load documents: $e';
+          _errorMessage = 'Failed to load documents: $e';
           _isLoading = false;
         });
       }
@@ -57,20 +70,46 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
 
   Future<void> _updateField(String id, String field, String value) async {
     try {
-      await _client.from('client_documents').update({field: value}).eq('id', id);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Updated successfully'), backgroundColor: Colors.green, duration: Duration(seconds: 1)),
-      );
+      final req = ModelQueries.list(ClientDocuments.classType, where: ClientDocuments.ID.eq(id));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data?.items.isNotEmpty == true) {
+        final doc = res.data!.items.first!;
+        var updated = doc;
+        if (field == 'og_copy') {
+          updated = doc.copyWith(og_copy: value);
+        } else if (field == 'remarks') {
+          updated = doc.copyWith(remarks: value);
+        }
+        await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Updated successfully'), backgroundColor: Colors.green, duration: Duration(seconds: 1)),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update: $e'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
   Future<void> _downloadFile(ClientDocument doc) async {
     try {
-      final url = await _client.storage.from('client-files').createSignedUrl(doc.storagePath, 60 * 60);
+      final result = await Amplify.Storage.getUrl(
+        path: StoragePath.fromString(doc.storagePath),
+        options: const StorageGetUrlOptions(
+          pluginOptions: S3GetUrlPluginOptions(
+            validateObjectExistence: true,
+            expiresIn: Duration(hours: 1),
+          ),
+        ),
+      ).result;
+      
+      final url = result.url.toString();
       if (await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url));
       } else {
@@ -100,7 +139,11 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
 
     if (confirm == true) {
       try {
-        await _client.from('client_documents').delete().eq('id', doc.id);
+        final req = ModelQueries.list(ClientDocuments.classType, where: ClientDocuments.ID.eq(doc.id));
+        final res = await Amplify.API.query(request: req).response;
+        if (res.data?.items.isNotEmpty == true) {
+          await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!).response);
+        }
         _fetchDocuments();
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red));

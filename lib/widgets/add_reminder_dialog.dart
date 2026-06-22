@@ -1,13 +1,15 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart';
 import '../theme.dart';
 import '../services/notification_service.dart';
 import '../services/logging_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class AddReminderDialog extends StatefulWidget {
-  final int currentUserId;
+  final dynamic currentUserId;
   final List<Map<String, dynamic>> allUsers;
   final VoidCallback onSaved;
 
@@ -25,8 +27,7 @@ class AddReminderDialog extends StatefulWidget {
 class _AddReminderDialogState extends State<AddReminderDialog> {
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-  final _client = Supabase.instance.client;
-  int? _assignedTo;
+  dynamic _assignedTo;
   DateTime? _dueDate;
   bool _isSaving = false;
 
@@ -53,24 +54,27 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
     setState(() => _isSaving = true);
 
     try {
-      final data = {
-        'title': _titleCtrl.text,
-        'description': _descCtrl.text.isNotEmpty ? _descCtrl.text : 'Calendar Reminder',
-        'assigned_to': _assignedTo,
-        'assigned_by': widget.currentUserId,
-        'due_date': _dueDate!.toIso8601String(),
-        'status': 'Pending',
-      };
-
-      final res = await _client.from('tasks').insert(data).select('id').single();
-      final newId = res['id'] as int;
-
-      await NotificationService().notifyStakeholders(
-        taskId: newId,
-        title: 'New Reminder Added',
-        message: 'Reminder "${_titleCtrl.text}" has been added to your calendar.',
-        type: 'assignment',
+      final task = Tasks(
+        title: _titleCtrl.text,
+        description: _descCtrl.text.isNotEmpty ? _descCtrl.text : 'Calendar Reminder',
+        assigned_to: int.tryParse(_assignedTo.toString()),
+        assigned_by: int.tryParse(widget.currentUserId.toString()),
+        due_date: _dueDate!.toIso8601String(),
+        status: 'Pending',
       );
+
+      final res = await Amplify.API.mutate(request: ModelMutations.create(task).response).response;
+      final newTask = res.data;
+      final newId = newTask?.id;
+
+      if (newId != null) {
+        await NotificationService().notifyStakeholders(
+          taskId: newId,
+          title: 'New Reminder Added',
+          message: 'Reminder "${_titleCtrl.text}" has been added to your calendar.',
+          type: 'assignment',
+        );
+      }
       
       await LoggingService().logAction(
         action: 'REMINDER_CREATED', 
@@ -146,7 +150,7 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<int>(
+              DropdownButtonFormField<dynamic>(
                 initialValue: _assignedTo,
                 decoration: InputDecoration(
                   labelText: 'Assign To',
@@ -155,8 +159,8 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
                 ),
-                items: widget.allUsers.map((u) => DropdownMenuItem<int>(
-                  value: u['id'] as int,
+                items: widget.allUsers.map((u) => DropdownMenuItem<dynamic>(
+                  value: u['id'],
                   child: Text(u['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w500)),
                 )).toList(),
                 onChanged: (v) => setState(() => _assignedTo = v),

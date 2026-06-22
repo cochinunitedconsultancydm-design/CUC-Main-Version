@@ -1,8 +1,11 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme.dart';
 import '../models/service_item.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
+import 'dart:convert';
 
 class ServicesScreen extends StatefulWidget {
   const ServicesScreen({super.key});
@@ -12,7 +15,7 @@ class ServicesScreen extends StatefulWidget {
 }
 
 class _ServicesScreenState extends State<ServicesScreen> {
-  final _client = Supabase.instance.client;
+  // final _client = Supabase.instance.client;
   List<ServiceItem> _services = [];
   bool _isLoading = true;
   String _searchTerm = '';
@@ -26,11 +29,26 @@ class _ServicesScreenState extends State<ServicesScreen> {
   Future<void> _fetchServices() async {
     setState(() => _isLoading = true);
     try {
-      final result = await _client.from('service_content').select().order('title', ascending: true);
+      final req = ModelQueries.list(amplify_models.ServiceContent.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final result = res.data?.items.whereType<amplify_models.ServiceContent>().toList() ?? [];
+      result.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
+      
       final List<ServiceItem> parsed = [];
       for (final row in result) {
         try {
-          parsed.add(ServiceItem.fromMap(row));
+          Map<String, dynamic> rowMap = {
+            'id': row.id,
+            'title': row.title,
+            'description': row.description,
+            'image_path': row.image_path,
+          };
+          if (row.details != null && row.details!.isNotEmpty) {
+            try {
+              rowMap['details'] = jsonDecode(row.details!);
+            } catch (_) {}
+          }
+          parsed.add(ServiceItem.fromMap(rowMap));
         } catch (e) {
           debugPrint('ServicesScreen: Failed to parse row: $e');
         }

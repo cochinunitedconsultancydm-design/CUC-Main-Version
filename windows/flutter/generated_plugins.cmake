@@ -3,9 +3,9 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  app_links
+  amplify_db_common
+  connectivity_plus
   geolocator_windows
-  passkeys_windows
   permission_handler_windows
   printing
   screen_retriever_windows

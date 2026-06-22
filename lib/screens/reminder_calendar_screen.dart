@@ -1,5 +1,8 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import 'package:intl/intl.dart';
 import '../theme.dart';
 import '../services/auth_service.dart';
@@ -42,7 +45,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
   int? _currentUserId;
   bool _isLoading = true;
 
-  final _client = Supabase.instance.client;
+  // final _client = Supabase.instance.client;
 
   @override
   void initState() {
@@ -60,8 +63,15 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
         _currentUserId = userId;
       }
       
-      final res = await _client.from('users').select('id, name').order('name', ascending: true);
-      _allUsers = List<Map<String, dynamic>>.from(res);
+      final req = ModelQueries.list(amplify_models.Users.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final usersList = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      usersList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+      
+      _allUsers = usersList.map((u) => {
+        'id': u.id,
+        'name': u.name,
+      }).toList();
       
       await _loadEvents();
     } catch (e) {
@@ -75,49 +85,64 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
     try {
       final List<CalendarEvent> events = [];
 
-      // 1. Fetch Tasks (Treating them as Reminders)
-      final tasksRes = await _client
-          .from('tasks')
-          .select('id, title, description, due_date, status, assigned_to_user:users!tasks_assigned_to_fkey(name)')
-          .neq('status', 'Completed');
+      // Create maps for quick lookup since there are no joins
+      final usersMap = { for (var u in _allUsers) u['id'].toString(): u['name'] };
+
+      final clientsReq = ModelQueries.list(amplify_models.Clients.classType);
+      final clientsRes = await Amplify.API.query(request: clientsReq).response;
+      final clientsList = clientsRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+      final clientsMap = { for (var c in clientsList) c.id.toString(): c.name };
+
+      final typesReq = ModelQueries.list(amplify_models.LicenseTypes.classType);
+      final typesRes = await Amplify.API.query(request: typesReq).response;
+      final typesList = typesRes.data?.items.whereType<amplify_models.LicenseTypes>().toList() ?? [];
+      final typesMap = { for (var t in typesList) t.id.toString(): t.name };
+
+      // 1. Fetch Tasks
+      final tasksReq = ModelQueries.list(
+        amplify_models.Tasks.classType,
+        where: amplify_models.Tasks.STATUS.ne('Completed')
+      );
+      final tasksRes = await Amplify.API.query(request: tasksReq).response;
+      final tasks = tasksRes.data?.items.whereType<amplify_models.Tasks>().toList() ?? [];
       
-      for (var t in tasksRes) {
-        if (t['due_date'] != null) {
+      for (var t in tasks) {
+        if (t.due_date != null) {
           try {
-            final date = DateTime.parse(t['due_date'].toString()).toLocal();
-            final assignedTo = t['assigned_to_user']?['name'] ?? 'Unassigned';
+            final date = DateTime.parse(t.due_date!).toLocal();
+            final assignedTo = usersMap[t.assigned_to.toString()] ?? 'Unassigned';
             events.add(CalendarEvent(
               date: date,
-              title: t['title'] ?? 'Task Reminder',
+              title: t.title ?? 'Task Reminder',
               type: 'Task',
-              subtitle: 'Assigned to: $assignedTo\n${t['description'] ?? ""}'.trim(),
-              status: t['status'],
-              eventId: 'TASK-${t['id']}',
+              subtitle: 'Assigned to: $assignedTo\n${t.description ?? ""}'.trim(),
+              status: t.status,
+              eventId: 'TASK-${t.id}',
             ));
           } catch (_) {}
         }
       }
 
       // 2. Fetch Licenses Expiry
-      final licenseRes = await _client
-          .from('client_licenses')
-          .select('id, expiry_date, manual_client_name, clients(name), license_types(name)')
-          .eq('status', 'Active');
+      final licenseReq = ModelQueries.list(
+        amplify_models.ClientLicenses.classType,
+        where: amplify_models.ClientLicenses.STATUS.eq('Active')
+      );
+      final licenseRes = await Amplify.API.query(request: licenseReq).response;
+      final licenses = licenseRes.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
       
-      for (var l in licenseRes) {
-        if (l['expiry_date'] != null) {
+      for (var l in licenses) {
+        if (l.expiry_date != null) {
           try {
-            final date = DateTime.parse(l['expiry_date'].toString()).toLocal();
-            String clientName = l['manual_client_name'] ?? 'Unknown Client';
-            if (l['clients'] != null) {
-              final c = l['clients'];
-              clientName = (c is List && c.isNotEmpty) ? c[0]['name'] : (c is Map ? c['name'] : clientName);
+            final date = DateTime.parse(l.expiry_date!).toLocal();
+            String clientName = l.manual_client_name ?? 'Unknown Client';
+            if (l.client_id != null && clientsMap.containsKey(l.client_id.toString())) {
+              clientName = clientsMap[l.client_id.toString()] ?? clientName;
             }
 
             String licenseType = 'License';
-            if (l['license_types'] != null) {
-              final lt = l['license_types'];
-              licenseType = (lt is List && lt.isNotEmpty) ? lt[0]['name'] : (lt is Map ? lt['name'] : licenseType);
+            if (l.license_type_id != null && typesMap.containsKey(l.license_type_id.toString())) {
+              licenseType = typesMap[l.license_type_id.toString()] ?? licenseType;
             }
 
             events.add(CalendarEvent(
@@ -125,26 +150,26 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
               title: '$clientName - License Expiry',
               type: 'License',
               subtitle: 'Type: $licenseType',
-              eventId: 'LIC-${l['id']}',
+              eventId: 'LIC-${l.id}',
             ));
           } catch (_) {}
         }
       }
 
       // 3. Fetch DSC Expiry
-      final dscRes = await _client
-          .from('dsc_records')
-          .select('id, client_name, dsc_expiry_date');
+      final dscReq = ModelQueries.list(amplify_models.DscRecords.classType);
+      final dscRes = await Amplify.API.query(request: dscReq).response;
+      final dscs = dscRes.data?.items.whereType<amplify_models.DscRecords>().toList() ?? [];
       
-      for (var d in dscRes) {
-        if (d['dsc_expiry_date'] != null) {
+      for (var d in dscs) {
+        if (d.dsc_expiry_date != null) {
           try {
-            final date = DateTime.parse(d['dsc_expiry_date'].toString()).toLocal();
+            final date = DateTime.parse(d.dsc_expiry_date!).toLocal();
             events.add(CalendarEvent(
               date: date,
-              title: '${d['client_name']} - DSC Expiry',
+              title: '${d.client_name ?? "Unknown"} - DSC Expiry',
               type: 'DSC',
-              eventId: 'DSC-${d['id']}',
+              eventId: 'DSC-${d.id}',
             ));
           } catch (_) {}
         }

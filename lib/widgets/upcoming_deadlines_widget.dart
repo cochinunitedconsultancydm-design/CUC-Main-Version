@@ -1,5 +1,8 @@
+import 'package:amplify_api/amplify_api.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart';
 
 class UpcomingDeadlinesWidget extends StatelessWidget {
   final bool isWide;
@@ -125,22 +128,33 @@ class UpcomingDeadlinesWidget extends StatelessWidget {
   }
 
   Future<List<Map<String, dynamic>>> _fetchDeadlines() async {
-    final client = Supabase.instance.client;
-    var query = client
-        .from('billings')
-        .select()
-        .neq('status', 'Received');
+    var req = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Received'));
     
     if (filterByAuthorities != null && filterByAuthorities!.isNotEmpty) {
-      query = query.ilike('authorities', '%$filterByAuthorities%');
+      req = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Received').and(Billings.AUTHORITIES.contains(filterByAuthorities!)));
     }
 
-    final res = await query;
+    final res = await Amplify.API.query(request: req).response;
+    final all = res.data?.items.whereType<Billings>() ?? [];
+    
     final List<Map<String, dynamic>> withDeadlines = [];
-    for (var b in res) {
-      final data = b['data'] as Map<String, dynamic>?;
+    for (var b in all) {
+      Map<String, dynamic>? data;
+      if (b.data != null) {
+        try {
+          data = jsonDecode(b.data!);
+        } catch (_) {}
+      }
       if (data != null && data['payment_deadline'] != null && data['payment_deadline'].toString().isNotEmpty) {
-        withDeadlines.add(b);
+        withDeadlines.add({
+          'id': b.id,
+          'invoice_no': b.invoice_no,
+          'client_name': b.client_name,
+          'amount': b.amount,
+          'data': data,
+          'status': b.status,
+          'authorities': b.authorities,
+        });
       }
     }
 

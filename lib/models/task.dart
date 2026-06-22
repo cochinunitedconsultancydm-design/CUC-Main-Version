@@ -1,9 +1,9 @@
 class Task {
-  final int? id;
+  final dynamic id;
   final String title;
   final String? description;
-  final int? assignedBy;
-  final int? assignedTo;
+  final dynamic assignedBy;
+  final dynamic assignedTo;
   final String status;
   final String? dueDate;
   final String? createdAt;

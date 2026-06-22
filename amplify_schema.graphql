@@ -1,0 +1,347 @@
+type LicenseServices @model @auth(rules: [{allow: public}]) {
+  id: ID
+  client_license_id: Int
+  service_description: String
+  service_cost: Float
+  service_date: String
+  created_at: String
+}
+
+type LicenseNotifications @model @auth(rules: [{allow: public}]) {
+  id: ID
+  client_license_id: Int
+  notification_type: String
+  message: String
+  is_sent: Boolean
+  scheduled_date: String
+  created_at: String
+}
+
+type ServiceNames @model @auth(rules: [{allow: public}]) {
+  id: ID
+  name: String
+  created_at: String
+}
+
+type DscRecords @model @auth(rules: [{allow: public}]) {
+  id: ID
+  username: String
+  password: String
+  client_name: String
+  email_id: String
+  phone_no: String
+  dsc_taken_date: String
+  dsc_expiry_date: String
+  created_at: String
+  updated_at: String
+}
+
+type ClientDocuments @model @auth(rules: [{allow: public}]) {
+  id: ID
+  client_id: String
+  client_name: String
+  document_name: String
+  storage_path: String
+  og_copy: String
+  remarks: String
+  created_at: String
+}
+
+type ServiceContent @model @auth(rules: [{allow: public}]) {
+  id: ID
+  service_id: Int
+  title: String
+  description: String
+  image_path: String
+  details: String
+}
+
+type StaffLocations @model @auth(rules: [{allow: public}]) {
+  user_id: Int
+  latitude: Float
+  longitude: Float
+  updated_at: String
+}
+
+type Clients @model @auth(rules: [{allow: public}]) {
+  id: ID
+  name: String
+  email: String
+  phone: String
+  address: String
+  created_at: String
+  type_of_work: String
+  case_number: String
+  dob: String
+  review_rating: Int
+  file_no: String
+  file_date: String
+  is_contacted: Boolean
+  managed_by: String
+  balance_due: String
+}
+
+type Tasks @model @auth(rules: [{allow: public}]) {
+  id: ID
+  title: String
+  description: String
+  assigned_to: Int
+  assigned_by: Int
+  status: String
+  due_date: String
+  created_at: String
+  location: String
+  client_name: String
+  phone_number: String
+  updated_at: String
+}
+
+type DealStageHistory @model @auth(rules: [{allow: public}]) {
+  id: ID
+  deal_id: Int
+  from_stage: String
+  to_stage: String
+  changed_by: Int
+  changed_at: String
+}
+
+type TravelLogs @model @auth(rules: [{allow: public}]) {
+  id: ID
+  user_id: Int
+  destination: String
+  created_at: String
+}
+
+type LicenseTypes @model @auth(rules: [{allow: public}]) {
+  id: ID
+  name: String
+  description: String
+  created_at: String
+  updated_at: String
+}
+
+type LicenseBilling @model @auth(rules: [{allow: public}]) {
+  id: ID
+  client_license_id: Int
+  amount: Float
+  payment_status: String
+  invoice_no: String
+  payment_date: String
+  created_at: String
+}
+
+type ActivityLogs @model @auth(rules: [{allow: public}]) {
+  id: ID
+  user_id: Int
+  action: String
+  target_type: String
+  target_id: String
+  details: String
+  created_at: String
+}
+
+type ClientLicenses @model @auth(rules: [{allow: public}]) {
+  id: ID
+  client_id: Int
+  license_type_id: Int
+  file_no: String
+  service_date: String
+  expiry_date: String
+  status: String
+  notes: String
+  created_at: String
+  updated_at: String
+  manual_client_name: String
+}
+
+type DealHandoverHistory @model @auth(rules: [{allow: public}]) {
+  id: ID
+  deal_id: Int
+  from_user_id: Int
+  to_user_id: Int
+  note: String
+  handed_over_at: String
+}
+
+type DealActivities @model @auth(rules: [{allow: public}]) {
+  id: ID
+  deal_id: Int
+  type: String
+  title: String
+  description: String
+  due_date: String
+  is_completed: Boolean
+  created_by: Int
+  created_at: String
+}
+
+type Billings @model @auth(rules: [{allow: public}]) {
+  id: ID
+  invoice_no: String
+  client_name: String
+  date: String
+  amount: String
+  type: String
+  data: String
+  created_at: String
+  category: String
+  authorities: String
+  status: String
+}
+
+type Deals @model @auth(rules: [{allow: public}]) {
+  id: ID
+  name: String
+  client_id: Int
+  client_name: String
+  contact_info: String
+  company: String
+  work_type: String
+  stage: String
+  responsible_id: Int
+  responsible_name: String
+  amount: Float
+  currency: String
+  pipeline: String
+  priority: String
+  description: String
+  created_at: String
+  updated_at: String
+  closed_at: String
+  is_won: Boolean
+  reg_fee_required: String
+  files_received: String
+  contact_status: String
+  files_asked: String
+  est_amount_work: Float
+  create_invoice_share: String
+  expense_spent: Float
+  upload_invoice_path: String
+  send_to_customer: String
+  register_no: String
+  invoice_amount: Float
+  payment_type: String
+  drive_link: String
+  billing_id: Int
+  quotation_id: Int
+  payment_received: Float
+  part_payment_amount: Float
+  noc_obtained: Boolean
+  referred_by: String
+  expenses_list: String
+}
+
+type Messages @model @auth(rules: [{allow: public}]) {
+  id: ID
+  sender_id: Int
+  receiver_id: Int
+  content: String
+  is_read: Boolean
+  created_at: String
+  attachment_type: String
+  attachment_id: Int
+}
+
+type StaffAttendance @model @auth(rules: [{allow: public}]) {
+  id: ID
+  user_id: Int
+  check_in_time: String
+  check_out_time: String
+  attendance_date: String
+}
+
+type CompanyBills @model @auth(rules: [{allow: public}]) {
+  id: ID
+  category: String
+  title: String
+  amount: Float
+  bill_date: String
+  status: String
+  description: String
+  created_at: String
+  spent_by: Int
+  spent_by_name: String
+}
+
+type SysCronLogs @model @auth(rules: [{allow: public}]) {
+  id: ID
+  job_name: String
+  last_run_date: String
+}
+
+type Users @model @auth(rules: [{allow: public}]) {
+  id: ID
+  username: String
+  password: String
+  role: String
+  name: String
+  created_at: String
+  last_seen: String
+  email: String
+}
+
+type InwardPosts @model @auth(rules: [{allow: public}]) {
+  id: ID
+  sender_name: String
+  recipient_name: String
+  received_by: String
+  description: String
+  status: String
+  received_date: String
+  created_at: String
+}
+
+type LocationHistory @model @auth(rules: [{allow: public}]) {
+  id: ID
+  user_id: Int
+  latitude: Float
+  longitude: Float
+  recorded_at: String
+}
+
+type UserSessions @model @auth(rules: [{allow: public}]) {
+  id: ID
+  user_id: Int
+  login_time: String
+  logout_time: String
+  ip_address: String
+  is_active: Boolean
+  status: String
+  active_seconds: Int
+  idle_seconds: Int
+}
+
+type Checklists @model @auth(rules: [{allow: public}]) {
+  id: ID
+  title: String
+  description: String
+  manager_id: Int
+  responsible_id: Int
+  status: String
+  remarks: String
+  reason: String
+  due_date: String
+  created_at: String
+  updated_at: String
+}
+
+type DealAssignees @model @auth(rules: [{allow: public}]) {
+  id: ID
+  deal_id: Int
+  user_id: Int
+  role: String
+  assigned_at: String
+}
+
+type Notifications @model @auth(rules: [{allow: public}]) {
+  id: ID
+  user_id: Int
+  title: String
+  message: String
+  type: String
+  is_read: Boolean
+  created_at: String
+  deal_id: Int
+  task_id: Int
+}
+

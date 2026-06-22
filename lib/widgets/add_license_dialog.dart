@@ -1,5 +1,7 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
 
@@ -11,12 +13,11 @@ class AddLicenseDialog extends StatefulWidget {
 }
 
 class _AddLicenseDialogState extends State<AddLicenseDialog> {
-  final _client = Supabase.instance.client;
   bool _isLoading = true;
   bool _isSubmitting = false;
 
-  List<Map<String, dynamic>> _clients = [];
-  List<Map<String, dynamic>> _licenseTypes = [];
+  List<Clients> _clients = [];
+  List<LicenseTypes> _licenseTypes = [];
 
   static const Map<int, String> _fallbackLicenseTypes = {
     2: 'Rent',
@@ -31,8 +32,8 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
     12: 'DSC',
   };
 
-  int? _selectedClientId;
-  int? _selectedTypeId;
+  dynamic _selectedClientId;
+  dynamic _selectedTypeId;
   final _manualClientController = TextEditingController();
   final _fileNoController = TextEditingController();
   DateTime? _expiryDate;
@@ -45,16 +46,23 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
 
   Future<void> _fetchData() async {
     try {
-      final clientsRes = await _client.from('clients').select('id, name').order('name');
-      final typesRes = await _client.from('license_types').select('id, name').order('name');
+      final cReq = ModelQueries.list(Clients.classType);
+      final cRes = await Amplify.API.query(request: cReq).response;
+      var cList = cRes.data?.items.whereType<Clients>().toList() ?? [];
+      cList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+
+      final lReq = ModelQueries.list(LicenseTypes.classType);
+      final lRes = await Amplify.API.query(request: lReq).response;
+      var lList = lRes.data?.items.whereType<LicenseTypes>().toList() ?? [];
+      lList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
 
       if (mounted) {
         setState(() {
-          _clients = List<Map<String, dynamic>>.from(clientsRes);
-          _licenseTypes = List<Map<String, dynamic>>.from(typesRes);
+          _clients = cList;
+          _licenseTypes = lList;
           
           if (_licenseTypes.isEmpty) {
-            _licenseTypes = _fallbackLicenseTypes.entries.map((e) => {'id': e.key, 'name': e.value}).toList();
+            _licenseTypes = _fallbackLicenseTypes.entries.map((e) => LicenseTypes(id: e.key.toString(), name: e.value)).toList();
           }
           
           _isLoading = false;
@@ -108,14 +116,16 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
     setState(() => _isSubmitting = true);
 
     try {
-      await _client.from('client_licenses').insert({
-        'client_id': _selectedClientId,
-        'manual_client_name': _selectedClientId == null ? _manualClientController.text.trim() : null,
-        'license_type_id': _selectedTypeId,
-        'file_no': _fileNoController.text.trim(),
-        'expiry_date': _expiryDate?.toIso8601String(),
-        'status': 'Active',
-      });
+      final license = ClientLicenses(
+        client_id: int.tryParse(_selectedClientId?.toString() ?? ''),
+        manual_client_name: _selectedClientId == null ? _manualClientController.text.trim() : null,
+        license_type_id: int.tryParse(_selectedTypeId?.toString() ?? ''),
+        file_no: _fileNoController.text.trim(),
+        expiry_date: _expiryDate?.toIso8601String(),
+        status: 'Active',
+      );
+
+      await Amplify.API.mutate(request: ModelMutations.create(license).response);
 
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -230,15 +240,15 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
                     const Text('LICENSE DETAILS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
                     const SizedBox(height: 16),
                     
-                    DropdownButtonFormField<int>(
+                    DropdownButtonFormField<dynamic>(
                       initialValue: _selectedTypeId,
                       isExpanded: true,
                       decoration: _inputDecoration('Select License Type', Icons.category_rounded),
                       icon: const Icon(Icons.expand_more_rounded, color: Colors.grey),
                       items: _licenseTypes.map((type) {
-                        return DropdownMenuItem<int>(
-                          value: type['id'] as int,
-                          child: Text(type['name'].toString(), overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        return DropdownMenuItem<dynamic>(
+                          value: type.id,
+                          child: Text(type.name ?? 'Unknown', overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500)),
                         );
                       }).toList(),
                       onChanged: (val) => setState(() => _selectedTypeId = val),
@@ -248,17 +258,17 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
                     const Text('CLIENT ASSIGNMENT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
                     const SizedBox(height: 16),
 
-                    DropdownButtonFormField<int>(
+                    DropdownButtonFormField<dynamic>(
                       initialValue: _selectedClientId,
                       isExpanded: true,
                       decoration: _inputDecoration('Select Registered Client', Icons.business_rounded),
                       icon: const Icon(Icons.expand_more_rounded, color: Colors.grey),
                       items: [
-                        const DropdownMenuItem<int>(value: null, child: Text('-- No Registered Client (Manual Entry) --', overflow: TextOverflow.ellipsis, style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey))),
+                        const DropdownMenuItem<dynamic>(value: null, child: Text('-- No Registered Client (Manual Entry) --', overflow: TextOverflow.ellipsis, style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey))),
                         ..._clients.map((client) {
-                          return DropdownMenuItem<int>(
-                            value: client['id'] as int,
-                            child: Text(client['name'].toString(), overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500)),
+                          return DropdownMenuItem<dynamic>(
+                            value: client.id,
+                            child: Text(client.name ?? 'Unknown', overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500)),
                           );
                         }),
                       ],

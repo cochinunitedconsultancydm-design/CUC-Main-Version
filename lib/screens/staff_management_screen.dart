@@ -1,7 +1,9 @@
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import '../services/logging_service.dart';
 
@@ -13,8 +15,6 @@ class StaffManagementScreen extends StatefulWidget {
 }
 
 class _StaffManagementScreenState extends State<StaffManagementScreen> {
-  final _client = Supabase.instance.client;
-  
   // Tab 1: Staff Directory State
   List<Map<String, dynamic>> _staff = [];
   bool _isLoadingDirectory = true;
@@ -54,27 +54,39 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     if (!mounted) return;
     setState(() => _isLoadingDirectory = true);
     try {
-      final usersRes = await _client
-          .from('users')
-          .select()
-          .order('role', ascending: true)
-          .order('name', ascending: true);
+      final uReq = ModelQueries.list(amplify_models.Users.classType);
+      final uRes = await Amplify.API.query(request: uReq).response;
+      var usersRes = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       
-      final sessionsRes = await _client
-          .from('user_sessions')
-          .select()
-          .order('login_time', ascending: false);
+      usersRes.sort((a, b) {
+        int r = (a.role ?? '').compareTo(b.role ?? '');
+        if (r != 0) return r;
+        return (a.name ?? '').compareTo(b.name ?? '');
+      });
       
+      final sReq = ModelQueries.list(amplify_models.UserSessions.classType);
+      final sRes = await Amplify.API.query(request: sReq).response;
+      var sessionsRes = sRes.data?.items.whereType<amplify_models.UserSessions>().toList() ?? [];
+      
+      sessionsRes.sort((a, b) {
+        final dateA = a.login_time != null ? DateTime.tryParse(a.login_time!) ?? DateTime(2000) : DateTime(2000);
+        final dateB = b.login_time != null ? DateTime.tryParse(b.login_time!) ?? DateTime(2000) : DateTime(2000);
+        return dateB.compareTo(dateA);
+      });
+
       final List<Map<String, dynamic>> combined = [];
       for (var u in usersRes) {
-        final session = (sessionsRes as List).firstWhere(
-          (s) => s['user_id'] == u['id'],
-          orElse: () => <String, dynamic>{'login_time': null, 'is_active': false},
-        ) as Map<String, dynamic>;
+        final userSessions = sessionsRes.where((s) => s.user_id?.toString() == u.id.toString()).toList();
+        final session = userSessions.isNotEmpty ? userSessions.first : null;
+        
         combined.add({
-          ...u,
-          'last_login': session['login_time'],
-          'is_active': session['is_active'],
+          'id': u.id,
+          'name': u.name,
+          'username': u.username,
+          'email': u.email,
+          'role': u.role,
+          'last_login': session?.login_time,
+          'is_active': session?.is_active ?? false,
         });
       }
 
@@ -215,22 +227,29 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                           }
                           try {
                             if (user == null) {
-                              await _client.from('users').insert({
-                                'name': name.text,
-                                'username': username.text,
-                                'email': email.text,
-                                'password': password.text,
-                                'role': role,
-                              });
+                              final newUser = amplify_models.Users(
+                                name: name.text,
+                                username: username.text,
+                                email: email.text,
+                                password: password.text,
+                                role: role,
+                              );
+                              await Amplify.API.mutate(request: ModelMutations.create(newUser).response);
                               await LoggingService().logAction(action: 'CREATE_STAFF', targetType: 'Staff', targetId: username.text, details: 'Added new staff member: ${name.text}');
                             } else {
-                              await _client.from('users').update({
-                                'name': name.text,
-                                'username': username.text,
-                                'email': email.text,
-                                'role': role,
-                              }).eq('id', user['id']);
-                              await LoggingService().logAction(action: 'UPDATE_STAFF', targetType: 'Staff', targetId: username.text, details: 'Updated staff member: ${name.text}');
+                              final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()));
+                              final res = await Amplify.API.query(request: req).response;
+                              if (res.data?.items.isNotEmpty == true) {
+                                final existing = res.data!.items.first!;
+                                final updated = existing.copyWith(
+                                  name: name.text,
+                                  username: username.text,
+                                  email: email.text,
+                                  role: role,
+                                );
+                                await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+                                await LoggingService().logAction(action: 'UPDATE_STAFF', targetType: 'Staff', targetId: username.text, details: 'Updated staff member: ${name.text}');
+                              }
                             }
                             if (mounted) Navigator.pop(context);
                             _fetchStaff();
@@ -279,9 +298,13 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                 if (passController.text.trim().isEmpty) return;
                 setModalState(() => isSaving = true);
                 try {
-                  await _client.from('users').update({
-                    'password': passController.text,
-                  }).eq('id', user['id']);
+                  final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()));
+                  final res = await Amplify.API.query(request: req).response;
+                  if (res.data?.items.isNotEmpty == true) {
+                    final existing = res.data!.items.first!;
+                    final updated = existing.copyWith(password: passController.text);
+                    await Amplify.API.mutate(request: ModelMutations.update(updated).response);
+                  }
                   await LoggingService().logAction(action: 'RESET_PASSWORD', targetType: 'Staff', targetId: user['username'], details: 'Reset password for ${user['name']}');
                   if (mounted) Navigator.pop(context);
                   _msg('Password reset successfully for ${user['name']}', true);
@@ -299,7 +322,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     );
   }
 
-  Future<void> _delete(int id) async {
+  Future<void> _delete(dynamic id) async {
     final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
       title: const Text('Confirm Delete'),
       content: const Text('Remove this staff member?'),
@@ -310,7 +333,11 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     ));
     if (ok == true) {
       try {
-        await _client.from('users').delete().eq('id', id);
+        final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(id.toString()));
+        final res = await Amplify.API.query(request: req).response;
+        if (res.data?.items.isNotEmpty == true) {
+          await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!).response);
+        }
         await LoggingService().logAction(action: 'DELETE_STAFF', targetType: 'Staff', targetId: id.toString(), details: 'Deleted staff member');
         _fetchStaff();
         _msg('Removed', true);
@@ -567,8 +594,11 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _fetchStaffTimeStats() async {
-    final client = Supabase.instance.client;
-    final usersRes = await client.from('users').select('id, name, username, role').neq('role', 'admin').order('name', ascending: true);
+    final uReq = ModelQueries.list(amplify_models.Users.classType);
+    final uRes = await Amplify.API.query(request: uReq).response;
+    var usersRes = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+    usersRes = usersRes.where((u) => u.role != 'admin').toList();
+    usersRes.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
     
     final today = DateTime.now();
     DateTime startDate;
@@ -597,18 +627,24 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
         break;
     }
     
-    final startOfPeriodStr = startDate.toIso8601String();
+    final sReq = ModelQueries.list(amplify_models.UserSessions.classType);
+    final sRes = await Amplify.API.query(request: sReq).response;
+    var allSessions = sRes.data?.items.whereType<amplify_models.UserSessions>().toList() ?? [];
     
-    var query = client
-        .from('user_sessions')
-        .select('user_id, login_time, logout_time, is_active, status, active_seconds, idle_seconds')
-        .gte('login_time', startOfPeriodStr);
-        
-    if (endDate != null) {
-      query = query.lte('login_time', endDate.toIso8601String());
-    }
+    var sessionsRes = allSessions.where((s) {
+      if (s.login_time == null) return false;
+      final t = DateTime.tryParse(s.login_time!);
+      if (t == null) return false;
+      if (t.isBefore(startDate)) return false;
+      if (endDate != null && t.isAfter(endDate)) return false;
+      return true;
+    }).toList();
     
-    final sessionsRes = await query.order('login_time', ascending: false);
+    sessionsRes.sort((a, b) {
+      final dateA = a.login_time != null ? DateTime.tryParse(a.login_time!) ?? DateTime(2000) : DateTime(2000);
+      final dateB = b.login_time != null ? DateTime.tryParse(b.login_time!) ?? DateTime(2000) : DateTime(2000);
+      return dateB.compareTo(dateA); // descending
+    });
         
     final List<Map<String, dynamic>> combined = [];
     for (var u in usersRes) {
@@ -619,22 +655,25 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       String? lastLogin;
       String? lastLogout;
 
-      final userSessions = (sessionsRes as List).where((s) => s['user_id'] == u['id']).toList();
+      final userSessions = sessionsRes.where((s) => s.user_id?.toString() == u.id.toString()).toList();
       
       if (userSessions.isNotEmpty) {
-        lastLogin = userSessions.first['login_time'];
-        lastLogout = userSessions.first['logout_time'];
-        isCurrentlyActive = userSessions.first['is_active'] ?? false;
-        currentStatus = isCurrentlyActive ? (userSessions.first['status'] ?? 'Active') : 'Offline';
+        lastLogin = userSessions.first.login_time;
+        lastLogout = userSessions.first.logout_time;
+        isCurrentlyActive = userSessions.first.is_active ?? false;
+        currentStatus = isCurrentlyActive ? (userSessions.first.status ?? 'Active') : 'Offline';
         
         for (var s in userSessions) {
-          totalActive += (s['active_seconds'] ?? 0) as int;
-          totalIdle += (s['idle_seconds'] ?? 0) as int;
+          totalActive += s.active_seconds ?? 0;
+          totalIdle += s.idle_seconds ?? 0;
         }
       }
 
       combined.add({
-        ...u,
+        'id': u.id,
+        'name': u.name,
+        'username': u.username,
+        'role': u.role,
         'login_time': lastLogin,
         'logout_time': lastLogout,
         'is_active': isCurrentlyActive,

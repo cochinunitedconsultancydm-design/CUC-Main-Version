@@ -46,12 +46,12 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
     
     try {
       final pFilesRes = await Amplify.Storage.list(
-        path: StoragePath.fromString('${widget.client.id}/personal/'),
+        path: StoragePath.fromString('public/${widget.client.id}/personal/'),
       ).result;
       
       final workPath = _currentWorkFolder == null 
-          ? '${widget.client.id}/work/' 
-          : '${widget.client.id}/work/$_currentWorkFolder/';
+          ? 'public/${widget.client.id}/work/' 
+          : 'public/${widget.client.id}/work/$_currentWorkFolder/';
           
       final wFilesRes = await Amplify.Storage.list(
         path: StoragePath.fromString(workPath),
@@ -75,7 +75,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
     
     setState(() => _isLoading = true);
     try {
-      final path = '${widget.client.id}/work/${folder.replaceAll('/', '_')}/.emptyPlaceholder';
+      final path = 'public/${widget.client.id}/work/${folder.replaceAll('/', '_')}/.emptyPlaceholder';
       
       await Amplify.Storage.uploadData(
         data: StorageDataPayload.string('folder_placeholder'),
@@ -114,9 +114,9 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
             setState(() => _isLoading = false);
             return; 
           }
-          path = '${widget.client.id}/work/$_currentWorkFolder/$fileName';
+          path = 'public/${widget.client.id}/work/$_currentWorkFolder/$fileName';
         } else {
-          path = '${widget.client.id}/$category/$fileName';
+          path = 'public/${widget.client.id}/$category/$fileName';
         }
         
         // Read file bytes and upload
@@ -274,15 +274,15 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
       setState(() => _isLoading = true);
       try {
         if (isFolder) {
-          final folderPath = '${widget.client.id}/work/$fileName/';
+          final folderPath = 'public/${widget.client.id}/work/$fileName/';
           final filesRes = await Amplify.Storage.list(path: StoragePath.fromString(folderPath)).result;
           for (var f in filesRes.items) {
             await Amplify.Storage.remove(path: StoragePath.fromString(f.path)).result;
           }
         } else {
           String pathToDelete = category == 'work' && _currentWorkFolder != null 
-              ? '${widget.client.id}/work/$_currentWorkFolder/$fileName'
-              : '${widget.client.id}/$category/$fileName';
+              ? 'public/${widget.client.id}/work/$_currentWorkFolder/$fileName'
+              : 'public/${widget.client.id}/$category/$fileName';
           await Amplify.Storage.remove(path: StoragePath.fromString(pathToDelete)).result;
         }
         await _loadFiles();
@@ -296,8 +296,8 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
   Future<void> _downloadFile(String category, String fileName) async {
     try {
       String pathToDownload = category == 'work' && _currentWorkFolder != null 
-          ? '${widget.client.id}/work/$_currentWorkFolder/$fileName'
-          : '${widget.client.id}/$category/$fileName';
+          ? 'public/${widget.client.id}/work/$_currentWorkFolder/$fileName'
+          : 'public/${widget.client.id}/$category/$fileName';
       final res = await Amplify.Storage.getUrl(path: StoragePath.fromString(pathToDownload)).result;
       if (await canLaunchUrl(res.url)) {
         await launchUrl(res.url);

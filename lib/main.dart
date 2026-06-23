@@ -54,11 +54,6 @@ Future<void> main() async {
     final storagePlugin = AmplifyStorageS3();
     
     await Amplify.addPlugins([apiPlugin, authPlugin, storagePlugin]);
-    
-    debugPrint('--- AMPLIFY CONFIG DEBUG ---');
-    debugPrint(amplifyConfig.substring(0, 150));
-    debugPrint('--- END AMPLIFY CONFIG DEBUG ---');
-    
     await Amplify.configure(amplifyConfig);
     debugPrint('✅ Amplify configured successfully');
   } on AmplifyAlreadyConfiguredException {

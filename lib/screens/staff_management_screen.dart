@@ -6,6 +6,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import '../services/logging_service.dart';
+import '../services/security_service.dart';
 
 class StaffManagementScreen extends StatefulWidget {
   const StaffManagementScreen({super.key});
@@ -177,14 +178,14 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  TextField(controller: name, decoration: inputDec('Full Name', Icons.person_outline_rounded)),
+                  TextField(controller: name, decoration: inputDec('Full Name', Icons.person_outline_rounded), maxLength: 100),
                   const SizedBox(height: 16),
-                  TextField(controller: username, decoration: inputDec('Username', Icons.alternate_email_rounded)),
+                  TextField(controller: username, decoration: inputDec('Username', Icons.alternate_email_rounded), maxLength: 50),
                   const SizedBox(height: 16),
-                  TextField(controller: email, decoration: inputDec('Email Address', Icons.email_outlined), keyboardType: TextInputType.emailAddress),
+                  TextField(controller: email, decoration: inputDec('Email Address', Icons.email_outlined), keyboardType: TextInputType.emailAddress, maxLength: 100),
                   if (user == null) ...[
                     const SizedBox(height: 16),
-                    TextField(controller: password, decoration: inputDec('Initial Password', Icons.lock_outline_rounded), obscureText: true),
+                    TextField(controller: password, decoration: inputDec('Initial Password', Icons.lock_outline_rounded), obscureText: true, maxLength: 128),
                   ],
                   const SizedBox(height: 32),
                   const Text('Access Level', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
@@ -227,11 +228,13 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                           }
                           try {
                             if (user == null) {
+                              // SECURITY: Hash password before storing
+                              final hashedPassword = SecurityService().hashPassword(password.text);
                               final newUser = amplify_models.Users(
-                                name: name.text,
-                                username: username.text,
-                                email: email.text,
-                                password: password.text,
+                                name: SecurityService().sanitize(name.text, maxLength: 100),
+                                username: SecurityService().sanitize(username.text, maxLength: 50),
+                                email: SecurityService().sanitize(email.text, maxLength: 100),
+                                password: hashedPassword,
                                 role: role,
                               );
                               await Amplify.API.mutate(request: ModelMutations.create(newUser)).response;
@@ -296,13 +299,19 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
             ElevatedButton(
               onPressed: isSaving ? null : () async {
                 if (passController.text.trim().isEmpty) return;
+                if (passController.text.length < 6) {
+                  _msg('Password must be at least 6 characters', false);
+                  return;
+                }
                 setModalState(() => isSaving = true);
                 try {
+                  // SECURITY: Hash password before storing
+                  final hashedPassword = SecurityService().hashPassword(passController.text);
                   final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()));
                   final res = await Amplify.API.query(request: req).response;
                   if (res.data?.items.isNotEmpty == true) {
                     final existing = res.data!.items.first!;
-                    final updated = existing.copyWith(password: passController.text);
+                    final updated = existing.copyWith(password: hashedPassword);
                     await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
                   }
                   await LoggingService().logAction(action: 'RESET_PASSWORD', targetType: 'Staff', targetId: user['username'], details: 'Reset password for ${user['name']}');

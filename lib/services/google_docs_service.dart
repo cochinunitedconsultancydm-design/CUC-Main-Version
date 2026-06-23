@@ -1,21 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis/docs/v1.dart' as docs;
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:io' as dart_io;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:typed_data';
 
 class GoogleDocsService {
-  // Using the Web Client ID provided by the user.
-  // Note: For desktop apps, a Desktop client ID is usually preferred, but Web might work 
-  // depending on how the OAuth consent screen is configured.
+  // 1. Paste your Web Client ID here
   static const String _webClientId = 'YOUR_WEB_CLIENT_ID_HERE';
-  // Desktop apps require a client secret for the token exchange, even though it's technically a public client.
-  // Paste your client secret below:
-  static const String _clientSecret = 'YOUR_CLIENT_SECRET_HERE';
   
   static final _scopes = [
     drive.DriveApi.driveScope,
@@ -23,85 +18,15 @@ class GoogleDocsService {
     docs.DocsApi.documentsScope,
   ];
 
-  static AutoRefreshingAuthClient? _authClient;
-  static const String _credentialsKey = 'google_docs_credentials';
-
-  static Future<AccessCredentials?> _loadCredentials() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = prefs.getString(_credentialsKey);
-      if (jsonString != null) {
-        final json = jsonDecode(jsonString);
-        return AccessCredentials(
-          AccessToken(
-            json['accessToken']['type'],
-            json['accessToken']['data'],
-            DateTime.parse(json['accessToken']['expiry']).toUtc(),
-          ),
-          json['refreshToken'],
-          List<String>.from(json['scopes']),
-          idToken: json['idToken'],
-        );
-      }
-    } catch (e) {
-      debugPrint('Error loading credentials: $e');
-    }
-    return null;
-  }
-
-  static Future<void> _saveCredentials(AccessCredentials credentials) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = jsonEncode({
-        'accessToken': {
-          'type': credentials.accessToken.type,
-          'data': credentials.accessToken.data,
-          'expiry': credentials.accessToken.expiry.toUtc().toIso8601String(),
-        },
-        'refreshToken': credentials.refreshToken,
-        'idToken': credentials.idToken,
-        'scopes': credentials.scopes,
-      });
-      await prefs.setString(_credentialsKey, jsonString);
-    } catch (e) {
-      debugPrint('Error saving credentials: $e');
-    }
-  }
-
-  static Future<void> _clearCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_credentialsKey);
-  }
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: _webClientId,
+    scopes: _scopes,
+  );
 
   static Future<String?> signIn() async {
     try {
-      final clientId = ClientId(_webClientId, _clientSecret);
-      
-      final savedCreds = await _loadCredentials();
-      if (savedCreds != null) {
-        _authClient = autoRefreshingClient(clientId, savedCreds, http.Client());
-        _authClient!.credentialUpdates.listen(_saveCredentials);
-        return 'Authenticated User';
-      }
-
-      // This will open a browser, ask the user to sign in, and redirect to a local server to capture the token.
-      _authClient = await clientViaUserConsent(
-        clientId, 
-        _scopes, 
-        (url) async {
-          final uri = Uri.parse(url);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
-        }
-      );
-      
-      if (_authClient != null) {
-        await _saveCredentials(_authClient!.credentials);
-        _authClient!.credentialUpdates.listen(_saveCredentials);
-      }
-      
-      return 'Authenticated User';
+      final account = await _googleSignIn.signIn();
+      return account != null ? 'Authenticated User' : null;
     } catch (e) {
       debugPrint('Google Sign-In Error: $e');
       return null;
@@ -109,16 +34,17 @@ class GoogleDocsService {
   }
 
   static Future<void> signOut() async {
-    await _clearCredentials();
-    _authClient?.close();
-    _authClient = null;
+    await _googleSignIn.signOut();
   }
 
   static Future<http.Client?> _getAuthenticatedClient() async {
-    if (_authClient == null) {
-      await signIn();
+    // Attempt silent sign-in first if not already signed in
+    if (await _googleSignIn.isSignedIn() == false) {
+      await _googleSignIn.signInSilently();
     }
-    return _authClient;
+    
+    // Retrieve the authenticated http client from the extension
+    return await _googleSignIn.authenticatedClient();
   }
 
   /// Fetches files from the user's Google Drive. 
@@ -180,14 +106,14 @@ class GoogleDocsService {
   }
 
   /// Uploads a local file to Google Drive and converts it to a Google Doc.
-  static Future<String?> uploadDocument(dart_io.File localFile, String fileName) async {
+  static Future<String?> uploadDocument(Uint8List fileBytes, String fileName) async {
     final client = await _getAuthenticatedClient();
     if (client == null) return null;
 
     try {
       final driveApi = drive.DriveApi(client);
       
-      final media = drive.Media(localFile.openRead(), localFile.lengthSync());
+      final media = drive.Media(Stream.value(fileBytes.toList()), fileBytes.length);
       final driveFile = drive.File()
         ..name = fileName
         ..mimeType = 'application/vnd.google-apps.document'; // Auto-convert to Google Doc format

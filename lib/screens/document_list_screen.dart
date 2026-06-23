@@ -399,10 +399,11 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
       FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['doc', 'docx', 'txt', 'rtf'],
+        withData: true,
       );
 
-      if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
+      if (result != null && result.files.single.bytes != null) {
+        final fileBytes = result.files.single.bytes!;
         final fileName = result.files.single.name;
         
         setState(() => _isLoading = true);
@@ -637,7 +638,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
 
         if (dialogResult == true) {
           setState(() => _isLoading = true);
-          final url = await GoogleDocsService.uploadDocument(file, fileName);
+          final url = await GoogleDocsService.uploadDocument(fileBytes, fileName);
           
           if (mounted) {
             setState(() => _isLoading = false);

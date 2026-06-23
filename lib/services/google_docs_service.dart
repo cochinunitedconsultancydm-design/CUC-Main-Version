@@ -10,7 +10,7 @@ import 'dart:typed_data';
 
 class GoogleDocsService {
   // 1. Paste your Web Client ID here
-  static const String _webClientId = 'YOUR_WEB_CLIENT_ID_HERE';
+  static const String _webClientId = '1032356674971-d9ijo8utdsv0iipf40s2e4ub0e7hanep.apps.googleusercontent.com';
   
   static final _scopes = [
     drive.DriveApi.driveScope,

@@ -42,6 +42,12 @@ import '../services/checklist_service.dart';
 import '../widgets/upcoming_deadlines_widget.dart';
 import '../widgets/premium_stat_card.dart';
 import '../services/attendance_service.dart';
+import 'uploaded_files_screen.dart';
+import 'inward_post_screen.dart';
+import 'document_list_screen.dart';
+import 'verification_history_view.dart';
+import 'travel_log_screen.dart';
+import 'staff_location_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -617,6 +623,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 12: return const ChecklistScreen();
       case 13: return const WorkManagementScreen(showOnlyVerification: true);
       case 14: return const ReminderCalendarScreen();
+      case 15: return const UploadedFilesScreen();
+      case 16: return InwardPostScreen(currentUserRole: _userRole, currentUserName: _userName);
+      case 17: return const DocumentListScreen(userEmail: 'staff@cochinunited.com');
+      case 18: return const VerificationHistoryView();
+      case 19: return const TravelLogScreen();
+      case 20: return const StaffLocationScreen();
       default: return const Center(child: Text('Page not found'));
     }
   }
@@ -689,6 +701,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _sidebarItem(8, Icons.admin_panel_settings_rounded, 'Admin Panel'),
                   
                   _sidebarItem(9, Icons.chat_bubble_outline_rounded, 'Internal Chat'),
+                  _sidebarItem(15, Icons.table_view_rounded, 'Upload Table'),
+                  _sidebarItem(16, Icons.mark_email_unread_rounded, 'Post Register'),
+                  _sidebarItem(17, Icons.cloud_sync, 'Google Docs Vault'),
+                  _sidebarItem(18, Icons.history_rounded, 'Verification History'),
+                  _sidebarItem(19, Icons.directions_car_filled_outlined, 'Travel Logs'),
+                  _sidebarItem(20, Icons.location_on_outlined, 'Staff Locations'),
                   _sidebarItem(7, Icons.settings_rounded, 'Settings'),
                 ],
               ),

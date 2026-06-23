@@ -18,14 +18,19 @@ class GoogleDocsService {
     docs.DocsApi.documentsScope,
   ];
 
-  static final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: _webClientId,
-    scopes: _scopes,
-  );
+  static bool _initialized = false;
+
+  static Future<void> _ensureInitialized() async {
+    if (!_initialized) {
+      await GoogleSignIn.instance.initialize(clientId: _webClientId);
+      _initialized = true;
+    }
+  }
 
   static Future<String?> signIn() async {
     try {
-      final account = await _googleSignIn.signIn();
+      await _ensureInitialized();
+      final account = await GoogleSignIn.instance.authenticate();
       return account != null ? 'Authenticated User' : null;
     } catch (e) {
       debugPrint('Google Sign-In Error: $e');
@@ -34,17 +39,22 @@ class GoogleDocsService {
   }
 
   static Future<void> signOut() async {
-    await _googleSignIn.signOut();
+    await GoogleSignIn.instance.signOut();
   }
 
   static Future<http.Client?> _getAuthenticatedClient() async {
-    // Attempt silent sign-in first if not already signed in
-    if (await _googleSignIn.isSignedIn() == false) {
-      await _googleSignIn.signInSilently();
-    }
+    await _ensureInitialized();
     
-    // Retrieve the authenticated http client from the extension
-    return await _googleSignIn.authenticatedClient();
+    // Attempt silent sign-in first
+    GoogleSignInAccount? account = await GoogleSignIn.instance.attemptLightweightAuthentication();
+    
+    if (account == null) return null;
+    
+    // Retrieve the authorization and authenticated http client
+    final authorization = await account.authorizationClient.authorizationForScopes(_scopes);
+    if (authorization == null) return null;
+
+    return authorization.authClient(scopes: _scopes);
   }
 
   /// Fetches files from the user's Google Drive. 

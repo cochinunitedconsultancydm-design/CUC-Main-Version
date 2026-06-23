@@ -33,7 +33,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.Clients.classType);
+      final req = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final clientsList = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
       clientsList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));

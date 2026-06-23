@@ -8,7 +8,8 @@ class ClientService {
     try {
       final req = ModelQueries.list(
         Clients.classType,
-        where: Clients.NAME.contains(query)
+        where: Clients.NAME.contains(query),
+        limit: 10000
       );
       final res = await Amplify.API.query(request: req).response;
       var items = res.data?.items.where((e) => e != null).cast<Clients>().toList() ?? [];
@@ -29,7 +30,7 @@ class ClientService {
   
   Future<List<Map<String, dynamic>>> getAllClients() async {
     try {
-      final req = ModelQueries.list(Clients.classType);
+      final req = ModelQueries.list(Clients.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var items = res.data?.items.where((e) => e != null).cast<Clients>().toList() ?? [];
       

@@ -51,11 +51,9 @@ Future<void> main() async {
   try {
     final apiPlugin = AmplifyAPI(options: APIPluginOptions(modelProvider: ModelProvider.instance));
     final authPlugin = AmplifyAuthCognito();
-    // Note: AmplifyStorageS3 removed - storage config causes ConfigurationError
-    // and aborts the entire configure() before API/Auth can initialize.
-    // Add storage back once the S3 bucket config format is confirmed.
+    final storagePlugin = AmplifyStorageS3();
     
-    await Amplify.addPlugins([apiPlugin, authPlugin]);
+    await Amplify.addPlugins([apiPlugin, authPlugin, storagePlugin]);
     await Amplify.configure(amplifyConfig);
     debugPrint('✅ Amplify configured successfully');
   } on AmplifyAlreadyConfiguredException {

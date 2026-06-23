@@ -43,44 +43,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     setState(() => _isLoading = true);
 
-    if (_currentPhase == ForgotPasswordPhase.email) {
-      final success = await _auth.sendPasswordResetCode(_emailController.text.trim());
-      if (mounted) {
-        setState(() => _isLoading = false);
-        if (success) {
-          setState(() => _currentPhase = ForgotPasswordPhase.code);
-        } else {
-          _showError('Failed to send reset code. Please try again.');
-        }
-      }
-    } else if (_currentPhase == ForgotPasswordPhase.code) {
-      final success = await _auth.verifyResetCode(_emailController.text.trim(), _codeController.text.trim());
-      if (mounted) {
-        setState(() => _isLoading = false);
-        if (success) {
-          setState(() => _currentPhase = ForgotPasswordPhase.newPassword);
-        } else {
-          _showError('Invalid code. Please try again.');
-        }
-      }
-    } else if (_currentPhase == ForgotPasswordPhase.newPassword) {
-      final success = await _auth.updatePassword(_emailController.text.trim(), _passwordController.text);
-      if (mounted) {
-        setState(() => _isLoading = false);
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Password updated successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.of(context).pop(); // Return to login
-        } else {
-          _showError('Failed to update password.');
-        }
+    // SECURITY: Password reset email delivery is not yet configured.
+    // Show an honest message instead of faking the flow.
+    final success = await _auth.sendPasswordResetCode(_emailController.text.trim());
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (!success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password reset is not available yet. Please contact your administrator to reset your password.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 5),
+          ),
+        );
       }
     }
   }
+
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(

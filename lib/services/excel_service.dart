@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/client_license.dart';
 import '../models/billing.dart';
 import '../models/dsc_record.dart';
+import '../services/security_service.dart';
 
 class ExcelService {
   Future<String?> exportLicenses(List<ClientLicense> licenses) async {
@@ -142,7 +143,7 @@ class ExcelService {
       sheet.appendRow([
         TextCellValue(r.clientName ?? '-'),
         TextCellValue(r.username ?? '-'),
-        TextCellValue(r.password ?? '-'),
+        TextCellValue(SecurityService().maskSensitive(r.password)),
         TextCellValue(r.dscTakenDate != null ? DateFormat('dd-MM-yyyy').format(r.dscTakenDate!) : '-'),
         TextCellValue(r.dscExpiryDate != null ? DateFormat('dd-MM-yyyy').format(r.dscExpiryDate!) : '-'),
       ]);

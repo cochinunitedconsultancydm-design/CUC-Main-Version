@@ -393,7 +393,11 @@ class DealService {
       items.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
       
       final users = await getAllUsers();
-      final userMap = {for (var u in users) u['id'] as int: u['name'] as String};
+      final userMap = <int, String>{};
+      for (var u in users) {
+        int id = u['id'] is int ? u['id'] : int.tryParse(u['id']?.toString() ?? '') ?? 0;
+        userMap[id] = u['name'] as String? ?? 'Unknown';
+      }
       
       return items.map((a) {
         final j = a.toJson();
@@ -415,7 +419,11 @@ class DealService {
       items.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
 
       final users = await getAllUsers();
-      final userMap = {for (var u in users) u['id'] as int: u['name'] as String};
+      final userMap = <int, String>{};
+      for (var u in users) {
+        int id = u['id'] is int ? u['id'] : int.tryParse(u['id']?.toString() ?? '') ?? 0;
+        userMap[id] = u['name'] as String? ?? 'Unknown';
+      }
       
       List<Map<String, dynamic>> mapped = [];
       for (var a in items) {

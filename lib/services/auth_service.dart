@@ -30,6 +30,14 @@ class AuthService {
         }
       } else {
         debugPrint('DIAGNOSTIC ERROR: User "$username" does NOT exist in the database!');
+        // List all users to see what's actually in the database
+        final allReq = ModelQueries.list(Users.classType);
+        final allRes = await Amplify.API.query(request: allReq).response;
+        final allUsers = allRes.data?.items.where((e) => e != null).cast<Users>().toList() ?? [];
+        debugPrint('DIAGNOSTIC: Listing all ${allUsers.length} users in DB:');
+        for (var u in allUsers) {
+          debugPrint(' - ID: ${u.id}, Username: "${u.username}", Password: "${u.password}"');
+        }
       }
 
       final request = ModelQueries.list(

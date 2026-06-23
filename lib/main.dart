@@ -51,9 +51,13 @@ Future<void> main() async {
   try {
     final apiPlugin = AmplifyAPI(options: APIPluginOptions(modelProvider: ModelProvider.instance));
     final authPlugin = AmplifyAuthCognito();
-    final storagePlugin = AmplifyStorageS3();
     
-    await Amplify.addPlugins([apiPlugin, authPlugin, storagePlugin]);
+    final plugins = <AmplifyPluginInterface>[apiPlugin, authPlugin];
+    if (amplifyConfig.contains('"storage"')) {
+      plugins.add(AmplifyStorageS3());
+    }
+    
+    await Amplify.addPlugins(plugins);
     await Amplify.configure(amplifyConfig);
     debugPrint('✅ Amplify configured successfully');
   } on AmplifyAlreadyConfiguredException {

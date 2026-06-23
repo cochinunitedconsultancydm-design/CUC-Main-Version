@@ -124,11 +124,13 @@ class _ChatListViewState extends State<_ChatListView> {
       final prefs = await SharedPreferences.getInstance();
       final myId = prefs.getInt('current_user_id') ?? 1;
 
+      final myIdStr = myId.toString();
+
       final uReq = ModelQueries.list(amplify_models.Users.classType);
       final uRes = await Amplify.API.query(request: uReq).response;
       var usersRes = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       
-      usersRes = usersRes.where((u) => u.id != myId).toList();
+      usersRes = usersRes.where((u) => u.id != myIdStr).toList();
       usersRes.sort((a, b) {
         int r = (a.role ?? '').compareTo(b.role ?? '');
         if (r != 0) return r;
@@ -142,11 +144,11 @@ class _ChatListViewState extends State<_ChatListView> {
       final mRes = await Amplify.API.query(request: mReq).response;
       final unreadRes = mRes.data?.items.whereType<amplify_models.Messages>().toList() ?? [];
       
-      final Map<int, int> unreadCounts = {};
+      final Map<String, int> unreadCounts = {};
       for (var msg in unreadRes) {
         if (msg.sender_id != null) {
-          final senderId = msg.sender_id as int;
-          unreadCounts[senderId] = (unreadCounts[senderId] ?? 0) + 1;
+          final senderIdStr = msg.sender_id.toString();
+          unreadCounts[senderIdStr] = (unreadCounts[senderIdStr] ?? 0) + 1;
         }
       }
 

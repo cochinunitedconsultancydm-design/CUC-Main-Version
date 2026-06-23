@@ -17,7 +17,6 @@ class DscManagementScreen extends StatefulWidget {
 }
 
 class _DscManagementScreenState extends State<DscManagementScreen> {
-  // final _client = Supabase.instance.client;
   final _excel = ExcelService();
   List<DscRecord> _records = [];
   bool _isLoading = true;

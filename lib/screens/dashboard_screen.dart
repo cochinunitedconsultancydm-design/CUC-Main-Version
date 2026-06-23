@@ -63,7 +63,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isAdmin = false;
   String _userRole = 'user';
   String _userName = 'User';
-  // final _client = Supabase.instance.client;
   DateTime? _lastPressedAt;
   StreamSubscription? _notifSubscription;
   bool _isCheckedIn = false;

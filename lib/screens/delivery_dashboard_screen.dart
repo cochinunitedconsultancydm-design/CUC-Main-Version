@@ -34,7 +34,6 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   int _completedTasks = 0;
   String _taskFilter = 'All';
   DateTime? _lastPressedAt;
-  // final _client = Supabase.instance.client;
   bool _isCheckedIn = false;
   int? _attendanceId;
   String? _checkInTimeStr;

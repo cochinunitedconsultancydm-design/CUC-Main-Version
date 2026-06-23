@@ -16,7 +16,6 @@ class CompanyBillManagementScreen extends StatefulWidget {
 }
 
 class _CompanyBillManagementScreenState extends State<CompanyBillManagementScreen> {
-  // final _client = Supabase.instance.client;
   List<CompanyBill> _bills = [];
   List<Map<String, dynamic>> _staffList = [];
   bool _isLoading = true;

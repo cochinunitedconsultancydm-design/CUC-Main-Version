@@ -14,7 +14,6 @@ class MonitorScreen extends StatefulWidget {
 }
 
 class _MonitorScreenState extends State<MonitorScreen> {
-  // final _client = Supabase.instance.client;
   List<Map<String, dynamic>> _sessions = [];
   List<Map<String, dynamic>> _logs = [];
   List<Map<String, dynamic>> _peakActivity = [];

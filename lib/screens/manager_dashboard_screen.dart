@@ -48,7 +48,6 @@ class ManagerDashboardScreen extends StatefulWidget {
 }
 
 class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
-  // removed Supabase client
   int _selectedIndex = 0;
   String? _selectedCategory;
   final _searchController = TextEditingController();

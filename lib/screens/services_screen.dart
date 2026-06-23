@@ -15,7 +15,6 @@ class ServicesScreen extends StatefulWidget {
 }
 
 class _ServicesScreenState extends State<ServicesScreen> {
-  // final _client = Supabase.instance.client;
   List<ServiceItem> _services = [];
   bool _isLoading = true;
   String _searchTerm = '';

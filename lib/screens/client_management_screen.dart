@@ -17,7 +17,6 @@ class ClientManagementScreen extends StatefulWidget {
 }
 
 class _ClientManagementScreenState extends State<ClientManagementScreen> {
-  // final _client = Supabase.instance.client;
   final _excel = ExcelService();
   List<Client> _clients = [];
   bool _isLoading = true;

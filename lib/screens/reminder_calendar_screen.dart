@@ -45,7 +45,6 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
   int? _currentUserId;
   bool _isLoading = true;
 
-  // final _client = Supabase.instance.client;
 
   @override
   void initState() {

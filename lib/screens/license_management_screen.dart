@@ -18,7 +18,6 @@ class LicenseManagementScreen extends StatefulWidget {
 }
 
 class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
-  // final _client = Supabase.instance.client;
   final _excel = ExcelService();
   List<ClientLicense> _licenses = [];
   List<Map<String, dynamic>> _licenseTypes = [];

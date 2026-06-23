@@ -18,7 +18,6 @@ class ServiceManagementScreen extends StatefulWidget {
 }
 
 class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
-  // final _client = Supabase.instance.client;
   List<ServiceItem> _services = [];
   bool _isLoading = true;
   bool _isImporting = false;

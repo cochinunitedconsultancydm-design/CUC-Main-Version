@@ -20,7 +20,6 @@ class LicenseDashboardScreen extends StatefulWidget {
 }
 
 class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
-  // final _client = Supabase.instance.client;
   final _excel = ExcelService();
   
   static const Map<int, String> _fallbackLicenseTypes = {

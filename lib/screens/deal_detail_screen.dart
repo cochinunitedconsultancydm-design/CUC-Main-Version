@@ -32,7 +32,6 @@ class DealDetailScreen extends StatefulWidget {
 class _DealDetailScreenState extends State<DealDetailScreen>
     with SingleTickerProviderStateMixin {
   final _dealService = DealService();
-  // final _client = Supabase.instance.client;
 
   final List<Map<String, String>> _connectedDocs = [];
   // Basic Controllers

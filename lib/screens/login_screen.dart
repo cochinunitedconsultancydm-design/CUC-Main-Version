@@ -44,21 +44,33 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
+      // SECURITY: Check rate limit before attempting login
+      final rateLimitMsg = _auth.getRateLimitMessage(_userController.text.trim());
+      if (rateLimitMsg != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(rateLimitMsg),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+
       setState(() => _isLoading = true);
       
-      debugPrint('Calling login service...');
       final success = await _auth.login(
         _userController.text.trim(),
         _passwordController.text,
       );
       
-      debugPrint('Login service result: $success');
       setState(() => _isLoading = false);
 
       if (success) {
         await _auth.saveRememberMe(_userController.text.trim(), _rememberMe);
         final role = await _auth.getUserRole();
-        debugPrint('User role after login: $role');
         if (mounted) {
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
@@ -67,7 +79,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (role == 'manager') return const ManagerDashboardScreen();
                 if (role == 'delivery') return const DeliveryDashboardScreen();
                 if (role == 'accountant') return const DashboardScreen();
-                debugPrint('Defaulting to DashboardScreen for role: $role');
                 return const DashboardScreen();
               },
               transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -79,10 +90,13 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         if (mounted) {
+          // Check if now locked after this attempt
+          final lockMsg = _auth.getRateLimitMessage(_userController.text.trim());
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Login failed. Please check your credentials or internet connection.'),
-              backgroundColor: Colors.redAccent,
+            SnackBar(
+              content: Text(lockMsg ?? 'Login failed. Please check your credentials.'),
+              backgroundColor: lockMsg != null ? Colors.orange : Colors.redAccent,
+              duration: Duration(seconds: lockMsg != null ? 5 : 3),
             ),
           );
         }

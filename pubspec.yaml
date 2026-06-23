@@ -44,6 +44,7 @@ dependencies:
   pdf: ^3.11.1
   printing: ^5.14.3
   encrypt: ^5.0.3
+  crypto: ^3.0.6
   amplify_flutter: ^2.4.1
   amplify_api: ^2.4.1
   amplify_auth_cognito: ^2.4.1

@@ -159,15 +159,22 @@ class InvoicePdfService {
                           _cell('AMOUNT', font: bodyBold, align: pw.Alignment.center),
                         ],
                       ),
-                      ...items.asMap().entries.map((e) => pw.TableRow(
-                        children: [
-                          _cell('${e.key + 1}.', align: pw.Alignment.center),
-                          _cell(e.value['description'].toString().toUpperCase()),
-                          _cell(e.value['amount'].toString().isEmpty ? '' : 
-                                (e.value['amount'].toString().endsWith('/-') ? e.value['amount'].toString() : '${e.value['amount']}/-'), 
-                                align: pw.Alignment.center),
-                        ],
-                      )),
+                      ...() {
+                        int slNo = 1;
+                        return items.map((item) {
+                          final isHeading = item['amount'].toString().trim().isEmpty;
+                          final slNoStr = isHeading ? '' : '${slNo++}.';
+                          return pw.TableRow(
+                            children: [
+                              _cell(slNoStr, align: pw.Alignment.center),
+                              _cell(item['description'].toString().toUpperCase()),
+                              _cell(isHeading ? '' : 
+                                  (item['amount'].toString().endsWith('/-') ? item['amount'].toString() : '${item['amount']}/-'), 
+                                  align: pw.Alignment.center),
+                            ],
+                          );
+                        }).toList();
+                      }(),
                       pw.TableRow(
                         children: [
                           _cell('', border: false),

@@ -241,7 +241,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                           list = list.where((d) => d.stage.toLowerCase() == 'verification').toList();
                         }
                         if (_showOnlyMyWorks && _currentUserId != null) {
-                          list = list.where((d) => d.responsibleId == _currentUserId).toList();
+                          list = list.where((d) => d.responsibleId?.toString() == _currentUserId.toString()).toList();
                         }
                         return list.isEmpty
                             ? _buildEmptyState()
@@ -445,7 +445,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
       deals = deals.where((d) => d.stage.toLowerCase() == 'verification').toList();
     }
     if (_showOnlyMyWorks && _currentUserId != null) {
-      deals = deals.where((d) => d.responsibleId == _currentUserId).toList();
+      deals = deals.where((d) => d.responsibleId?.toString() == _currentUserId.toString()).toList();
     }
     
     final filteredDeals = deals.where((d) => 
@@ -489,6 +489,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
             Expanded(flex: 2, child: Text(isWide ? 'PIPELINE STAGE' : 'STAGE', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 1))),
             Expanded(flex: 2, child: Text(isWide ? 'CLIENT' : 'INFO', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 1))),
             if (isWide) ...[
+              const Expanded(flex: 1, child: Text('DAYS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 1))),
               const Expanded(flex: 1, child: Text('AMOUNT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 1))),
               const Expanded(flex: 1, child: Text('LEAD', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 1))),
             ],
@@ -609,6 +610,10 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
               if (isWide) ...[
                 Expanded(
                   flex: 1,
+                  child: _buildDaysColumn(deal),
+                ),
+                Expanded(
+                  flex: 1,
                   child: Text(
                     '₹${NumberFormat('#,##,###').format(deal.amount)}',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF00C16C)),
@@ -697,6 +702,40 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontStyle: FontStyle.italic),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDaysColumn(Deal deal) {
+    if (deal.createdAt == null) {
+      return Text('—', style: TextStyle(color: Colors.grey.shade400, fontSize: 13));
+    }
+    final days = DateTime.now().difference(deal.createdAt!).inDays;
+    final Color bgColor;
+    final Color textColor;
+    if (days <= 7) {
+      bgColor = const Color(0xFFDCFCE7);
+      textColor = const Color(0xFF166534);
+    } else if (days <= 30) {
+      bgColor = const Color(0xFFFEF3C7);
+      textColor = const Color(0xFF92400E);
+    } else {
+      bgColor = const Color(0xFFFEE2E2);
+      textColor = const Color(0xFF991B1B);
+    }
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            days == 0 ? 'Today' : days == 1 ? '1 day' : '$days days',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: textColor),
+          ),
         ),
       ],
     );

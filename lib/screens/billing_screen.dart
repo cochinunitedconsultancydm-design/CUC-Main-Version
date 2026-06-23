@@ -752,7 +752,7 @@ class _BillingScreenState extends State<BillingScreen> {
   Widget _buildInvoiceCard(Billing b, int i, bool isWide) {
     final isPaid = b.data?['payment_received'] == true;
     bool isOverdue = false;
-    if (!isPaid && b.date != null && b.date!.isNotEmpty) {
+    if (!isPaid && b.type != 'QUOTATION' && b.date != null && b.date!.isNotEmpty) {
       try {
         final parts = b.date!.split('/');
         if (parts.length == 3) {

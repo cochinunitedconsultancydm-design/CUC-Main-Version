@@ -6,10 +6,10 @@ const supabaseUrl = 'https://bzxtgiqjgfojblezdubd.supabase.co/rest/v1';
 const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6eHRnaXFqZ2ZvamJsZXpkdWJkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTc5MzEzMiwiZXhwIjoyMDgxMzY5MTMyfQ.w15N2FZ8xHeDBDcwj79Kl-JBXi1h0QnB9UDNRbAhVZ4';
 
 // Initialize DynamoDB Client
-const client = new DynamoDBClient({ region: 'ap-southeast-2' });
+const client = new DynamoDBClient({ region: 'ap-south-1' });
 const docClient = DynamoDBDocumentClient.from(client);
 
-const SUFFIX = '-353x624rsrg6tamwbyymdlmgs4-NONE';
+const SUFFIX = '-gkluolxg2vb5zctdoiovv5tuzu-NONE';
 
 // Map supabase table names to Amplify model names (DynamoDB prefix)
 const tableMapping = {

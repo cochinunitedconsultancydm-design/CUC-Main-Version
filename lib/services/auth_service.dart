@@ -188,6 +188,34 @@ class AuthService {
       return false;
     }
 
+    // SECURITY: Verify true role from database to prevent localStorage tampering
+    try {
+      final userIdStr = prefs.getString('${_userIdKey}_str');
+      if (userIdStr != null) {
+        final request = ModelQueries.get(
+          Users.classType, 
+          UsersModelIdentifier(id: userIdStr)
+        );
+        final response = await Amplify.API.query(request: request).response;
+        final user = response.data;
+        
+        if (user != null) {
+          // Force overwrite local role with the absolute truth from the database.
+          // If a user tried to edit their browser's Local Storage to 'admin', 
+          // this immediately reverts it back to their real role.
+          await prefs.setString(_roleKey, user.role ?? 'staff');
+        } else {
+          // User was deleted from the database but still has a local token
+          debugPrint('Security: User not found in database. Forcing logout.');
+          await logout();
+          return false;
+        }
+      }
+    } catch (e) {
+      debugPrint('Security: Could not verify role with server (offline?): $e');
+      // If offline, we fail open using the cached role so the app still works.
+    }
+
     return true;
   }
 

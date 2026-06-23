@@ -47,7 +47,6 @@ import 'inward_post_screen.dart';
 import 'document_list_screen.dart';
 import 'verification_history_view.dart';
 import 'travel_log_screen.dart';
-import 'staff_location_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -628,7 +627,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 17: return const DocumentListScreen(userEmail: 'staff@cochinunited.com');
       case 18: return const VerificationHistoryView();
       case 19: return const TravelLogScreen();
-      case 20: return const StaffLocationScreen();
       default: return const Center(child: Text('Page not found'));
     }
   }
@@ -706,7 +704,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _sidebarItem(17, Icons.cloud_sync, 'Google Docs Vault'),
                   _sidebarItem(18, Icons.history_rounded, 'Verification History'),
                   _sidebarItem(19, Icons.directions_car_filled_outlined, 'Travel Logs'),
-                  _sidebarItem(20, Icons.location_on_outlined, 'Staff Locations'),
                   _sidebarItem(7, Icons.settings_rounded, 'Settings'),
                 ],
               ),

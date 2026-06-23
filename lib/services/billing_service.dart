@@ -128,7 +128,11 @@ class BillingService {
       if (match) filtered.add(b);
     }
 
-    var billings = filtered.map((m) => Billing.fromMap(m.toMap())).toList();
+    var billings = filtered.map((m) {
+      final map = m.toMap();
+      map['created_at'] = m.created_at ?? m.createdAt?.toString();
+      return Billing.fromMap(map);
+    }).toList();
 
     // Manual Overdue filtering if needed
     if (statusFilter == 'Overdue') {

@@ -792,41 +792,79 @@ class _BillingScreenState extends State<BillingScreen> {
             const SizedBox(height: 2),
             Text('Issued by: ${_getFullAuthorityName(b.authorities, b.invoiceNo)}', style: TextStyle(fontSize: 11, color: Colors.grey.shade400, fontWeight: FontWeight.w500)),
           ])),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(b.date ?? '-', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
-            if (b.data?['payment_deadline'] != null && b.data!['payment_deadline'].toString().isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Text('Due: ${b.data!['payment_deadline']}', style: TextStyle(color: Colors.red.shade400, fontSize: 11, fontWeight: FontWeight.bold)),
-            ],
-            const SizedBox(height: 4),
-            Text(b.amount ?? '0/-', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
-            if (!isPaid && (b.data?['balance_due']?.isNotEmpty ?? false) && b.data!['balance_due'] != '0/-') ...[
-              const SizedBox(height: 2),
-              Text('Bal: ${b.data!['balance_due']}', style: TextStyle(color: Colors.orange.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
-            ]
-          ]),
-          const SizedBox(width: 24),
-          Container(width: 100, height: 36, alignment: Alignment.center, decoration: BoxDecoration(
-            color: (isPaid ? Colors.green : (b.status == 'Interested' ? Colors.teal : (b.status == 'Not Interested' ? Colors.blueGrey : (isOverdue ? Colors.red : Colors.orange)))).withValues(alpha: 0.1), 
-            borderRadius: BorderRadius.circular(10)
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 90,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('CREATED', style: TextStyle(color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(b.createdAt != null ? (() {
+                try {
+                  return DateFormat('dd/MM/yyyy').format(DateTime.parse(b.createdAt!));
+                } catch (_) {
+                  return b.createdAt!.split('T')[0];
+                }
+              })() : '-', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+            ]),
           ),
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 90,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('INVOICE DATE', style: TextStyle(color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(b.date ?? '-', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+              if (b.data?['payment_deadline'] != null && b.data!['payment_deadline'].toString().isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text('Due: ${b.data!['payment_deadline']}', style: TextStyle(color: Colors.red.shade400, fontSize: 10, fontWeight: FontWeight.bold)),
+              ],
+            ]),
+          ),
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 120,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text('AMOUNT', style: TextStyle(color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(b.amount ?? '0/-', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+              if (!isPaid && (b.data?['balance_due']?.isNotEmpty ?? false) && b.data!['balance_due'] != '0/-') ...[
+                const SizedBox(height: 2),
+                Text('Bal: ${b.data!['balance_due']}', style: TextStyle(color: Colors.orange.shade700, fontSize: 11, fontWeight: FontWeight.bold)),
+              ]
+            ]),
+          ),
+          const SizedBox(width: 24),
+          Container(
+            width: 100, height: 36, alignment: Alignment.center, 
+            decoration: BoxDecoration(
+              color: (isPaid ? Colors.green : (b.status == 'Interested' ? Colors.teal : (b.status == 'Not Interested' ? Colors.blueGrey : (isOverdue ? Colors.red : Colors.orange)))).withValues(alpha: 0.1), 
+              borderRadius: BorderRadius.circular(10)
+            ),
             child: Text(isPaid ? 'PAID' : (b.status == 'Interested' ? 'INTERESTED' : (b.status == 'Not Interested' ? 'NOT INTERESTED' : (isOverdue ? 'OVERDUE' : 'PENDING'))), 
-              style: TextStyle(color: isPaid ? Colors.green.shade700 : (b.status == 'Interested' ? Colors.teal.shade700 : (b.status == 'Not Interested' ? Colors.blueGrey.shade700 : (isOverdue ? Colors.red.shade700 : Colors.orange.shade700))), fontSize: 10, fontWeight: FontWeight.w900))),
+              style: TextStyle(color: isPaid ? Colors.green.shade700 : (b.status == 'Interested' ? Colors.teal.shade700 : (b.status == 'Not Interested' ? Colors.blueGrey.shade700 : (isOverdue ? Colors.red.shade700 : Colors.orange.shade700))), fontSize: 10, fontWeight: FontWeight.w900)
+            )
+          ),
           const SizedBox(width: 12),
-          Row(children: [
-            IconButton(onPressed: () => _shareViaWhatsApp(b), icon: const Icon(Icons.chat_rounded, color: Colors.green), tooltip: 'Share via WhatsApp'),
-            if (!isPaid && b.type != 'QUOTATION') IconButton(onPressed: () => _markPaid(b), icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.green), tooltip: 'Mark Paid'),
-            if (!isPaid) IconButton(onPressed: () => _setPaymentDeadlineDialog(context, b), icon: const Icon(Icons.schedule_rounded, color: Colors.redAccent), tooltip: 'Set Deadline'),
-            if (isPaid) IconButton(onPressed: () => _generateReceipt(b), icon: const Icon(Icons.receipt_rounded, color: Colors.teal), tooltip: 'Generate Receipt'),
-            if (b.type == 'QUOTATION') ...[
-              IconButton(onPressed: () => _convertToInvoice(b), icon: const Icon(Icons.transform_rounded, color: Colors.deepPurple), tooltip: 'Convert to Invoice'),
-              IconButton(onPressed: () => _updateStatus(b, 'Interested'), icon: Icon(Icons.thumb_up_alt_rounded, color: b.status == 'Interested' ? Colors.teal : Colors.grey.shade400, size: 22), tooltip: 'Interested'),
-              IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.thumb_down_alt_rounded, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 22), tooltip: 'Not Interested'),
-            ],
-            IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 22), tooltip: 'Duplicate'),
-            IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 28), tooltip: 'Edit'),
-            IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 24), tooltip: 'Delete'),
-          ]),
+          SizedBox(
+            width: 340,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(onPressed: () => _shareViaWhatsApp(b), icon: const Icon(Icons.chat_rounded, color: Colors.green), tooltip: 'Share via WhatsApp'),
+                if (!isPaid && b.type != 'QUOTATION') IconButton(onPressed: () => _markPaid(b), icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.green), tooltip: 'Mark Paid'),
+                if (!isPaid) IconButton(onPressed: () => _setPaymentDeadlineDialog(context, b), icon: const Icon(Icons.schedule_rounded, color: Colors.redAccent), tooltip: 'Set Deadline'),
+                if (isPaid) IconButton(onPressed: () => _generateReceipt(b), icon: const Icon(Icons.receipt_rounded, color: Colors.teal), tooltip: 'Generate Receipt'),
+                if (b.type == 'QUOTATION') ...[
+                  IconButton(onPressed: () => _convertToInvoice(b), icon: const Icon(Icons.transform_rounded, color: Colors.deepPurple), tooltip: 'Convert to Invoice'),
+                  IconButton(onPressed: () => _updateStatus(b, 'Interested'), icon: Icon(Icons.thumb_up_alt_rounded, color: b.status == 'Interested' ? Colors.teal : Colors.grey.shade400, size: 22), tooltip: 'Interested'),
+                  IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.thumb_down_alt_rounded, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 22), tooltip: 'Not Interested'),
+                ],
+                IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 22), tooltip: 'Duplicate'),
+                IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 28), tooltip: 'Edit'),
+                IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 24), tooltip: 'Delete'),
+              ]
+            ),
+          ),
         ])
       : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(
@@ -1035,7 +1073,10 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     });
 
     for (var controller in _itemDescControllers) {
-      controller.addListener(() => setState(() {}));
+      controller.addListener(() {
+        _calc();
+        setState(() {});
+      });
     }
     for (var controller in _itemAmountControllers) {
       controller.addListener(() {
@@ -1562,7 +1603,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                 TextButton.icon(onPressed: () {
                   setState(() {
                     _items.add({'description': '', 'amount': ''});
-                    _itemDescControllers.add(TextEditingController()..addListener(() => setState(() {})));
+                    _itemDescControllers.add(TextEditingController()..addListener(() { _calc(); setState(() {}); }));
                     _itemAmountControllers.add(TextEditingController()..addListener(() { _calc(); setState(() {}); }));
                   });
                 }, icon: const Icon(Icons.add_circle_outline_rounded, size: 18), label: const Text('Add Item'), style: TextButton.styleFrom(foregroundColor: const Color(0xFF2563EB))),

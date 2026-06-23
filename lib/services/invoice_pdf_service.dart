@@ -23,7 +23,17 @@ class InvoicePdfService {
     List<String>? quotationTerms,
     bool isReceipt = false,
   }) async {
-    final pdf = pw.Document();
+    // Fonts
+    final headerFont = await PdfGoogleFonts.interBold();
+    final bodyFont = await PdfGoogleFonts.interRegular();
+    final bodyBold = await PdfGoogleFonts.interBold();
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: bodyFont,
+        bold: bodyBold,
+      ),
+    );
 
     final isLegal = category == 'Legal';
     final isDM = category == 'Digital Marketing';
@@ -53,11 +63,6 @@ class InvoicePdfService {
     } catch (e) {
       debugPrint('Error loading QR: $e');
     }
-
-    // Fonts
-    final headerFont = await PdfGoogleFonts.interBold();
-    final bodyFont = await PdfGoogleFonts.interRegular();
-    final bodyBold = await PdfGoogleFonts.interBold();
 
     pdf.addPage(
       pw.Page(

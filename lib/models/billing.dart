@@ -10,6 +10,7 @@ class Billing {
   final String? category;
   final String? authorities;
   final String? status;
+  final String? createdAt;
   final Map<String, dynamic>? data;
 
   Billing({
@@ -22,6 +23,7 @@ class Billing {
     this.category,
     this.authorities,
     this.status,
+    this.createdAt,
     this.data,
   });
 
@@ -45,6 +47,7 @@ class Billing {
       category: map['category']?.toString(),
       authorities: map['authorities']?.toString(),
       status: map['status']?.toString(),
+      createdAt: map['createdAt']?.toString() ?? map['created_at']?.toString(),
       data: parsedData,
     );
   }
@@ -60,6 +63,7 @@ class Billing {
       'category': category,
       'authorities': authorities,
       'status': status,
+      'createdAt': createdAt,
       'data': data,
     };
   }

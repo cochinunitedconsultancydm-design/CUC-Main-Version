@@ -35,7 +35,37 @@ const amplifyConfig = r'''{
       {
         "name": "clientFiles",
         "bucket_name": "amplify-cucmainversion-ad-clientfilesbucket5d3f5cb-nv9kkdsbkf1p",
-        "aws_region": "ap-southeast-2"
+        "aws_region": "ap-southeast-2",
+        "paths": {
+          "public/*": {
+            "guest": [
+              "get",
+              "list",
+              "write",
+              "delete"
+            ],
+            "authenticated": [
+              "get",
+              "list",
+              "write",
+              "delete"
+            ]
+          },
+          "documents/*": {
+            "guest": [
+              "get",
+              "list",
+              "write",
+              "delete"
+            ],
+            "authenticated": [
+              "get",
+              "list",
+              "write",
+              "delete"
+            ]
+          }
+        }
       }
     ]
   },

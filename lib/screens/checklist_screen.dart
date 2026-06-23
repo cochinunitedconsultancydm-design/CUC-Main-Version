@@ -664,10 +664,17 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       }
       
       for (final staff in _selectedStaff) {
+        int? respId;
+        if (staff['id'] is int) {
+          respId = staff['id'];
+        } else if (staff['id'] != null) {
+          respId = int.tryParse(staff['id'].toString());
+        }
+
         final checklist = Checklist(
           title: _titleController.text,
           description: _descController.text,
-          responsibleId: staff['id'],
+          responsibleId: respId,
           dealId: _selectedDealId,
           dealName: dealName,
           dueDate: DateFormat('yyyy-MM-dd').format(_selectedDate),

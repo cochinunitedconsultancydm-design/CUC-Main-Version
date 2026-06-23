@@ -39,6 +39,7 @@ class _BillingScreenState extends State<BillingScreen> {
   String _searchTerm = '';
   final FocusNode _searchFocusNode = FocusNode();
   String _statusFilter = 'All';
+  String _sortBy = 'Newest First';
   DateTime? _startDate;
   DateTime? _endDate;
 
@@ -137,6 +138,7 @@ class _BillingScreenState extends State<BillingScreen> {
         statusFilter: _statusFilter,
         startDate: _startDate,
         endDate: _endDate,
+        sortBy: _sortBy,
       );
       
       if (mounted) {
@@ -567,6 +569,26 @@ class _BillingScreenState extends State<BillingScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
+                      Container(
+                        height: 45,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _sortBy,
+                            icon: const Icon(Icons.sort_rounded, size: 20, color: Colors.blue),
+                            items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)']
+                              .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() => _sortBy = v);
+                                _fetchBillings(refresh: true);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       _actionBtn(Icons.date_range_rounded, 'Filter by Date', _startDate != null ? Colors.blue : Colors.grey, () async {
                          final picked = await showDateRangePicker(
                            context: context,
@@ -678,14 +700,45 @@ class _BillingScreenState extends State<BillingScreen> {
                 }),
               ]),
               const SizedBox(height: 12),
-              Container(
-                height: 45,
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
-                child: TextField(
-                  focusNode: _searchFocusNode,
-                  onChanged: (v) => setState(() => _searchTerm = v),
-                  decoration: const InputDecoration(hintText: 'Search...', prefixIcon: Icon(Icons.search_rounded, size: 20), border: InputBorder.none, contentPadding: EdgeInsets.symmetric(vertical: 12)),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      height: 45,
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
+                      child: TextField(
+                        focusNode: _searchFocusNode,
+                        onChanged: (v) => setState(() => _searchTerm = v),
+                        decoration: const InputDecoration(hintText: 'Search...', prefixIcon: Icon(Icons.search_rounded, size: 20), border: InputBorder.none, contentPadding: EdgeInsets.symmetric(vertical: 12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      height: 45,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _sortBy,
+                          isExpanded: true,
+                          icon: const Icon(Icons.sort_rounded, size: 20, color: Colors.blue),
+                          items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)']
+                            .map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)))).toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setState(() => _sortBy = v);
+                              _fetchBillings(refresh: true);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -792,21 +845,7 @@ class _BillingScreenState extends State<BillingScreen> {
             const SizedBox(height: 2),
             Text('Issued by: ${_getFullAuthorityName(b.authorities, b.invoiceNo)}', style: TextStyle(fontSize: 11, color: Colors.grey.shade400, fontWeight: FontWeight.w500)),
           ])),
-          const SizedBox(width: 16),
-          SizedBox(
-            width: 90,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('CREATED', style: TextStyle(color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 4),
-              Text(b.createdAt != null ? (() {
-                try {
-                  return DateFormat('dd/MM/yyyy').format(DateTime.parse(b.createdAt!));
-                } catch (_) {
-                  return b.createdAt!.split('T')[0];
-                }
-              })() : '-', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
-            ]),
-          ),
+
           const SizedBox(width: 16),
           SizedBox(
             width: 90,

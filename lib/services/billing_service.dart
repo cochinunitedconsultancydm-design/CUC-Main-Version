@@ -84,6 +84,7 @@ class BillingService {
     String statusFilter = 'All',
     DateTime? startDate,
     DateTime? endDate,
+    String sortBy = 'Newest First',
   }) async {
     final req = ModelQueries.list(Billings.classType);
     final res = await Amplify.API.query(request: req).response;
@@ -161,6 +162,48 @@ class BillingService {
         }
       }).toList();
     }
+
+    // Apply sorting
+    billings.sort((a, b) {
+      if (sortBy == 'Newest First' || sortBy == 'Oldest First') {
+        DateTime dateA = DateTime.fromMillisecondsSinceEpoch(0);
+        DateTime dateB = DateTime.fromMillisecondsSinceEpoch(0);
+        
+        // Use INVOICE DATE exclusively for chronological sorting
+        if (a.date != null && a.date!.isNotEmpty) {
+          try {
+            final p = a.date!.split('/');
+            if (p.length == 3) dateA = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
+          } catch (_) {}
+        }
+        if (b.date != null && b.date!.isNotEmpty) {
+          try {
+            final p = b.date!.split('/');
+            if (p.length == 3) dateB = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
+          } catch (_) {}
+        }
+        
+        int comp = sortBy == 'Newest First' ? dateB.compareTo(dateA) : dateA.compareTo(dateB);
+        if (comp == 0) {
+          // Fallback to invoiceNo comparison (e.g., 'B5049' vs 'B5045')
+          String invA = a.invoiceNo ?? '';
+          String invB = b.invoiceNo ?? '';
+          return sortBy == 'Newest First' ? invB.compareTo(invA) : invA.compareTo(invB);
+        }
+        return comp;
+      }
+      else if (sortBy == 'Highest Amount' || sortBy == 'Lowest Amount') {
+        double amtA = NumberToWords.parseCurrency(a.amount ?? '0');
+        double amtB = NumberToWords.parseCurrency(b.amount ?? '0');
+        return sortBy == 'Highest Amount' ? amtB.compareTo(amtA) : amtA.compareTo(amtB);
+      }
+      else if (sortBy == 'Invoice No (A-Z)' || sortBy == 'Invoice No (Z-A)') {
+        String invA = a.invoiceNo ?? '';
+        String invB = b.invoiceNo ?? '';
+        return sortBy == 'Invoice No (A-Z)' ? invA.compareTo(invB) : invB.compareTo(invA);
+      }
+      return 0;
+    });
 
     // Apply pagination AFTER filtering
     final paginated = billings.skip(offset).take(limit).toList();

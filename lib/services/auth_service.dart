@@ -31,13 +31,21 @@ class AuthService {
 
       // SECURITY: Fetch by username only, then verify password hash locally.
       // This prevents sending the password as a GraphQL query parameter.
-      final request = ModelQueries.list(
+      var request = ModelQueries.list(
         Users.classType,
         where: Users.USERNAME.eq(username),
-        limit: 10000,
+        limit: 1000,
       );
-      final response = await Amplify.API.query(request: request).response;
-      final users = response.data?.items;
+      List<Users> users = [];
+      while (true) {
+        final response = await Amplify.API.query(request: request).response;
+        users.addAll(response.data?.items.whereType<Users>() ?? []);
+        if (response.data?.hasNextResult ?? false) {
+          request = response.data!.requestForNextResult!;
+        } else {
+          break;
+        }
+      }
 
       if (users == null || users.isEmpty) {
         debugPrint('Login failed: user not found');

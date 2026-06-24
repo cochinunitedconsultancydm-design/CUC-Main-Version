@@ -18,6 +18,7 @@ import 'company_bill_management_screen.dart';
 import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
 import 'package:intl/intl.dart';
+import '../services/billing_service.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import 'dart:convert';
@@ -1627,7 +1628,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                     Navigator.pop(context);
                     Navigator.push(context, MaterialPageRoute(builder: (c) => InvoiceCreatorPage(
                       billing: Billing.fromMap(billingMap),
-                      onSaved: (id) => _fetchAdminStats(),
+                      onSaved: (id) {
+                        _fetchAdminStats();
+                        Navigator.pop(context);
+                      },
                     )));
                   }),
                   _actionTile(Icons.delete_outline_rounded, 'Delete Invoice', 'Remove this record', Colors.red, onTap: () {
@@ -1913,22 +1917,8 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     
     if (auth.isNotEmpty) {
       final prefix = auth.split(' ').first;
-      try {
-        final q = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.AUTHORITIES.eq(prefix));
-        final r = await amplify_core.Amplify.API.query(request: q).response;
-        final billList = r.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
-        billList.sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
-        final res = billList.isNotEmpty ? {'invoice_no': billList.first.invoice_no} : null;
-        if (res != null) {
-          final last = res['invoice_no'] as String;
-          final match = RegExp(r'(\d+)$').firstMatch(last);
-          if (match != null) {
-            final numStr = match.group(1)!;
-            final num = int.parse(numStr) + 1;
-            nextNo = last.substring(0, last.length - numStr.length) + num.toString().padLeft(numStr.length, '0');
-          }
-        }
-      } catch (_) {}
+      final next = await BillingService().getNextInvoiceNo(prefix);
+      if (next != null) nextNo = next;
     }
 
     final duplicated = Billing(
@@ -1948,8 +1938,11 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     );
 
     Navigator.push(context, MaterialPageRoute(builder: (c) => InvoiceCreatorPage(
-            billing: duplicated,
-      onSaved: (id) => _fetchAdminStats(),
+      billing: duplicated,
+      onSaved: (id) {
+        _fetchAdminStats();
+        Navigator.pop(context);
+      },
     )));
   }
 

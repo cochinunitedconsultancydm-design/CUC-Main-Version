@@ -20,84 +20,51 @@ class AuthService {
 
   Future<bool> login(String username, String password) async {
     try {
-      // SECURITY: Rate limiting — check if account is locked
       final lockMessage = _security.checkRateLimit(username);
       if (lockMessage != null) {
         debugPrint('Login blocked: $lockMessage');
         return false;
       }
 
-      debugPrint('Attempting login for: $username');
+      debugPrint('Attempting Cognito login for: $username');
+      
+      // Auto-append dummy email domain if they just typed a username
+      String loginEmail = username;
+      if (!loginEmail.contains('@')) {
+        loginEmail = '${username.trim().toLowerCase()}@cuc.local';
+      }
 
-      // SECURITY: Fetch by username only, then verify password hash locally.
-      // This prevents sending the password as a GraphQL query parameter.
+      // SECURITY: Authenticate against AWS Cognito securely!
+      final signInResult = await Amplify.Auth.signIn(
+        username: loginEmail,
+        password: password,
+      );
+
+      if (!signInResult.isSignedIn) {
+        debugPrint('Cognito Login failed: Not signed in');
+        _security.recordFailedAttempt(username);
+        return false;
+      }
+
+      // Now that we are authenticated, we can securely query the AppSync Database
       var request = ModelQueries.list(
         Users.classType,
         where: Users.USERNAME.eq(username),
-        limit: 1000,
+        limit: 100,
       );
-      List<Users> users = [];
-      while (true) {
-        final response = await Amplify.API.query(request: request).response;
-        users.addAll(response.data?.items.whereType<Users>() ?? []);
-        if (response.data?.hasNextResult ?? false) {
-          request = response.data!.requestForNextResult!;
-        } else {
-          break;
-        }
-      }
+      
+      final response = await Amplify.API.query(request: request).response;
+      final users = response.data?.items.whereType<Users>().toList() ?? [];
 
       if (users.isEmpty) {
-        debugPrint('Login failed: user not found');
-        _security.recordFailedAttempt(username);
-        await LoggingService().logAction(
-          action: 'LOGIN_FAILED',
-          targetType: 'System',
-          targetId: username,
-          details: 'User not found',
-        );
+        debugPrint('Login failed: user exists in Cognito but not in Users table');
+        await Amplify.Auth.signOut();
         return false;
       }
 
       final res = users.first;
-      var storedPassword = res.password ?? '';
 
-      // TEMPORARY: Reset jesna and irshad to pure plaintext so the live website allows them in.
-      if (username.toLowerCase() == 'jesna' || username.toLowerCase() == 'irshad') {
-        storedPassword = '123456';
-        final updated = res.copyWith(password: storedPassword);
-        await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
-        debugPrint('SECURITY: Force reset password for $username to plain text 123456');
-      }
-
-      // SECURITY: Verify password using hash comparison
-      if (!_security.verifyPassword(password, storedPassword)) {
-        debugPrint('Login failed: invalid password');
-        _security.recordFailedAttempt(username);
-        await LoggingService().logAction(
-          action: 'LOGIN_FAILED',
-          targetType: 'System',
-          targetId: username,
-          details: 'Invalid password (attempt #${_security.checkRateLimit(username) != null ? "LOCKED" : "recorded"})',
-        );
-        return false;
-      }
-
-      // SECURITY: Auto-migrate legacy plaintext passwords to hashed
-      if (_security.isLegacyPassword(storedPassword)) {
-        try {
-          final hashedPassword = _security.hashPassword(password);
-          final updated = res.copyWith(password: hashedPassword);
-          await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
-          debugPrint('Security: Migrated plaintext password to hash for $username');
-        } catch (e) {
-          debugPrint('Security: Password migration failed (non-critical): $e');
-        }
-      }
-
-      // SECURITY: Clear failed attempts on success
       _security.clearFailedAttempts(username);
-
       debugPrint('User authenticated: ${res.id}, Role: ${res.role}');
 
       String? sessionId;
@@ -110,19 +77,16 @@ class AuthService {
         final sessionReq = ModelMutations.create(session);
         final sessionRes = await Amplify.API.mutate(request: sessionReq).response;
         sessionId = sessionRes.data?.id;
-        debugPrint('Session created: $sessionId');
       } catch (e) {
-        debugPrint('Optional session recording failed: $e');
+        debugPrint('Session recording failed: $e');
       }
 
       final prefs = await SharedPreferences.getInstance();
 
-      // SECURITY: Use cryptographically secure random token
-      await prefs.setString(_tokenKey, _security.generateSecureToken());
+      final authSession = await Amplify.Auth.fetchAuthSession();
+      await prefs.setString(_tokenKey, authSession.isSignedIn ? 'cognito_active' : _security.generateSecureToken());
       await prefs.setString(_userKey, res.name ?? res.username ?? '');
       await prefs.setString(_roleKey, res.role ?? 'staff');
-
-      // SECURITY: Record last activity time for session timeout
       await prefs.setInt(SecurityService.lastActivityKey, DateTime.now().millisecondsSinceEpoch);
 
       if (sessionId != null) {
@@ -137,13 +101,13 @@ class AuthService {
         action: 'LOGIN',
         targetType: 'System',
         targetId: res.username ?? '',
-        details: 'User logged in',
+        details: 'User logged in via Cognito',
       );
 
-      debugPrint('Login successful for: ${res.name}');
       return true;
     } catch (e, stack) {
-      debugPrint('Login error: $e\n$stack');
+      debugPrint('Login error: $e');
+      _security.recordFailedAttempt(username);
     }
     return false;
   }
@@ -182,7 +146,12 @@ class AuthService {
       details: 'User logged out',
     );
 
-    // SECURITY: Clear all sensitive data from local storage
+    try {
+      await Amplify.Auth.signOut();
+    } catch (e) {
+      debugPrint('Cognito SignOut error: $e');
+    }
+
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);
     await prefs.remove(_roleKey);
@@ -194,10 +163,19 @@ class AuthService {
   }
 
   Future<bool> isLoggedIn() async {
+    try {
+      final authSession = await Amplify.Auth.fetchAuthSession();
+      if (!authSession.isSignedIn) {
+        await logout();
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     if (!prefs.containsKey(_tokenKey)) return false;
 
-    // SECURITY: Check session timeout
     final lastActivity = prefs.getInt(SecurityService.lastActivityKey);
     if (_security.isSessionExpired(lastActivity)) {
       debugPrint('Security: Session expired due to inactivity');
@@ -205,7 +183,6 @@ class AuthService {
       return false;
     }
 
-    // SECURITY: Verify true role from database to prevent localStorage tampering
     try {
       final userIdStr = prefs.getString('${_userIdKey}_str');
       if (userIdStr != null) {
@@ -217,26 +194,20 @@ class AuthService {
         final user = response.data;
         
         if (user != null) {
-          // Force overwrite local role with the absolute truth from the database.
-          // If a user tried to edit their browser's Local Storage to 'admin', 
-          // this immediately reverts it back to their real role.
           await prefs.setString(_roleKey, user.role ?? 'staff');
         } else {
-          // User was deleted from the database but still has a local token
           debugPrint('Security: User not found in database. Forcing logout.');
           await logout();
           return false;
         }
       }
     } catch (e) {
-      debugPrint('Security: Could not verify role with server (offline?): $e');
-      // If offline, we fail open using the cached role so the app still works.
+      debugPrint('Security: Could not verify role with server: $e');
     }
 
     return true;
   }
 
-  /// Call this periodically to refresh the activity timestamp (e.g., on navigation).
   Future<void> recordActivity() async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.containsKey(_tokenKey)) {
@@ -292,25 +263,28 @@ class AuthService {
     };
   }
 
-  // SECURITY: Password reset is not yet implemented with a real email backend.
-  // These methods return false so the UI can show an honest error message.
   Future<bool> sendPasswordResetCode(String email) async {
-    // TODO: Implement with AWS SES or Cognito for real email delivery
-    debugPrint('Password reset not yet configured for: $email');
-    return false;
+    try {
+      String loginEmail = email;
+      if (!loginEmail.contains('@')) loginEmail = '${email.trim().toLowerCase()}@cuc.local';
+      
+      final result = await Amplify.Auth.resetPassword(username: loginEmail);
+      return result.isPasswordReset;
+    } catch (e) {
+      debugPrint('Reset password error: $e');
+      return false;
+    }
   }
 
   Future<bool> verifyResetCode(String email, String code) async {
-    // TODO: Implement with real verification backend
+    // Requires newPassword which isn't in this signature, so we just return false
     return false;
   }
 
   Future<bool> updatePassword(String email, String newPassword) async {
-    // TODO: Implement with real password update backend
     return false;
   }
 
-  /// Get the rate limit message for a username (for UI display).
   String? getRateLimitMessage(String username) {
     return _security.checkRateLimit(username);
   }

@@ -34,6 +34,7 @@ class AuthService {
       final request = ModelQueries.list(
         Users.classType,
         where: Users.USERNAME.eq(username),
+        limit: 10000,
       );
       final response = await Amplify.API.query(request: request).response;
       final users = response.data?.items;

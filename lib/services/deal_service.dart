@@ -12,11 +12,19 @@ class DealService {
 
   Future<List<old.Deal>> getAllDeals() async {
     try {
-      final req = ModelQueries.list(Deals.classType);
-      final res = await Amplify.API.query(request: req).response;
-      var items = res.data?.items.where((e) => e != null).cast<Deals>().toList() ?? [];
-      items.sort((a, b) => (b.updatedAt?.toString() ?? '').compareTo(a.updatedAt?.toString() ?? ''));
-      return items.map((m) => old.Deal.fromMap(m.toJson())).toList();
+      var req = ModelQueries.list(Deals.classType);
+      List<Deals> all = [];
+      while (true) {
+        final res = await Amplify.API.query(request: req).response;
+        all.addAll(res.data?.items.where((e) => e != null).cast<Deals>() ?? []);
+        if (res.data?.hasNextResult ?? false) {
+          req = res.data!.requestForNextResult!;
+        } else {
+          break;
+        }
+      }
+      all.sort((a, b) => (b.updatedAt?.toString() ?? '').compareTo(a.updatedAt?.toString() ?? ''));
+      return all.map((m) => old.Deal.fromMap(m.toJson())).toList();
     } catch (e) {
       debugPrint('Error getAllDeals: $e');
       return [];
@@ -31,11 +39,19 @@ class DealService {
 
     void fetchAndEmit() async {
       try {
-        final req = ModelQueries.list(Deals.classType);
-        final res = await Amplify.API.query(request: req).response;
-        var items = res.data?.items.where((e) => e != null).cast<Deals>().toList() ?? [];
-        items.sort((a, b) => (b.updatedAt?.toString() ?? '').compareTo(a.updatedAt?.toString() ?? ''));
-        controller.add(items.map((m) => old.Deal.fromMap(m.toJson())).toList());
+        var req = ModelQueries.list(Deals.classType);
+        List<Deals> all = [];
+        while (true) {
+          final res = await Amplify.API.query(request: req).response;
+          all.addAll(res.data?.items.where((e) => e != null).cast<Deals>() ?? []);
+          if (res.data?.hasNextResult ?? false) {
+            req = res.data!.requestForNextResult!;
+          } else {
+            break;
+          }
+        }
+        all.sort((a, b) => (b.updatedAt?.toString() ?? '').compareTo(a.updatedAt?.toString() ?? ''));
+        controller.add(all.map((m) => old.Deal.fromMap(m.toJson())).toList());
       } catch (e) {
         debugPrint('Error fetchAndEmit deals: $e');
       }
@@ -85,11 +101,19 @@ class DealService {
 
   Future<List<old.Deal>> getDealsByStage(String stage) async {
     try {
-      final req = ModelQueries.list(Deals.classType, where: Deals.STAGE.eq(stage));
-      final res = await Amplify.API.query(request: req).response;
-      var items = res.data?.items.where((e) => e != null).cast<Deals>().toList() ?? [];
-      items.sort((a, b) => (b.updatedAt?.toString() ?? '').compareTo(a.updatedAt?.toString() ?? ''));
-      return items.map((m) => old.Deal.fromMap(m.toJson())).toList();
+      var req = ModelQueries.list(Deals.classType, where: Deals.STAGE.eq(stage));
+      List<Deals> all = [];
+      while (true) {
+        final res = await Amplify.API.query(request: req).response;
+        all.addAll(res.data?.items.where((e) => e != null).cast<Deals>() ?? []);
+        if (res.data?.hasNextResult ?? false) {
+          req = res.data!.requestForNextResult!;
+        } else {
+          break;
+        }
+      }
+      all.sort((a, b) => (b.updatedAt?.toString() ?? '').compareTo(a.updatedAt?.toString() ?? ''));
+      return all.map((m) => old.Deal.fromMap(m.toJson())).toList();
     } catch (e) {
       debugPrint('Error getDealsByStage: $e');
       return [];
@@ -184,6 +208,7 @@ class DealService {
         payment_received: values['payment_received'] != null ? double.tryParse(values['payment_received'].toString()) : null,
         part_payment_amount: values['part_payment_amount'] != null ? double.tryParse(values['part_payment_amount'].toString()) : null,
         noc_obtained: values['noc_obtained'],
+        expenses_list: values['expenses_list'] is List ? jsonEncode(values['expenses_list']) : values['expenses_list']?.toString(),
       );
       
       await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
@@ -387,10 +412,18 @@ class DealService {
 
   Future<List<oldActivity.DealActivity>> getActivities(dynamic dealId) async {
     try {
-      final req = ModelQueries.list(DealActivities.classType, where: DealActivities.DEAL_ID.eq(dealId.toString()));
-      final res = await Amplify.API.query(request: req).response;
-      var items = res.data?.items.where((e) => e != null).cast<DealActivities>().toList() ?? [];
-      items.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
+      var req = ModelQueries.list(DealActivities.classType, where: DealActivities.DEAL_ID.eq(dealId.toString()));
+      List<DealActivities> all = [];
+      while (true) {
+        final res = await Amplify.API.query(request: req).response;
+        all.addAll(res.data?.items.where((e) => e != null).cast<DealActivities>() ?? []);
+        if (res.data?.hasNextResult ?? false) {
+          req = res.data!.requestForNextResult!;
+        } else {
+          break;
+        }
+      }
+      all.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
       
       final users = await getAllUsers();
       final userMap = <int, String>{};
@@ -413,10 +446,18 @@ class DealService {
 
   Future<List<Map<String, dynamic>>> getVerificationHistory() async {
     try {
-      final req = ModelQueries.list(DealActivities.classType);
-      final res = await Amplify.API.query(request: req).response;
-      var items = res.data?.items.where((e) => e != null && (e.title == 'Work Verified' || e.title == 'Reverification Needed')).cast<DealActivities>().toList() ?? [];
-      items.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
+      var req = ModelQueries.list(DealActivities.classType);
+      List<DealActivities> allActs = [];
+      while (true) {
+        final res = await Amplify.API.query(request: req).response;
+        allActs.addAll(res.data?.items.where((e) => e != null && (e.title == 'Work Verified' || e.title == 'Reverification Needed')).cast<DealActivities>() ?? []);
+        if (res.data?.hasNextResult ?? false) {
+          req = res.data!.requestForNextResult!;
+        } else {
+          break;
+        }
+      }
+      allActs.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
 
       final users = await getAllUsers();
       final userMap = <int, String>{};
@@ -426,7 +467,7 @@ class DealService {
       }
       
       List<Map<String, dynamic>> mapped = [];
-      for (var a in items) {
+      for (var a in allActs) {
         Map<String, dynamic>? dealData;
         if (a.deal_id != null) {
           final dReq = ModelQueries.list(Deals.classType, where: Deals.ID.eq(a.deal_id.toString()));
@@ -470,11 +511,19 @@ class DealService {
 
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     try {
-      final req = ModelQueries.list(Users.classType);
-      final res = await Amplify.API.query(request: req).response;
-      var items = res.data?.items.where((e) => e != null).cast<Users>().toList() ?? [];
-      items.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
-      return items.map((u) => u.toJson()).toList();
+      var req = ModelQueries.list(Users.classType);
+      List<Users> all = [];
+      while (true) {
+        final res = await Amplify.API.query(request: req).response;
+        all.addAll(res.data?.items.where((e) => e != null).cast<Users>() ?? []);
+        if (res.data?.hasNextResult ?? false) {
+          req = res.data!.requestForNextResult!;
+        } else {
+          break;
+        }
+      }
+      all.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+      return all.map((u) => u.toJson()).toList();
     } catch (e) {
       debugPrint('Error getAllUsers: $e');
       return [];

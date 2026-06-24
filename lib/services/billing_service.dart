@@ -7,6 +7,27 @@ import '../models/billing.dart';
 import '../utils/number_to_words.dart';
 
 class BillingService {
+  Future<List<Billing>> getPendingBillings() async {
+    try {
+      var req = ModelQueries.list(Billings.classType);
+      List<Billings> all = [];
+      while (true) {
+        final res = await Amplify.API.query(request: req).response;
+        all.addAll(res.data?.items.whereType<Billings>() ?? []);
+        if (res.data?.hasNextResult ?? false) {
+          req = res.data!.requestForNextResult!;
+        } else {
+          break;
+        }
+      }
+
+      var allList = all.toList()..sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
+      return allList.map((m) => Billing.fromMap(m.toMap())).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<Map<String, int>> fetchStats() async {
     final req = ModelQueries.list(Billings.classType);
     final res = await Amplify.API.query(request: req).response;
@@ -86,9 +107,17 @@ class BillingService {
     DateTime? endDate,
     String sortBy = 'Newest First',
   }) async {
-    final req = ModelQueries.list(Billings.classType);
-    final res = await Amplify.API.query(request: req).response;
-    var all = res.data?.items.whereType<Billings>() ?? [];
+    var req = ModelQueries.list(Billings.classType);
+    List<Billings> all = [];
+    while (true) {
+      final res = await Amplify.API.query(request: req).response;
+      all.addAll(res.data?.items.whereType<Billings>() ?? []);
+      if (res.data?.hasNextResult ?? false) {
+        req = res.data!.requestForNextResult!;
+      } else {
+        break;
+      }
+    }
     
     // Sort descending by ID or date (using ID for now as original code used order by id)
     var allList = all.toList()..sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
@@ -240,9 +269,17 @@ class BillingService {
   }
 
   Future<String?> getNextInvoiceNo(String prefix) async {
-    final req = ModelQueries.list(Billings.classType);
-    final res = await Amplify.API.query(request: req).response;
-    final all = res.data?.items.whereType<Billings>() ?? [];
+    var req = ModelQueries.list(Billings.classType);
+    List<Billings> all = [];
+    while (true) {
+      final res = await Amplify.API.query(request: req).response;
+      all.addAll(res.data?.items.whereType<Billings>() ?? []);
+      if (res.data?.hasNextResult ?? false) {
+        req = res.data!.requestForNextResult!;
+      } else {
+        break;
+      }
+    }
     
     final matching = all.where((b) => b.invoice_no != null && b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
     matching.sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
@@ -269,9 +306,17 @@ class BillingService {
   }
 
   Future<List<Billing>> getClientLedger(String clientName) async {
-    final req = ModelQueries.list(Billings.classType, where: Billings.CLIENT_NAME.eq(clientName));
-    final res = await Amplify.API.query(request: req).response;
-    var all = res.data?.items.whereType<Billings>() ?? [];
+    var req = ModelQueries.list(Billings.classType, where: Billings.CLIENT_NAME.eq(clientName));
+    List<Billings> all = [];
+    while (true) {
+      final res = await Amplify.API.query(request: req).response;
+      all.addAll(res.data?.items.whereType<Billings>() ?? []);
+      if (res.data?.hasNextResult ?? false) {
+        req = res.data!.requestForNextResult!;
+      } else {
+        break;
+      }
+    }
     
     var allList = all.toList()..sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
     return allList.map((b) => Billing.fromMap(b.toMap())).toList();
@@ -279,14 +324,21 @@ class BillingService {
 
   Future<String> getNextBillingId() async {
     try {
-      final req = ModelQueries.list(Billings.classType);
-      final res = await Amplify.API.query(request: req).response;
-      final all = res.data?.items.whereType<Billings>() ?? [];
       int maxId = 0;
-      for (var b in all) {
-        final idVal = int.tryParse(b.id);
-        if (idVal != null && idVal > maxId) {
-          maxId = idVal;
+      var req = ModelQueries.list(Billings.classType);
+      while (true) {
+        final res = await Amplify.API.query(request: req).response;
+        final all = res.data?.items.whereType<Billings>() ?? [];
+        for (var b in all) {
+          final idVal = int.tryParse(b.id);
+          if (idVal != null && idVal > maxId) {
+            maxId = idVal;
+          }
+        }
+        if (res.data?.hasNextResult ?? false) {
+          req = res.data!.requestForNextResult!;
+        } else {
+          break;
         }
       }
       return (maxId > 0 ? maxId + 1 : 5000).toString();

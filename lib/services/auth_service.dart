@@ -47,7 +47,7 @@ class AuthService {
         }
       }
 
-      if (users == null || users.isEmpty) {
+      if (users.isEmpty) {
         debugPrint('Login failed: user not found');
         _security.recordFailedAttempt(username);
         await LoggingService().logAction(
@@ -59,7 +59,7 @@ class AuthService {
         return false;
       }
 
-      final res = users.first!;
+      final res = users.first;
       final storedPassword = res.password ?? '';
 
       // SECURITY: Verify password using hash comparison

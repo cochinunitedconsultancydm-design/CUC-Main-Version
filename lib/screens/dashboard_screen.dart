@@ -66,7 +66,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   DateTime? _lastPressedAt;
   StreamSubscription? _notifSubscription;
   bool _isCheckedIn = false;
-  int? _attendanceId;
+  String? _attendanceId;
   String? _checkInTimeStr;
   int _dailyTotalMinutes = 0;
   bool _isAttendanceLoading = true;

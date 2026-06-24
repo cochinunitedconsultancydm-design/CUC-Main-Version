@@ -2797,6 +2797,7 @@ final dLink = "";
 
                   return Flex(
                     direction: isWide ? Axis.horizontal : Axis.vertical,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Left Panel: Form Sections
                       Expanded(
@@ -3513,7 +3514,6 @@ final dLink = "";
                       // Right Panel: Activity Feed & Quick Actions
                       Container(
                         width: isWide ? 450 : double.infinity,
-                        height: isWide ? double.infinity : 600,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           border: Border(

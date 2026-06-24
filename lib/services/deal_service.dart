@@ -77,11 +77,9 @@ class DealService {
 
   Future<void> deleteDeal(dynamic id) async {
     try {
-      final req = ModelQueries.list(Deals.classType, where: Deals.ID.eq(id.toString()));
-      final res = await Amplify.API.query(request: req).response;
-      if (res.data?.items.isNotEmpty == true) {
-        await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!)).response;
-      }
+      await Amplify.API.mutate(
+        request: ModelMutations.deleteById(Deals.classType, DealsModelIdentifier(id: id.toString()))
+      ).response;
     } catch (e) {
       debugPrint('Error deleteDeal: $e');
     }
@@ -169,11 +167,11 @@ class DealService {
     final id = values.remove('id');
     
     try {
-      final req = ModelQueries.list(Deals.classType, where: Deals.ID.eq(id.toString()));
+      final req = ModelQueries.get(Deals.classType, DealsModelIdentifier(id: id.toString()));
       final res = await Amplify.API.query(request: req).response;
-      if (res.data?.items.isEmpty == true) return;
+      if (res.data == null) return;
       
-      final c = res.data!.items.first!;
+      final c = res.data!;
       final updated = c.copyWith(
         name: values['name'],
         client_id: values['client_id'],

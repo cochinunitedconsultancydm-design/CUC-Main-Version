@@ -127,11 +127,11 @@ class ChecklistService {
 
   Future<void> updateChecklistStatus(dynamic id, String status, {String? remarks, String? reason, String? newDueDate, bool reassignToManager = false}) async {
     try {
-      final req = ModelQueries.list(Checklists.classType, where: Checklists.ID.eq(id.toString()));
+      final req = ModelQueries.get(Checklists.classType, ChecklistsModelIdentifier(id: id.toString()));
       final res = await Amplify.API.query(request: req).response;
-      if (res.data?.items.isEmpty == true) return;
+      if (res.data == null) return;
       
-      final c = res.data!.items.first!;
+      final c = res.data!;
       int? respId = c.responsible_id;
       if (reassignToManager && c.manager_id != null) {
         respId = c.manager_id;
@@ -200,11 +200,9 @@ class ChecklistService {
 
   Future<void> deleteChecklist(dynamic id) async {
     try {
-      final req = ModelQueries.list(Checklists.classType, where: Checklists.ID.eq(id.toString()));
-      final res = await Amplify.API.query(request: req).response;
-      if (res.data?.items.isNotEmpty == true) {
-        await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!)).response;
-      }
+      await Amplify.API.mutate(
+        request: ModelMutations.deleteById(Checklists.classType, ChecklistsModelIdentifier(id: id.toString()))
+      ).response;
     } catch (e) {
       safePrint('Error deleteChecklist: $e');
       throw e;

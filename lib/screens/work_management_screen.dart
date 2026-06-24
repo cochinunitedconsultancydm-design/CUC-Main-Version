@@ -742,7 +742,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
   }
 
   Widget _buildStageProgress(String stage) {
-    final idx = Deal.stages.indexOf(stage);
+    final idx = stage == 'Completed' ? Deal.stages.length : Deal.stages.indexOf(stage);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

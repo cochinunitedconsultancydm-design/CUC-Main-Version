@@ -1,5 +1,6 @@
 import 'package:amplify_api/amplify_api.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
@@ -432,7 +433,7 @@ class DealService {
         userMap[id] = u['name'] as String? ?? 'Unknown';
       }
       
-      return items.map((a) {
+      return all.map((a) {
         final j = a.toJson();
         final cId = a.created_by;
         if (cId != null) j['creator_name'] = userMap[cId] ?? 'Unknown';

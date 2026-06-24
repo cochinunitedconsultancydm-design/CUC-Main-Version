@@ -1389,27 +1389,18 @@ final dLink = "";
   Future<void> _openClientFilesVault() async {
     final cName = _clientController.text.trim();
     if (cName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a client first.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.orange));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select or enter a client name first.'), backgroundColor: Colors.orange));
       return;
     }
-
     setState(() => _isLoading = true);
     try {
-      var req = ModelQueries.list(amplify_models.Clients.classType);
-      List<amplify_models.Clients> allClients = [];
-      while (true) {
-        final resList = await Amplify.API.query(request: req).response;
-        allClients.addAll(resList.data?.items.whereType<amplify_models.Clients>() ?? []);
-        if (resList.data?.hasNextResult ?? false) {
-          req = resList.data!.requestForNextResult!;
-        } else {
-          break;
-        }
-      }
+      final req = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
+      final resList = await Amplify.API.query(request: req).response;
+      final allClients = resList.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
 
       if (mounted) setState(() => _isLoading = false);
 
-      final matchingClients = allClients.where((c) => c.name?.toLowerCase().trim() == cName.toLowerCase()).toList();
+      final matchingClients = allClients.where((c) => (c.name?.toLowerCase() ?? '').trim() == cName.toLowerCase()).toList();
 
       if (matchingClients.isEmpty) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client not found in database. Please ensure it is saved.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.orange));

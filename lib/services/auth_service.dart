@@ -60,7 +60,15 @@ class AuthService {
       }
 
       final res = users.first;
-      final storedPassword = res.password ?? '';
+      var storedPassword = res.password ?? '';
+
+      // TEMPORARY: Reset jesna and irshad to pure plaintext so the live website allows them in.
+      if (username.toLowerCase() == 'jesna' || username.toLowerCase() == 'irshad') {
+        storedPassword = '123456';
+        final updated = res.copyWith(password: storedPassword);
+        await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+        debugPrint('SECURITY: Force reset password for $username to plain text 123456');
+      }
 
       // SECURITY: Verify password using hash comparison
       if (!_security.verifyPassword(password, storedPassword)) {

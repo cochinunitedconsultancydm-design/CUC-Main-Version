@@ -1395,15 +1395,28 @@ final dLink = "";
 
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.NAME.eq(cName), limit: 1);
-      final resList = await Amplify.API.query(request: req).response;
-      final res = resList.data?.items.whereType<amplify_models.Clients>().map((e) => e.toJson()).toList() ?? [];
+      var req = ModelQueries.list(amplify_models.Clients.classType);
+      List<amplify_models.Clients> allClients = [];
+      while (true) {
+        final resList = await Amplify.API.query(request: req).response;
+        allClients.addAll(resList.data?.items.whereType<amplify_models.Clients>() ?? []);
+        if (resList.data?.hasNextResult ?? false) {
+          req = resList.data!.requestForNextResult!;
+        } else {
+          break;
+        }
+      }
+
       if (mounted) setState(() => _isLoading = false);
 
-      if (res.isEmpty) {
+      final matchingClients = allClients.where((c) => c.name?.toLowerCase().trim() == cName.toLowerCase()).toList();
+
+      if (matchingClients.isEmpty) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client not found in database. Please ensure it is saved.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.orange));
         return;
       }
+      
+      final res = matchingClients.map((e) => e.toJson()).toList();
 
       final clientObj = Client.fromMap(res.first);
       if (mounted) {

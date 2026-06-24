@@ -27,14 +27,17 @@ class _NotificationBellState extends State<NotificationBell> {
   }
 
   void _setupStream() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getInt('current_user_id');
-    if (userId != null) {
-      _streamSub = _service.notificationStream.listen((n) {
-        if (n.userId == userId) {
-          _loadNotifications();
-        }
-      });
+    try {
+      final userId = await AuthService().getUserId();
+      if (userId != null) {
+        _streamSub = _service.notificationStream.listen((n) {
+          if (n.userId == userId) {
+            _loadNotifications();
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error setting up stream: $e');
     }
   }
 

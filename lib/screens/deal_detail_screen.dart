@@ -1394,22 +1394,45 @@ final dLink = "";
     }
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
-      final resList = await Amplify.API.query(request: req).response;
-      final allClients = resList.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+      // Fetch ALL clients with full pagination
+      var req = ModelQueries.list(amplify_models.Clients.classType, limit: 1000);
+      List<amplify_models.Clients> allClients = [];
+      while (true) {
+        final resList = await Amplify.API.query(request: req).response;
+        allClients.addAll(resList.data?.items.whereType<amplify_models.Clients>() ?? []);
+        if (resList.data?.hasNextResult ?? false) {
+          req = resList.data!.requestForNextResult!;
+        } else {
+          break;
+        }
+      }
 
       if (mounted) setState(() => _isLoading = false);
 
-      final matchingClients = allClients.where((c) => (c.name?.toLowerCase() ?? '').trim() == cName.toLowerCase()).toList();
+      // Normalize helper: lowercase, trim, collapse whitespace
+      String normalize(String s) => s.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+
+      final normalizedSearch = normalize(cName);
+      debugPrint('Vault search: "$normalizedSearch" among ${allClients.length} clients');
+
+      // Try exact normalized match first
+      var matchingClients = allClients.where((c) => normalize(c.name ?? '') == normalizedSearch).toList();
+
+      // Fallback: contains match if exact fails
+      if (matchingClients.isEmpty) {
+        matchingClients = allClients.where((c) => normalize(c.name ?? '').contains(normalizedSearch) || normalizedSearch.contains(normalize(c.name ?? ''))).toList();
+      }
 
       if (matchingClients.isEmpty) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client not found in database. Please ensure it is saved.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.orange));
+        debugPrint('Vault: No match found. First 10 client names in DB:');
+        for (var c in allClients.take(10)) {
+          debugPrint('  - "${c.name}"');
+        }
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client not found in database. Please ensure it is saved in Client Management.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.orange));
         return;
       }
-      
-      final res = matchingClients.map((e) => e.toJson()).toList();
 
-      final clientObj = Client.fromMap(res.first);
+      final clientObj = Client.fromMap(matchingClients.first.toJson());
       if (mounted) {
         showDialog(
           context: context,
@@ -1417,6 +1440,7 @@ final dLink = "";
         );
       }
     } catch (e) {
+      debugPrint('Vault error: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));

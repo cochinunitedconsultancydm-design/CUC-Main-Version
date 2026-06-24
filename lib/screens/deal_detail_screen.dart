@@ -309,7 +309,7 @@ final dLink = "";
       String newDesc = cleanDesc;
 
       if (_selectedVerifierId != null) {
-        final vUser = _allUsers.firstWhere((u) => u['id'] as int == _selectedVerifierId);
+        final vUser = _allUsers.firstWhere((u) => int.tryParse(u['id'].toString()) == _selectedVerifierId);
         final vName = vUser['name'].toString();
         newDesc = "$cleanDesc\n\n[VERIFICATION]\nVerifierID: $_selectedVerifierId\nVerifierName: $vName\nStatus: Draft\nDraftLink: $dLink";
       }
@@ -354,7 +354,7 @@ final dLink = "";
       await _dealService.updateDeal(deal);
 
       if (_selectedVerifierId != null) {
-        final vUser = _allUsers.firstWhere((u) => u['id'] as int == _selectedVerifierId);
+        final vUser = _allUsers.firstWhere((u) => int.tryParse(u['id'].toString()) == _selectedVerifierId);
         final vName = vUser['name'].toString();
         await NotificationService().sendNotification(
           userId: _selectedVerifierId!,
@@ -632,9 +632,9 @@ final dLink = "";
                             ),
                           ),
                           items: _allUsers
-                              .where((u) => u['id'] as int != _currentUserId && (u['role']?.toString().toLowerCase() == 'staff' || u['role']?.toString().toLowerCase() == 'manager'))
+                              .where((u) => int.tryParse(u['id'].toString()) != _currentUserId && (u['role']?.toString().toLowerCase() == 'staff' || u['role']?.toString().toLowerCase() == 'manager'))
                               .map((u) => DropdownMenuItem<int>(
-                                    value: u['id'] as int,
+                                    value: int.tryParse(u['id'].toString()) ?? 0,
                                     child: Text(u['name'].toString()),
                                   ))
                               .toList(),
@@ -650,7 +650,7 @@ final dLink = "";
                         onPressed: _selectedVerifierId == null
                             ? null
                             : () {
-                                final vUser = _allUsers.firstWhere((u) => u['id'] as int == _selectedVerifierId);
+                                final vUser = _allUsers.firstWhere((u) => int.tryParse(u['id'].toString()) == _selectedVerifierId);
                                 _updateVerification(
                                   verifierId: _selectedVerifierId,
                                   verifierName: vUser['name'].toString(),
@@ -749,9 +749,9 @@ final dLink = "";
                             ),
                           ),
                           items: _allUsers
-                              .where((u) => u['id'] as int != _currentUserId && (u['role']?.toString().toLowerCase() == 'staff' || u['role']?.toString().toLowerCase() == 'manager'))
+                              .where((u) => int.tryParse(u['id'].toString()) != _currentUserId && (u['role']?.toString().toLowerCase() == 'staff' || u['role']?.toString().toLowerCase() == 'manager'))
                               .map((u) => DropdownMenuItem<int>(
-                                    value: u['id'] as int,
+                                    value: int.tryParse(u['id'].toString()) ?? 0,
                                     child: Text(u['name'].toString()),
                                   ))
                               .toList(),
@@ -767,7 +767,7 @@ final dLink = "";
                         onPressed: _selectedVerifierId == null || _selectedVerifierId == parsedVer.verifierId
                             ? null
                             : () {
-                                final vUser = _allUsers.firstWhere((u) => u['id'] as int == _selectedVerifierId);
+                                final vUser = _allUsers.firstWhere((u) => int.tryParse(u['id'].toString()) == _selectedVerifierId);
                                 _updateVerification(
                                   verifierId: _selectedVerifierId,
                                   verifierName: vUser['name'].toString(),
@@ -1328,7 +1328,7 @@ final dLink = "";
                                   ),
                                 ),
                                 onTap: () =>
-                                    Navigator.pop(context, b['id'] as int),
+                                    Navigator.pop(context, int.tryParse(b['id'].toString()) ?? 0),
                               );
                             },
                           ),
@@ -1517,7 +1517,7 @@ final dLink = "";
                                   ),
                                 ),
                                 onTap: () =>
-                                    Navigator.pop(context, b['id'] as int),
+                                    Navigator.pop(context, int.tryParse(b['id'].toString()) ?? 0),
                               );
                             },
                           ),
@@ -2469,9 +2469,9 @@ final dLink = "";
                                           prefixIcon: const Icon(Icons.person_search_rounded, color: Color(0xFF64748B)),
                                         ),
                                         items: _allUsers
-                                            .where((u) => u['id'] as int != _currentUserId && (u['role']?.toString().toLowerCase() == 'staff' || u['role']?.toString().toLowerCase() == 'manager'))
+                                            .where((u) => int.tryParse(u['id'].toString()) != _currentUserId && (u['role']?.toString().toLowerCase() == 'staff' || u['role']?.toString().toLowerCase() == 'manager'))
                                             .map((u) => DropdownMenuItem<int>(
-                                                  value: u['id'] as int,
+                                                  value: int.tryParse(u['id'].toString()) ?? 0,
                                                   child: Text(u['name'].toString()),
                                                 ))
                                             .toList(),
@@ -3192,9 +3192,9 @@ final dLink = "";
                                             prefixIcon: const Icon(Icons.person_search_rounded, color: Color(0xFF64748B)),
                                           ),
                                           items: _allUsers
-                                              .where((u) => u['id'] as int != _currentUserId && (u['role']?.toString().toLowerCase() == 'staff' || u['role']?.toString().toLowerCase() == 'manager'))
+                                              .where((u) => int.tryParse(u['id'].toString()) != _currentUserId && (u['role']?.toString().toLowerCase() == 'staff' || u['role']?.toString().toLowerCase() == 'manager'))
                                               .map((u) => DropdownMenuItem<int>(
-                                                    value: u['id'] as int,
+                                                    value: int.tryParse(u['id'].toString()) ?? 0,
                                                     child: Text(u['name'].toString()),
                                                   ))
                                               .toList(),
@@ -5393,7 +5393,7 @@ final dLink = "";
                         style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
                         hint: const Text('Assign To...'),
                         items: _allUsers.map((u) => DropdownMenuItem<int>(
-                          value: u['id'] as int,
+                          value: int.tryParse(u['id'].toString()) ?? 0,
                           child: Text(u['name'].toString()),
                         )).toList(),
                         onChanged: (v) => setState(() => assignedTo = v),
@@ -5521,8 +5521,8 @@ final dLink = "";
                                 title: taskData['title'] as String,
                                 description: taskData['description'] as String,
                                 due_date: taskData['due_date'] as String,
-                                assigned_to: taskData['assigned_to'] as int?,
-                                assigned_by: taskData['assigned_by'] as int?,
+                                assigned_to: int.tryParse(taskData['assigned_to']?.toString() ?? ''),
+                                assigned_by: int.tryParse(taskData['assigned_by']?.toString() ?? ''),
                                 client_name: taskData['client_name'] as String?,
                                 phone_number: taskData['phone_number'] as String?,
                                 status: taskData['status'] as String,

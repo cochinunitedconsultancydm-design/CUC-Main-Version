@@ -215,18 +215,18 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         
         if (staffIds.isNotEmpty) {
           final sessionsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.UserSessions.classType)).response;
-          final sessions = (sessionsRes.data?.items ?? []).where((s) => s != null && staffIds.contains(s.user_id)).toList();
+          final sessions = (sessionsRes.data?.items ?? []).where((s) => s != null && staffIds.contains(s.user_id?.toString())).toList();
           
           final tasksQueryRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.STATUS.eq('In Progress'))).response;
-          final tasks = (tasksQueryRes.data?.items ?? []).where((t) => t != null && staffIds.contains(t.assigned_to)).toList();
+          final tasks = (tasksQueryRes.data?.items ?? []).where((t) => t != null && staffIds.contains(t.assigned_to?.toString())).toList();
 
           for (var u in staffUsers) {
             final userId = u!.id;
-            final userSessions = sessions.where((s) => s!.user_id == userId).toList();
+            final userSessions = sessions.where((s) => s!.user_id?.toString() == userId).toList();
             userSessions.sort((a, b) => (b!.login_time ?? '').compareTo(a!.login_time ?? ''));
             final latestSession = userSessions.isNotEmpty ? userSessions.first : null;
             
-            final userTasks = tasks.where((t) => t!.assigned_to == userId).toList();
+            final userTasks = tasks.where((t) => t!.assigned_to?.toString() == userId).toList();
             final currentTask = userTasks.isNotEmpty ? userTasks.first : null;
             
             combinedStaffActivity.add({
@@ -265,7 +265,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             'target_type': m.target_type,
             'target_id': m.target_id,
             'created_at': m.createdAt?.getDateTimeInUtc().toIso8601String(),
-            'user_name': userMap[m.user_id] ?? 'Unknown',
+            'user_name': userMap[m.user_id?.toString()] ?? 'Unknown',
           };
         }).toList();
 
@@ -281,7 +281,11 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           }
         }
         peakActivity = hourCounts.entries.map((e) => <String, dynamic>{'hour': e.key, 'count': e.value}).toList();
-        peakActivity.sort((a, b) => (a['hour'] as int).compareTo(b['hour'] as int));
+        peakActivity.sort((a, b) {
+          int hA = a['hour'] is int ? a['hour'] as int : int.parse(a['hour'].toString());
+          int hB = b['hour'] is int ? b['hour'] as int : int.parse(b['hour'].toString());
+          return hA.compareTo(hB);
+        });
       } catch (e) {
         debugPrint('Logs fetch failed: $e');
       }

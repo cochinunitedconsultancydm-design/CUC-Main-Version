@@ -249,7 +249,12 @@ class AuthService {
 
   Future<int?> getUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_userIdKey);
+    try {
+      return prefs.getInt(_userIdKey);
+    } catch (e) {
+      final strId = prefs.getString('${_userIdKey}_str') ?? prefs.getString(_userIdKey);
+      return strId != null ? int.tryParse(strId) : null;
+    }
   }
 
   Future<void> saveRememberMe(String username, bool remember) async {

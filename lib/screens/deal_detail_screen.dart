@@ -1104,7 +1104,7 @@ final dLink = "";
       MaterialPageRoute(
         builder: (_) => InvoiceCreatorPage(
           billing: draftBilling,
-          onSaved: (int id) async {
+          onSaved: (dynamic id) async {
             if (!mounted) return;
             Navigator.pop(context);
             setState(() => _isLoading = true);
@@ -1113,13 +1113,13 @@ final dLink = "";
               final res = await Amplify.API.query(request: req).response;
               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
               if (dealObj != null) {
-                final updatedDeal = dealObj.copyWith(billing_id: id);
+                final updatedDeal = dealObj.copyWith(billing_id: int.tryParse(id.toString()));
                 await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
               }
               
               if (mounted) {
                 setState(() {
-                  _billingId = id;
+                  _billingId = int.tryParse(id.toString());
                   _isLoading = false;
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1189,7 +1189,7 @@ final dLink = "";
       MaterialPageRoute(
         builder: (_) => InvoiceCreatorPage(
           billing: draftBilling,
-          onSaved: (int id) async {
+          onSaved: (dynamic id) async {
             if (!mounted) return;
             Navigator.pop(context);
             setState(() => _isLoading = true);
@@ -1198,13 +1198,13 @@ final dLink = "";
               final res = await Amplify.API.query(request: req).response;
               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
               if (dealObj != null) {
-                final updatedDeal = dealObj.copyWith(quotation_id: id);
+                final updatedDeal = dealObj.copyWith(quotation_id: int.tryParse(id.toString()));
                 await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
               }
               
               if (mounted) {
                 setState(() {
-                  _quotationId = id;
+                  _quotationId = int.tryParse(id.toString());
                   _isLoading = false;
                 });
                 ScaffoldMessenger.of(context).showSnackBar(

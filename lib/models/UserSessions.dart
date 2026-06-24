@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the UserSessions type in your schema. */
@@ -187,14 +188,14 @@ class UserSessions extends amplify_core.Model {
   
   UserSessions.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _user_id = (json['user_id'] as num?)?.toInt(),
+      _user_id = safeParseInt(json['user_id']),
       _login_time = json['login_time'],
       _logout_time = json['logout_time'],
       _ip_address = json['ip_address'],
-      _is_active = json['is_active'],
+      _is_active = safeParseBool(json['is_active']),
       _status = json['status'],
-      _active_seconds = (json['active_seconds'] as num?)?.toInt(),
-      _idle_seconds = (json['idle_seconds'] as num?)?.toInt(),
+      _active_seconds = safeParseInt(json['active_seconds']),
+      _idle_seconds = safeParseInt(json['idle_seconds']),
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
       _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
   

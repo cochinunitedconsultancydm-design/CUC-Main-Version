@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the DealHandoverHistory type in your schema. */
@@ -154,9 +155,9 @@ class DealHandoverHistory extends amplify_core.Model {
   
   DealHandoverHistory.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _deal_id = (json['deal_id'] as num?)?.toInt(),
-      _from_user_id = (json['from_user_id'] as num?)?.toInt(),
-      _to_user_id = (json['to_user_id'] as num?)?.toInt(),
+      _deal_id = safeParseInt(json['deal_id']),
+      _from_user_id = safeParseInt(json['from_user_id']),
+      _to_user_id = safeParseInt(json['to_user_id']),
       _note = json['note'],
       _handed_over_at = json['handed_over_at'],
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,

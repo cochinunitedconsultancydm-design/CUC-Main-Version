@@ -496,7 +496,7 @@ class _BillingScreenState extends State<BillingScreen> {
   ));
 
   void _openCreator([Billing? b]) => Navigator.of(context).push(MaterialPageRoute(
-    builder: (_) => InvoiceCreatorPage(billing: b, onSaved: (int id) { _fetchBillings(refresh: true); Navigator.pop(context); }),
+    builder: (_) => InvoiceCreatorPage(billing: b, onSaved: (dynamic id) { _fetchBillings(refresh: true); Navigator.pop(context); }),
   ));
 
   @override
@@ -1043,7 +1043,7 @@ class _BillingScreenState extends State<BillingScreen> {
 // ─── PREMIUM INVOICE CREATOR PAGE ───
 class InvoiceCreatorPage extends StatefulWidget {
   final Billing? billing;
-  final void Function(int id) onSaved;
+  final void Function(dynamic id) onSaved;
 
   const InvoiceCreatorPage({super.key, this.billing, required this.onSaved});
   
@@ -1152,7 +1152,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       final Set<String> seen = {};
       final List<Map<String, String>> items = [];
       final billingsList = res.data?.items.whereType<Billings>().toList() ?? [];
-      billingsList.sort((a, b) => b.id.compareTo(a.id));
+      billingsList.sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
       
       for (var row in billingsList) {
         final dataStr = row.data;

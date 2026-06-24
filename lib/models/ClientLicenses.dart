@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the ClientLicenses type in your schema. */
@@ -209,8 +210,8 @@ class ClientLicenses extends amplify_core.Model {
   
   ClientLicenses.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _client_id = (json['client_id'] as num?)?.toInt(),
-      _license_type_id = (json['license_type_id'] as num?)?.toInt(),
+      _client_id = safeParseInt(json['client_id']),
+      _license_type_id = safeParseInt(json['license_type_id']),
       _file_no = json['file_no'],
       _service_date = json['service_date'],
       _expiry_date = json['expiry_date'],

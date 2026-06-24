@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the LicenseBilling type in your schema. */
@@ -165,7 +166,7 @@ class LicenseBilling extends amplify_core.Model {
   
   LicenseBilling.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _client_license_id = (json['client_license_id'] as num?)?.toInt(),
+      _client_license_id = safeParseInt(json['client_license_id']),
       _amount = (json['amount'] as num?)?.toDouble(),
       _payment_status = json['payment_status'],
       _invoice_no = json['invoice_no'],

@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the Checklists type in your schema. */
@@ -211,8 +212,8 @@ class Checklists extends amplify_core.Model {
     : id = json['id'],
       _title = json['title'],
       _description = json['description'],
-      _manager_id = (json['manager_id'] as num?)?.toInt(),
-      _responsible_id = (json['responsible_id'] as num?)?.toInt(),
+      _manager_id = safeParseInt(json['manager_id']),
+      _responsible_id = safeParseInt(json['responsible_id']),
       _status = json['status'],
       _remarks = json['remarks'],
       _reason = json['reason'],

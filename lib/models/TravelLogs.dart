@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the TravelLogs type in your schema. */
@@ -132,7 +133,7 @@ class TravelLogs extends amplify_core.Model {
   
   TravelLogs.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _user_id = (json['user_id'] as num?)?.toInt(),
+      _user_id = safeParseInt(json['user_id']),
       _destination = json['destination'],
       _created_at = json['created_at'],
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,

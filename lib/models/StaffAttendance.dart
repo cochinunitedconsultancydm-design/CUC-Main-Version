@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the StaffAttendance type in your schema. */
@@ -143,7 +144,7 @@ class StaffAttendance extends amplify_core.Model {
   
   StaffAttendance.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _user_id = (json['user_id'] as num?)?.toInt(),
+      _user_id = safeParseInt(json['user_id']),
       _check_in_time = json['check_in_time'],
       _check_out_time = json['check_out_time'],
       _attendance_date = json['attendance_date'],

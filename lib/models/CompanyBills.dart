@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the CompanyBills type in your schema. */
@@ -205,7 +206,7 @@ class CompanyBills extends amplify_core.Model {
       _status = json['status'],
       _description = json['description'],
       _created_at = json['created_at'],
-      _spent_by = (json['spent_by'] as num?)?.toInt(),
+      _spent_by = safeParseInt(json['spent_by']),
       _spent_by_name = json['spent_by_name'],
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
       _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;

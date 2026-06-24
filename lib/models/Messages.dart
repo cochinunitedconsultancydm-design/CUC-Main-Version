@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the Messages type in your schema. */
@@ -176,13 +177,13 @@ class Messages extends amplify_core.Model {
   
   Messages.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _sender_id = (json['sender_id'] as num?)?.toInt(),
-      _receiver_id = (json['receiver_id'] as num?)?.toInt(),
+      _sender_id = safeParseInt(json['sender_id']),
+      _receiver_id = safeParseInt(json['receiver_id']),
       _content = json['content'],
-      _is_read = json['is_read'],
+      _is_read = safeParseBool(json['is_read']),
       _created_at = json['created_at'],
       _attachment_type = json['attachment_type'],
-      _attachment_id = (json['attachment_id'] as num?)?.toInt(),
+      _attachment_id = safeParseInt(json['attachment_id']),
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
       _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
   

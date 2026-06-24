@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the ServiceContent type in your schema. */
@@ -154,7 +155,7 @@ class ServiceContent extends amplify_core.Model {
   
   ServiceContent.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _service_id = (json['service_id'] as num?)?.toInt(),
+      _service_id = safeParseInt(json['service_id']),
       _title = json['title'],
       _description = json['description'],
       _image_path = json['image_path'],

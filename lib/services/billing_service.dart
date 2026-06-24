@@ -91,7 +91,7 @@ class BillingService {
     var all = res.data?.items.whereType<Billings>() ?? [];
     
     // Sort descending by ID or date (using ID for now as original code used order by id)
-    var allList = all.toList()..sort((a, b) => b.id.compareTo(a.id));
+    var allList = all.toList()..sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
 
     List<Billings> filtered = [];
     
@@ -245,7 +245,7 @@ class BillingService {
     final all = res.data?.items.whereType<Billings>() ?? [];
     
     final matching = all.where((b) => b.invoice_no != null && b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
-    matching.sort((a, b) => b.id.compareTo(a.id));
+    matching.sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
     
     if (matching.isNotEmpty) {
       final last = matching.first.invoice_no!;
@@ -273,7 +273,7 @@ class BillingService {
     final res = await Amplify.API.query(request: req).response;
     var all = res.data?.items.whereType<Billings>() ?? [];
     
-    var allList = all.toList()..sort((a, b) => b.id.compareTo(a.id));
+    var allList = all.toList()..sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
     return allList.map((b) => Billing.fromMap(b.toMap())).toList();
   }
 }

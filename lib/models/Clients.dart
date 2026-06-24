@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the Clients type in your schema. */
@@ -261,10 +262,10 @@ class Clients extends amplify_core.Model {
       _type_of_work = json['type_of_work'],
       _case_number = json['case_number'],
       _dob = json['dob'],
-      _review_rating = (json['review_rating'] as num?)?.toInt(),
+      _review_rating = safeParseInt(json['review_rating']),
       _file_no = json['file_no'],
       _file_date = json['file_date'],
-      _is_contacted = json['is_contacted'],
+      _is_contacted = safeParseBool(json['is_contacted']),
       _managed_by = json['managed_by'],
       _balance_due = json['balance_due'],
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,

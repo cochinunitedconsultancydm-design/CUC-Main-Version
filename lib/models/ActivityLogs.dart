@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the ActivityLogs type in your schema. */
@@ -165,7 +166,7 @@ class ActivityLogs extends amplify_core.Model {
   
   ActivityLogs.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _user_id = (json['user_id'] as num?)?.toInt(),
+      _user_id = safeParseInt(json['user_id']),
       _action = json['action'],
       _target_type = json['target_type'],
       _target_id = json['target_id'],

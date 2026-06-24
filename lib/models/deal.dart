@@ -1,3 +1,5 @@
+import '../utils/safe_json_parse.dart';
+
 class Deal {
   final dynamic id;
   final String name;
@@ -183,13 +185,13 @@ class Deal {
     return Deal(
       id: map['id'],
       name: map['name'] ?? '',
-      clientId: map['client_id'],
+      clientId: safeParseInt(map['client_id']),
       clientName: map['client_name'],
       contactInfo: map['contact_info'],
       company: map['company'],
       workType: map['work_type'],
       stage: map['stage'] ?? 'Registration',
-      responsibleId: map['responsible_id'],
+      responsibleId: safeParseInt(map['responsible_id']),
       responsibleName: map['responsible_name'],
       amount: double.tryParse(map['amount']?.toString() ?? '0') ?? 0.0,
       currency: map['currency'] ?? 'INR',
@@ -214,8 +216,8 @@ class Deal {
       invoiceAmount: double.tryParse(map['invoice_amount']?.toString() ?? ''),
       paymentType: map['payment_type'],
       driveLink: map['drive_link'],
-      billingId: map['billing_id'],
-      quotationId: map['quotation_id'],
+      billingId: safeParseInt(map['billing_id']),
+      quotationId: safeParseInt(map['quotation_id']),
       paymentReceived: double.tryParse(map['payment_received']?.toString() ?? ''),
       isAdjourned: isAdj,
       adjournedReason: adjReason,
@@ -238,8 +240,8 @@ class DealAssignee {
   Map<String, dynamic> toMap() => {'deal_id': dealId, 'user_id': userId, 'role': role};
   factory DealAssignee.fromMap(Map<String, dynamic> map) => DealAssignee(
     id: map['id'],
-    dealId: map['deal_id'],
-    userId: map['user_id'],
+    dealId: safeParseInt(map['deal_id']),
+    userId: safeParseInt(map['user_id']),
     userName: map['user_name'],
     role: map['role'],
   );

@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the LicenseNotifications type in your schema. */
@@ -165,10 +166,10 @@ class LicenseNotifications extends amplify_core.Model {
   
   LicenseNotifications.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _client_license_id = (json['client_license_id'] as num?)?.toInt(),
+      _client_license_id = safeParseInt(json['client_license_id']),
       _notification_type = json['notification_type'],
       _message = json['message'],
-      _is_sent = json['is_sent'],
+      _is_sent = safeParseBool(json['is_sent']),
       _scheduled_date = json['scheduled_date'],
       _created_at = json['created_at'],
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,

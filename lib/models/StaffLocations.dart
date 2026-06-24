@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the StaffLocations type in your schema. */
@@ -143,7 +144,7 @@ class StaffLocations extends amplify_core.Model {
   
   StaffLocations.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _user_id = (json['user_id'] as num?)?.toInt(),
+      _user_id = safeParseInt(json['user_id']),
       _latitude = (json['latitude'] as num?)?.toDouble(),
       _longitude = (json['longitude'] as num?)?.toDouble(),
       _updated_at = json['updated_at'],

@@ -35,13 +35,20 @@ class AuthService {
       }
 
       // SECURITY: Authenticate against AWS Cognito securely!
-      final signInResult = await Amplify.Auth.signIn(
+      var signInResult = await Amplify.Auth.signIn(
         username: loginEmail,
         password: password,
       );
 
+      if (signInResult.nextStep.signInStep == AuthSignInStep.confirmSignInWithNewPassword) {
+        debugPrint('User requires password change. Automatically setting permanent password.');
+        signInResult = await Amplify.Auth.confirmSignIn(
+          confirmationValue: password,
+        );
+      }
+
       if (!signInResult.isSignedIn) {
-        debugPrint('Cognito Login failed: Not signed in');
+        debugPrint('Cognito Login failed: Not signed in. Step: ${signInResult.nextStep.signInStep}');
         _security.recordFailedAttempt(username);
         return false;
       }

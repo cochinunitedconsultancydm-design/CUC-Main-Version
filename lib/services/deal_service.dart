@@ -44,9 +44,9 @@ class DealService {
     controller = StreamController<List<old.Deal>>.broadcast(
       onListen: () {
         fetchAndEmit();
-        createSub = Amplify.API.subscribe(GraphQLRequest<String>(document: 'subscription { onCreateDeals { id } }')).listen((_) => fetchAndEmit());
-        updateSub = Amplify.API.subscribe(GraphQLRequest<String>(document: 'subscription { onUpdateDeals { id } }')).listen((_) => fetchAndEmit());
-        deleteSub = Amplify.API.subscribe(GraphQLRequest<String>(document: 'subscription { onDeleteDeals { id } }')).listen((_) => fetchAndEmit());
+        createSub = Amplify.API.subscribe(GraphQLRequest<String>(document: 'subscription { onCreateDeals { id } }')).listen((_) => fetchAndEmit(), onError: (e) => debugPrint('Deal create sub error: $e'));
+        updateSub = Amplify.API.subscribe(GraphQLRequest<String>(document: 'subscription { onUpdateDeals { id } }')).listen((_) => fetchAndEmit(), onError: (e) => debugPrint('Deal update sub error: $e'));
+        deleteSub = Amplify.API.subscribe(GraphQLRequest<String>(document: 'subscription { onDeleteDeals { id } }')).listen((_) => fetchAndEmit(), onError: (e) => debugPrint('Deal delete sub error: $e'));
       },
       onCancel: () {
         createSub?.cancel();

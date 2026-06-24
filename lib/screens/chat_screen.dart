@@ -112,6 +112,9 @@ class _ChatScreenState extends State<ChatScreen> {
             return (sId == _myId && rId == targetId) || (sId == targetId && rId == _myId);
           }).toList();
           await _processMessages(filtered.map((m) => m.toJson()).toList());
+        },
+        onError: (dynamic e) {
+          debugPrint('Chat subscription stream error: $e');
         }
       );
     } catch (e) {

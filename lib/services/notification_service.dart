@@ -282,6 +282,8 @@ class NotificationService {
           payload: newNotif.taskId?.toString() ?? newNotif.dealId?.toString(),
         );
       }
+    }, onError: (dynamic e) {
+      debugPrint('Notification subscription stream error: $e');
     });
   }
 

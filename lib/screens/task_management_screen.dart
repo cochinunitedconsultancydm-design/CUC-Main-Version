@@ -95,15 +95,15 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
   void _subscribeToTasks() {
     _createSub = Amplify.API.subscribe(
       ModelSubscriptions.onCreate(amplify_models.Tasks.classType),
-    ).listen((event) => _fetchTasks());
+    ).listen((event) => _fetchTasks(), onError: (e) => debugPrint('Task create sub error: $e'));
 
     _updateSub = Amplify.API.subscribe(
       ModelSubscriptions.onUpdate(amplify_models.Tasks.classType),
-    ).listen((event) => _fetchTasks());
+    ).listen((event) => _fetchTasks(), onError: (e) => debugPrint('Task update sub error: $e'));
 
     _deleteSub = Amplify.API.subscribe(
       ModelSubscriptions.onDelete(amplify_models.Tasks.classType),
-    ).listen((event) => _fetchTasks());
+    ).listen((event) => _fetchTasks(), onError: (e) => debugPrint('Task delete sub error: $e'));
   }
 
   @override

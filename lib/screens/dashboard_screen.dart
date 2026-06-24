@@ -419,8 +419,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final dscCount = dscCountRes.data?.items.length ?? 0;
 
       // 3. Active Deals
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('current_user_id');
+      final userId = await AuthService().getUserId();
       
       int dealsCount = 0;
       amplify_core.QueryPredicate dealsWhere = amplify_models.Deals.STAGE.ne('Completed');

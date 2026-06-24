@@ -187,14 +187,14 @@ class Notifications extends amplify_core.Model {
   
   Notifications.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _user_id = (json['user_id'] as num?)?.toInt(),
+      _user_id = json['user_id'] is String ? int.tryParse(json['user_id']) : (json['user_id'] as num?)?.toInt(),
       _title = json['title'],
       _message = json['message'],
       _type = json['type'],
       _is_read = json['is_read'],
       _created_at = json['created_at'],
-      _deal_id = (json['deal_id'] as num?)?.toInt(),
-      _task_id = (json['task_id'] as num?)?.toInt(),
+      _deal_id = json['deal_id'] is String ? int.tryParse(json['deal_id']) : (json['deal_id'] as num?)?.toInt(),
+      _task_id = json['task_id'] is String ? int.tryParse(json['task_id']) : (json['task_id'] as num?)?.toInt(),
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
       _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
   

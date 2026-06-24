@@ -1588,10 +1588,15 @@ final dLink = "";
     }
   }
 
+  int get _currentStageIndex {
+    if (_currentStage == 'Completed') return Deal.stages.length;
+    final idx = Deal.stages.indexOf(_currentStage);
+    return idx == -1 ? 0 : idx; // fallback to 0 if unknown
+  }
+
   bool _shouldShowStage(String stage) {
     final targetIndex = Deal.stages.indexOf(stage);
-    final currentIndex = Deal.stages.indexOf(_currentStage);
-    return targetIndex <= currentIndex;
+    return targetIndex <= _currentStageIndex;
   }
 
   Widget _buildFilesAskedInput() {
@@ -3657,7 +3662,7 @@ final dLink = "";
                 final idx = entry.key;
                 final stage = entry.value;
                 final isCurrent = _currentStage == stage;
-                final isPast = Deal.stages.indexOf(_currentStage) > idx;
+                final isPast = _currentStageIndex > idx;
 
                 return Row(
                   children: [

@@ -1403,7 +1403,9 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       
       dynamic savedId;
       if (widget.billing == null || widget.billing!.id == null) { 
+        final nextId = await _billingService.getNextBillingId();
         final newBilling = Billings(
+          id: nextId,
           invoice_no: _invoiceNo.text,
           client_name: _clientName.text,
           date: _date.text,
@@ -1415,6 +1417,12 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           data: jsonEncode(d),
         );
         final res = await Amplify.API.mutate(request: ModelMutations.create(newBilling)).response;
+        if (res.errors.isNotEmpty) {
+          throw Exception(res.errors.map((e) => e.message).join(', '));
+        }
+        if (res.data == null) {
+          throw Exception('Failed to write billing: empty response data');
+        }
         savedId = res.data?.id;
         await _log.logAction(action: 'INVOICE_CREATED', targetType: 'Invoice', targetId: _invoiceNo.text, details: 'Created for ${_clientName.text}');
       }
@@ -1432,7 +1440,10 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           status: _status,
           data: jsonEncode(d),
         );
-        await Amplify.API.mutate(request: ModelMutations.update(updateBilling)).response;
+        final res = await Amplify.API.mutate(request: ModelMutations.update(updateBilling)).response;
+        if (res.errors.isNotEmpty) {
+          throw Exception(res.errors.map((e) => e.message).join(', '));
+        }
         await _log.logAction(action: 'INVOICE_UPDATED', targetType: 'Invoice', targetId: _invoiceNo.text, details: 'Updated for ${_clientName.text}');
       }
       // Update client's balance in the clients table

@@ -276,4 +276,22 @@ class BillingService {
     var allList = all.toList()..sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
     return allList.map((b) => Billing.fromMap(b.toMap())).toList();
   }
+
+  Future<String> getNextBillingId() async {
+    try {
+      final req = ModelQueries.list(Billings.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final all = res.data?.items.whereType<Billings>() ?? [];
+      int maxId = 0;
+      for (var b in all) {
+        final idVal = int.tryParse(b.id);
+        if (idVal != null && idVal > maxId) {
+          maxId = idVal;
+        }
+      }
+      return (maxId > 0 ? maxId + 1 : 5000).toString();
+    } catch (_) {
+      return (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+    }
+  }
 }

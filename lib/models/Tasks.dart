@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the Tasks type in your schema. */
@@ -222,8 +223,8 @@ class Tasks extends amplify_core.Model {
     : id = json['id'],
       _title = json['title'],
       _description = json['description'],
-      _assigned_to = (json['assigned_to'] as num?)?.toInt(),
-      _assigned_by = (json['assigned_by'] as num?)?.toInt(),
+      _assigned_to = safeParseInt(json['assigned_to']),
+      _assigned_by = safeParseInt(json['assigned_by']),
       _status = json['status'],
       _due_date = json['due_date'],
       _created_at = json['created_at'],

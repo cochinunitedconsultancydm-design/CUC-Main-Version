@@ -21,6 +21,7 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
+import '../utils/safe_json_parse.dart';
 
 
 /** This is an auto generated class representing the DealActivities type in your schema. */
@@ -187,13 +188,13 @@ class DealActivities extends amplify_core.Model {
   
   DealActivities.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _deal_id = (json['deal_id'] as num?)?.toInt(),
+      _deal_id = safeParseInt(json['deal_id']),
       _type = json['type'],
       _title = json['title'],
       _description = json['description'],
       _due_date = json['due_date'],
-      _is_completed = json['is_completed'],
-      _created_by = (json['created_by'] as num?)?.toInt(),
+      _is_completed = safeParseBool(json['is_completed']),
+      _created_by = safeParseInt(json['created_by']),
       _created_at = json['created_at'],
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
       _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;

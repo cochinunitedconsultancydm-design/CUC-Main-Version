@@ -198,7 +198,7 @@ class Deal {
       description: cleanDesc,
       createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at'].toString()) : null,
       updatedAt: map['updated_at'] != null ? DateTime.tryParse(map['updated_at'].toString()) : null,
-      isWon: map['is_won'] ?? false,
+      isWon: map['is_won'] == true || map['is_won'] == 'true',
       regFeeRequired: map['reg_fee_required'],
       referredBy: map['referred_by'],
       filesReceived: map['files_received'],

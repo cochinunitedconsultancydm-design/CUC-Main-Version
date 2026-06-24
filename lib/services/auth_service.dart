@@ -60,15 +60,7 @@ class AuthService {
       }
 
       final res = users.first;
-      var storedPassword = res.password ?? '';
-
-      // TEMPORARY: Force reset jesna's password to 123456
-      if (username.toLowerCase() == 'jesna') {
-        storedPassword = _security.hashPassword('123456');
-        final updated = res.copyWith(password: storedPassword);
-        await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
-        debugPrint('SECURITY: Force reset password for jesna to 123456');
-      }
+      final storedPassword = res.password ?? '';
 
       // SECURITY: Verify password using hash comparison
       if (!_security.verifyPassword(password, storedPassword)) {

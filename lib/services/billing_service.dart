@@ -240,10 +240,10 @@ class BillingService {
   }
 
   Future<void> updateBilling(dynamic id, Map<String, dynamic> updates) async {
-    final req = ModelQueries.list(Billings.classType, where: Billings.ID.eq(id.toString()));
+    final req = ModelQueries.get(Billings.classType, BillingsModelIdentifier(id: id.toString()));
     final res = await Amplify.API.query(request: req).response;
-    if (res.data?.items.isNotEmpty == true) {
-      final b = res.data!.items.first!;
+    if (res.data != null) {
+      final b = res.data!;
       var updated = b.copyWith(
         invoice_no: updates['invoice_no'] ?? b.invoice_no,
         client_name: updates['client_name'] ?? b.client_name,
@@ -260,12 +260,12 @@ class BillingService {
   }
 
   Future<void> deleteBilling(dynamic id) async {
-    final req = ModelQueries.list(Billings.classType, where: Billings.ID.eq(id.toString()));
-    final res = await Amplify.API.query(request: req).response;
-    if (res.data?.items.isNotEmpty == true) {
-      final b = res.data!.items.first!;
-      await Amplify.API.mutate(request: ModelMutations.delete(b)).response;
-    }
+    await Amplify.API.mutate(
+      request: ModelMutations.deleteById(
+        Billings.classType, 
+        BillingsModelIdentifier(id: id.toString())
+      )
+    ).response;
   }
 
   Future<String?> getNextInvoiceNo(String prefix) async {

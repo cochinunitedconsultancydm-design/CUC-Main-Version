@@ -41,7 +41,9 @@ class SecurityService {
 
   /// Verifies a password against a stored hash.
   /// Returns true if the password matches.
-  bool verifyPassword(String plainPassword, String storedPassword) {
+  bool verifyPassword(String plainPasswordRaw, String storedPasswordRaw) {
+    final plainPassword = plainPasswordRaw.trim();
+    final storedPassword = storedPasswordRaw.trim();
     if (!storedPassword.startsWith(_hashPrefix)) {
       // Legacy plaintext password — direct comparison
       return plainPassword == storedPassword;
@@ -51,9 +53,15 @@ class SecurityService {
     final parts = storedPassword.substring(_hashPrefix.length).split('\$');
     if (parts.length != 2) return false;
 
-    final salt = parts[0];
-    final storedHash = parts[1];
+    final salt = parts[0].trim();
+    final storedHash = parts[1].trim();
     final computedHash = _sha256Hash(plainPassword, salt);
+    
+    debugPrint('SECURITY DEBUG: PlainPassword="$plainPassword"');
+    debugPrint('SECURITY DEBUG: Salt="$salt"');
+    debugPrint('SECURITY DEBUG: StoredHash="$storedHash"');
+    debugPrint('SECURITY DEBUG: ComputedHash="$computedHash"');
+    
     return computedHash == storedHash;
   }
 

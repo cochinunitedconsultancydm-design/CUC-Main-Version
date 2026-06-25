@@ -29,7 +29,6 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
   List<String> _workFolders = [];
   String? _currentWorkFolder;
   String _currentTab = 'personal'; // 'personal' or 'work'
-  String _currentTab = 'personal'; // 'personal' or 'work'
 
   @override
   void initState() {
@@ -575,12 +574,6 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
             Text(
               "Click the button above to add one.", 
               style: TextStyle(color: Colors.grey.shade400, fontSize: 13)
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _debugMsg,
-              style: const TextStyle(color: Colors.red, fontSize: 10),
-              textAlign: TextAlign.center,
             ),
           ],
         ).animate().fadeIn().slideY(begin: 0.1),

@@ -64,13 +64,34 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
         
         if (_currentWorkFolder == null) {
           Set<String> folderNames = {};
+          final workPathStr = workPath.toString();
+          
           for (var item in wFilesRes.items) {
-            final relativePath = item.path.replaceFirst(workPath, '');
-            if (relativePath.isNotEmpty) {
-              final parts = relativePath.split('/');
-              if (parts.isNotEmpty && parts[0].isNotEmpty) {
-                folderNames.add(parts[0]);
+            String itemPath = item.path;
+            
+            // Handle cases where path might not contain 'public/' prefix in some Amplify versions
+            if (!itemPath.startsWith('public/') && workPathStr.startsWith('public/')) {
+               itemPath = 'public/' + itemPath;
+            }
+            
+            if (itemPath.startsWith(workPathStr)) {
+              final relativePath = itemPath.substring(workPathStr.length);
+              if (relativePath.isNotEmpty) {
+                final parts = relativePath.split('/').where((s) => s.isNotEmpty).toList();
+                if (parts.isNotEmpty) {
+                  folderNames.add(parts[0]);
+                }
               }
+            } else {
+               // Fallback if paths don't match exactly but contain the work directory
+               final workDirSegment = '/work/';
+               if (itemPath.contains(workDirSegment)) {
+                 final afterWork = itemPath.split(workDirSegment).last;
+                 final parts = afterWork.split('/').where((s) => s.isNotEmpty).toList();
+                 if (parts.isNotEmpty) {
+                   folderNames.add(parts[0]);
+                 }
+               }
             }
           }
           _workFolders = folderNames.toList()..sort();
@@ -82,6 +103,13 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
       });
     } catch (e) {
       debugPrint("Load files error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error loading files: $e'), 
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
+        ));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

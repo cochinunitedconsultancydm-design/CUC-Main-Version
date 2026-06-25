@@ -29,6 +29,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
   List<String> _workFolders = [];
   String? _currentWorkFolder;
   String _currentTab = 'personal'; // 'personal' or 'work'
+  String _debugMsg = '';
 
   @override
   void initState() {
@@ -43,7 +44,10 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
 
   Future<void> _loadFiles() async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _debugMsg = '';
+    });
     
     try {
       final pFilesRes = await Amplify.Storage.list(
@@ -60,6 +64,9 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
       
       if (!mounted) return;
       setState(() {
+        _debugMsg += 'workPath=$workPath\n';
+        _debugMsg += 'pItems=${pFilesRes.items.length}, wItems=${wFilesRes.items.length}\n';
+        
         _personalFiles = pFilesRes.items.where((f) => !f.path.contains('.emptyPlaceholder')).toList();
         
         if (_currentWorkFolder == null) {
@@ -68,6 +75,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
           
           for (var item in wFilesRes.items) {
             String itemPath = item.path;
+            _debugMsg += 'itemPath=$itemPath\n';
             
             // Handle cases where path might not contain 'public/' prefix in some Amplify versions
             if (!itemPath.startsWith('public/') && workPathStr.startsWith('public/')) {
@@ -76,10 +84,12 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
             
             if (itemPath.startsWith(workPathStr)) {
               final relativePath = itemPath.substring(workPathStr.length);
+              _debugMsg += '  relative=$relativePath\n';
               if (relativePath.isNotEmpty) {
                 final parts = relativePath.split('/').where((s) => s.isNotEmpty).toList();
                 if (parts.isNotEmpty) {
                   folderNames.add(parts[0]);
+                  _debugMsg += '  added=${parts[0]}\n';
                 }
               }
             } else {
@@ -90,6 +100,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                  final parts = afterWork.split('/').where((s) => s.isNotEmpty).toList();
                  if (parts.isNotEmpty) {
                    folderNames.add(parts[0]);
+                   _debugMsg += '  fallback added=${parts[0]}\n';
                  }
                }
             }
@@ -104,6 +115,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
     } catch (e) {
       debugPrint("Load files error: $e");
       if (mounted) {
+        setState(() => _debugMsg += 'Error: $e\n');
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Error loading files: $e'), 
           backgroundColor: Colors.redAccent,
@@ -552,6 +564,12 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
               "Click the button above to add one.", 
               style: TextStyle(color: Colors.grey.shade400, fontSize: 13)
             ),
+            const SizedBox(height: 16),
+            Text(
+              _debugMsg,
+              style: const TextStyle(color: Colors.red, fontSize: 10),
+              textAlign: TextAlign.center,
+            ),
           ],
         ).animate().fadeIn().slideY(begin: 0.1),
       );
@@ -574,6 +592,12 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
             Text(
               "Click the button above to add one.", 
               style: TextStyle(color: Colors.grey.shade400, fontSize: 13)
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _debugMsg,
+              style: const TextStyle(color: Colors.red, fontSize: 10),
+              textAlign: TextAlign.center,
             ),
           ],
         ).animate().fadeIn().slideY(begin: 0.1),

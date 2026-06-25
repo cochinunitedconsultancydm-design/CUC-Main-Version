@@ -67,31 +67,31 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
           final workPathStr = workPath.toString();
           
           for (var item in wFilesRes.items) {
-            String itemPath = item.path;
-            
-            // Handle cases where path might not contain 'public/' prefix in some Amplify versions
-            if (!itemPath.startsWith('public/') && workPathStr.startsWith('public/')) {
-               itemPath = 'public/' + itemPath;
-            }
+            String itemPath = Uri.decodeFull(item.path);
+            String relativePath = itemPath;
             
             if (itemPath.startsWith(workPathStr)) {
-              final relativePath = itemPath.substring(workPathStr.length);
-              if (relativePath.isNotEmpty) {
-                final parts = relativePath.split('/').where((s) => s.isNotEmpty).toList();
-                if (parts.isNotEmpty) {
-                  folderNames.add(parts[0]);
+              relativePath = itemPath.substring(workPathStr.length);
+            } else if (itemPath.startsWith(workPathStr.replaceFirst('public/', ''))) {
+              relativePath = itemPath.substring(workPathStr.replaceFirst('public/', '').length);
+            } else if (itemPath.startsWith('/$workPathStr')) {
+              relativePath = itemPath.substring(workPathStr.length + 1);
+            } else if (itemPath.contains('/work/')) {
+              relativePath = itemPath.split('/work/').last;
+            }
+            
+            while (relativePath.startsWith('/')) {
+              relativePath = relativePath.substring(1);
+            }
+            
+            if (relativePath.isNotEmpty) {
+              final parts = relativePath.split('/').where((s) => s.isNotEmpty).toList();
+              if (parts.isNotEmpty) {
+                final folderName = parts[0];
+                if (!folderName.contains('.emptyPlaceholder')) {
+                  folderNames.add(folderName);
                 }
               }
-            } else {
-               // Fallback if paths don't match exactly but contain the work directory
-               final workDirSegment = '/work/';
-               if (itemPath.contains(workDirSegment)) {
-                 final afterWork = itemPath.split(workDirSegment).last;
-                 final parts = afterWork.split('/').where((s) => s.isNotEmpty).toList();
-                 if (parts.isNotEmpty) {
-                   folderNames.add(parts[0]);
-                 }
-               }
             }
           }
           _workFolders = folderNames.toList()..sort();

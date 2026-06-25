@@ -26,6 +26,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
   bool _isLoading = true;
   List<StorageItem> _personalFiles = [];
   List<StorageItem> _workItems = [];
+  List<String> _workFolders = [];
   String? _currentWorkFolder;
   String _currentTab = 'personal'; // 'personal' or 'work'
 
@@ -60,7 +61,24 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
       if (!mounted) return;
       setState(() {
         _personalFiles = pFilesRes.items.where((f) => !f.path.contains('.emptyPlaceholder')).toList();
-        _workItems = wFilesRes.items.where((f) => !f.path.contains('.emptyPlaceholder')).toList();
+        
+        if (_currentWorkFolder == null) {
+          Set<String> folderNames = {};
+          for (var item in wFilesRes.items) {
+            final relativePath = item.path.replaceFirst(workPath, '');
+            if (relativePath.isNotEmpty) {
+              final parts = relativePath.split('/');
+              if (parts.isNotEmpty && parts[0].isNotEmpty) {
+                folderNames.add(parts[0]);
+              }
+            }
+          }
+          _workFolders = folderNames.toList()..sort();
+          _workItems = [];
+        } else {
+          _workFolders = [];
+          _workItems = wFilesRes.items.where((f) => !f.path.contains('.emptyPlaceholder')).toList();
+        }
       });
     } catch (e) {
       debugPrint("Load files error: $e");
@@ -484,7 +502,9 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
   }
 
   Widget _buildFileList(List<StorageItem> files, String category) {
-    if (files.isEmpty) {
+    final isWorkFoldersView = category == 'work' && _currentWorkFolder == null;
+
+    if (isWorkFoldersView && _workFolders.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -496,7 +516,30 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
             ),
             const SizedBox(height: 24),
             Text(
-              category == 'work' && _currentWorkFolder == null ? "No work folders created yet." : "No files uploaded here yet.", 
+              "No work folders created yet.", 
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w500)
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Click the button above to add one.", 
+              style: TextStyle(color: Colors.grey.shade400, fontSize: 13)
+            ),
+          ],
+        ).animate().fadeIn().slideY(begin: 0.1),
+      );
+    } else if (!isWorkFoldersView && files.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(color: Colors.grey.shade50, shape: BoxShape.circle),
+              child: Icon(Icons.snippet_folder_outlined, size: 64, color: Colors.grey.shade300),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "No files uploaded here yet.", 
               style: TextStyle(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w500)
             ),
             const SizedBox(height: 8),
@@ -509,15 +552,14 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
       );
     }
 
+    int itemCount = isWorkFoldersView ? _workFolders.length : files.length;
+
     return ListView.builder(
       padding: const EdgeInsets.all(32),
-      itemCount: files.length,
+      itemCount: itemCount,
       itemBuilder: (context, index) {
-        final f = files[index];
-        final itemName = f.path.split('/').last;
-        final isFolder = category == 'work' && _currentWorkFolder == null;
-
-        if (isFolder) {
+        if (isWorkFoldersView) {
+          final folderName = _workFolders[index];
           return Card(
             elevation: 0,
             color: Colors.amber.shade50,
@@ -525,7 +567,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
             margin: const EdgeInsets.only(bottom: 12),
             child: InkWell(
               onTap: () {
-                setState(() => _currentWorkFolder = itemName);
+                setState(() => _currentWorkFolder = folderName);
                 _loadFiles();
               },
               borderRadius: BorderRadius.circular(12),
@@ -537,8 +579,20 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                     decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(10)),
                     child: Icon(Icons.folder, color: Colors.amber.shade800),
                   ),
-                  title: Text(itemName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  trailing: Icon(Icons.chevron_right, color: Colors.amber.shade700),
+                  title: Text(folderName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        onPressed: () => _deleteFile('work', folderName, isFolder: true),
+                        tooltip: "Delete Folder",
+                        style: IconButton.styleFrom(backgroundColor: Colors.red.shade50),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.chevron_right, color: Colors.amber.shade700),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -546,6 +600,8 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
         }
 
         // File Item
+        final f = files[index];
+        final itemName = f.path.split('/').last;
         IconData icon = Icons.insert_drive_file;
         Color iconColor = Colors.blueGrey;
         if (itemName.toLowerCase().endsWith('.pdf')) {

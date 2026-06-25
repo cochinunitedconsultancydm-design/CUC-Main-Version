@@ -323,7 +323,15 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
           final folderPath = 'public/${widget.client.id}/work/$fileName/';
           final filesRes = await Amplify.Storage.list(path: StoragePath.fromString(folderPath)).result;
           for (var f in filesRes.items) {
-            await Amplify.Storage.remove(path: StoragePath.fromString(f.path)).result;
+            String pathToRemove = f.path;
+            if (!pathToRemove.startsWith('public/')) {
+              if (pathToRemove.contains('${widget.client.id}/work/')) {
+                pathToRemove = 'public/' + pathToRemove;
+              } else {
+                pathToRemove = folderPath + pathToRemove.replaceFirst(RegExp(r'^/'), '');
+              }
+            }
+            await Amplify.Storage.remove(path: StoragePath.fromString(pathToRemove)).result;
           }
         } else {
           String pathToDelete = category == 'work' && _currentWorkFolder != null 

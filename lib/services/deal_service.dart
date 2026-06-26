@@ -125,7 +125,7 @@ class DealService {
     final userName = prefs.getString('user_name');
 
     final Map<String, dynamic> values = deal.toMap();
-    values['id'] = values['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
+    values['id'] = values['id']?.toString() ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
     if (values['responsible_id'] == null) values['responsible_id'] = userId;
     if (values['responsible_name'] == null) values['responsible_name'] = userName;
 
@@ -404,7 +404,7 @@ class DealService {
   Future<void> addActivity(oldActivity.DealActivity activity) async {
     try {
       final values = activity.toMap();
-      values['id'] = values['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
+      values['id'] = values['id']?.toString() ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
       values.remove('is_completed');
       values['deal_id'] = values['deal_id']?.toString();
       

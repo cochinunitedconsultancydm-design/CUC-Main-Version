@@ -26,6 +26,13 @@ String? _amplifyStartupError;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Catch global errors to prevent the framework from crashing (especially useful for 
+  // web plugins throwing async errors like google_sign_in_web COOP errors)
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Global Uncaught Error: $error');
+    return true; 
+  };
+  
   if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || 
                   defaultTargetPlatform == TargetPlatform.linux || 
                   defaultTargetPlatform == TargetPlatform.macOS)) {

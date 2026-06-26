@@ -1227,7 +1227,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 runSpacing: 12,
                 children: [
                   _buildBannerAction('Assign Task', Icons.add_task_rounded, () => setState(() => _selectedIndex = 8)),
-                  _buildBannerAction('Create Work', Icons.assignment_add, () => setState(() => _selectedIndex = 4)),
+                  _buildBannerAction('Create Work', Icons.assignment_add, () => setState(() => _selectedIndex = 6)),
                   _buildBannerAction('Manage Staff', Icons.person_add_alt_1_rounded, () => setState(() => _selectedIndex = 2)),
                   _buildBannerAction('Broadcast', Icons.campaign_rounded, () => setState(() => _selectedIndex = 6)),
                 ],

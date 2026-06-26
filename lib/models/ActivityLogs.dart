@@ -21,8 +21,6 @@
 
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
-import '../utils/safe_json_parse.dart';
-
 
 /** This is an auto generated class representing the ActivityLogs type in your schema. */
 class ActivityLogs extends amplify_core.Model {
@@ -39,52 +37,77 @@ class ActivityLogs extends amplify_core.Model {
 
   @override
   getInstanceType() => classType;
-  
-  @Deprecated('[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.')
+
+  @Deprecated(
+    '[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.',
+  )
   @override
   String getId() => id;
-  
+
   ActivityLogsModelIdentifier get modelIdentifier {
-      return ActivityLogsModelIdentifier(
-        id: id
-      );
+    return ActivityLogsModelIdentifier(id: id);
   }
-  
+
   int? get user_id {
     return _user_id;
   }
-  
+
   String? get action {
     return _action;
   }
-  
+
   String? get target_type {
     return _target_type;
   }
-  
+
   String? get target_id {
     return _target_id;
   }
-  
+
   String? get details {
     return _details;
   }
-  
+
   String? get created_at {
     return _created_at;
   }
-  
+
   amplify_core.TemporalDateTime? get createdAt {
     return _createdAt;
   }
-  
+
   amplify_core.TemporalDateTime? get updatedAt {
     return _updatedAt;
   }
-  
-  const ActivityLogs._internal({required this.id, user_id, action, target_type, target_id, details, created_at, createdAt, updatedAt}): _user_id = user_id, _action = action, _target_type = target_type, _target_id = target_id, _details = details, _created_at = created_at, _createdAt = createdAt, _updatedAt = updatedAt;
-  
-  factory ActivityLogs({String? id, int? user_id, String? action, String? target_type, String? target_id, String? details, String? created_at}) {
+
+  const ActivityLogs._internal({
+    required this.id,
+    user_id,
+    action,
+    target_type,
+    target_id,
+    details,
+    created_at,
+    createdAt,
+    updatedAt,
+  }) : _user_id = user_id,
+       _action = action,
+       _target_type = target_type,
+       _target_id = target_id,
+       _details = details,
+       _created_at = created_at,
+       _createdAt = createdAt,
+       _updatedAt = updatedAt;
+
+  factory ActivityLogs({
+    String? id,
+    int? user_id,
+    String? action,
+    String? target_type,
+    String? target_id,
+    String? details,
+    String? created_at,
+  }) {
     return ActivityLogs._internal(
       id: id == null ? amplify_core.UUID.getUUID() : id,
       user_id: user_id,
@@ -92,49 +115,65 @@ class ActivityLogs extends amplify_core.Model {
       target_type: target_type,
       target_id: target_id,
       details: details,
-      created_at: created_at);
+      created_at: created_at,
+    );
   }
-  
+
   bool equals(Object other) {
     return this == other;
   }
-  
+
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
     return other is ActivityLogs &&
-      id == other.id &&
-      _user_id == other._user_id &&
-      _action == other._action &&
-      _target_type == other._target_type &&
-      _target_id == other._target_id &&
-      _details == other._details &&
-      _created_at == other._created_at;
+        id == other.id &&
+        _user_id == other._user_id &&
+        _action == other._action &&
+        _target_type == other._target_type &&
+        _target_id == other._target_id &&
+        _details == other._details &&
+        _created_at == other._created_at;
   }
-  
+
   @override
   int get hashCode => toString().hashCode;
-  
+
   @override
   String toString() {
     var buffer = new StringBuffer();
-    
+
     buffer.write("ActivityLogs {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("user_id=" + (_user_id != null ? _user_id!.toString() : "null") + ", ");
+    buffer.write(
+      "user_id=" + (_user_id != null ? _user_id!.toString() : "null") + ", ",
+    );
     buffer.write("action=" + "$_action" + ", ");
     buffer.write("target_type=" + "$_target_type" + ", ");
     buffer.write("target_id=" + "$_target_id" + ", ");
     buffer.write("details=" + "$_details" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write(
+      "createdAt=" +
+          (_createdAt != null ? _createdAt!.format() : "null") +
+          ", ",
+    );
+    buffer.write(
+      "updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"),
+    );
     buffer.write("}");
-    
+
     return buffer.toString();
   }
-  
-  ActivityLogs copyWith({int? user_id, String? action, String? target_type, String? target_id, String? details, String? created_at}) {
+
+  ActivityLogs copyWith({
+    int? user_id,
+    String? action,
+    String? target_type,
+    String? target_id,
+    String? details,
+    String? created_at,
+  }) {
     return ActivityLogs._internal(
       id: id,
       user_id: user_id ?? this.user_id,
@@ -142,16 +181,17 @@ class ActivityLogs extends amplify_core.Model {
       target_type: target_type ?? this.target_type,
       target_id: target_id ?? this.target_id,
       details: details ?? this.details,
-      created_at: created_at ?? this.created_at);
+      created_at: created_at ?? this.created_at,
+    );
   }
-  
+
   ActivityLogs copyWithModelFieldValues({
     ModelFieldValue<int?>? user_id,
     ModelFieldValue<String?>? action,
     ModelFieldValue<String?>? target_type,
     ModelFieldValue<String?>? target_id,
     ModelFieldValue<String?>? details,
-    ModelFieldValue<String?>? created_at
+    ModelFieldValue<String?>? created_at,
   }) {
     return ActivityLogs._internal(
       id: id,
@@ -160,25 +200,37 @@ class ActivityLogs extends amplify_core.Model {
       target_type: target_type == null ? this.target_type : target_type.value,
       target_id: target_id == null ? this.target_id : target_id.value,
       details: details == null ? this.details : details.value,
-      created_at: created_at == null ? this.created_at : created_at.value
+      created_at: created_at == null ? this.created_at : created_at.value,
     );
   }
-  
-  ActivityLogs.fromJson(Map<String, dynamic> json)  
+
+  ActivityLogs.fromJson(Map<String, dynamic> json)
     : id = json['id'],
-      _user_id = safeParseInt(json['user_id']),
+      _user_id = (json['user_id'] as num?)?.toInt(),
       _action = json['action'],
       _target_type = json['target_type'],
       _target_id = json['target_id'],
       _details = json['details'],
       _created_at = json['created_at'],
-      _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
-      _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
-  
+      _createdAt = json['createdAt'] != null
+          ? amplify_core.TemporalDateTime.fromString(json['createdAt'])
+          : null,
+      _updatedAt = json['updatedAt'] != null
+          ? amplify_core.TemporalDateTime.fromString(json['updatedAt'])
+          : null;
+
   Map<String, dynamic> toJson() => {
-    'id': id, 'user_id': _user_id, 'action': _action, 'target_type': _target_type, 'target_id': _target_id, 'details': _details, 'created_at': _created_at, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
+    'id': id,
+    'user_id': _user_id,
+    'action': _action,
+    'target_type': _target_type,
+    'target_id': _target_id,
+    'details': _details,
+    'created_at': _created_at,
+    'createdAt': _createdAt?.format(),
+    'updatedAt': _updatedAt?.format(),
   };
-  
+
   Map<String, Object?> toMap() => {
     'id': id,
     'user_id': _user_id,
@@ -188,10 +240,12 @@ class ActivityLogs extends amplify_core.Model {
     'details': _details,
     'created_at': _created_at,
     'createdAt': _createdAt,
-    'updatedAt': _updatedAt
+    'updatedAt': _updatedAt,
   };
 
-  static final amplify_core.QueryModelIdentifier<ActivityLogsModelIdentifier> MODEL_IDENTIFIER = amplify_core.QueryModelIdentifier<ActivityLogsModelIdentifier>();
+  static final amplify_core.QueryModelIdentifier<ActivityLogsModelIdentifier>
+  MODEL_IDENTIFIER =
+      amplify_core.QueryModelIdentifier<ActivityLogsModelIdentifier>();
   static final ID = amplify_core.QueryField(fieldName: "id");
   static final USER_ID = amplify_core.QueryField(fieldName: "user_id");
   static final ACTION = amplify_core.QueryField(fieldName: "action");
@@ -199,96 +253,132 @@ class ActivityLogs extends amplify_core.Model {
   static final TARGET_ID = amplify_core.QueryField(fieldName: "target_id");
   static final DETAILS = amplify_core.QueryField(fieldName: "details");
   static final CREATED_AT = amplify_core.QueryField(fieldName: "created_at");
-  static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
-    modelSchemaDefinition.name = "ActivityLogs";
-    modelSchemaDefinition.pluralName = "ActivityLogs";
-    
-    modelSchemaDefinition.authRules = [
-      amplify_core.AuthRule(
-        authStrategy: amplify_core.AuthStrategy.PUBLIC,
-        provider: amplify_core.AuthRuleProvider.IAM,
-        operations: const [
-          amplify_core.ModelOperation.CREATE,
-          amplify_core.ModelOperation.UPDATE,
-          amplify_core.ModelOperation.DELETE,
-          amplify_core.ModelOperation.READ
-        ]),
-      amplify_core.AuthRule(
-        authStrategy: amplify_core.AuthStrategy.PRIVATE,
-        operations: const [
-          amplify_core.ModelOperation.CREATE,
-          amplify_core.ModelOperation.UPDATE,
-          amplify_core.ModelOperation.DELETE,
-          amplify_core.ModelOperation.READ
-        ])
-    ];
-    
-    modelSchemaDefinition.indexes = [
-      amplify_core.ModelIndex(fields: const ["id"], name: null)
-    ];
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: ActivityLogs.USER_ID,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.int)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: ActivityLogs.ACTION,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: ActivityLogs.TARGET_TYPE,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: ActivityLogs.TARGET_ID,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: ActivityLogs.DETAILS,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: ActivityLogs.CREATED_AT,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
-      fieldName: 'createdAt',
-      isRequired: false,
-      isReadOnly: true,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
-      fieldName: 'updatedAt',
-      isRequired: false,
-      isReadOnly: true,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
-    ));
-  });
+  static var schema = amplify_core.Model.defineSchema(
+    define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
+      modelSchemaDefinition.name = "ActivityLogs";
+      modelSchemaDefinition.pluralName = "ActivityLogs";
+
+      modelSchemaDefinition.authRules = [
+        amplify_core.AuthRule(
+          authStrategy: amplify_core.AuthStrategy.PUBLIC,
+          provider: amplify_core.AuthRuleProvider.IAM,
+          operations: const [
+            amplify_core.ModelOperation.CREATE,
+            amplify_core.ModelOperation.UPDATE,
+            amplify_core.ModelOperation.DELETE,
+            amplify_core.ModelOperation.READ,
+          ],
+        ),
+        amplify_core.AuthRule(
+          authStrategy: amplify_core.AuthStrategy.PRIVATE,
+          operations: const [
+            amplify_core.ModelOperation.CREATE,
+            amplify_core.ModelOperation.UPDATE,
+            amplify_core.ModelOperation.DELETE,
+            amplify_core.ModelOperation.READ,
+          ],
+        ),
+      ];
+
+      modelSchemaDefinition.indexes = [
+        amplify_core.ModelIndex(fields: const ["id"], name: null),
+      ];
+
+      modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: ActivityLogs.USER_ID,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.int,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: ActivityLogs.ACTION,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: ActivityLogs.TARGET_TYPE,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: ActivityLogs.TARGET_ID,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: ActivityLogs.DETAILS,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: ActivityLogs.CREATED_AT,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.nonQueryField(
+          fieldName: 'createdAt',
+          isRequired: false,
+          isReadOnly: true,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.dateTime,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.nonQueryField(
+          fieldName: 'updatedAt',
+          isRequired: false,
+          isReadOnly: true,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.dateTime,
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _ActivityLogsModelType extends amplify_core.ModelType<ActivityLogs> {
   const _ActivityLogsModelType();
-  
+
   @override
   ActivityLogs fromJson(Map<String, dynamic> jsonData) {
     return ActivityLogs.fromJson(jsonData);
   }
-  
+
   @override
   String modelName() {
     return 'ActivityLogs';
@@ -299,41 +389,36 @@ class _ActivityLogsModelType extends amplify_core.ModelType<ActivityLogs> {
  * This is an auto generated class representing the model identifier
  * of [ActivityLogs] in your schema.
  */
-class ActivityLogsModelIdentifier implements amplify_core.ModelIdentifier<ActivityLogs> {
+class ActivityLogsModelIdentifier
+    implements amplify_core.ModelIdentifier<ActivityLogs> {
   final String id;
 
   /** Create an instance of ActivityLogsModelIdentifier using [id] the primary key. */
-  const ActivityLogsModelIdentifier({
-    required this.id});
-  
+  const ActivityLogsModelIdentifier({required this.id});
+
   @override
-  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{
-    'id': id
-  });
-  
+  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{'id': id});
+
   @override
-  List<Map<String, dynamic>> serializeAsList() => serializeAsMap()
-    .entries
-    .map((entry) => (<String, dynamic>{ entry.key: entry.value }))
-    .toList();
-  
+  List<Map<String, dynamic>> serializeAsList() => serializeAsMap().entries
+      .map((entry) => (<String, dynamic>{entry.key: entry.value}))
+      .toList();
+
   @override
   String serializeAsString() => serializeAsMap().values.join('#');
-  
+
   @override
   String toString() => 'ActivityLogsModelIdentifier(id: $id)';
-  
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) {
       return true;
     }
-    
-    return other is ActivityLogsModelIdentifier &&
-      id == other.id;
+
+    return other is ActivityLogsModelIdentifier && id == other.id;
   }
-  
+
   @override
-  int get hashCode =>
-    id.hashCode;
+  int get hashCode => id.hashCode;
 }

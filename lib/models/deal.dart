@@ -97,7 +97,7 @@ class Deal {
     'Verification',
     'Invoice',
     'Billing Status',
-    'Close Deal'
+    'Close Deal',
   ];
 
   static const List<String> priorities = ['Low', 'Normal', 'High', 'Urgent'];
@@ -105,8 +105,11 @@ class Deal {
   Map<String, dynamic> toMap() {
     final String adjBlock;
     if (isAdjourned) {
-      final dateStr = postponedDate != null ? "\nPostponedDate: ${postponedDate!.toIso8601String()}" : "";
-      adjBlock = "\n\n[ADJOURNED]\nIsAdjourned: true\nReason: ${adjournedReason ?? ''}$dateStr";
+      final dateStr = postponedDate != null
+          ? "\nPostponedDate: ${postponedDate!.toIso8601String()}"
+          : "";
+      adjBlock =
+          "\n\n[ADJOURNED]\nIsAdjourned: true\nReason: ${adjournedReason ?? ''}$dateStr";
     } else {
       adjBlock = "";
     }
@@ -176,8 +179,10 @@ class Deal {
       isAdj = match.group(1)?.trim().toLowerCase() == 'true';
       adjReason = match.group(2)?.trim();
       final dateStr = match.groupCount >= 3 ? match.group(3)?.trim() : null;
-      postDate = (dateStr != null && dateStr.isNotEmpty) ? DateTime.tryParse(dateStr) : null;
-      
+      postDate = (dateStr != null && dateStr.isNotEmpty)
+          ? DateTime.tryParse(dateStr)
+          : null;
+
       final index = rawDesc.indexOf('[ADJOURNED]');
       cleanDesc = rawDesc.substring(0, index).trim();
     }
@@ -198,8 +203,12 @@ class Deal {
       pipeline: map['pipeline'] ?? 'General',
       priority: map['priority'] ?? 'Normal',
       description: cleanDesc,
-      createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at'].toString()) : null,
-      updatedAt: map['updated_at'] != null ? DateTime.tryParse(map['updated_at'].toString()) : null,
+      createdAt: map['created_at'] != null
+          ? DateTime.tryParse(map['created_at'].toString())
+          : null,
+      updatedAt: map['updated_at'] != null
+          ? DateTime.tryParse(map['updated_at'].toString())
+          : null,
       isWon: map['is_won'] == true || map['is_won'] == 'true',
       regFeeRequired: map['reg_fee_required'],
       referredBy: map['referred_by'],
@@ -209,7 +218,9 @@ class Deal {
       estAmountWork: double.tryParse(map['est_amount_work']?.toString() ?? ''),
       createInvoiceShare: map['create_invoice_share'],
       expenseSpent: double.tryParse(map['expense_spent']?.toString() ?? ''),
-      expensesList: map['expenses_list'] is List ? map['expenses_list'] as List<dynamic> : null,
+      expensesList: map['expenses_list'] is List
+          ? map['expenses_list'] as List<dynamic>
+          : null,
       uploadInvoicePath: map['upload_invoice_path'],
       sendToCustomer: map['send_to_customer'],
       registerNo: map['register_no'],
@@ -218,11 +229,15 @@ class Deal {
       driveLink: map['drive_link'],
       billingId: safeParseInt(map['billing_id']),
       quotationId: safeParseInt(map['quotation_id']),
-      paymentReceived: double.tryParse(map['payment_received']?.toString() ?? ''),
+      paymentReceived: double.tryParse(
+        map['payment_received']?.toString() ?? '',
+      ),
       isAdjourned: isAdj,
       adjournedReason: adjReason,
       postponedDate: postDate,
-      partPaymentAmount: double.tryParse(map['part_payment_amount']?.toString() ?? ''),
+      partPaymentAmount: double.tryParse(
+        map['part_payment_amount']?.toString() ?? '',
+      ),
       nocObtained: map['noc_obtained'] == true || map['noc_obtained'] == 'true',
     );
   }
@@ -235,9 +250,19 @@ class DealAssignee {
   final String? userName;
   final String role; // 'Lead', 'Collaborator'
 
-  DealAssignee({this.id, required this.dealId, required this.userId, this.userName, required this.role});
+  DealAssignee({
+    this.id,
+    required this.dealId,
+    required this.userId,
+    this.userName,
+    required this.role,
+  });
 
-  Map<String, dynamic> toMap() => {'deal_id': dealId, 'user_id': userId, 'role': role};
+  Map<String, dynamic> toMap() => {
+    'deal_id': dealId,
+    'user_id': userId,
+    'role': role,
+  };
   factory DealAssignee.fromMap(Map<String, dynamic> map) => DealAssignee(
     id: map['id'],
     dealId: safeParseInt(map['deal_id']),
@@ -255,7 +280,19 @@ class DealHandover {
   final String? note;
   final DateTime? createdAt;
 
-  DealHandover({this.id, required this.dealId, required this.fromUserId, required this.toUserId, this.note, this.createdAt});
+  DealHandover({
+    this.id,
+    required this.dealId,
+    required this.fromUserId,
+    required this.toUserId,
+    this.note,
+    this.createdAt,
+  });
 
-  Map<String, dynamic> toMap() => {'deal_id': dealId, 'from_user_id': fromUserId, 'to_user_id': toUserId, 'note': note};
+  Map<String, dynamic> toMap() => {
+    'deal_id': dealId,
+    'from_user_id': fromUserId,
+    'to_user_id': toUserId,
+    'note': note,
+  };
 }

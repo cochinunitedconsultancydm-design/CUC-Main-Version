@@ -69,9 +69,12 @@ class Billing {
   }
 
   // Helper for line items
-  List<Map<String, dynamic>> get items => 
-    (data?['items'] as List?)?.map((e) => Map<String, dynamic>.from(e)).toList() ?? [];
-  
+  List<Map<String, dynamic>> get items =>
+      (data?['items'] as List?)
+          ?.map((e) => Map<String, dynamic>.from(e))
+          .toList() ??
+      [];
+
   String get outstandingAmount => data?['outstanding_amount']?.toString() ?? '';
   String get amountInWords => data?['amount_in_words']?.toString() ?? '';
   String get grandTotal => data?['grand_total']?.toString() ?? '';

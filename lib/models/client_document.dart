@@ -28,8 +28,8 @@ class ClientDocument {
       storagePath: map['storage_path'] ?? '',
       ogCopy: map['og_copy'] ?? 'Copy',
       remarks: map['remarks'] ?? 'File OK',
-      createdAt: map['created_at'] != null 
-          ? DateTime.parse(map['created_at']).toLocal() 
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at']).toLocal()
           : DateTime.now(),
     );
   }

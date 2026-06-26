@@ -18,7 +18,9 @@ class LicenseService {
       id: map['id'],
       clientLicenseId: map['client_license_id'],
       cost: double.tryParse(map['service_cost']?.toString() ?? '0') ?? 0.0,
-      date: map['service_date'] != null ? DateTime.tryParse(map['service_date'].toString()) : null,
+      date: map['service_date'] != null
+          ? DateTime.tryParse(map['service_date'].toString())
+          : null,
       description: map['service_description'] ?? '',
     );
   }

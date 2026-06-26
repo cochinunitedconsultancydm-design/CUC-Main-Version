@@ -22,7 +22,6 @@
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
 
-
 /** This is an auto generated class representing the Users type in your schema. */
 class Users extends amplify_core.Model {
   static const classType = const _UsersModelType();
@@ -39,56 +38,84 @@ class Users extends amplify_core.Model {
 
   @override
   getInstanceType() => classType;
-  
-  @Deprecated('[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.')
+
+  @Deprecated(
+    '[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.',
+  )
   @override
   String getId() => id;
-  
+
   UsersModelIdentifier get modelIdentifier {
-      return UsersModelIdentifier(
-        id: id
-      );
+    return UsersModelIdentifier(id: id);
   }
-  
+
   String? get username {
     return _username;
   }
-  
+
   String? get password {
     return _password;
   }
-  
+
   String? get role {
     return _role;
   }
-  
+
   String? get name {
     return _name;
   }
-  
+
   String? get created_at {
     return _created_at;
   }
-  
+
   String? get last_seen {
     return _last_seen;
   }
-  
+
   String? get email {
     return _email;
   }
-  
+
   amplify_core.TemporalDateTime? get createdAt {
     return _createdAt;
   }
-  
+
   amplify_core.TemporalDateTime? get updatedAt {
     return _updatedAt;
   }
-  
-  const Users._internal({required this.id, username, password, role, name, created_at, last_seen, email, createdAt, updatedAt}): _username = username, _password = password, _role = role, _name = name, _created_at = created_at, _last_seen = last_seen, _email = email, _createdAt = createdAt, _updatedAt = updatedAt;
-  
-  factory Users({String? id, String? username, String? password, String? role, String? name, String? created_at, String? last_seen, String? email}) {
+
+  const Users._internal({
+    required this.id,
+    username,
+    password,
+    role,
+    name,
+    created_at,
+    last_seen,
+    email,
+    createdAt,
+    updatedAt,
+  }) : _username = username,
+       _password = password,
+       _role = role,
+       _name = name,
+       _created_at = created_at,
+       _last_seen = last_seen,
+       _email = email,
+       _createdAt = createdAt,
+       _updatedAt = updatedAt;
+
+  factory Users({
+    String? id,
+    String? username,
+    String? password,
+    String? role,
+    String? name,
+    String? created_at,
+    String? last_seen,
+    String? email,
+  }) {
     return Users._internal(
       id: id == null ? amplify_core.UUID.getUUID() : id,
       username: username,
@@ -97,34 +124,35 @@ class Users extends amplify_core.Model {
       name: name,
       created_at: created_at,
       last_seen: last_seen,
-      email: email);
+      email: email,
+    );
   }
-  
+
   bool equals(Object other) {
     return this == other;
   }
-  
+
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
     return other is Users &&
-      id == other.id &&
-      _username == other._username &&
-      _password == other._password &&
-      _role == other._role &&
-      _name == other._name &&
-      _created_at == other._created_at &&
-      _last_seen == other._last_seen &&
-      _email == other._email;
+        id == other.id &&
+        _username == other._username &&
+        _password == other._password &&
+        _role == other._role &&
+        _name == other._name &&
+        _created_at == other._created_at &&
+        _last_seen == other._last_seen &&
+        _email == other._email;
   }
-  
+
   @override
   int get hashCode => toString().hashCode;
-  
+
   @override
   String toString() {
     var buffer = new StringBuffer();
-    
+
     buffer.write("Users {");
     buffer.write("id=" + "$id" + ", ");
     buffer.write("username=" + "$_username" + ", ");
@@ -134,14 +162,28 @@ class Users extends amplify_core.Model {
     buffer.write("created_at=" + "$_created_at" + ", ");
     buffer.write("last_seen=" + "$_last_seen" + ", ");
     buffer.write("email=" + "$_email" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write(
+      "createdAt=" +
+          (_createdAt != null ? _createdAt!.format() : "null") +
+          ", ",
+    );
+    buffer.write(
+      "updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"),
+    );
     buffer.write("}");
-    
+
     return buffer.toString();
   }
-  
-  Users copyWith({String? username, String? password, String? role, String? name, String? created_at, String? last_seen, String? email}) {
+
+  Users copyWith({
+    String? username,
+    String? password,
+    String? role,
+    String? name,
+    String? created_at,
+    String? last_seen,
+    String? email,
+  }) {
     return Users._internal(
       id: id,
       username: username ?? this.username,
@@ -150,9 +192,10 @@ class Users extends amplify_core.Model {
       name: name ?? this.name,
       created_at: created_at ?? this.created_at,
       last_seen: last_seen ?? this.last_seen,
-      email: email ?? this.email);
+      email: email ?? this.email,
+    );
   }
-  
+
   Users copyWithModelFieldValues({
     ModelFieldValue<String?>? username,
     ModelFieldValue<String?>? password,
@@ -160,7 +203,7 @@ class Users extends amplify_core.Model {
     ModelFieldValue<String?>? name,
     ModelFieldValue<String?>? created_at,
     ModelFieldValue<String?>? last_seen,
-    ModelFieldValue<String?>? email
+    ModelFieldValue<String?>? email,
   }) {
     return Users._internal(
       id: id,
@@ -170,11 +213,11 @@ class Users extends amplify_core.Model {
       name: name == null ? this.name : name.value,
       created_at: created_at == null ? this.created_at : created_at.value,
       last_seen: last_seen == null ? this.last_seen : last_seen.value,
-      email: email == null ? this.email : email.value
+      email: email == null ? this.email : email.value,
     );
   }
-  
-  Users.fromJson(Map<String, dynamic> json)  
+
+  Users.fromJson(Map<String, dynamic> json)
     : id = json['id'],
       _username = json['username'],
       _password = json['password'],
@@ -183,13 +226,26 @@ class Users extends amplify_core.Model {
       _created_at = json['created_at'],
       _last_seen = json['last_seen'],
       _email = json['email'],
-      _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
-      _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
-  
+      _createdAt = json['createdAt'] != null
+          ? amplify_core.TemporalDateTime.fromString(json['createdAt'])
+          : null,
+      _updatedAt = json['updatedAt'] != null
+          ? amplify_core.TemporalDateTime.fromString(json['updatedAt'])
+          : null;
+
   Map<String, dynamic> toJson() => {
-    'id': id, 'username': _username, 'password': _password, 'role': _role, 'name': _name, 'created_at': _created_at, 'last_seen': _last_seen, 'email': _email, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
+    'id': id,
+    'username': _username,
+    'password': _password,
+    'role': _role,
+    'name': _name,
+    'created_at': _created_at,
+    'last_seen': _last_seen,
+    'email': _email,
+    'createdAt': _createdAt?.format(),
+    'updatedAt': _updatedAt?.format(),
   };
-  
+
   Map<String, Object?> toMap() => {
     'id': id,
     'username': _username,
@@ -200,10 +256,11 @@ class Users extends amplify_core.Model {
     'last_seen': _last_seen,
     'email': _email,
     'createdAt': _createdAt,
-    'updatedAt': _updatedAt
+    'updatedAt': _updatedAt,
   };
 
-  static final amplify_core.QueryModelIdentifier<UsersModelIdentifier> MODEL_IDENTIFIER = amplify_core.QueryModelIdentifier<UsersModelIdentifier>();
+  static final amplify_core.QueryModelIdentifier<UsersModelIdentifier>
+  MODEL_IDENTIFIER = amplify_core.QueryModelIdentifier<UsersModelIdentifier>();
   static final ID = amplify_core.QueryField(fieldName: "id");
   static final USERNAME = amplify_core.QueryField(fieldName: "username");
   static final PASSWORD = amplify_core.QueryField(fieldName: "password");
@@ -212,102 +269,142 @@ class Users extends amplify_core.Model {
   static final CREATED_AT = amplify_core.QueryField(fieldName: "created_at");
   static final LAST_SEEN = amplify_core.QueryField(fieldName: "last_seen");
   static final EMAIL = amplify_core.QueryField(fieldName: "email");
-  static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
-    modelSchemaDefinition.name = "Users";
-    modelSchemaDefinition.pluralName = "Users";
-    
-    modelSchemaDefinition.authRules = [
-      amplify_core.AuthRule(
-        authStrategy: amplify_core.AuthStrategy.PUBLIC,
-        provider: amplify_core.AuthRuleProvider.IAM,
-        operations: const [
-          amplify_core.ModelOperation.CREATE,
-          amplify_core.ModelOperation.UPDATE,
-          amplify_core.ModelOperation.DELETE,
-          amplify_core.ModelOperation.READ
-        ]),
-      amplify_core.AuthRule(
-        authStrategy: amplify_core.AuthStrategy.PRIVATE,
-        operations: const [
-          amplify_core.ModelOperation.CREATE,
-          amplify_core.ModelOperation.UPDATE,
-          amplify_core.ModelOperation.DELETE,
-          amplify_core.ModelOperation.READ
-        ])
-    ];
-    
-    modelSchemaDefinition.indexes = [
-      amplify_core.ModelIndex(fields: const ["id"], name: null)
-    ];
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.USERNAME,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.PASSWORD,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.ROLE,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.NAME,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.CREATED_AT,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.LAST_SEEN,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.EMAIL,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
-      fieldName: 'createdAt',
-      isRequired: false,
-      isReadOnly: true,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
-      fieldName: 'updatedAt',
-      isRequired: false,
-      isReadOnly: true,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
-    ));
-  });
+  static var schema = amplify_core.Model.defineSchema(
+    define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
+      modelSchemaDefinition.name = "Users";
+      modelSchemaDefinition.pluralName = "Users";
+
+      modelSchemaDefinition.authRules = [
+        amplify_core.AuthRule(
+          authStrategy: amplify_core.AuthStrategy.PUBLIC,
+          provider: amplify_core.AuthRuleProvider.IAM,
+          operations: const [
+            amplify_core.ModelOperation.CREATE,
+            amplify_core.ModelOperation.UPDATE,
+            amplify_core.ModelOperation.DELETE,
+            amplify_core.ModelOperation.READ,
+          ],
+        ),
+        amplify_core.AuthRule(
+          authStrategy: amplify_core.AuthStrategy.PRIVATE,
+          operations: const [
+            amplify_core.ModelOperation.CREATE,
+            amplify_core.ModelOperation.UPDATE,
+            amplify_core.ModelOperation.DELETE,
+            amplify_core.ModelOperation.READ,
+          ],
+        ),
+      ];
+
+      modelSchemaDefinition.indexes = [
+        amplify_core.ModelIndex(fields: const ["id"], name: null),
+      ];
+
+      modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Users.USERNAME,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Users.PASSWORD,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Users.ROLE,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Users.NAME,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Users.CREATED_AT,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Users.LAST_SEEN,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Users.EMAIL,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.nonQueryField(
+          fieldName: 'createdAt',
+          isRequired: false,
+          isReadOnly: true,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.dateTime,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.nonQueryField(
+          fieldName: 'updatedAt',
+          isRequired: false,
+          isReadOnly: true,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.dateTime,
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _UsersModelType extends amplify_core.ModelType<Users> {
   const _UsersModelType();
-  
+
   @override
   Users fromJson(Map<String, dynamic> jsonData) {
     return Users.fromJson(jsonData);
   }
-  
+
   @override
   String modelName() {
     return 'Users';
@@ -322,37 +419,31 @@ class UsersModelIdentifier implements amplify_core.ModelIdentifier<Users> {
   final String id;
 
   /** Create an instance of UsersModelIdentifier using [id] the primary key. */
-  const UsersModelIdentifier({
-    required this.id});
-  
+  const UsersModelIdentifier({required this.id});
+
   @override
-  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{
-    'id': id
-  });
-  
+  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{'id': id});
+
   @override
-  List<Map<String, dynamic>> serializeAsList() => serializeAsMap()
-    .entries
-    .map((entry) => (<String, dynamic>{ entry.key: entry.value }))
-    .toList();
-  
+  List<Map<String, dynamic>> serializeAsList() => serializeAsMap().entries
+      .map((entry) => (<String, dynamic>{entry.key: entry.value}))
+      .toList();
+
   @override
   String serializeAsString() => serializeAsMap().values.join('#');
-  
+
   @override
   String toString() => 'UsersModelIdentifier(id: $id)';
-  
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) {
       return true;
     }
-    
-    return other is UsersModelIdentifier &&
-      id == other.id;
+
+    return other is UsersModelIdentifier && id == other.id;
   }
-  
+
   @override
-  int get hashCode =>
-    id.hashCode;
+  int get hashCode => id.hashCode;
 }

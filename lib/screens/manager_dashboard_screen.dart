@@ -40,6 +40,7 @@ import '../widgets/premium_stat_card.dart';
 import 'dart:async';
 import 'document_list_screen.dart';
 import 'verification_history_view.dart';
+import 'property_management_screen.dart';
 
 class ManagerDashboardScreen extends StatefulWidget {
   const ManagerDashboardScreen({super.key});
@@ -505,6 +506,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 _sidebarItem(18, Icons.mark_email_unread_rounded, 'Post Register', isWide),
                 _sidebarItem(19, Icons.cloud_sync, 'Google Docs Vault', isWide),
                 _sidebarItem(20, Icons.history_rounded, 'Verification History', isWide),
+                _sidebarItem(21, Icons.real_estate_agent_rounded, 'Property Management', isWide),
                 _sidebarItem(7, Icons.settings_rounded, 'Settings', isWide),
               ],
             ),
@@ -641,6 +643,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       case 18: return const InwardPostScreen(currentUserRole: 'manager', currentUserName: 'Manager');
       case 19: return const DocumentListScreen(userEmail: 'manager@cochinunited.com');
       case 20: return const VerificationHistoryView();
+      case 21: return const PropertyManagementScreen();
       case 7: return _buildSettingsPage();
       default: return _buildPlaceholderView('Coming Soon');
     }

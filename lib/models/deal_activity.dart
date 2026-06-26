@@ -30,10 +30,14 @@ class DealActivity {
       type: map['type'] ?? 'comment',
       title: map['title'],
       description: map['description'],
-      dueDate: map['due_date'] != null ? DateTime.parse(map['due_date'].toString()) : null,
+      dueDate: map['due_date'] != null
+          ? DateTime.parse(map['due_date'].toString())
+          : null,
       isCompleted: map['is_completed'] ?? false,
       createdBy: map['created_by'],
-      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'].toString()) : null,
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'].toString())
+          : null,
       creatorName: map['creator_name'],
     );
   }

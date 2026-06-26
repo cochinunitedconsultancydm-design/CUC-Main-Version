@@ -27,8 +27,12 @@ class DscRecord {
       phoneNo: map['phone_no'],
       username: map['username'],
       password: map['password'],
-      dscTakenDate: map['dsc_taken_date'] != null ? DateTime.tryParse(map['dsc_taken_date'].toString()) : null,
-      dscExpiryDate: map['dsc_expiry_date'] != null ? DateTime.tryParse(map['dsc_expiry_date'].toString()) : null,
+      dscTakenDate: map['dsc_taken_date'] != null
+          ? DateTime.tryParse(map['dsc_taken_date'].toString())
+          : null,
+      dscExpiryDate: map['dsc_expiry_date'] != null
+          ? DateTime.tryParse(map['dsc_expiry_date'].toString())
+          : null,
     );
   }
 

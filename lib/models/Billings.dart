@@ -22,7 +22,6 @@
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
 
-
 /** This is an auto generated class representing the Billings type in your schema. */
 class Billings extends amplify_core.Model {
   static const classType = const _BillingsModelType();
@@ -42,68 +41,105 @@ class Billings extends amplify_core.Model {
 
   @override
   getInstanceType() => classType;
-  
-  @Deprecated('[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.')
+
+  @Deprecated(
+    '[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.',
+  )
   @override
   String getId() => id;
-  
+
   BillingsModelIdentifier get modelIdentifier {
-      return BillingsModelIdentifier(
-        id: id
-      );
+    return BillingsModelIdentifier(id: id);
   }
-  
+
   String? get invoice_no {
     return _invoice_no;
   }
-  
+
   String? get client_name {
     return _client_name;
   }
-  
+
   String? get date {
     return _date;
   }
-  
+
   String? get amount {
     return _amount;
   }
-  
+
   String? get type {
     return _type;
   }
-  
+
   String? get data {
     return _data;
   }
-  
+
   String? get created_at {
     return _created_at;
   }
-  
+
   String? get category {
     return _category;
   }
-  
+
   String? get authorities {
     return _authorities;
   }
-  
+
   String? get status {
     return _status;
   }
-  
+
   amplify_core.TemporalDateTime? get createdAt {
     return _createdAt;
   }
-  
+
   amplify_core.TemporalDateTime? get updatedAt {
     return _updatedAt;
   }
-  
-  const Billings._internal({required this.id, invoice_no, client_name, date, amount, type, data, created_at, category, authorities, status, createdAt, updatedAt}): _invoice_no = invoice_no, _client_name = client_name, _date = date, _amount = amount, _type = type, _data = data, _created_at = created_at, _category = category, _authorities = authorities, _status = status, _createdAt = createdAt, _updatedAt = updatedAt;
-  
-  factory Billings({String? id, String? invoice_no, String? client_name, String? date, String? amount, String? type, String? data, String? created_at, String? category, String? authorities, String? status}) {
+
+  const Billings._internal({
+    required this.id,
+    invoice_no,
+    client_name,
+    date,
+    amount,
+    type,
+    data,
+    created_at,
+    category,
+    authorities,
+    status,
+    createdAt,
+    updatedAt,
+  }) : _invoice_no = invoice_no,
+       _client_name = client_name,
+       _date = date,
+       _amount = amount,
+       _type = type,
+       _data = data,
+       _created_at = created_at,
+       _category = category,
+       _authorities = authorities,
+       _status = status,
+       _createdAt = createdAt,
+       _updatedAt = updatedAt;
+
+  factory Billings({
+    String? id,
+    String? invoice_no,
+    String? client_name,
+    String? date,
+    String? amount,
+    String? type,
+    String? data,
+    String? created_at,
+    String? category,
+    String? authorities,
+    String? status,
+  }) {
     return Billings._internal(
       id: id == null ? amplify_core.UUID.getUUID() : id,
       invoice_no: invoice_no,
@@ -115,37 +151,38 @@ class Billings extends amplify_core.Model {
       created_at: created_at,
       category: category,
       authorities: authorities,
-      status: status);
+      status: status,
+    );
   }
-  
+
   bool equals(Object other) {
     return this == other;
   }
-  
+
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
     return other is Billings &&
-      id == other.id &&
-      _invoice_no == other._invoice_no &&
-      _client_name == other._client_name &&
-      _date == other._date &&
-      _amount == other._amount &&
-      _type == other._type &&
-      _data == other._data &&
-      _created_at == other._created_at &&
-      _category == other._category &&
-      _authorities == other._authorities &&
-      _status == other._status;
+        id == other.id &&
+        _invoice_no == other._invoice_no &&
+        _client_name == other._client_name &&
+        _date == other._date &&
+        _amount == other._amount &&
+        _type == other._type &&
+        _data == other._data &&
+        _created_at == other._created_at &&
+        _category == other._category &&
+        _authorities == other._authorities &&
+        _status == other._status;
   }
-  
+
   @override
   int get hashCode => toString().hashCode;
-  
+
   @override
   String toString() {
     var buffer = new StringBuffer();
-    
+
     buffer.write("Billings {");
     buffer.write("id=" + "$id" + ", ");
     buffer.write("invoice_no=" + "$_invoice_no" + ", ");
@@ -158,14 +195,31 @@ class Billings extends amplify_core.Model {
     buffer.write("category=" + "$_category" + ", ");
     buffer.write("authorities=" + "$_authorities" + ", ");
     buffer.write("status=" + "$_status" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write(
+      "createdAt=" +
+          (_createdAt != null ? _createdAt!.format() : "null") +
+          ", ",
+    );
+    buffer.write(
+      "updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"),
+    );
     buffer.write("}");
-    
+
     return buffer.toString();
   }
-  
-  Billings copyWith({String? invoice_no, String? client_name, String? date, String? amount, String? type, String? data, String? created_at, String? category, String? authorities, String? status}) {
+
+  Billings copyWith({
+    String? invoice_no,
+    String? client_name,
+    String? date,
+    String? amount,
+    String? type,
+    String? data,
+    String? created_at,
+    String? category,
+    String? authorities,
+    String? status,
+  }) {
     return Billings._internal(
       id: id,
       invoice_no: invoice_no ?? this.invoice_no,
@@ -177,9 +231,10 @@ class Billings extends amplify_core.Model {
       created_at: created_at ?? this.created_at,
       category: category ?? this.category,
       authorities: authorities ?? this.authorities,
-      status: status ?? this.status);
+      status: status ?? this.status,
+    );
   }
-  
+
   Billings copyWithModelFieldValues({
     ModelFieldValue<String?>? invoice_no,
     ModelFieldValue<String?>? client_name,
@@ -190,7 +245,7 @@ class Billings extends amplify_core.Model {
     ModelFieldValue<String?>? created_at,
     ModelFieldValue<String?>? category,
     ModelFieldValue<String?>? authorities,
-    ModelFieldValue<String?>? status
+    ModelFieldValue<String?>? status,
   }) {
     return Billings._internal(
       id: id,
@@ -203,11 +258,11 @@ class Billings extends amplify_core.Model {
       created_at: created_at == null ? this.created_at : created_at.value,
       category: category == null ? this.category : category.value,
       authorities: authorities == null ? this.authorities : authorities.value,
-      status: status == null ? this.status : status.value
+      status: status == null ? this.status : status.value,
     );
   }
-  
-  Billings.fromJson(Map<String, dynamic> json)  
+
+  Billings.fromJson(Map<String, dynamic> json)
     : id = json['id'],
       _invoice_no = json['invoice_no'],
       _client_name = json['client_name'],
@@ -219,13 +274,29 @@ class Billings extends amplify_core.Model {
       _category = json['category'],
       _authorities = json['authorities'],
       _status = json['status'],
-      _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
-      _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
-  
+      _createdAt = json['createdAt'] != null
+          ? amplify_core.TemporalDateTime.fromString(json['createdAt'])
+          : null,
+      _updatedAt = json['updatedAt'] != null
+          ? amplify_core.TemporalDateTime.fromString(json['updatedAt'])
+          : null;
+
   Map<String, dynamic> toJson() => {
-    'id': id, 'invoice_no': _invoice_no, 'client_name': _client_name, 'date': _date, 'amount': _amount, 'type': _type, 'data': _data, 'created_at': _created_at, 'category': _category, 'authorities': _authorities, 'status': _status, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
+    'id': id,
+    'invoice_no': _invoice_no,
+    'client_name': _client_name,
+    'date': _date,
+    'amount': _amount,
+    'type': _type,
+    'data': _data,
+    'created_at': _created_at,
+    'category': _category,
+    'authorities': _authorities,
+    'status': _status,
+    'createdAt': _createdAt?.format(),
+    'updatedAt': _updatedAt?.format(),
   };
-  
+
   Map<String, Object?> toMap() => {
     'id': id,
     'invoice_no': _invoice_no,
@@ -239,10 +310,12 @@ class Billings extends amplify_core.Model {
     'authorities': _authorities,
     'status': _status,
     'createdAt': _createdAt,
-    'updatedAt': _updatedAt
+    'updatedAt': _updatedAt,
   };
 
-  static final amplify_core.QueryModelIdentifier<BillingsModelIdentifier> MODEL_IDENTIFIER = amplify_core.QueryModelIdentifier<BillingsModelIdentifier>();
+  static final amplify_core.QueryModelIdentifier<BillingsModelIdentifier>
+  MODEL_IDENTIFIER =
+      amplify_core.QueryModelIdentifier<BillingsModelIdentifier>();
   static final ID = amplify_core.QueryField(fieldName: "id");
   static final INVOICE_NO = amplify_core.QueryField(fieldName: "invoice_no");
   static final CLIENT_NAME = amplify_core.QueryField(fieldName: "client_name");
@@ -254,120 +327,172 @@ class Billings extends amplify_core.Model {
   static final CATEGORY = amplify_core.QueryField(fieldName: "category");
   static final AUTHORITIES = amplify_core.QueryField(fieldName: "authorities");
   static final STATUS = amplify_core.QueryField(fieldName: "status");
-  static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
-    modelSchemaDefinition.name = "Billings";
-    modelSchemaDefinition.pluralName = "Billings";
-    
-    modelSchemaDefinition.authRules = [
-      amplify_core.AuthRule(
-        authStrategy: amplify_core.AuthStrategy.PUBLIC,
-        provider: amplify_core.AuthRuleProvider.IAM,
-        operations: const [
-          amplify_core.ModelOperation.CREATE,
-          amplify_core.ModelOperation.UPDATE,
-          amplify_core.ModelOperation.DELETE,
-          amplify_core.ModelOperation.READ
-        ]),
-      amplify_core.AuthRule(
-        authStrategy: amplify_core.AuthStrategy.PRIVATE,
-        operations: const [
-          amplify_core.ModelOperation.CREATE,
-          amplify_core.ModelOperation.UPDATE,
-          amplify_core.ModelOperation.DELETE,
-          amplify_core.ModelOperation.READ
-        ])
-    ];
-    
-    modelSchemaDefinition.indexes = [
-      amplify_core.ModelIndex(fields: const ["id"], name: null)
-    ];
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Billings.INVOICE_NO,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Billings.CLIENT_NAME,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Billings.DATE,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Billings.AMOUNT,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Billings.TYPE,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Billings.DATA,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Billings.CREATED_AT,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Billings.CATEGORY,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Billings.AUTHORITIES,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Billings.STATUS,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
-      fieldName: 'createdAt',
-      isRequired: false,
-      isReadOnly: true,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
-      fieldName: 'updatedAt',
-      isRequired: false,
-      isReadOnly: true,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
-    ));
-  });
+  static var schema = amplify_core.Model.defineSchema(
+    define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
+      modelSchemaDefinition.name = "Billings";
+      modelSchemaDefinition.pluralName = "Billings";
+
+      modelSchemaDefinition.authRules = [
+        amplify_core.AuthRule(
+          authStrategy: amplify_core.AuthStrategy.PUBLIC,
+          provider: amplify_core.AuthRuleProvider.IAM,
+          operations: const [
+            amplify_core.ModelOperation.CREATE,
+            amplify_core.ModelOperation.UPDATE,
+            amplify_core.ModelOperation.DELETE,
+            amplify_core.ModelOperation.READ,
+          ],
+        ),
+        amplify_core.AuthRule(
+          authStrategy: amplify_core.AuthStrategy.PRIVATE,
+          operations: const [
+            amplify_core.ModelOperation.CREATE,
+            amplify_core.ModelOperation.UPDATE,
+            amplify_core.ModelOperation.DELETE,
+            amplify_core.ModelOperation.READ,
+          ],
+        ),
+      ];
+
+      modelSchemaDefinition.indexes = [
+        amplify_core.ModelIndex(fields: const ["id"], name: null),
+      ];
+
+      modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Billings.INVOICE_NO,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Billings.CLIENT_NAME,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Billings.DATE,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Billings.AMOUNT,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Billings.TYPE,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Billings.DATA,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Billings.CREATED_AT,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Billings.CATEGORY,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Billings.AUTHORITIES,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: Billings.STATUS,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.nonQueryField(
+          fieldName: 'createdAt',
+          isRequired: false,
+          isReadOnly: true,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.dateTime,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.nonQueryField(
+          fieldName: 'updatedAt',
+          isRequired: false,
+          isReadOnly: true,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.dateTime,
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _BillingsModelType extends amplify_core.ModelType<Billings> {
   const _BillingsModelType();
-  
+
   @override
   Billings fromJson(Map<String, dynamic> jsonData) {
     return Billings.fromJson(jsonData);
   }
-  
+
   @override
   String modelName() {
     return 'Billings';
@@ -378,41 +503,36 @@ class _BillingsModelType extends amplify_core.ModelType<Billings> {
  * This is an auto generated class representing the model identifier
  * of [Billings] in your schema.
  */
-class BillingsModelIdentifier implements amplify_core.ModelIdentifier<Billings> {
+class BillingsModelIdentifier
+    implements amplify_core.ModelIdentifier<Billings> {
   final String id;
 
   /** Create an instance of BillingsModelIdentifier using [id] the primary key. */
-  const BillingsModelIdentifier({
-    required this.id});
-  
+  const BillingsModelIdentifier({required this.id});
+
   @override
-  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{
-    'id': id
-  });
-  
+  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{'id': id});
+
   @override
-  List<Map<String, dynamic>> serializeAsList() => serializeAsMap()
-    .entries
-    .map((entry) => (<String, dynamic>{ entry.key: entry.value }))
-    .toList();
-  
+  List<Map<String, dynamic>> serializeAsList() => serializeAsMap().entries
+      .map((entry) => (<String, dynamic>{entry.key: entry.value}))
+      .toList();
+
   @override
   String serializeAsString() => serializeAsMap().values.join('#');
-  
+
   @override
   String toString() => 'BillingsModelIdentifier(id: $id)';
-  
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) {
       return true;
     }
-    
-    return other is BillingsModelIdentifier &&
-      id == other.id;
+
+    return other is BillingsModelIdentifier && id == other.id;
   }
-  
+
   @override
-  int get hashCode =>
-    id.hashCode;
+  int get hashCode => id.hashCode;
 }

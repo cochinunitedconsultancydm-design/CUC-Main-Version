@@ -85,7 +85,8 @@ class Checklist {
       if (index != -1) {
         finalDesc = finalDesc.substring(0, index).trim();
       }
-      finalDesc = "$finalDesc\n\n[CONNECTED_WORK]\nDealId: $dealId\nDealName: $dealName";
+      finalDesc =
+          "$finalDesc\n\n[CONNECTED_WORK]\nDealId: $dealId\nDealName: $dealName";
     }
 
     return {

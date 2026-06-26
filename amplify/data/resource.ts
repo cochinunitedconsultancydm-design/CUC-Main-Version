@@ -324,6 +324,42 @@ const schema = a.schema({
     deal_id: a.integer(),
     task_id: a.integer(),
   }).authorization((allow) => [allow.authenticated()]),
+  Properties: a.model({
+    id: a.id().required(),
+    property_name: a.string(),
+    client_name: a.string(),
+    location: a.string(),
+    property_type: a.string(), // "Apartment/flat", "plain land", etc.
+    
+    // Building owner details
+    owner_name: a.string(),
+    owner_phone_numbers: a.string().array(),
+    
+    // Additional Contacts
+    broker_details: a.string(),
+    care_of: a.string(),
+    
+    // Area & Price
+    area: a.string(),
+    price: a.float(),
+    is_negotiable: a.boolean(),
+    
+    // Detailed Specs
+    floor: a.string(),
+    has_balcony: a.boolean(),
+    balcony_count: a.integer(),
+    is_furnished: a.boolean(),
+    has_car_parking: a.boolean(),
+    expenses: a.string(),
+    
+    // Media
+    photos: a.string().array(),
+    
+    status: a.string(),
+    notes: a.string(),
+    created_at: a.string(),
+    updated_at: a.string(),
+  }).authorization((allow) => [allow.authenticated()]),
 });
 
 

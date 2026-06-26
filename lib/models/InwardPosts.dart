@@ -22,7 +22,6 @@
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
 
-
 /** This is an auto generated class representing the InwardPosts type in your schema. */
 class InwardPosts extends amplify_core.Model {
   static const classType = const _InwardPostsModelType();
@@ -39,56 +38,84 @@ class InwardPosts extends amplify_core.Model {
 
   @override
   getInstanceType() => classType;
-  
-  @Deprecated('[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.')
+
+  @Deprecated(
+    '[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.',
+  )
   @override
   String getId() => id;
-  
+
   InwardPostsModelIdentifier get modelIdentifier {
-      return InwardPostsModelIdentifier(
-        id: id
-      );
+    return InwardPostsModelIdentifier(id: id);
   }
-  
+
   String? get sender_name {
     return _sender_name;
   }
-  
+
   String? get recipient_name {
     return _recipient_name;
   }
-  
+
   String? get received_by {
     return _received_by;
   }
-  
+
   String? get description {
     return _description;
   }
-  
+
   String? get status {
     return _status;
   }
-  
+
   String? get received_date {
     return _received_date;
   }
-  
+
   String? get created_at {
     return _created_at;
   }
-  
+
   amplify_core.TemporalDateTime? get createdAt {
     return _createdAt;
   }
-  
+
   amplify_core.TemporalDateTime? get updatedAt {
     return _updatedAt;
   }
-  
-  const InwardPosts._internal({required this.id, sender_name, recipient_name, received_by, description, status, received_date, created_at, createdAt, updatedAt}): _sender_name = sender_name, _recipient_name = recipient_name, _received_by = received_by, _description = description, _status = status, _received_date = received_date, _created_at = created_at, _createdAt = createdAt, _updatedAt = updatedAt;
-  
-  factory InwardPosts({String? id, String? sender_name, String? recipient_name, String? received_by, String? description, String? status, String? received_date, String? created_at}) {
+
+  const InwardPosts._internal({
+    required this.id,
+    sender_name,
+    recipient_name,
+    received_by,
+    description,
+    status,
+    received_date,
+    created_at,
+    createdAt,
+    updatedAt,
+  }) : _sender_name = sender_name,
+       _recipient_name = recipient_name,
+       _received_by = received_by,
+       _description = description,
+       _status = status,
+       _received_date = received_date,
+       _created_at = created_at,
+       _createdAt = createdAt,
+       _updatedAt = updatedAt;
+
+  factory InwardPosts({
+    String? id,
+    String? sender_name,
+    String? recipient_name,
+    String? received_by,
+    String? description,
+    String? status,
+    String? received_date,
+    String? created_at,
+  }) {
     return InwardPosts._internal(
       id: id == null ? amplify_core.UUID.getUUID() : id,
       sender_name: sender_name,
@@ -97,34 +124,35 @@ class InwardPosts extends amplify_core.Model {
       description: description,
       status: status,
       received_date: received_date,
-      created_at: created_at);
+      created_at: created_at,
+    );
   }
-  
+
   bool equals(Object other) {
     return this == other;
   }
-  
+
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
     return other is InwardPosts &&
-      id == other.id &&
-      _sender_name == other._sender_name &&
-      _recipient_name == other._recipient_name &&
-      _received_by == other._received_by &&
-      _description == other._description &&
-      _status == other._status &&
-      _received_date == other._received_date &&
-      _created_at == other._created_at;
+        id == other.id &&
+        _sender_name == other._sender_name &&
+        _recipient_name == other._recipient_name &&
+        _received_by == other._received_by &&
+        _description == other._description &&
+        _status == other._status &&
+        _received_date == other._received_date &&
+        _created_at == other._created_at;
   }
-  
+
   @override
   int get hashCode => toString().hashCode;
-  
+
   @override
   String toString() {
     var buffer = new StringBuffer();
-    
+
     buffer.write("InwardPosts {");
     buffer.write("id=" + "$id" + ", ");
     buffer.write("sender_name=" + "$_sender_name" + ", ");
@@ -134,14 +162,28 @@ class InwardPosts extends amplify_core.Model {
     buffer.write("status=" + "$_status" + ", ");
     buffer.write("received_date=" + "$_received_date" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write(
+      "createdAt=" +
+          (_createdAt != null ? _createdAt!.format() : "null") +
+          ", ",
+    );
+    buffer.write(
+      "updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"),
+    );
     buffer.write("}");
-    
+
     return buffer.toString();
   }
-  
-  InwardPosts copyWith({String? sender_name, String? recipient_name, String? received_by, String? description, String? status, String? received_date, String? created_at}) {
+
+  InwardPosts copyWith({
+    String? sender_name,
+    String? recipient_name,
+    String? received_by,
+    String? description,
+    String? status,
+    String? received_date,
+    String? created_at,
+  }) {
     return InwardPosts._internal(
       id: id,
       sender_name: sender_name ?? this.sender_name,
@@ -150,9 +192,10 @@ class InwardPosts extends amplify_core.Model {
       description: description ?? this.description,
       status: status ?? this.status,
       received_date: received_date ?? this.received_date,
-      created_at: created_at ?? this.created_at);
+      created_at: created_at ?? this.created_at,
+    );
   }
-  
+
   InwardPosts copyWithModelFieldValues({
     ModelFieldValue<String?>? sender_name,
     ModelFieldValue<String?>? recipient_name,
@@ -160,21 +203,25 @@ class InwardPosts extends amplify_core.Model {
     ModelFieldValue<String?>? description,
     ModelFieldValue<String?>? status,
     ModelFieldValue<String?>? received_date,
-    ModelFieldValue<String?>? created_at
+    ModelFieldValue<String?>? created_at,
   }) {
     return InwardPosts._internal(
       id: id,
       sender_name: sender_name == null ? this.sender_name : sender_name.value,
-      recipient_name: recipient_name == null ? this.recipient_name : recipient_name.value,
+      recipient_name: recipient_name == null
+          ? this.recipient_name
+          : recipient_name.value,
       received_by: received_by == null ? this.received_by : received_by.value,
       description: description == null ? this.description : description.value,
       status: status == null ? this.status : status.value,
-      received_date: received_date == null ? this.received_date : received_date.value,
-      created_at: created_at == null ? this.created_at : created_at.value
+      received_date: received_date == null
+          ? this.received_date
+          : received_date.value,
+      created_at: created_at == null ? this.created_at : created_at.value,
     );
   }
-  
-  InwardPosts.fromJson(Map<String, dynamic> json)  
+
+  InwardPosts.fromJson(Map<String, dynamic> json)
     : id = json['id'],
       _sender_name = json['sender_name'],
       _recipient_name = json['recipient_name'],
@@ -183,13 +230,26 @@ class InwardPosts extends amplify_core.Model {
       _status = json['status'],
       _received_date = json['received_date'],
       _created_at = json['created_at'],
-      _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
-      _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
-  
+      _createdAt = json['createdAt'] != null
+          ? amplify_core.TemporalDateTime.fromString(json['createdAt'])
+          : null,
+      _updatedAt = json['updatedAt'] != null
+          ? amplify_core.TemporalDateTime.fromString(json['updatedAt'])
+          : null;
+
   Map<String, dynamic> toJson() => {
-    'id': id, 'sender_name': _sender_name, 'recipient_name': _recipient_name, 'received_by': _received_by, 'description': _description, 'status': _status, 'received_date': _received_date, 'created_at': _created_at, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
+    'id': id,
+    'sender_name': _sender_name,
+    'recipient_name': _recipient_name,
+    'received_by': _received_by,
+    'description': _description,
+    'status': _status,
+    'received_date': _received_date,
+    'created_at': _created_at,
+    'createdAt': _createdAt?.format(),
+    'updatedAt': _updatedAt?.format(),
   };
-  
+
   Map<String, Object?> toMap() => {
     'id': id,
     'sender_name': _sender_name,
@@ -200,114 +260,160 @@ class InwardPosts extends amplify_core.Model {
     'received_date': _received_date,
     'created_at': _created_at,
     'createdAt': _createdAt,
-    'updatedAt': _updatedAt
+    'updatedAt': _updatedAt,
   };
 
-  static final amplify_core.QueryModelIdentifier<InwardPostsModelIdentifier> MODEL_IDENTIFIER = amplify_core.QueryModelIdentifier<InwardPostsModelIdentifier>();
+  static final amplify_core.QueryModelIdentifier<InwardPostsModelIdentifier>
+  MODEL_IDENTIFIER =
+      amplify_core.QueryModelIdentifier<InwardPostsModelIdentifier>();
   static final ID = amplify_core.QueryField(fieldName: "id");
   static final SENDER_NAME = amplify_core.QueryField(fieldName: "sender_name");
-  static final RECIPIENT_NAME = amplify_core.QueryField(fieldName: "recipient_name");
+  static final RECIPIENT_NAME = amplify_core.QueryField(
+    fieldName: "recipient_name",
+  );
   static final RECEIVED_BY = amplify_core.QueryField(fieldName: "received_by");
   static final DESCRIPTION = amplify_core.QueryField(fieldName: "description");
   static final STATUS = amplify_core.QueryField(fieldName: "status");
-  static final RECEIVED_DATE = amplify_core.QueryField(fieldName: "received_date");
+  static final RECEIVED_DATE = amplify_core.QueryField(
+    fieldName: "received_date",
+  );
   static final CREATED_AT = amplify_core.QueryField(fieldName: "created_at");
-  static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
-    modelSchemaDefinition.name = "InwardPosts";
-    modelSchemaDefinition.pluralName = "InwardPosts";
-    
-    modelSchemaDefinition.authRules = [
-      amplify_core.AuthRule(
-        authStrategy: amplify_core.AuthStrategy.PUBLIC,
-        provider: amplify_core.AuthRuleProvider.IAM,
-        operations: const [
-          amplify_core.ModelOperation.CREATE,
-          amplify_core.ModelOperation.UPDATE,
-          amplify_core.ModelOperation.DELETE,
-          amplify_core.ModelOperation.READ
-        ]),
-      amplify_core.AuthRule(
-        authStrategy: amplify_core.AuthStrategy.PRIVATE,
-        operations: const [
-          amplify_core.ModelOperation.CREATE,
-          amplify_core.ModelOperation.UPDATE,
-          amplify_core.ModelOperation.DELETE,
-          amplify_core.ModelOperation.READ
-        ])
-    ];
-    
-    modelSchemaDefinition.indexes = [
-      amplify_core.ModelIndex(fields: const ["id"], name: null)
-    ];
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: InwardPosts.SENDER_NAME,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: InwardPosts.RECIPIENT_NAME,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: InwardPosts.RECEIVED_BY,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: InwardPosts.DESCRIPTION,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: InwardPosts.STATUS,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: InwardPosts.RECEIVED_DATE,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: InwardPosts.CREATED_AT,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
-      fieldName: 'createdAt',
-      isRequired: false,
-      isReadOnly: true,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
-      fieldName: 'updatedAt',
-      isRequired: false,
-      isReadOnly: true,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
-    ));
-  });
+  static var schema = amplify_core.Model.defineSchema(
+    define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
+      modelSchemaDefinition.name = "InwardPosts";
+      modelSchemaDefinition.pluralName = "InwardPosts";
+
+      modelSchemaDefinition.authRules = [
+        amplify_core.AuthRule(
+          authStrategy: amplify_core.AuthStrategy.PUBLIC,
+          provider: amplify_core.AuthRuleProvider.IAM,
+          operations: const [
+            amplify_core.ModelOperation.CREATE,
+            amplify_core.ModelOperation.UPDATE,
+            amplify_core.ModelOperation.DELETE,
+            amplify_core.ModelOperation.READ,
+          ],
+        ),
+        amplify_core.AuthRule(
+          authStrategy: amplify_core.AuthStrategy.PRIVATE,
+          operations: const [
+            amplify_core.ModelOperation.CREATE,
+            amplify_core.ModelOperation.UPDATE,
+            amplify_core.ModelOperation.DELETE,
+            amplify_core.ModelOperation.READ,
+          ],
+        ),
+      ];
+
+      modelSchemaDefinition.indexes = [
+        amplify_core.ModelIndex(fields: const ["id"], name: null),
+      ];
+
+      modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: InwardPosts.SENDER_NAME,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: InwardPosts.RECIPIENT_NAME,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: InwardPosts.RECEIVED_BY,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: InwardPosts.DESCRIPTION,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: InwardPosts.STATUS,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: InwardPosts.RECEIVED_DATE,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.field(
+          key: InwardPosts.CREATED_AT,
+          isRequired: false,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.string,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.nonQueryField(
+          fieldName: 'createdAt',
+          isRequired: false,
+          isReadOnly: true,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.dateTime,
+          ),
+        ),
+      );
+
+      modelSchemaDefinition.addField(
+        amplify_core.ModelFieldDefinition.nonQueryField(
+          fieldName: 'updatedAt',
+          isRequired: false,
+          isReadOnly: true,
+          ofType: amplify_core.ModelFieldType(
+            amplify_core.ModelFieldTypeEnum.dateTime,
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _InwardPostsModelType extends amplify_core.ModelType<InwardPosts> {
   const _InwardPostsModelType();
-  
+
   @override
   InwardPosts fromJson(Map<String, dynamic> jsonData) {
     return InwardPosts.fromJson(jsonData);
   }
-  
+
   @override
   String modelName() {
     return 'InwardPosts';
@@ -318,41 +424,36 @@ class _InwardPostsModelType extends amplify_core.ModelType<InwardPosts> {
  * This is an auto generated class representing the model identifier
  * of [InwardPosts] in your schema.
  */
-class InwardPostsModelIdentifier implements amplify_core.ModelIdentifier<InwardPosts> {
+class InwardPostsModelIdentifier
+    implements amplify_core.ModelIdentifier<InwardPosts> {
   final String id;
 
   /** Create an instance of InwardPostsModelIdentifier using [id] the primary key. */
-  const InwardPostsModelIdentifier({
-    required this.id});
-  
+  const InwardPostsModelIdentifier({required this.id});
+
   @override
-  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{
-    'id': id
-  });
-  
+  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{'id': id});
+
   @override
-  List<Map<String, dynamic>> serializeAsList() => serializeAsMap()
-    .entries
-    .map((entry) => (<String, dynamic>{ entry.key: entry.value }))
-    .toList();
-  
+  List<Map<String, dynamic>> serializeAsList() => serializeAsMap().entries
+      .map((entry) => (<String, dynamic>{entry.key: entry.value}))
+      .toList();
+
   @override
   String serializeAsString() => serializeAsMap().values.join('#');
-  
+
   @override
   String toString() => 'InwardPostsModelIdentifier(id: $id)';
-  
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) {
       return true;
     }
-    
-    return other is InwardPostsModelIdentifier &&
-      id == other.id;
+
+    return other is InwardPostsModelIdentifier && id == other.id;
   }
-  
+
   @override
-  int get hashCode =>
-    id.hashCode;
+  int get hashCode => id.hashCode;
 }

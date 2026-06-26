@@ -29,15 +29,15 @@ class CompanyBill {
       category: map['category']?.toString() ?? 'Other',
       title: map['title']?.toString() ?? 'No Title',
       amount: double.tryParse(map['amount']?.toString() ?? '0') ?? 0.0,
-      billDate: map['bill_date'] != null 
-          ? DateTime.parse(map['bill_date'].toString()) 
+      billDate: map['bill_date'] != null
+          ? DateTime.parse(map['bill_date'].toString())
           : DateTime.now(),
       status: map['status']?.toString() ?? 'Pending',
       description: map['description']?.toString(),
       spentBy: map['spent_by'],
       spentByName: map['spent_by_name']?.toString(),
-      createdAt: map['created_at'] != null 
-          ? DateTime.parse(map['created_at'].toString()) 
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'].toString())
           : null,
     );
   }

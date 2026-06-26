@@ -22,7 +22,9 @@ class LicenseBilling {
       amount: double.tryParse(map['amount']?.toString() ?? '0') ?? 0.0,
       invoiceNo: map['invoice_no'],
       status: map['payment_status'] ?? 'Pending',
-      paymentDate: map['payment_date'] != null ? DateTime.tryParse(map['payment_date'].toString()) : null,
+      paymentDate: map['payment_date'] != null
+          ? DateTime.tryParse(map['payment_date'].toString())
+          : null,
     );
   }
 }

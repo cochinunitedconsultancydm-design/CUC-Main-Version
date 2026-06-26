@@ -8,7 +8,7 @@ class ClientLicense {
   final String? notes;
   final String? manualClientName;
   final String? status;
-  
+
   // Joined fields
   final String? clientName;
   final String? licenseTypeName;
@@ -32,13 +32,17 @@ class ClientLicense {
       id: map['id'],
       clientId: map['client_id'],
       licenseTypeId: map['license_type_id'],
-      serviceDate: map['service_date'] != null ? DateTime.tryParse(map['service_date'].toString()) : null,
-      expiryDate: map['expiry_date'] != null ? DateTime.tryParse(map['expiry_date'].toString()) : null,
+      serviceDate: map['service_date'] != null
+          ? DateTime.tryParse(map['service_date'].toString())
+          : null,
+      expiryDate: map['expiry_date'] != null
+          ? DateTime.tryParse(map['expiry_date'].toString())
+          : null,
       fileNo: map['file_no'],
       notes: map['notes'],
       manualClientName: map['manual_client_name'],
       status: map['status'],
-      clientName: map['client_name'], 
+      clientName: map['client_name'],
       licenseTypeName: map['license_type_name'],
     );
   }

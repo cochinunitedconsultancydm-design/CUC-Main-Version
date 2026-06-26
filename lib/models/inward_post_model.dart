@@ -1,7 +1,4 @@
-enum PostStatus {
-  pendingConfirmation,
-  confirmedReceived,
-}
+enum PostStatus { pendingConfirmation, confirmedReceived }
 
 class InwardPost {
   final String id;

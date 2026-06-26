@@ -28,6 +28,7 @@ import 'staff_location_screen.dart';
 import 'travel_log_screen.dart';
 import 'document_list_screen.dart';
 import 'verification_history_view.dart';
+import 'property_management_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -287,6 +288,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _sidebarItem(5, Icons.health_and_safety_outlined, 'System Health', isWide),
                 _sidebarItem(19, Icons.cloud_sync, 'Google Docs Vault', isWide),
                 _sidebarItem(20, Icons.history_rounded, 'Verification History', isWide),
+                _sidebarItem(21, Icons.real_estate_agent_rounded, 'Property Management', isWide),
               ],
             ),
           ),
@@ -406,6 +408,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 17: return const ReminderCalendarScreen();
       case 19: return const DocumentListScreen(userEmail: 'admin@cochinunited.com');
       case 20: return const VerificationHistoryView();
+      case 21: return const PropertyManagementScreen();
       default: return _buildPlaceholderView('Coming Soon');
     }
   }

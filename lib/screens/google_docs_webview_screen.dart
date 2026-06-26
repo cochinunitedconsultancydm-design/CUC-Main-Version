@@ -33,26 +33,15 @@ class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) {
-      _launchForWeb();
-    } else {
+    if (!kIsWeb) {
       initPlatformState();
+    } else {
+      _isLoading = false;
     }
   }
 
   Future<void> _launchForWeb() async {
     final uri = Uri.parse(widget.url);
-    
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _isWebviewInitialized = false;
-      });
-    }
-    
-    // Give the UI a frame to update before launching to prevent hanging if url_launcher throws
-    await Future.delayed(const Duration(milliseconds: 100));
-    
     try {
       await launchUrl(uri, mode: LaunchMode.platformDefault);
     } catch (e) {
@@ -190,14 +179,14 @@ class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
                   children: [
                     const Icon(Icons.open_in_new_rounded, size: 64, color: AppTheme.primaryColor),
                     const SizedBox(height: 24),
-                    const Text('Document opened in a new tab', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text('Document is ready', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Text('If you don\'t see the document, your browser might have blocked the popup.', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                    Text('Click the button below to open the Google Doc securely.', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
                       onPressed: _launchForWeb,
                       icon: const Icon(Icons.launch_rounded),
-                      label: const Text('Open Document manually'),
+                      label: const Text('Open Document'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
                         foregroundColor: Colors.white,

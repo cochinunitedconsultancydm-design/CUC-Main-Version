@@ -135,14 +135,17 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(24),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 700),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 24, offset: Offset(0, 12))],
-            ),
+          insetPadding: const EdgeInsets.all(16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 600;
+              return Container(
+                constraints: const BoxConstraints(maxWidth: 700),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 24, offset: Offset(0, 12))],
+                ),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(40),
               child: Form(
@@ -182,31 +185,49 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     const SizedBox(height: 32),
                     _buildFormField(nameController, 'Full Name', Icons.person, true),
                     const SizedBox(height: 20),
-                    Row(
+                    isWide ? Row(
                       children: [
                         Expanded(child: _buildFormField(emailController, 'Email Address', Icons.email, false)),
                         const SizedBox(width: 20),
                         Expanded(child: _buildFormField(phoneController, 'Phone Number', Icons.phone, true)),
                       ],
+                    ) : Column(
+                      children: [
+                        _buildFormField(emailController, 'Email Address', Icons.email, false),
+                        const SizedBox(height: 20),
+                        _buildFormField(phoneController, 'Phone Number', Icons.phone, true),
+                      ],
                     ),
                     const SizedBox(height: 20),
-                    Row(
+                    isWide ? Row(
                       children: [
                         Expanded(child: _buildFormField(workController, 'Type of Work', Icons.work, false)),
                         const SizedBox(width: 20),
                         Expanded(child: _buildFormField(caseController, 'Case Number', Icons.gavel, false)),
                       ],
+                    ) : Column(
+                      children: [
+                        _buildFormField(workController, 'Type of Work', Icons.work, false),
+                        const SizedBox(height: 20),
+                        _buildFormField(caseController, 'Case Number', Icons.gavel, false),
+                      ],
                     ),
                     const SizedBox(height: 20),
-                    Row(
+                    isWide ? Row(
                       children: [
                         Expanded(child: _buildFormField(fileNoController, 'File Number', Icons.folder, false)),
                         const SizedBox(width: 20),
                         Expanded(child: _buildFormField(fileDateController, 'File Date', Icons.calendar_today, false)),
                       ],
+                    ) : Column(
+                      children: [
+                        _buildFormField(fileNoController, 'File Number', Icons.folder, false),
+                        const SizedBox(height: 20),
+                        _buildFormField(fileDateController, 'File Date', Icons.calendar_today, false),
+                      ],
                     ),
                     const SizedBox(height: 20),
-                    Row(
+                    isWide ? Row(
                       children: [
                         Expanded(child: _buildFormField(dobController, 'Date of Birth', Icons.cake, false)),
                         const SizedBox(width: 20),
@@ -225,6 +246,26 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               controlAffinity: ListTileControlAffinity.leading,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                             ),
+                          ),
+                        ),
+                      ],
+                    ) : Column(
+                      children: [
+                        _buildFormField(dobController, 'Date of Birth', Icons.cake, false),
+                        const SizedBox(height: 20),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: CheckboxListTile(
+                            title: const Text('Contacted?', style: TextStyle(fontWeight: FontWeight.w500)),
+                            value: isContacted,
+                            activeColor: AppTheme.primaryColor,
+                            onChanged: (val) => setModalState(() => isContacted = val ?? false),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                           ),
                         ),
                       ],
@@ -308,6 +349,9 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                 ),
               ),
             ),
+          );
+        },
+        ),
           ),
         ).animate().fadeIn(duration: 300.ms).scaleXY(begin: 0.95, end: 1.0, curve: Curves.easeOutBack),
       ),
@@ -600,8 +644,10 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 OutlinedButton.icon(
                   onPressed: () => _showClientFilesDialog(c),
@@ -613,7 +659,6 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
-                const SizedBox(width: 12),
                 OutlinedButton.icon(
                   onPressed: () => _showClientForm(c),
                   icon: const Icon(Icons.edit_outlined, size: 16),
@@ -624,7 +669,6 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
-                const SizedBox(width: 12),
                 OutlinedButton.icon(
                   onPressed: () => _deleteClient(c.id.toString()),
                   icon: const Icon(Icons.delete_outline, size: 16),

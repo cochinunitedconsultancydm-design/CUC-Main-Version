@@ -106,6 +106,7 @@ class BillingService {
     DateTime? startDate,
     DateTime? endDate,
     String sortBy = 'Newest First',
+    String searchTerm = '',
   }) async {
     var req = ModelQueries.list(Billings.classType);
     List<Billings> all = [];
@@ -155,6 +156,15 @@ class BillingService {
       else if (statusFilter == 'Interested' && b.status == 'Interested') match = true;
       else if (statusFilter == 'Not Interested' && b.status == 'Not Interested') match = true;
       
+      if (match && searchTerm.isNotEmpty) {
+        final query = searchTerm.toLowerCase();
+        final cName = b.client_name?.toLowerCase() ?? '';
+        final invNo = b.invoice_no?.toLowerCase() ?? '';
+        if (!cName.contains(query) && !invNo.contains(query)) {
+          match = false;
+        }
+      }
+
       if (match) filtered.add(b);
     }
 

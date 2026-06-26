@@ -457,7 +457,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
       padding: EdgeInsets.symmetric(horizontal: isWide ? 32 : 16),
       child: Column(
         children: [
-          _buildTableHeader(isWide),
+          if (isWide) _buildTableHeader(isWide),
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.only(top: 12, bottom: 32),
@@ -511,139 +511,213 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
       ),
       child: InkWell(
         onTap: () => _openDealDetail(deal),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+        child: isWide 
+          ? Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: widget.showOnlyVerification 
-                          ? _buildVerificationDocInfo(deal)
-                          : Text(
-                              deal.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: Colors.black,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: widget.showOnlyVerification 
+                              ? _buildVerificationDocInfo(deal)
+                              : Text(
+                                  deal.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: Colors.black,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                          ),
+                          if (deal.isAdjourned) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
                               ),
-                              overflow: TextOverflow.ellipsis,
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.amber.shade200),
+                              ),
+                              child: Text(
+                                'ADJOURNED',
+                                style: TextStyle(
+                                  color: Colors.amber.shade900,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
+                          ],
+                        ],
                       ),
-                      if (deal.isAdjourned) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.shade50,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.amber.shade200),
-                          ),
-                          child: Text(
-                            'ADJOURNED',
-                            style: TextStyle(
-                              color: Colors.amber.shade900,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                      if (!widget.showOnlyVerification) ...[
+                        const SizedBox(height: 4),
+                        Text(deal.workType ?? 'General Work', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                       ],
                     ],
                   ),
-                  if (!widget.showOnlyVerification) ...[
-                    const SizedBox(height: 4),
-                    Text(deal.workType ?? 'General Work', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                ),
+                if (widget.showOnlyVerification) ...[
+                  Expanded(
+                    flex: 2,
+                    child: Row(
+                      children: [
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00C16C),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                          onPressed: () => _handleVerification(deal, true),
+                          child: const Text('Verified', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                          onPressed: () => _handleVerification(deal, false),
+                          child: const Text('Not Verified', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (!widget.showOnlyVerification) ...[
+                  Expanded(
+                    flex: 2,
+                    child: _buildStageProgress(deal.stage),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person_outline_rounded, size: 14, color: Colors.grey),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(deal.clientName ?? 'N/A', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+                      ],
+                    ),
+                  ),
+                  if (isWide) ...[
+                    Expanded(
+                      flex: 1,
+                      child: _buildDaysColumn(deal),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        '₹${NumberFormat('#,##,###').format(deal.amount)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF00C16C)),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                            child: Text(deal.responsibleName?[0].toUpperCase() ?? '?', style: const TextStyle(fontSize: 10, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(deal.responsibleName?.split(' ')[0] ?? 'N/A', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+                        ],
+                      ),
+                    ),
                   ],
                 ],
-              ),
-            ),
-            if (widget.showOnlyVerification) ...[
-              Expanded(
-                flex: 2,
-                child: Row(
-                  children: [
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00C16C),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      ),
-                      onPressed: () => _handleVerification(deal, true),
-                      child: const Text('Verified', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      ),
-                      onPressed: () => _handleVerification(deal, false),
-                      child: const Text('Not Verified', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (!widget.showOnlyVerification) ...[
-              Expanded(
-                flex: 2,
-                child: _buildStageProgress(deal.stage),
-              ),
-              Expanded(
-                flex: 2,
-                child: Row(
-                  children: [
-                    const Icon(Icons.person_outline_rounded, size: 14, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(deal.clientName ?? 'N/A', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
-                  ],
-                ),
-              ),
-              if (isWide) ...[
-                Expanded(
-                  flex: 1,
-                  child: _buildDaysColumn(deal),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    '₹${NumberFormat('#,##,###').format(deal.amount)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF00C16C)),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 12,
-                        backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.1),
-                        child: Text(deal.responsibleName?[0].toUpperCase() ?? '?', style: const TextStyle(fontSize: 10, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(deal.responsibleName?.split(' ')[0] ?? 'N/A', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
-                    ],
-                  ),
+                const SizedBox(width: 16),
+                IconButton(
+                  onPressed: () => _deleteDeal(deal),
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ],
-            ],
-            const SizedBox(width: 16),
-            IconButton(
-              onPressed: () => _deleteDeal(deal),
-              icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        deal.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _deleteDeal(deal),
+                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                if (deal.isAdjourned)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.amber.shade200),
+                    ),
+                    child: Text(
+                      'ADJOURNED',
+                      style: TextStyle(color: Colors.amber.shade900, fontSize: 9, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                if (!widget.showOnlyVerification) ...[
+                  Text(deal.workType ?? 'General Work', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.person_outline_rounded, size: 14, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(deal.clientName ?? 'N/A', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildStageProgress(deal.stage),
+                ] else ...[
+                  const SizedBox(height: 12),
+                  _buildVerificationDocInfo(deal),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00C16C), foregroundColor: Colors.white),
+                          onPressed: () => _handleVerification(deal, true),
+                          child: const Text('Verified', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+                          onPressed: () => _handleVerification(deal, false),
+                          child: const Text('Not Verified', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ]
+              ],
             ),
-          ],
-        ),
       ),
     ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1);
   }

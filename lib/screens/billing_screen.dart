@@ -1,5 +1,6 @@
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -38,6 +39,7 @@ class _BillingScreenState extends State<BillingScreen> {
   int _offset = 0;
   bool _hasMore = true;
   String _searchTerm = '';
+  Timer? _debounce;
   final FocusNode _searchFocusNode = FocusNode();
   String _statusFilter = 'All';
   String _sortBy = 'Newest First';
@@ -70,6 +72,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchFocusNode.dispose();
     super.dispose();
   }
@@ -626,7 +629,13 @@ class _BillingScreenState extends State<BillingScreen> {
                           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
                           child: TextField(
                             focusNode: _searchFocusNode,
-                            onChanged: (v) => setState(() => _searchTerm = v),
+                            onChanged: (v) {
+                              setState(() => _searchTerm = v);
+                              if (_debounce?.isActive ?? false) _debounce!.cancel();
+                              _debounce = Timer(const Duration(milliseconds: 500), () {
+                                _fetchBillings(refresh: true);
+                              });
+                            },
                             decoration: const InputDecoration(hintText: 'Search (Ctrl+F)', prefixIcon: Icon(Icons.search_rounded, size: 20), border: InputBorder.none, contentPadding: EdgeInsets.symmetric(vertical: 12)),
                           ),
                         ),
@@ -723,7 +732,13 @@ class _BillingScreenState extends State<BillingScreen> {
                       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
                       child: TextField(
                         focusNode: _searchFocusNode,
-                        onChanged: (v) => setState(() => _searchTerm = v),
+                        onChanged: (v) {
+                          setState(() => _searchTerm = v);
+                          if (_debounce?.isActive ?? false) _debounce!.cancel();
+                          _debounce = Timer(const Duration(milliseconds: 500), () {
+                            _fetchBillings(refresh: true);
+                          });
+                        },
                         decoration: const InputDecoration(hintText: 'Search...', prefixIcon: Icon(Icons.search_rounded, size: 20), border: InputBorder.none, contentPadding: EdgeInsets.symmetric(vertical: 12)),
                       ),
                     ),

@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
@@ -21,7 +23,7 @@ class GoogleDocsWebviewScreen extends StatefulWidget {
 }
 
 class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
-  final _controller = WebviewController();
+  late final WebviewController _controller;
   bool _isLoading = true;
   bool _isWebviewInitialized = false;
   bool _hasError = false;
@@ -31,10 +33,30 @@ class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
   @override
   void initState() {
     super.initState();
-    initPlatformState();
+    if (kIsWeb) {
+      _launchForWeb();
+    } else {
+      initPlatformState();
+    }
+  }
+
+  Future<void> _launchForWeb() async {
+    final uri = Uri.parse(widget.url);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Could not launch $uri');
+    }
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isWebviewInitialized = false;
+      });
+    }
   }
 
   Future<void> initPlatformState() async {
+    _controller = WebviewController();
     try {
       if (!_environmentInitialized) {
         final appDir = await getApplicationSupportDirectory();
@@ -104,7 +126,9 @@ class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (!kIsWeb) {
+      _controller.dispose();
+    }
     super.dispose();
   }
 
@@ -134,7 +158,7 @@ class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
           ],
         ),
         actions: [
-          if (_isWebviewInitialized)
+          if (_isWebviewInitialized && !kIsWeb)
             IconButton(
               icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor),
               onPressed: () {
@@ -154,7 +178,31 @@ class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            if (_isWebviewInitialized)
+            if (kIsWeb)
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.open_in_new_rounded, size: 64, color: AppTheme.primaryColor),
+                    const SizedBox(height: 24),
+                    const Text('Document opened in a new tab', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text('If you don\'t see the document, your browser might have blocked the popup.', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: _launchForWeb,
+                      icon: const Icon(Icons.launch_rounded),
+                      label: const Text('Open Document manually'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (!kIsWeb && _isWebviewInitialized)
               Listener(
                 onPointerSignal: (pointerSignal) {
                   if (pointerSignal is PointerScrollEvent) {

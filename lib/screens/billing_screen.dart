@@ -33,6 +33,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
   List<Billing> _billings = [];
   bool _isLoading = true;
+  bool _isFetchingMore = false;
   final int _limit = 50;
   int _offset = 0;
   bool _hasMore = true;
@@ -130,7 +131,12 @@ class _BillingScreenState extends State<BillingScreen> {
     }
     if (!_hasMore) return;
     
-    setState(() => _isLoading = true);
+    if (refresh) {
+      setState(() => _isLoading = true);
+    } else {
+      setState(() => _isFetchingMore = true);
+    }
+    
     try {
       final fetched = await _billingService.fetchBillings(
         limit: _limit,
@@ -153,7 +159,14 @@ class _BillingScreenState extends State<BillingScreen> {
         });
       }
     } catch (e) { _msg('Failed: $e', false); }
-    finally { if (mounted) setState(() => _isLoading = false); }
+    finally { 
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isFetchingMore = false;
+        });
+      }
+    }
   }
 
   Future<void> _markPaid(Billing b) async {
@@ -512,6 +525,7 @@ class _BillingScreenState extends State<BillingScreen> {
           builder: (context, constraints) {
             final bool isWide = constraints.maxWidth > 900;
         final filtered = _billings.where((b) =>
+          _searchTerm.trim().isEmpty ||
           (b.clientName?.toLowerCase().contains(_searchTerm.toLowerCase()) ?? false) ||
           (b.invoiceNo?.toLowerCase().contains(_searchTerm.toLowerCase()) ?? false)
         ).toList();
@@ -768,11 +782,13 @@ class _BillingScreenState extends State<BillingScreen> {
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24),
                         child: Center(
-                          child: TextButton.icon(
-                            onPressed: () => _fetchBillings(),
-                            icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                            label: const Text('Load More Invoices', style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
+                          child: _isFetchingMore
+                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                            : TextButton.icon(
+                                onPressed: () => _fetchBillings(),
+                                icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                                label: const Text('Load More Invoices', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
                         ),
                       );
                     }

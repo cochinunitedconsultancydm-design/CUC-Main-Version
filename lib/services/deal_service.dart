@@ -129,6 +129,12 @@ class DealService {
     if (values['responsible_id'] == null) values['responsible_id'] = userId;
     if (values['responsible_name'] == null) values['responsible_name'] = userName;
 
+    if (values['expenses_list'] is List) {
+      values['expenses_list'] = jsonEncode(values['expenses_list']);
+    } else if (values['expenses_list'] != null) {
+      values['expenses_list'] = values['expenses_list'].toString();
+    }
+
     try {
       final newDeal = Deals.fromJson(values);
       final res = await Amplify.API.mutate(request: ModelMutations.create(newDeal)).response;

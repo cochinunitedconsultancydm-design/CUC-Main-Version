@@ -560,7 +560,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),),
-        drawer: !isWide ? Drawer(child: _buildSidebar()) : null,
+        drawer: !isWide ? Drawer(
+          backgroundColor: const Color(0xFF13131A),
+          child: _buildSidebar(),
+        ) : null,
         appBar: !isWide ? PremiumAppBar(
           title: const Text('Cochin United', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
           actions: const [

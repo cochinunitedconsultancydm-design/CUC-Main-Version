@@ -371,7 +371,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             }
           },
           child: Scaffold(
-            drawer: !isWide ? Drawer(child: _buildSidebarContent(isWide)) : null,
+            drawer: !isWide ? Drawer(
+              backgroundColor: const Color(0xFF13131A),
+              child: _buildSidebarContent(isWide),
+            ) : null,
             appBar: !isWide ? PremiumAppBar(
               title: Image.asset('assets/CUnitedGold.png', height: 30),
               centerTitle: true,

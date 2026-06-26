@@ -14,8 +14,13 @@ class Properties extends amplify_core.Model {
   final List<String>? _owner_phone_numbers;
   final String? _broker_details;
   final String? _care_of;
+  final String? _transaction_type;
+  final double? _advance_amount;
+  final String? _period;
   final String? _area;
   final double? _price;
+  final bool? _has_multiple_owners;
+  final bool? _has_legal_disputes;
   final bool? _is_negotiable;
   final String? _floor;
   final bool? _has_balcony;
@@ -49,8 +54,13 @@ class Properties extends amplify_core.Model {
   List<String>? get owner_phone_numbers => _owner_phone_numbers;
   String? get broker_details => _broker_details;
   String? get care_of => _care_of;
+  String? get transaction_type => _transaction_type;
+  double? get advance_amount => _advance_amount;
+  String? get period => _period;
   String? get area => _area;
   double? get price => _price;
+  bool? get has_multiple_owners => _has_multiple_owners;
+  bool? get has_legal_disputes => _has_legal_disputes;
   bool? get is_negotiable => _is_negotiable;
   String? get floor => _floor;
   bool? get has_balcony => _has_balcony;
@@ -76,8 +86,13 @@ class Properties extends amplify_core.Model {
     owner_phone_numbers,
     broker_details,
     care_of,
+    transaction_type,
+    advance_amount,
+    period,
     area,
     price,
+    has_multiple_owners,
+    has_legal_disputes,
     is_negotiable,
     floor,
     has_balcony,
@@ -100,8 +115,13 @@ class Properties extends amplify_core.Model {
        _owner_phone_numbers = owner_phone_numbers,
        _broker_details = broker_details,
        _care_of = care_of,
+       _transaction_type = transaction_type,
+       _advance_amount = advance_amount,
+       _period = period,
        _area = area,
        _price = price,
+       _has_multiple_owners = has_multiple_owners,
+       _has_legal_disputes = has_legal_disputes,
        _is_negotiable = is_negotiable,
        _floor = floor,
        _has_balcony = has_balcony,
@@ -127,8 +147,13 @@ class Properties extends amplify_core.Model {
     List<String>? owner_phone_numbers,
     String? broker_details,
     String? care_of,
+    String? transaction_type,
+    double? advance_amount,
+    String? period,
     String? area,
     double? price,
+    bool? has_multiple_owners,
+    bool? has_legal_disputes,
     bool? is_negotiable,
     String? floor,
     bool? has_balcony,
@@ -152,8 +177,13 @@ class Properties extends amplify_core.Model {
       owner_phone_numbers: owner_phone_numbers,
       broker_details: broker_details,
       care_of: care_of,
+      transaction_type: transaction_type,
+      advance_amount: advance_amount,
+      period: period,
       area: area,
       price: price,
+      has_multiple_owners: has_multiple_owners,
+      has_legal_disputes: has_legal_disputes,
       is_negotiable: is_negotiable,
       floor: floor,
       has_balcony: has_balcony,
@@ -316,8 +346,13 @@ class Properties extends amplify_core.Model {
     List<String>? owner_phone_numbers,
     String? broker_details,
     String? care_of,
+    String? transaction_type,
+    double? advance_amount,
+    String? period,
     String? area,
     double? price,
+    bool? has_multiple_owners,
+    bool? has_legal_disputes,
     bool? is_negotiable,
     String? floor,
     bool? has_balcony,
@@ -341,8 +376,13 @@ class Properties extends amplify_core.Model {
       owner_phone_numbers: owner_phone_numbers ?? this.owner_phone_numbers,
       broker_details: broker_details ?? this.broker_details,
       care_of: care_of ?? this.care_of,
+      transaction_type: transaction_type ?? this.transaction_type,
+      advance_amount: advance_amount ?? this.advance_amount,
+      period: period ?? this.period,
       area: area ?? this.area,
       price: price ?? this.price,
+      has_multiple_owners: has_multiple_owners ?? this.has_multiple_owners,
+      has_legal_disputes: has_legal_disputes ?? this.has_legal_disputes,
       is_negotiable: is_negotiable ?? this.is_negotiable,
       floor: floor ?? this.floor,
       has_balcony: has_balcony ?? this.has_balcony,
@@ -435,8 +475,13 @@ class Properties extends amplify_core.Model {
       _owner_phone_numbers = jsonData['owner_phone_numbers']?.cast<String>(),
       _broker_details = jsonData['broker_details'],
       _care_of = jsonData['care_of'],
+      _transaction_type = jsonData['transaction_type'],
+      _advance_amount = (jsonData['advance_amount'] as num?)?.toDouble(),
+      _period = jsonData['period'],
       _area = jsonData['area'],
       _price = (jsonData['price'] as num?)?.toDouble(),
+      _has_multiple_owners = jsonData['has_multiple_owners'],
+      _has_legal_disputes = jsonData['has_legal_disputes'],
       _is_negotiable = jsonData['is_negotiable'],
       _floor = jsonData['floor'],
       _has_balcony = jsonData['has_balcony'],

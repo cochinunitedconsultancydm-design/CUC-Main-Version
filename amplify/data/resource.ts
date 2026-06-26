@@ -334,14 +334,19 @@ const schema = a.schema({
     // Building owner details
     owner_name: a.string(),
     owner_phone_numbers: a.string().array(),
+    has_multiple_owners: a.boolean(),
     
     // Additional Contacts
     broker_details: a.string(),
     care_of: a.string(),
+    has_legal_disputes: a.boolean(),
     
     // Area & Price
+    transaction_type: a.string(), // "Sale", "Rent", "Lease"
     area: a.string(),
     price: a.float(),
+    advance_amount: a.float(),
+    period: a.string(),
     is_negotiable: a.boolean(),
     
     // Detailed Specs

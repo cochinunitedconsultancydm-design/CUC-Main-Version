@@ -63,19 +63,35 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
   }
 
   void _showEditForm([amplify_models.Properties? property]) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _EditPropertyForm(
-        property: property,
-        onSaved: () {
-          if (mounted) Navigator.pop(context);
-          _fetchProperties();
-          _showSuccess(property == null ? 'Property added successfully' : 'Property updated successfully');
-        },
-      ),
+    final formWidget = _EditPropertyForm(
+      property: property,
+      onSaved: () {
+        if (mounted) Navigator.pop(context);
+        _fetchProperties();
+        _showSuccess(property == null ? 'Property added successfully' : 'Property updated successfully');
+      },
     );
+
+    if (MediaQuery.of(context).size.width > 800) {
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: formWidget,
+          ),
+        ),
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => formWidget,
+      );
+    }
   }
 
   Future<void> _deleteProperty(amplify_models.Properties property) async {
@@ -131,16 +147,15 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
       ),
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
-              border: Border(bottom: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.1))),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                border: Border(bottom: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.1))),
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final searchField = TextField(
                     decoration: InputDecoration(
                       hintText: 'Search properties, clients, owners...',
                       prefixIcon: const Icon(Icons.search, color: AppTheme.mutedTextColor),
@@ -153,34 +168,77 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     ),
                     onChanged: (val) => setState(() => _searchTerm = val),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: () => _showEditForm(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Property'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ],
+                  );
+                  final addButton = ElevatedButton.icon(
+                    onPressed: () => _showEditForm(),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Property'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+
+                  if (constraints.maxWidth > 600) {
+                    return Row(
+                      children: [
+                        Expanded(child: searchField),
+                        const SizedBox(width: 16),
+                        addButton,
+                      ],
+                    );
+                  } else {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        searchField,
+                        const SizedBox(height: 16),
+                        addButton,
+                      ],
+                    );
+                  }
+                },
+              ),
             ),
-          ),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : filtered.isEmpty
                     ? const Center(child: Text('No properties found.', style: TextStyle(color: AppTheme.mutedTextColor)))
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(24),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final prop = filtered[index];
-                          return _buildPropertyCard(prop).animate().fadeIn(delay: Duration(milliseconds: 50 * index));
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          int crossAxisCount = (constraints.maxWidth / 400).floor();
+                          if (crossAxisCount < 1) crossAxisCount = 1;
+
+                          if (crossAxisCount == 1) {
+                            return ListView.builder(
+                              padding: const EdgeInsets.all(24),
+                              itemCount: filtered.length,
+                              itemBuilder: (context, index) {
+                                final prop = filtered[index];
+                                return _buildPropertyCard(prop, margin: const EdgeInsets.only(bottom: 16)).animate().fadeIn(delay: Duration(milliseconds: 50 * index));
+                              },
+                            );
+                          }
+
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.all(24),
+                            child: Wrap(
+                              spacing: 16,
+                              runSpacing: 16,
+                              children: filtered.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final prop = entry.value;
+                                final cardWidth = (constraints.maxWidth - 48 - (16 * (crossAxisCount - 1))) / crossAxisCount;
+                                return SizedBox(
+                                  width: cardWidth,
+                                  child: _buildPropertyCard(prop, margin: EdgeInsets.zero).animate().fadeIn(delay: Duration(milliseconds: 50 * index)),
+                                );
+                              }).toList(),
+                            ),
+                          );
                         },
                       ),
           ),
@@ -189,9 +247,9 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
     );
   }
 
-  Widget _buildPropertyCard(amplify_models.Properties prop) {
+  Widget _buildPropertyCard(amplify_models.Properties prop, {EdgeInsetsGeometry margin = const EdgeInsets.only(bottom: 16)}) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: margin,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
       child: Padding(
@@ -288,6 +346,20 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
   }
 }
 
+class _PhoneContact {
+  final TextEditingController designationCtrl;
+  final TextEditingController phoneCtrl;
+
+  _PhoneContact({String designation = '', String phone = ''})
+      : designationCtrl = TextEditingController(text: designation),
+        phoneCtrl = TextEditingController(text: phone);
+
+  void dispose() {
+    designationCtrl.dispose();
+    phoneCtrl.dispose();
+  }
+}
+
 class _EditPropertyForm extends StatefulWidget {
   final amplify_models.Properties? property;
   final VoidCallback onSaved;
@@ -307,18 +379,23 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
   late TextEditingController _clientCtrl;
   late TextEditingController _locationCtrl;
   String _propertyType = 'Apartment/flat';
+  late TextEditingController _otherPropertyTypeCtrl;
   late TextEditingController _statusCtrl;
   late TextEditingController _notesCtrl;
 
   // Owner & Contacts
   late TextEditingController _ownerNameCtrl;
-  List<TextEditingController> _ownerPhoneCtrls = [];
+  List<_PhoneContact> _ownerPhoneContacts = [];
+  bool _hasMultipleOwners = false;
   late TextEditingController _brokerCtrl;
   late TextEditingController _careOfCtrl;
 
   // Pricing & Area
+  String _transactionType = 'Sale';
   late TextEditingController _areaCtrl;
   late TextEditingController _priceCtrl;
+  late TextEditingController _advanceAmountCtrl;
+  late TextEditingController _periodCtrl;
   bool _isNegotiable = false;
 
   // Property Details
@@ -327,6 +404,7 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
   late TextEditingController _balconyCountCtrl;
   bool _isFurnished = false;
   bool _hasCarParking = false;
+  bool _hasLegalDisputes = false;
   late TextEditingController _expensesCtrl;
 
   // Media
@@ -443,8 +521,16 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
     _nameCtrl = TextEditingController(text: p?.property_name ?? '');
     _clientCtrl = TextEditingController(text: p?.client_name ?? '');
     _locationCtrl = TextEditingController(text: p?.location ?? '');
-    if (p?.property_type != null && _propertyTypes.contains(p!.property_type)) {
-      _propertyType = p.property_type!;
+    if (p?.property_type != null) {
+      if (_propertyTypes.contains(p!.property_type)) {
+        _propertyType = p.property_type!;
+        _otherPropertyTypeCtrl = TextEditingController();
+      } else {
+        _propertyType = 'Other';
+        _otherPropertyTypeCtrl = TextEditingController(text: p.property_type);
+      }
+    } else {
+      _otherPropertyTypeCtrl = TextEditingController();
     }
     _statusCtrl = TextEditingController(text: p?.status ?? 'Active');
     _notesCtrl = TextEditingController(text: p?.notes ?? '');
@@ -452,16 +538,25 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
     // Owner & Contacts
     _ownerNameCtrl = TextEditingController(text: p?.owner_name ?? '');
     if (p?.owner_phone_numbers != null && p!.owner_phone_numbers!.isNotEmpty) {
-      _ownerPhoneCtrls = p.owner_phone_numbers!.map((num) => TextEditingController(text: num)).toList();
+      _ownerPhoneContacts = p.owner_phone_numbers!.map((numStr) {
+        if (numStr.contains(':')) {
+           final parts = numStr.split(':');
+           return _PhoneContact(designation: parts[0].trim(), phone: parts.sublist(1).join(':').trim());
+        }
+        return _PhoneContact(phone: numStr);
+      }).toList();
     } else {
-      _ownerPhoneCtrls.add(TextEditingController());
+      _ownerPhoneContacts.add(_PhoneContact());
     }
     _brokerCtrl = TextEditingController(text: p?.broker_details ?? '');
     _careOfCtrl = TextEditingController(text: p?.care_of ?? '');
 
     // Pricing & Area
+    _transactionType = p?.transaction_type ?? 'Sale';
     _areaCtrl = TextEditingController(text: p?.area ?? '');
     _priceCtrl = TextEditingController(text: p?.price?.toString() ?? '');
+    _advanceAmountCtrl = TextEditingController(text: p?.advance_amount?.toString() ?? '');
+    _periodCtrl = TextEditingController(text: p?.period ?? '');
     _isNegotiable = p?.is_negotiable ?? false;
 
     // Property Details
@@ -470,6 +565,8 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
     _balconyCountCtrl = TextEditingController(text: p?.balcony_count?.toString() ?? '');
     _isFurnished = p?.is_furnished ?? false;
     _hasCarParking = p?.has_car_parking ?? false;
+    _hasMultipleOwners = p?.has_multiple_owners ?? false;
+    _hasLegalDisputes = p?.has_legal_disputes ?? false;
     _expensesCtrl = TextEditingController(text: p?.expenses ?? '');
 
     // Media
@@ -483,14 +580,17 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
     _nameCtrl.dispose();
     _clientCtrl.dispose();
     _locationCtrl.dispose();
+    _otherPropertyTypeCtrl.dispose();
     _statusCtrl.dispose();
     _notesCtrl.dispose();
     _ownerNameCtrl.dispose();
-    for (var c in _ownerPhoneCtrls) { c.dispose(); }
+    for (var c in _ownerPhoneContacts) { c.dispose(); }
     _brokerCtrl.dispose();
     _careOfCtrl.dispose();
     _areaCtrl.dispose();
     _priceCtrl.dispose();
+    _advanceAmountCtrl.dispose();
+    _periodCtrl.dispose();
     _floorCtrl.dispose();
     _balconyCountCtrl.dispose();
     _expensesCtrl.dispose();
@@ -503,9 +603,16 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
 
     try {
       final priceVal = double.tryParse(_priceCtrl.text.trim());
+      final advanceAmountVal = double.tryParse(_advanceAmountCtrl.text.trim());
       final balconyCountVal = int.tryParse(_balconyCountCtrl.text.trim());
       
-      final ownerPhones = _ownerPhoneCtrls.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList();
+      final ownerPhones = _ownerPhoneContacts.map((c) {
+        final des = c.designationCtrl.text.trim();
+        final ph = c.phoneCtrl.text.trim();
+        if (ph.isEmpty) return '';
+        if (des.isNotEmpty) return '$des: $ph';
+        return ph;
+      }).where((t) => t.isNotEmpty).toList();
       final photos = _uploadedPhotos;
       
       if (widget.property == null) {
@@ -513,15 +620,20 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
           property_name: _nameCtrl.text.trim(),
           client_name: _clientCtrl.text.trim(),
           location: _locationCtrl.text.trim(),
-          property_type: _propertyType,
+          property_type: _propertyType == 'Other' ? _otherPropertyTypeCtrl.text.trim() : _propertyType,
           status: _statusCtrl.text.trim(),
           notes: _notesCtrl.text.trim(),
           owner_name: _ownerNameCtrl.text.trim(),
           owner_phone_numbers: ownerPhones,
+          has_multiple_owners: _hasMultipleOwners,
           broker_details: _brokerCtrl.text.trim(),
           care_of: _careOfCtrl.text.trim(),
+          has_legal_disputes: _hasLegalDisputes,
+          transaction_type: _transactionType,
           area: _areaCtrl.text.trim(),
           price: priceVal,
+          advance_amount: advanceAmountVal,
+          period: _periodCtrl.text.trim(),
           is_negotiable: _isNegotiable,
           floor: _floorCtrl.text.trim(),
           has_balcony: _hasBalcony,
@@ -537,15 +649,20 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
           property_name: _nameCtrl.text.trim(),
           client_name: _clientCtrl.text.trim(),
           location: _locationCtrl.text.trim(),
-          property_type: _propertyType,
+          property_type: _propertyType == 'Other' ? _otherPropertyTypeCtrl.text.trim() : _propertyType,
           status: _statusCtrl.text.trim(),
           notes: _notesCtrl.text.trim(),
           owner_name: _ownerNameCtrl.text.trim(),
           owner_phone_numbers: ownerPhones,
+          has_multiple_owners: _hasMultipleOwners,
           broker_details: _brokerCtrl.text.trim(),
           care_of: _careOfCtrl.text.trim(),
+          has_legal_disputes: _hasLegalDisputes,
+          transaction_type: _transactionType,
           area: _areaCtrl.text.trim(),
           price: priceVal,
+          advance_amount: advanceAmountVal,
+          period: _periodCtrl.text.trim(),
           is_negotiable: _isNegotiable,
           floor: _floorCtrl.text.trim(),
           has_balcony: _hasBalcony,
@@ -572,17 +689,16 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        top: 24,
-        left: 24,
-        right: 24,
-      ),
+    return Material(
+      color: AppTheme.surfaceColor,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: Container(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          top: 24,
+          left: 24,
+          right: 24,
+        ),
       constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
       child: Form(
         key: _formKey,
@@ -612,6 +728,10 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
                     _buildField('Property Name', _nameCtrl, required: true),
                     const SizedBox(height: 16),
                     _buildDropdown('Property Type', _propertyType, _propertyTypes, (val) => setState(() => _propertyType = val!)),
+                    if (_propertyType == 'Other') ...[
+                      const SizedBox(height: 16),
+                      _buildField('Specify Property Type', _otherPropertyTypeCtrl, required: true),
+                    ],
                     const SizedBox(height: 16),
                     _buildField('Location', _locationCtrl),
                     const SizedBox(height: 16),
@@ -619,13 +739,21 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
                     const SizedBox(height: 32),
 
                     _buildSectionTitle('Pricing & Area'),
-                    Row(
-                      children: [
-                        Expanded(child: _buildField('Area (e.g. 1500 sqft)', _areaCtrl)),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildField('Price', _priceCtrl, isNumber: true)),
+                    _buildField('Area (e.g. 1500 sqft)', _areaCtrl),
+                    const SizedBox(height: 16),
+                    _buildDropdown('Transaction Type', _transactionType, ['Sale', 'Rent', 'Lease'], (val) => setState(() => _transactionType = val!)),
+                    const SizedBox(height: 16),
+                    if (_transactionType == 'Rent' || _transactionType == 'Lease') ...[
+                      _buildField(_transactionType == 'Rent' ? 'Rent Amount' : 'Lease Amount', _priceCtrl, isNumber: true),
+                      const SizedBox(height: 16),
+                      if (_transactionType == 'Rent') ...[
+                        _buildField('Advance Amount', _advanceAmountCtrl, isNumber: true),
+                        const SizedBox(height: 16),
                       ],
-                    ),
+                      _buildField('Period (e.g. 11 months, 3 years)', _periodCtrl),
+                    ] else ...[
+                      _buildField('Price', _priceCtrl, isNumber: true),
+                    ],
                     SwitchListTile(
                       title: const Text('Price is Negotiable', style: TextStyle(color: AppTheme.mutedTextColor)),
                       value: _isNegotiable,
@@ -636,27 +764,46 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
                     const SizedBox(height: 16),
 
                     _buildSectionTitle('Owner & Contact Details'),
+                    SwitchListTile(
+                      title: const Text('Has Multiple Owners', style: TextStyle(color: AppTheme.mutedTextColor)),
+                      value: _hasMultipleOwners,
+                      onChanged: (val) => setState(() => _hasMultipleOwners = val),
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppTheme.primaryColor,
+                    ),
                     _buildField('Owner Name', _ownerNameCtrl),
                     const SizedBox(height: 16),
                     const Text('Owner Phone Numbers', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.mutedTextColor)),
                     const SizedBox(height: 8),
-                    ..._ownerPhoneCtrls.asMap().entries.map((e) {
+                    ..._ownerPhoneContacts.asMap().entries.map((e) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(child: _buildField('', e.value, isNumber: true)),
-                            if (_ownerPhoneCtrls.length > 1)
-                              IconButton(
-                                icon: const Icon(Icons.remove_circle, color: Colors.red),
-                                onPressed: () => setState(() => _ownerPhoneCtrls.removeAt(e.key)),
+                            Expanded(
+                              flex: 2,
+                              child: _buildField(e.key == 0 ? 'Designation' : '', e.value.designationCtrl),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 3,
+                              child: _buildField(e.key == 0 ? 'Phone Number' : '', e.value.phoneCtrl, isNumber: true),
+                            ),
+                            if (_ownerPhoneContacts.length > 1)
+                              Padding(
+                                padding: EdgeInsets.only(top: e.key == 0 ? 24.0 : 0.0),
+                                child: IconButton(
+                                  icon: const Icon(Icons.remove_circle, color: Colors.red),
+                                  onPressed: () => setState(() => _ownerPhoneContacts.removeAt(e.key)),
+                                ),
                               )
                           ],
                         ),
                       );
                     }).toList(),
                     TextButton.icon(
-                      onPressed: () => setState(() => _ownerPhoneCtrls.add(TextEditingController())),
+                      onPressed: () => setState(() => _ownerPhoneContacts.add(_PhoneContact())),
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text('Add Phone Number'),
                     ),
@@ -667,6 +814,13 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
                     const SizedBox(height: 32),
 
                     _buildSectionTitle('Detailed Specifications'),
+                    SwitchListTile(
+                      title: const Text('Has Legal Disputes', style: TextStyle(color: AppTheme.mutedTextColor)),
+                      value: _hasLegalDisputes,
+                      onChanged: (val) => setState(() => _hasLegalDisputes = val),
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppTheme.primaryColor,
+                    ),
                     _buildField('Floor Level', _floorCtrl),
                     SwitchListTile(
                       title: const Text('Has Balcony', style: TextStyle(color: AppTheme.mutedTextColor)),
@@ -763,6 +917,7 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

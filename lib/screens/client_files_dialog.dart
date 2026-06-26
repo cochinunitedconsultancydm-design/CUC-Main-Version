@@ -365,144 +365,177 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(32),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 1000, maxHeight: 750),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 32, offset: Offset(0, 16))],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Row(
-            children: [
-              // Sidebar Navigation
-              Container(
-                width: 260,
-                color: const Color(0xFFF8FAFC),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+      insetPadding: const EdgeInsets.all(16),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 600;
+          
+          Widget sidebar = Container(
+            width: isWide ? 260 : double.infinity,
+            color: const Color(0xFFF8FAFC),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(isWide ? 24 : 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(Icons.folder_special, color: AppTheme.primaryColor, size: 24),
-                              ),
-                              const SizedBox(width: 12),
-                              const Expanded(child: Text('Files Vault', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
-                            ],
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.folder_special, color: AppTheme.primaryColor, size: 24),
                           ),
-                          const SizedBox(height: 12),
-                          Text(widget.client.name, style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    const SizedBox(height: 16),
-                    _buildNavItem('Personal Details', Icons.person_outline, 'personal'),
-                    _buildNavItem('Work Folders', Icons.work_outline, 'work'),
-                  ],
-                ),
-              ),
-              // Vertical Divider
-              Container(width: 1, color: Colors.grey.shade200),
-              // Main Content Area
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Top Bar
-                    Container(
-                      height: 80,
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
-                      ),
-                      child: Row(
-                        children: [
-                          if (_currentTab == 'work' && _currentWorkFolder != null) ...[
+                          const SizedBox(width: 12),
+                          const Expanded(child: Text('Files Vault', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
+                          if (!isWide)
                             IconButton(
-                              icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                              onPressed: () {
-                                setState(() => _currentWorkFolder = null);
-                                _loadFiles();
-                              },
+                              icon: const Icon(Icons.close, color: Colors.black54),
+                              onPressed: () => Navigator.pop(context),
                               style: IconButton.styleFrom(backgroundColor: Colors.grey.shade100),
                             ),
-                            const SizedBox(width: 16),
-                          ],
-                          Expanded(
-                            child: Text(
-                              _currentTab == 'personal' ? 'Personal Files' 
-                              : _currentWorkFolder == null ? 'Work Folders' 
-                              : _currentWorkFolder!,
-                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              if (_currentTab == 'work' && _currentWorkFolder == null) {
-                                _createFolder();
-                              } else {
-                                _uploadFile(_currentTab);
-                              }
-                            },
-                            icon: Icon(_currentTab == 'work' && _currentWorkFolder == null ? Icons.create_new_folder : Icons.cloud_upload_outlined, size: 18),
-                            label: Text(_currentTab == 'work' && _currentWorkFolder == null ? 'New Folder' : 'Upload File'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryColor,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          IconButton(
-                            icon: const Icon(Icons.close, color: Colors.black54),
-                            onPressed: () => Navigator.pop(context),
-                            style: IconButton.styleFrom(backgroundColor: Colors.grey.shade100),
-                          ),
                         ],
                       ),
-                    ),
-                    // Content Grid/List
-                    Expanded(
-                      child: Container(
-                        color: Colors.white,
-                        child: _isLoading 
-                          ? const Center(child: CircularProgressIndicator())
-                          : _currentTab == 'personal' 
-                              ? _buildFileList(_personalFiles, 'personal') 
-                              : _buildFileList(_workItems, 'work'),
-                      ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      Text(widget.client.name, style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
+                const Divider(height: 1),
+                if (isWide) const SizedBox(height: 16),
+                if (isWide) ...[
+                  _buildNavItem('Personal Details', Icons.person_outline, 'personal', isMobile: false),
+                  _buildNavItem('Work Folders', Icons.work_outline, 'work', isMobile: false),
+                ] else
+                  Row(
+                    children: [
+                      Expanded(child: _buildNavItem('Personal', Icons.person_outline, 'personal', isMobile: true)),
+                      Expanded(child: _buildNavItem('Work', Icons.work_outline, 'work', isMobile: true)),
+                    ],
+                  ),
+              ],
+            ),
+          );
+
+          Widget mainContent = Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Top Bar
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: isWide ? 32 : 16, vertical: isWide ? 0 : 16),
+                  height: isWide ? 80 : null,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+                  ),
+                  child: Row(
+                    children: [
+                      if (_currentTab == 'work' && _currentWorkFolder != null) ...[
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                          onPressed: () {
+                            setState(() => _currentWorkFolder = null);
+                            _loadFiles();
+                          },
+                          style: IconButton.styleFrom(backgroundColor: Colors.grey.shade100),
+                        ),
+                        const SizedBox(width: 16),
+                      ],
+                      Expanded(
+                        child: Text(
+                          _currentTab == 'personal' ? 'Personal Files' 
+                          : _currentWorkFolder == null ? 'Work Folders' 
+                          : _currentWorkFolder!,
+                          style: TextStyle(fontSize: isWide ? 22 : 18, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          if (_currentTab == 'work' && _currentWorkFolder == null) {
+                            _createFolder();
+                          } else {
+                            _uploadFile(_currentTab);
+                          }
+                        },
+                        icon: Icon(_currentTab == 'work' && _currentWorkFolder == null ? Icons.create_new_folder : Icons.cloud_upload_outlined, size: 18),
+                        label: Text(isWide ? (_currentTab == 'work' && _currentWorkFolder == null ? 'New Folder' : 'Upload File') : (_currentTab == 'work' && _currentWorkFolder == null ? 'Folder' : 'Upload')),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: EdgeInsets.symmetric(horizontal: isWide ? 24 : 12, vertical: isWide ? 16 : 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      if (isWide) ...[
+                        const SizedBox(width: 16),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.black54),
+                          onPressed: () => Navigator.pop(context),
+                          style: IconButton.styleFrom(backgroundColor: Colors.grey.shade100),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Content Grid/List
+                Expanded(
+                  child: Container(
+                    color: Colors.white,
+                    child: _isLoading 
+                      ? const Center(child: CircularProgressIndicator())
+                      : _currentTab == 'personal' 
+                          ? _buildFileList(_personalFiles, 'personal', isWide) 
+                          : _buildFileList(_workItems, 'work', isWide),
+                  ),
+                ),
+              ],
+            ),
+          );
+
+          return Container(
+            constraints: const BoxConstraints(maxWidth: 1000, maxHeight: 750),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 32, offset: Offset(0, 16))],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: isWide 
+                ? Row(
+                    children: [
+                      sidebar,
+                      Container(width: 1, color: Colors.grey.shade200),
+                      mainContent,
+                    ],
+                  )
+                : Column(
+                    children: [
+                      sidebar,
+                      Container(height: 1, color: Colors.grey.shade200),
+                      mainContent,
+                    ],
+                  ),
+            ),
+          );
+        }
       ).animate().fadeIn(duration: 300.ms).scaleXY(begin: 0.98, end: 1.0, curve: Curves.easeOutQuart),
     );
   }
 
-  Widget _buildNavItem(String title, IconData icon, String tab) {
+  Widget _buildNavItem(String title, IconData icon, String tab, {bool isMobile = false}) {
     final isSelected = _currentTab == tab;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 16, vertical: isMobile ? 8 : 4),
       child: InkWell(
         onTap: () {
           setState(() {
@@ -513,21 +546,25 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
         },
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 16, vertical: isMobile ? 10 : 14),
           decoration: BoxDecoration(
             color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.1) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
+            mainAxisAlignment: isMobile ? MainAxisAlignment.center : MainAxisAlignment.start,
             children: [
               Icon(icon, color: isSelected ? AppTheme.primaryColor : Colors.grey.shade600, size: 20),
-              const SizedBox(width: 12),
-              Text(
-                title, 
-                style: TextStyle(
-                  color: isSelected ? AppTheme.primaryColor : Colors.grey.shade700, 
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 14,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  title, 
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isSelected ? AppTheme.primaryColor : Colors.grey.shade700, 
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ],
@@ -537,7 +574,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
     );
   }
 
-  Widget _buildFileList(List<StorageItem> files, String category) {
+  Widget _buildFileList(List<StorageItem> files, String category, bool isWide) {
     final isWorkFoldersView = category == 'work' && _currentWorkFolder == null;
 
     if (isWorkFoldersView && _workFolders.isEmpty) {
@@ -591,7 +628,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
     int itemCount = isWorkFoldersView ? _workFolders.length : files.length;
 
     return ListView.builder(
-      padding: const EdgeInsets.all(32),
+      padding: EdgeInsets.all(isWide ? 32 : 16),
       itemCount: itemCount,
       itemBuilder: (context, index) {
         if (isWorkFoldersView) {

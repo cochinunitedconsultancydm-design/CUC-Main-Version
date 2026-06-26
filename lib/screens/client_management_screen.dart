@@ -580,11 +580,19 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: Text(c.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isWide ? 18 : 16), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            child: Text(c.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isWide ? 18 : 16), maxLines: 2, overflow: TextOverflow.ellipsis),
                           ),
-                          if (c.isContacted) ...[
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          if (c.isContacted)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.green.shade200)),
@@ -597,8 +605,6 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 12),
-                          ],
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
@@ -620,7 +626,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Text('${c.typeOfWork ?? "No Type of Work"} • File: ${c.fileNo ?? "N/A"}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                     ],
                   ),

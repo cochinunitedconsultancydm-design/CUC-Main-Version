@@ -352,7 +352,6 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
           );
         },
         ),
-          ),
         ).animate().fadeIn(duration: 300.ms).scaleXY(begin: 0.95, end: 1.0, curve: Curves.easeOutBack),
       ),
     );

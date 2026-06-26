@@ -3988,12 +3988,12 @@ final dLink = "";
                   elevation: 8,
                   borderRadius: BorderRadius.circular(12),
                   clipBehavior: Clip.antiAlias,
+                  color: Colors.white,
                   child: Container(
                     width:
                         380, // Slightly smaller than the field to look better
                     constraints: const BoxConstraints(maxHeight: 250),
                     decoration: BoxDecoration(
-                      color: Colors.white,
                       border: Border.all(color: Colors.grey.shade200),
                     ),
                     child: ListView.separated(

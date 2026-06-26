@@ -1,12 +1,11 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/gestures.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:webview_windows/webview_windows.dart';
 import '../theme.dart';
+
+// Conditionally import dart:io and webview_windows only on non-web platforms
+import 'google_docs_webview_screen_stub.dart'
+    if (dart.library.io) 'google_docs_webview_screen_native.dart' as native_impl;
 
 class GoogleDocsWebviewScreen extends StatefulWidget {
   final String url;
@@ -23,20 +22,50 @@ class GoogleDocsWebviewScreen extends StatefulWidget {
 }
 
 class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
-  late final WebviewController _controller;
   bool _isLoading = true;
   bool _isWebviewInitialized = false;
   bool _hasError = false;
 
-  static bool _environmentInitialized = false;
+  // Only used on native (Windows) platform
+  dynamic _nativeController;
 
   @override
   void initState() {
     super.initState();
     if (!kIsWeb) {
-      initPlatformState();
+      _initNative();
     } else {
       _isLoading = false;
+    }
+  }
+
+  Future<void> _initNative() async {
+    try {
+      _nativeController = await native_impl.initializeWebview(
+        url: widget.url,
+        onLoadingStateChanged: (bool isLoading) {
+          if (mounted) {
+            setState(() {
+              _isLoading = isLoading;
+            });
+          }
+        },
+        onInitialized: () {
+          if (mounted) {
+            setState(() {
+              _isWebviewInitialized = true;
+            });
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('Error initializing webview: $e');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -49,79 +78,10 @@ class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
     }
   }
 
-  Future<void> initPlatformState() async {
-    _controller = WebviewController();
-    try {
-      if (!_environmentInitialized) {
-        final appDir = await getApplicationSupportDirectory();
-        final userDataPath = '${appDir.path}${Platform.pathSeparator}google_docs_webview_data';
-        await Directory(userDataPath).create(recursive: true);
-        await WebviewController.initializeEnvironment(
-          userDataPath: userDataPath,
-        );
-        _environmentInitialized = true;
-      }
-
-      await _controller.initialize();
-
-      _controller.loadingState.listen((state) {
-        if (mounted) {
-          setState(() {
-            _isLoading = state == LoadingState.loading;
-          });
-        }
-      });
-
-      await _controller.setBackgroundColor(Colors.transparent);
-      await _controller.setPopupWindowPolicy(WebviewPopupWindowPolicy.deny);
-
-      if (!mounted) return;
-      setState(() {
-        _isWebviewInitialized = true;
-      });
-
-      await _controller.loadUrl(widget.url);
-    } on PlatformException catch (e) {
-      if (e.code == 'environment_already_initialized' || _environmentInitialized) {
-        _environmentInitialized = true;
-        try {
-          if (!_controller.value.isInitialized) {
-            await _controller.initialize();
-          }
-
-          _controller.loadingState.listen((state) {
-            if (mounted) {
-              setState(() {
-                _isLoading = state == LoadingState.loading;
-              });
-            }
-          });
-
-          await _controller.setBackgroundColor(Colors.transparent);
-          await _controller.setPopupWindowPolicy(WebviewPopupWindowPolicy.deny);
-
-          if (!mounted) return;
-          setState(() {
-            _isWebviewInitialized = true;
-          });
-
-          await _controller.loadUrl(widget.url);
-          return;
-        } catch (_) {}
-      }
-
-      if (mounted) {
-        setState(() {
-          _hasError = true;
-        });
-      }
-    }
-  }
-
   @override
   void dispose() {
-    if (!kIsWeb) {
-      _controller.dispose();
+    if (!kIsWeb && _nativeController != null) {
+      native_impl.disposeWebview(_nativeController);
     }
     super.dispose();
   }
@@ -156,7 +116,7 @@ class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
             IconButton(
               icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor),
               onPressed: () {
-                _controller.reload();
+                native_impl.reloadWebview(_nativeController);
               },
             ),
           const SizedBox(width: 8),
@@ -197,47 +157,7 @@ class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
                 ),
               ),
             if (!kIsWeb && _isWebviewInitialized)
-              Listener(
-                onPointerSignal: (pointerSignal) {
-                  if (pointerSignal is PointerScrollEvent) {
-                    final String jsScript = '''
-                      var deltaY = ${pointerSignal.scrollDelta.dy};
-                      var deltaX = ${pointerSignal.scrollDelta.dx};
-                      
-                      // Google Docs specific scroll container
-                      var kixEditor = document.querySelector('.kix-appview-editor');
-                      if (kixEditor) {
-                        kixEditor.scrollTop += deltaY;
-                        kixEditor.scrollLeft += deltaX;
-                      } else {
-                        // Fallback for standard elements
-                        var x = ${pointerSignal.localPosition.dx};
-                        var y = ${pointerSignal.localPosition.dy};
-                        var target = document.elementFromPoint(x, y) || document.body;
-                        
-                        var ev = new WheelEvent('wheel', {
-                          deltaY: deltaY,
-                          deltaX: deltaX,
-                          clientX: x,
-                          clientY: y,
-                          bubbles: true,
-                          cancelable: true,
-                          view: window
-                        });
-                        target.dispatchEvent(ev);
-                        window.scrollBy(deltaX, deltaY);
-                      }
-                    ''';
-                    _controller.executeScript(jsScript);
-                  }
-                },
-                child: Webview(
-                  _controller,
-                  permissionRequested: (url, permissionKind, isUserInitiated) async {
-                    return WebviewPermissionDecision.allow;
-                  },
-                ),
-              ),
+              native_impl.buildWebview(context, _nativeController),
             if (_isLoading && !_hasError)
               IgnorePointer(
                 child: Container(
@@ -268,7 +188,7 @@ class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
                           _hasError = false;
                           _isLoading = true;
                         });
-                        initPlatformState();
+                        _initNative();
                       },
                       icon: const Icon(Icons.refresh_rounded),
                       label: const Text('Retry'),
@@ -286,4 +206,3 @@ class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
     );
   }
 }
-

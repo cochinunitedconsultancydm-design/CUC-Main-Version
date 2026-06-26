@@ -42,16 +42,21 @@ class _GoogleDocsWebviewScreenState extends State<GoogleDocsWebviewScreen> {
 
   Future<void> _launchForWeb() async {
     final uri = Uri.parse(widget.url);
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      debugPrint('Could not launch $uri');
-    }
+    
     if (mounted) {
       setState(() {
         _isLoading = false;
         _isWebviewInitialized = false;
       });
+    }
+    
+    // Give the UI a frame to update before launching to prevent hanging if url_launcher throws
+    await Future.delayed(const Duration(milliseconds: 100));
+    
+    try {
+      await launchUrl(uri, mode: LaunchMode.platformDefault);
+    } catch (e) {
+      debugPrint('Could not launch $uri');
     }
   }
 

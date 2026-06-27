@@ -342,25 +342,7 @@ class Users extends amplify_core.Model {
         ),
       );
 
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: Users.CREATED_AT,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
 
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: Users.LAST_SEEN,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
 
       modelSchemaDefinition.addField(
         amplify_core.ModelFieldDefinition.field(

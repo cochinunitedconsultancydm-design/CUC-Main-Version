@@ -27,12 +27,28 @@ class AuthService {
       }
 
       debugPrint('Attempting Cognito login for: $username');
+
+      // First, query AppSync to find the user's actual registered email.
+      // This is needed because they might enter a username, but Cognito needs their email.
+      var request = ModelQueries.list(
+        Users.classType,
+        where: username.contains('@') 
+            ? Users.EMAIL.eq(username) 
+            : Users.USERNAME.eq(username),
+        limit: 1,
+      );
       
-      // Auto-append dummy email domain if they just typed a username
-      String loginEmail = username;
-      if (!loginEmail.contains('@')) {
-        loginEmail = '${username.trim().toLowerCase()}@cuc.local';
+      final response = await Amplify.API.query(request: request).response;
+      final users = response.data?.items.whereType<Users>().toList() ?? [];
+
+      if (users.isEmpty) {
+        debugPrint('Login failed: user not found in Users table');
+        _security.recordFailedAttempt(username);
+        return false;
       }
+
+      final res = users.first;
+      String loginEmail = res.email ?? (username.contains('@') ? username : '${username.trim().toLowerCase()}@cuc.local');
 
       // SECURITY: Authenticate against AWS Cognito securely!
       var signInResult = await Amplify.Auth.signIn(
@@ -52,24 +68,6 @@ class AuthService {
         _security.recordFailedAttempt(username);
         return false;
       }
-
-      // Now that we are authenticated, we can securely query the AppSync Database
-      var request = ModelQueries.list(
-        Users.classType,
-        where: Users.USERNAME.eq(username),
-        limit: 100,
-      );
-      
-      final response = await Amplify.API.query(request: request).response;
-      final users = response.data?.items.whereType<Users>().toList() ?? [];
-
-      if (users.isEmpty) {
-        debugPrint('Login failed: user exists in Cognito but not in Users table');
-        await Amplify.Auth.signOut();
-        return false;
-      }
-
-      final res = users.first;
 
       _security.clearFailedAttempts(username);
       debugPrint('User authenticated: ${res.id}, Role: ${res.role}');

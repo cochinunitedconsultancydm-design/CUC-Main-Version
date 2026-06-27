@@ -1580,7 +1580,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                   setState(() {
                     final oldType = _type;
                     _type = v;
-                    if (oldType == 'INVOICE' && _type == 'QUOTATION') {
+                    if (oldType != _type) {
                       _quotationTerms = _getDefaultTerms(_category);
                       _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
                     }
@@ -1606,7 +1606,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                     setState(() {
                       final oldType = _type;
                       _type = v;
-                      if (oldType == 'INVOICE' && _type == 'QUOTATION') {
+                      if (oldType != _type) {
                         _quotationTerms = _getDefaultTerms(_category);
                         _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
                       }

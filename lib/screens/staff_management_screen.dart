@@ -228,31 +228,6 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                           }
                           try {
                             if (user == null) {
-                              // Register in Cognito first
-                              try {
-                                String loginEmail = username.text;
-                                if (!loginEmail.contains('@')) {
-                                  loginEmail = '${username.text.trim().toLowerCase()}@cuc.local';
-                                }
-                                
-                                await Amplify.Auth.signUp(
-                                  username: loginEmail,
-                                  password: password.text,
-                                  options: SignUpOptions(
-                                    userAttributes: {
-                                      AuthUserAttributeKey.email: email.text.isNotEmpty ? email.text : loginEmail,
-                                      AuthUserAttributeKey.name: name.text,
-                                    },
-                                  ),
-                                );
-                              } on AuthException catch (e) {
-                                _msg('Error creating user: ${e.message}', false);
-                                return;
-                              } catch (e) {
-                                _msg('Error creating user: $e', false);
-                                return;
-                              }
-
                               // SECURITY: Hash password before storing
                               final hashedPassword = SecurityService().hashPassword(password.text);
                               final newUser = amplify_models.Users(

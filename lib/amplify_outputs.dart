@@ -1,4 +1,4 @@
-const amplifyConfig = r'''{
+const amplifyConfig = '''{
   "auth": {
     "user_pool_id": "ap-south-2_7lQGNLJsx",
     "aws_region": "ap-south-2",

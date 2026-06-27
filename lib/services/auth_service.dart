@@ -61,6 +61,8 @@ class AuthService {
       );
       
       final response = await Amplify.API.query(request: request).response;
+      debugPrint('GraphQL Data: ${response.data}');
+      debugPrint('GraphQL Errors: ${response.errors}');
       final users = response.data?.items.whereType<Users>().toList() ?? [];
 
       if (users.isEmpty) {

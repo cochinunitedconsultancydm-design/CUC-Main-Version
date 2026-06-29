@@ -11,6 +11,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_api/amplify_api.dart';
 import '../models/ModelProvider.dart';
 import '../amplify_outputs.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class LocationTrackingService {
   static final LocationTrackingService _instance = LocationTrackingService._internal();
@@ -149,7 +150,7 @@ void onStart(ServiceInstance service) async {
           final item = res.data!.items.firstWhere((element) => element?.check_out_time == null, orElse: () => null);
           if (item != null) {
             final updated = item.copyWith(check_out_time: DateTime.now().toUtc().toIso8601String());
-            await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+            await BackupAwareApi().update(updated);
             debugPrint('Auto checked out user $finalUserId due to app kill.');
           }
         }
@@ -202,7 +203,7 @@ void onStart(ServiceInstance service) async {
               longitude: position.longitude,
               updated_at: nowIso
             );
-            await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+            await BackupAwareApi().update(updated);
           } else {
             final newLoc = StaffLocations(
               user_id: finalUserId,
@@ -210,7 +211,7 @@ void onStart(ServiceInstance service) async {
               longitude: position.longitude,
               updated_at: nowIso
             );
-            await Amplify.API.mutate(request: ModelMutations.create(newLoc)).response;
+            await BackupAwareApi().create(newLoc);
           }
 
           // 2. Append to route history
@@ -220,7 +221,7 @@ void onStart(ServiceInstance service) async {
             longitude: position.longitude,
             recorded_at: nowIso
           );
-          await Amplify.API.mutate(request: ModelMutations.create(newHist)).response;
+          await BackupAwareApi().create(newHist);
           
           debugPrint('Background location updated and recorded for user $finalUserId: ${position.latitude}, ${position.longitude}');
         } else {

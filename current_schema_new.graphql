@@ -1,0 +1,3435 @@
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+type ActivityLogs @aws_cognito_user_pools @aws_iam {
+  action: String
+  createdAt: AWSDateTime!
+  created_at: String
+  details: String
+  id: ID!
+  target_id: String
+  target_type: String
+  updatedAt: AWSDateTime!
+  user_id: Int
+}
+
+type Billings @aws_cognito_user_pools @aws_iam {
+  amount: String
+  authorities: String
+  category: String
+  client_name: String
+  createdAt: AWSDateTime!
+  created_at: String
+  data: String
+  date: String
+  id: ID!
+  invoice_no: String
+  status: String
+  type: String
+  updatedAt: AWSDateTime!
+}
+
+type Checklists @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  created_at: String
+  description: String
+  due_date: String
+  id: ID!
+  manager_id: Int
+  reason: String
+  remarks: String
+  responsible_id: Int
+  status: String
+  title: String
+  updatedAt: AWSDateTime!
+  updated_at: String
+}
+
+type ClientDocuments @aws_cognito_user_pools @aws_iam {
+  client_id: String
+  client_name: String
+  createdAt: AWSDateTime!
+  created_at: String
+  document_name: String
+  id: ID!
+  og_copy: String
+  remarks: String
+  storage_path: String
+  updatedAt: AWSDateTime!
+}
+
+type ClientLicenses @aws_cognito_user_pools @aws_iam {
+  client_id: Int
+  createdAt: AWSDateTime!
+  created_at: String
+  expiry_date: String
+  file_no: String
+  id: ID!
+  license_type_id: Int
+  manual_client_name: String
+  notes: String
+  service_date: String
+  status: String
+  updatedAt: AWSDateTime!
+  updated_at: String
+}
+
+type Clients @aws_cognito_user_pools @aws_iam {
+  address: String
+  balance_due: String
+  case_number: String
+  createdAt: AWSDateTime!
+  created_at: String
+  dob: String
+  email: String
+  file_date: String
+  file_no: String
+  id: ID!
+  is_contacted: Boolean
+  managed_by: String
+  name: String
+  phone: String
+  review_rating: Int
+  type_of_work: String
+  updatedAt: AWSDateTime!
+}
+
+type CompanyBills @aws_cognito_user_pools @aws_iam {
+  amount: Float
+  bill_date: String
+  category: String
+  createdAt: AWSDateTime!
+  created_at: String
+  description: String
+  id: ID!
+  spent_by: Int
+  spent_by_name: String
+  status: String
+  title: String
+  updatedAt: AWSDateTime!
+}
+
+type DealActivities @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  created_at: String
+  created_by: Int
+  deal_id: Int
+  description: String
+  due_date: String
+  id: ID!
+  is_completed: Boolean
+  title: String
+  type: String
+  updatedAt: AWSDateTime!
+}
+
+type DealAssignees @aws_cognito_user_pools @aws_iam {
+  assigned_at: String
+  createdAt: AWSDateTime!
+  deal_id: Int
+  id: ID!
+  role: String
+  updatedAt: AWSDateTime!
+  user_id: Int
+}
+
+type DealHandoverHistory @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  deal_id: Int
+  from_user_id: Int
+  handed_over_at: String
+  id: ID!
+  note: String
+  to_user_id: Int
+  updatedAt: AWSDateTime!
+}
+
+type DealStageHistory @aws_cognito_user_pools @aws_iam {
+  changed_at: String
+  changed_by: Int
+  createdAt: AWSDateTime!
+  deal_id: Int
+  from_stage: String
+  id: ID!
+  to_stage: String
+  updatedAt: AWSDateTime!
+}
+
+type Deals @aws_cognito_user_pools @aws_iam {
+  amount: Float
+  billing_id: Int
+  client_id: Int
+  client_name: String
+  closed_at: String
+  company: String
+  contact_info: String
+  contact_status: String
+  create_invoice_share: String
+  createdAt: AWSDateTime!
+  created_at: String
+  currency: String
+  description: String
+  drive_link: String
+  est_amount_work: Float
+  expense_spent: Float
+  expenses_list: String
+  files_asked: String
+  files_received: String
+  id: ID!
+  invoice_amount: Float
+  is_won: Boolean
+  name: String
+  noc_obtained: Boolean
+  part_payment_amount: Float
+  payment_received: Float
+  payment_type: String
+  pipeline: String
+  priority: String
+  quotation_id: Int
+  referred_by: String
+  reg_fee_required: String
+  register_no: String
+  responsible_id: Int
+  responsible_name: String
+  send_to_customer: String
+  stage: String
+  updatedAt: AWSDateTime!
+  updated_at: String
+  upload_invoice_path: String
+  work_type: String
+}
+
+type DscRecords @aws_cognito_user_pools @aws_iam {
+  client_name: String
+  createdAt: AWSDateTime!
+  created_at: String
+  dsc_expiry_date: String
+  dsc_taken_date: String
+  email_id: String
+  id: ID!
+  password: String
+  phone_no: String
+  updatedAt: AWSDateTime!
+  updated_at: String
+  username: String
+}
+
+type InwardPosts @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  created_at: String
+  description: String
+  id: ID!
+  received_by: String
+  received_date: String
+  recipient_name: String
+  sender_name: String
+  status: String
+  updatedAt: AWSDateTime!
+}
+
+type LicenseBilling @aws_cognito_user_pools @aws_iam {
+  amount: Float
+  client_license_id: Int
+  createdAt: AWSDateTime!
+  created_at: String
+  id: ID!
+  invoice_no: String
+  payment_date: String
+  payment_status: String
+  updatedAt: AWSDateTime!
+}
+
+type LicenseNotifications @aws_cognito_user_pools @aws_iam {
+  client_license_id: Int
+  createdAt: AWSDateTime!
+  created_at: String
+  id: ID!
+  is_sent: Boolean
+  message: String
+  notification_type: String
+  scheduled_date: String
+  updatedAt: AWSDateTime!
+}
+
+type LicenseServices @aws_cognito_user_pools @aws_iam {
+  client_license_id: Int
+  createdAt: AWSDateTime!
+  created_at: String
+  id: ID!
+  service_cost: Float
+  service_date: String
+  service_description: String
+  updatedAt: AWSDateTime!
+}
+
+type LicenseTypes @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  created_at: String
+  description: String
+  id: ID!
+  name: String
+  updatedAt: AWSDateTime!
+  updated_at: String
+}
+
+type LocationHistory @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  id: ID!
+  latitude: Float
+  longitude: Float
+  recorded_at: String
+  updatedAt: AWSDateTime!
+  user_id: Int
+}
+
+type Messages @aws_cognito_user_pools @aws_iam {
+  attachment_id: Int
+  attachment_type: String
+  content: String
+  createdAt: AWSDateTime!
+  created_at: String
+  id: ID!
+  is_read: Boolean
+  receiver_id: Int
+  sender_id: Int
+  updatedAt: AWSDateTime!
+}
+
+type ModelActivityLogsConnection @aws_cognito_user_pools @aws_iam {
+  items: [ActivityLogs]!
+  nextToken: String
+}
+
+type ModelBillingsConnection @aws_cognito_user_pools @aws_iam {
+  items: [Billings]!
+  nextToken: String
+}
+
+type ModelChecklistsConnection @aws_cognito_user_pools @aws_iam {
+  items: [Checklists]!
+  nextToken: String
+}
+
+type ModelClientDocumentsConnection @aws_cognito_user_pools @aws_iam {
+  items: [ClientDocuments]!
+  nextToken: String
+}
+
+type ModelClientLicensesConnection @aws_cognito_user_pools @aws_iam {
+  items: [ClientLicenses]!
+  nextToken: String
+}
+
+type ModelClientsConnection @aws_cognito_user_pools @aws_iam {
+  items: [Clients]!
+  nextToken: String
+}
+
+type ModelCompanyBillsConnection @aws_cognito_user_pools @aws_iam {
+  items: [CompanyBills]!
+  nextToken: String
+}
+
+type ModelDealActivitiesConnection @aws_cognito_user_pools @aws_iam {
+  items: [DealActivities]!
+  nextToken: String
+}
+
+type ModelDealAssigneesConnection @aws_cognito_user_pools @aws_iam {
+  items: [DealAssignees]!
+  nextToken: String
+}
+
+type ModelDealHandoverHistoryConnection @aws_cognito_user_pools @aws_iam {
+  items: [DealHandoverHistory]!
+  nextToken: String
+}
+
+type ModelDealStageHistoryConnection @aws_cognito_user_pools @aws_iam {
+  items: [DealStageHistory]!
+  nextToken: String
+}
+
+type ModelDealsConnection @aws_cognito_user_pools @aws_iam {
+  items: [Deals]!
+  nextToken: String
+}
+
+type ModelDscRecordsConnection @aws_cognito_user_pools @aws_iam {
+  items: [DscRecords]!
+  nextToken: String
+}
+
+type ModelInwardPostsConnection @aws_cognito_user_pools @aws_iam {
+  items: [InwardPosts]!
+  nextToken: String
+}
+
+type ModelLicenseBillingConnection @aws_cognito_user_pools @aws_iam {
+  items: [LicenseBilling]!
+  nextToken: String
+}
+
+type ModelLicenseNotificationsConnection @aws_cognito_user_pools @aws_iam {
+  items: [LicenseNotifications]!
+  nextToken: String
+}
+
+type ModelLicenseServicesConnection @aws_cognito_user_pools @aws_iam {
+  items: [LicenseServices]!
+  nextToken: String
+}
+
+type ModelLicenseTypesConnection @aws_cognito_user_pools @aws_iam {
+  items: [LicenseTypes]!
+  nextToken: String
+}
+
+type ModelLocationHistoryConnection @aws_cognito_user_pools @aws_iam {
+  items: [LocationHistory]!
+  nextToken: String
+}
+
+type ModelMessagesConnection @aws_cognito_user_pools @aws_iam {
+  items: [Messages]!
+  nextToken: String
+}
+
+type ModelNotificationsConnection @aws_cognito_user_pools @aws_iam {
+  items: [Notifications]!
+  nextToken: String
+}
+
+type ModelPropertiesConnection @aws_cognito_user_pools @aws_iam {
+  items: [Properties]!
+  nextToken: String
+}
+
+type ModelServiceContentConnection @aws_cognito_user_pools @aws_iam {
+  items: [ServiceContent]!
+  nextToken: String
+}
+
+type ModelServiceNamesConnection @aws_cognito_user_pools @aws_iam {
+  items: [ServiceNames]!
+  nextToken: String
+}
+
+type ModelStaffAttendanceConnection @aws_cognito_user_pools @aws_iam {
+  items: [StaffAttendance]!
+  nextToken: String
+}
+
+type ModelStaffLocationsConnection @aws_cognito_user_pools @aws_iam {
+  items: [StaffLocations]!
+  nextToken: String
+}
+
+type ModelSysCronLogsConnection @aws_cognito_user_pools @aws_iam {
+  items: [SysCronLogs]!
+  nextToken: String
+}
+
+type ModelTasksConnection @aws_cognito_user_pools @aws_iam {
+  items: [Tasks]!
+  nextToken: String
+}
+
+type ModelTravelLogsConnection @aws_cognito_user_pools @aws_iam {
+  items: [TravelLogs]!
+  nextToken: String
+}
+
+type ModelUserSessionsConnection @aws_cognito_user_pools @aws_iam {
+  items: [UserSessions]!
+  nextToken: String
+}
+
+type ModelUsersConnection @aws_cognito_user_pools @aws_iam {
+  items: [Users]!
+  nextToken: String
+}
+
+type Mutation {
+  createActivityLogs(condition: ModelActivityLogsConditionInput, input: CreateActivityLogsInput!): ActivityLogs @aws_cognito_user_pools @aws_iam
+  createBillings(condition: ModelBillingsConditionInput, input: CreateBillingsInput!): Billings @aws_cognito_user_pools @aws_iam
+  createChecklists(condition: ModelChecklistsConditionInput, input: CreateChecklistsInput!): Checklists @aws_cognito_user_pools @aws_iam
+  createClientDocuments(condition: ModelClientDocumentsConditionInput, input: CreateClientDocumentsInput!): ClientDocuments @aws_cognito_user_pools @aws_iam
+  createClientLicenses(condition: ModelClientLicensesConditionInput, input: CreateClientLicensesInput!): ClientLicenses @aws_cognito_user_pools @aws_iam
+  createClients(condition: ModelClientsConditionInput, input: CreateClientsInput!): Clients @aws_cognito_user_pools @aws_iam
+  createCompanyBills(condition: ModelCompanyBillsConditionInput, input: CreateCompanyBillsInput!): CompanyBills @aws_cognito_user_pools @aws_iam
+  createDealActivities(condition: ModelDealActivitiesConditionInput, input: CreateDealActivitiesInput!): DealActivities @aws_cognito_user_pools @aws_iam
+  createDealAssignees(condition: ModelDealAssigneesConditionInput, input: CreateDealAssigneesInput!): DealAssignees @aws_cognito_user_pools @aws_iam
+  createDealHandoverHistory(condition: ModelDealHandoverHistoryConditionInput, input: CreateDealHandoverHistoryInput!): DealHandoverHistory @aws_cognito_user_pools @aws_iam
+  createDealStageHistory(condition: ModelDealStageHistoryConditionInput, input: CreateDealStageHistoryInput!): DealStageHistory @aws_cognito_user_pools @aws_iam
+  createDeals(condition: ModelDealsConditionInput, input: CreateDealsInput!): Deals @aws_cognito_user_pools @aws_iam
+  createDscRecords(condition: ModelDscRecordsConditionInput, input: CreateDscRecordsInput!): DscRecords @aws_cognito_user_pools @aws_iam
+  createInwardPosts(condition: ModelInwardPostsConditionInput, input: CreateInwardPostsInput!): InwardPosts @aws_cognito_user_pools @aws_iam
+  createLicenseBilling(condition: ModelLicenseBillingConditionInput, input: CreateLicenseBillingInput!): LicenseBilling @aws_cognito_user_pools @aws_iam
+  createLicenseNotifications(condition: ModelLicenseNotificationsConditionInput, input: CreateLicenseNotificationsInput!): LicenseNotifications @aws_cognito_user_pools @aws_iam
+  createLicenseServices(condition: ModelLicenseServicesConditionInput, input: CreateLicenseServicesInput!): LicenseServices @aws_cognito_user_pools @aws_iam
+  createLicenseTypes(condition: ModelLicenseTypesConditionInput, input: CreateLicenseTypesInput!): LicenseTypes @aws_cognito_user_pools @aws_iam
+  createLocationHistory(condition: ModelLocationHistoryConditionInput, input: CreateLocationHistoryInput!): LocationHistory @aws_cognito_user_pools @aws_iam
+  createMessages(condition: ModelMessagesConditionInput, input: CreateMessagesInput!): Messages @aws_cognito_user_pools @aws_iam
+  createNotifications(condition: ModelNotificationsConditionInput, input: CreateNotificationsInput!): Notifications @aws_cognito_user_pools @aws_iam
+  createProperties(condition: ModelPropertiesConditionInput, input: CreatePropertiesInput!): Properties @aws_cognito_user_pools @aws_iam
+  createServiceContent(condition: ModelServiceContentConditionInput, input: CreateServiceContentInput!): ServiceContent @aws_cognito_user_pools @aws_iam
+  createServiceNames(condition: ModelServiceNamesConditionInput, input: CreateServiceNamesInput!): ServiceNames @aws_cognito_user_pools @aws_iam
+  createStaffAttendance(condition: ModelStaffAttendanceConditionInput, input: CreateStaffAttendanceInput!): StaffAttendance @aws_cognito_user_pools @aws_iam
+  createStaffLocations(condition: ModelStaffLocationsConditionInput, input: CreateStaffLocationsInput!): StaffLocations @aws_cognito_user_pools @aws_iam
+  createSysCronLogs(condition: ModelSysCronLogsConditionInput, input: CreateSysCronLogsInput!): SysCronLogs @aws_cognito_user_pools @aws_iam
+  createTasks(condition: ModelTasksConditionInput, input: CreateTasksInput!): Tasks @aws_cognito_user_pools @aws_iam
+  createTravelLogs(condition: ModelTravelLogsConditionInput, input: CreateTravelLogsInput!): TravelLogs @aws_cognito_user_pools @aws_iam
+  createUserSessions(condition: ModelUserSessionsConditionInput, input: CreateUserSessionsInput!): UserSessions @aws_cognito_user_pools @aws_iam
+  createUsers(condition: ModelUsersConditionInput, input: CreateUsersInput!): Users @aws_cognito_user_pools @aws_iam
+  deleteActivityLogs(condition: ModelActivityLogsConditionInput, input: DeleteActivityLogsInput!): ActivityLogs @aws_cognito_user_pools @aws_iam
+  deleteBillings(condition: ModelBillingsConditionInput, input: DeleteBillingsInput!): Billings @aws_cognito_user_pools @aws_iam
+  deleteChecklists(condition: ModelChecklistsConditionInput, input: DeleteChecklistsInput!): Checklists @aws_cognito_user_pools @aws_iam
+  deleteClientDocuments(condition: ModelClientDocumentsConditionInput, input: DeleteClientDocumentsInput!): ClientDocuments @aws_cognito_user_pools @aws_iam
+  deleteClientLicenses(condition: ModelClientLicensesConditionInput, input: DeleteClientLicensesInput!): ClientLicenses @aws_cognito_user_pools @aws_iam
+  deleteClients(condition: ModelClientsConditionInput, input: DeleteClientsInput!): Clients @aws_cognito_user_pools @aws_iam
+  deleteCompanyBills(condition: ModelCompanyBillsConditionInput, input: DeleteCompanyBillsInput!): CompanyBills @aws_cognito_user_pools @aws_iam
+  deleteDealActivities(condition: ModelDealActivitiesConditionInput, input: DeleteDealActivitiesInput!): DealActivities @aws_cognito_user_pools @aws_iam
+  deleteDealAssignees(condition: ModelDealAssigneesConditionInput, input: DeleteDealAssigneesInput!): DealAssignees @aws_cognito_user_pools @aws_iam
+  deleteDealHandoverHistory(condition: ModelDealHandoverHistoryConditionInput, input: DeleteDealHandoverHistoryInput!): DealHandoverHistory @aws_cognito_user_pools @aws_iam
+  deleteDealStageHistory(condition: ModelDealStageHistoryConditionInput, input: DeleteDealStageHistoryInput!): DealStageHistory @aws_cognito_user_pools @aws_iam
+  deleteDeals(condition: ModelDealsConditionInput, input: DeleteDealsInput!): Deals @aws_cognito_user_pools @aws_iam
+  deleteDscRecords(condition: ModelDscRecordsConditionInput, input: DeleteDscRecordsInput!): DscRecords @aws_cognito_user_pools @aws_iam
+  deleteInwardPosts(condition: ModelInwardPostsConditionInput, input: DeleteInwardPostsInput!): InwardPosts @aws_cognito_user_pools @aws_iam
+  deleteLicenseBilling(condition: ModelLicenseBillingConditionInput, input: DeleteLicenseBillingInput!): LicenseBilling @aws_cognito_user_pools @aws_iam
+  deleteLicenseNotifications(condition: ModelLicenseNotificationsConditionInput, input: DeleteLicenseNotificationsInput!): LicenseNotifications @aws_cognito_user_pools @aws_iam
+  deleteLicenseServices(condition: ModelLicenseServicesConditionInput, input: DeleteLicenseServicesInput!): LicenseServices @aws_cognito_user_pools @aws_iam
+  deleteLicenseTypes(condition: ModelLicenseTypesConditionInput, input: DeleteLicenseTypesInput!): LicenseTypes @aws_cognito_user_pools @aws_iam
+  deleteLocationHistory(condition: ModelLocationHistoryConditionInput, input: DeleteLocationHistoryInput!): LocationHistory @aws_cognito_user_pools @aws_iam
+  deleteMessages(condition: ModelMessagesConditionInput, input: DeleteMessagesInput!): Messages @aws_cognito_user_pools @aws_iam
+  deleteNotifications(condition: ModelNotificationsConditionInput, input: DeleteNotificationsInput!): Notifications @aws_cognito_user_pools @aws_iam
+  deleteProperties(condition: ModelPropertiesConditionInput, input: DeletePropertiesInput!): Properties @aws_cognito_user_pools @aws_iam
+  deleteServiceContent(condition: ModelServiceContentConditionInput, input: DeleteServiceContentInput!): ServiceContent @aws_cognito_user_pools @aws_iam
+  deleteServiceNames(condition: ModelServiceNamesConditionInput, input: DeleteServiceNamesInput!): ServiceNames @aws_cognito_user_pools @aws_iam
+  deleteStaffAttendance(condition: ModelStaffAttendanceConditionInput, input: DeleteStaffAttendanceInput!): StaffAttendance @aws_cognito_user_pools @aws_iam
+  deleteStaffLocations(condition: ModelStaffLocationsConditionInput, input: DeleteStaffLocationsInput!): StaffLocations @aws_cognito_user_pools @aws_iam
+  deleteSysCronLogs(condition: ModelSysCronLogsConditionInput, input: DeleteSysCronLogsInput!): SysCronLogs @aws_cognito_user_pools @aws_iam
+  deleteTasks(condition: ModelTasksConditionInput, input: DeleteTasksInput!): Tasks @aws_cognito_user_pools @aws_iam
+  deleteTravelLogs(condition: ModelTravelLogsConditionInput, input: DeleteTravelLogsInput!): TravelLogs @aws_cognito_user_pools @aws_iam
+  deleteUserSessions(condition: ModelUserSessionsConditionInput, input: DeleteUserSessionsInput!): UserSessions @aws_cognito_user_pools @aws_iam
+  deleteUsers(condition: ModelUsersConditionInput, input: DeleteUsersInput!): Users @aws_cognito_user_pools @aws_iam
+  updateActivityLogs(condition: ModelActivityLogsConditionInput, input: UpdateActivityLogsInput!): ActivityLogs @aws_cognito_user_pools @aws_iam
+  updateBillings(condition: ModelBillingsConditionInput, input: UpdateBillingsInput!): Billings @aws_cognito_user_pools @aws_iam
+  updateChecklists(condition: ModelChecklistsConditionInput, input: UpdateChecklistsInput!): Checklists @aws_cognito_user_pools @aws_iam
+  updateClientDocuments(condition: ModelClientDocumentsConditionInput, input: UpdateClientDocumentsInput!): ClientDocuments @aws_cognito_user_pools @aws_iam
+  updateClientLicenses(condition: ModelClientLicensesConditionInput, input: UpdateClientLicensesInput!): ClientLicenses @aws_cognito_user_pools @aws_iam
+  updateClients(condition: ModelClientsConditionInput, input: UpdateClientsInput!): Clients @aws_cognito_user_pools @aws_iam
+  updateCompanyBills(condition: ModelCompanyBillsConditionInput, input: UpdateCompanyBillsInput!): CompanyBills @aws_cognito_user_pools @aws_iam
+  updateDealActivities(condition: ModelDealActivitiesConditionInput, input: UpdateDealActivitiesInput!): DealActivities @aws_cognito_user_pools @aws_iam
+  updateDealAssignees(condition: ModelDealAssigneesConditionInput, input: UpdateDealAssigneesInput!): DealAssignees @aws_cognito_user_pools @aws_iam
+  updateDealHandoverHistory(condition: ModelDealHandoverHistoryConditionInput, input: UpdateDealHandoverHistoryInput!): DealHandoverHistory @aws_cognito_user_pools @aws_iam
+  updateDealStageHistory(condition: ModelDealStageHistoryConditionInput, input: UpdateDealStageHistoryInput!): DealStageHistory @aws_cognito_user_pools @aws_iam
+  updateDeals(condition: ModelDealsConditionInput, input: UpdateDealsInput!): Deals @aws_cognito_user_pools @aws_iam
+  updateDscRecords(condition: ModelDscRecordsConditionInput, input: UpdateDscRecordsInput!): DscRecords @aws_cognito_user_pools @aws_iam
+  updateInwardPosts(condition: ModelInwardPostsConditionInput, input: UpdateInwardPostsInput!): InwardPosts @aws_cognito_user_pools @aws_iam
+  updateLicenseBilling(condition: ModelLicenseBillingConditionInput, input: UpdateLicenseBillingInput!): LicenseBilling @aws_cognito_user_pools @aws_iam
+  updateLicenseNotifications(condition: ModelLicenseNotificationsConditionInput, input: UpdateLicenseNotificationsInput!): LicenseNotifications @aws_cognito_user_pools @aws_iam
+  updateLicenseServices(condition: ModelLicenseServicesConditionInput, input: UpdateLicenseServicesInput!): LicenseServices @aws_cognito_user_pools @aws_iam
+  updateLicenseTypes(condition: ModelLicenseTypesConditionInput, input: UpdateLicenseTypesInput!): LicenseTypes @aws_cognito_user_pools @aws_iam
+  updateLocationHistory(condition: ModelLocationHistoryConditionInput, input: UpdateLocationHistoryInput!): LocationHistory @aws_cognito_user_pools @aws_iam
+  updateMessages(condition: ModelMessagesConditionInput, input: UpdateMessagesInput!): Messages @aws_cognito_user_pools @aws_iam
+  updateNotifications(condition: ModelNotificationsConditionInput, input: UpdateNotificationsInput!): Notifications @aws_cognito_user_pools @aws_iam
+  updateProperties(condition: ModelPropertiesConditionInput, input: UpdatePropertiesInput!): Properties @aws_cognito_user_pools @aws_iam
+  updateServiceContent(condition: ModelServiceContentConditionInput, input: UpdateServiceContentInput!): ServiceContent @aws_cognito_user_pools @aws_iam
+  updateServiceNames(condition: ModelServiceNamesConditionInput, input: UpdateServiceNamesInput!): ServiceNames @aws_cognito_user_pools @aws_iam
+  updateStaffAttendance(condition: ModelStaffAttendanceConditionInput, input: UpdateStaffAttendanceInput!): StaffAttendance @aws_cognito_user_pools @aws_iam
+  updateStaffLocations(condition: ModelStaffLocationsConditionInput, input: UpdateStaffLocationsInput!): StaffLocations @aws_cognito_user_pools @aws_iam
+  updateSysCronLogs(condition: ModelSysCronLogsConditionInput, input: UpdateSysCronLogsInput!): SysCronLogs @aws_cognito_user_pools @aws_iam
+  updateTasks(condition: ModelTasksConditionInput, input: UpdateTasksInput!): Tasks @aws_cognito_user_pools @aws_iam
+  updateTravelLogs(condition: ModelTravelLogsConditionInput, input: UpdateTravelLogsInput!): TravelLogs @aws_cognito_user_pools @aws_iam
+  updateUserSessions(condition: ModelUserSessionsConditionInput, input: UpdateUserSessionsInput!): UserSessions @aws_cognito_user_pools @aws_iam
+  updateUsers(condition: ModelUsersConditionInput, input: UpdateUsersInput!): Users @aws_cognito_user_pools @aws_iam
+}
+
+type Notifications @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  created_at: String
+  deal_id: Int
+  id: ID!
+  is_read: Boolean
+  message: String
+  task_id: Int
+  title: String
+  type: String
+  updatedAt: AWSDateTime!
+  user_id: Int
+}
+
+type Properties @aws_cognito_user_pools @aws_iam {
+  advance_amount: Float
+  area: String
+  balcony_count: Int
+  broker_details: String
+  care_of: String
+  client_name: String
+  createdAt: AWSDateTime!
+  created_at: String
+  expenses: String
+  floor: String
+  has_balcony: Boolean
+  has_car_parking: Boolean
+  has_legal_disputes: Boolean
+  has_multiple_owners: Boolean
+  id: ID!
+  is_furnished: Boolean
+  is_negotiable: Boolean
+  location: String
+  notes: String
+  owner_name: String
+  owner_phone_numbers: [String]
+  period: String
+  photos: [String]
+  price: Float
+  property_name: String
+  property_type: String
+  status: String
+  transaction_type: String
+  updatedAt: AWSDateTime!
+  updated_at: String
+}
+
+type Query {
+  getActivityLogs(id: ID!): ActivityLogs @aws_cognito_user_pools @aws_iam
+  getBillings(id: ID!): Billings @aws_cognito_user_pools @aws_iam
+  getChecklists(id: ID!): Checklists @aws_cognito_user_pools @aws_iam
+  getClientDocuments(id: ID!): ClientDocuments @aws_cognito_user_pools @aws_iam
+  getClientLicenses(id: ID!): ClientLicenses @aws_cognito_user_pools @aws_iam
+  getClients(id: ID!): Clients @aws_cognito_user_pools @aws_iam
+  getCompanyBills(id: ID!): CompanyBills @aws_cognito_user_pools @aws_iam
+  getDealActivities(id: ID!): DealActivities @aws_cognito_user_pools @aws_iam
+  getDealAssignees(id: ID!): DealAssignees @aws_cognito_user_pools @aws_iam
+  getDealHandoverHistory(id: ID!): DealHandoverHistory @aws_cognito_user_pools @aws_iam
+  getDealStageHistory(id: ID!): DealStageHistory @aws_cognito_user_pools @aws_iam
+  getDeals(id: ID!): Deals @aws_cognito_user_pools @aws_iam
+  getDscRecords(id: ID!): DscRecords @aws_cognito_user_pools @aws_iam
+  getInwardPosts(id: ID!): InwardPosts @aws_cognito_user_pools @aws_iam
+  getLicenseBilling(id: ID!): LicenseBilling @aws_cognito_user_pools @aws_iam
+  getLicenseNotifications(id: ID!): LicenseNotifications @aws_cognito_user_pools @aws_iam
+  getLicenseServices(id: ID!): LicenseServices @aws_cognito_user_pools @aws_iam
+  getLicenseTypes(id: ID!): LicenseTypes @aws_cognito_user_pools @aws_iam
+  getLocationHistory(id: ID!): LocationHistory @aws_cognito_user_pools @aws_iam
+  getMessages(id: ID!): Messages @aws_cognito_user_pools @aws_iam
+  getNotifications(id: ID!): Notifications @aws_cognito_user_pools @aws_iam
+  getProperties(id: ID!): Properties @aws_cognito_user_pools @aws_iam
+  getServiceContent(id: ID!): ServiceContent @aws_cognito_user_pools @aws_iam
+  getServiceNames(id: ID!): ServiceNames @aws_cognito_user_pools @aws_iam
+  getStaffAttendance(id: ID!): StaffAttendance @aws_cognito_user_pools @aws_iam
+  getStaffLocations(id: ID!): StaffLocations @aws_cognito_user_pools @aws_iam
+  getSysCronLogs(id: ID!): SysCronLogs @aws_cognito_user_pools @aws_iam
+  getTasks(id: ID!): Tasks @aws_cognito_user_pools @aws_iam
+  getTravelLogs(id: ID!): TravelLogs @aws_cognito_user_pools @aws_iam
+  getUserSessions(id: ID!): UserSessions @aws_cognito_user_pools @aws_iam
+  getUsers(id: ID!): Users @aws_cognito_user_pools @aws_iam
+  listActivityLogs(filter: ModelActivityLogsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelActivityLogsConnection @aws_cognito_user_pools @aws_iam
+  listBillings(filter: ModelBillingsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelBillingsConnection @aws_cognito_user_pools @aws_iam
+  listChecklists(filter: ModelChecklistsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelChecklistsConnection @aws_cognito_user_pools @aws_iam
+  listClientDocuments(filter: ModelClientDocumentsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelClientDocumentsConnection @aws_cognito_user_pools @aws_iam
+  listClientLicenses(filter: ModelClientLicensesFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelClientLicensesConnection @aws_cognito_user_pools @aws_iam
+  listClients(filter: ModelClientsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelClientsConnection @aws_cognito_user_pools @aws_iam
+  listCompanyBills(filter: ModelCompanyBillsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelCompanyBillsConnection @aws_cognito_user_pools @aws_iam
+  listDealActivities(filter: ModelDealActivitiesFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelDealActivitiesConnection @aws_cognito_user_pools @aws_iam
+  listDealAssignees(filter: ModelDealAssigneesFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelDealAssigneesConnection @aws_cognito_user_pools @aws_iam
+  listDealHandoverHistories(filter: ModelDealHandoverHistoryFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelDealHandoverHistoryConnection @aws_cognito_user_pools @aws_iam
+  listDealStageHistories(filter: ModelDealStageHistoryFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelDealStageHistoryConnection @aws_cognito_user_pools @aws_iam
+  listDeals(filter: ModelDealsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelDealsConnection @aws_cognito_user_pools @aws_iam
+  listDscRecords(filter: ModelDscRecordsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelDscRecordsConnection @aws_cognito_user_pools @aws_iam
+  listInwardPosts(filter: ModelInwardPostsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelInwardPostsConnection @aws_cognito_user_pools @aws_iam
+  listLicenseBillings(filter: ModelLicenseBillingFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelLicenseBillingConnection @aws_cognito_user_pools @aws_iam
+  listLicenseNotifications(filter: ModelLicenseNotificationsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelLicenseNotificationsConnection @aws_cognito_user_pools @aws_iam
+  listLicenseServices(filter: ModelLicenseServicesFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelLicenseServicesConnection @aws_cognito_user_pools @aws_iam
+  listLicenseTypes(filter: ModelLicenseTypesFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelLicenseTypesConnection @aws_cognito_user_pools @aws_iam
+  listLocationHistories(filter: ModelLocationHistoryFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelLocationHistoryConnection @aws_cognito_user_pools @aws_iam
+  listMessages(filter: ModelMessagesFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelMessagesConnection @aws_cognito_user_pools @aws_iam
+  listNotifications(filter: ModelNotificationsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelNotificationsConnection @aws_cognito_user_pools @aws_iam
+  listProperties(filter: ModelPropertiesFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelPropertiesConnection @aws_cognito_user_pools @aws_iam
+  listServiceContents(filter: ModelServiceContentFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelServiceContentConnection @aws_cognito_user_pools @aws_iam
+  listServiceNames(filter: ModelServiceNamesFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelServiceNamesConnection @aws_cognito_user_pools @aws_iam
+  listStaffAttendances(filter: ModelStaffAttendanceFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelStaffAttendanceConnection @aws_cognito_user_pools @aws_iam
+  listStaffLocations(filter: ModelStaffLocationsFilterInput, limit: Int, nextToken: String): ModelStaffLocationsConnection @aws_cognito_user_pools @aws_iam
+  listSysCronLogs(filter: ModelSysCronLogsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelSysCronLogsConnection @aws_cognito_user_pools @aws_iam
+  listTasks(filter: ModelTasksFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelTasksConnection @aws_cognito_user_pools @aws_iam
+  listTravelLogs(filter: ModelTravelLogsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelTravelLogsConnection @aws_cognito_user_pools @aws_iam
+  listUserSessions(filter: ModelUserSessionsFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelUserSessionsConnection @aws_cognito_user_pools @aws_iam
+  listUsers(filter: ModelUsersFilterInput, id: ID, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelUsersConnection @aws_cognito_user_pools @aws_iam
+}
+
+type ServiceContent @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  description: String
+  details: String
+  id: ID!
+  image_path: String
+  service_id: Int
+  title: String
+  updatedAt: AWSDateTime!
+}
+
+type ServiceNames @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  created_at: String
+  id: ID!
+  name: String
+  updatedAt: AWSDateTime!
+}
+
+type StaffAttendance @aws_cognito_user_pools @aws_iam {
+  attendance_date: String
+  check_in_time: String
+  check_out_time: String
+  createdAt: AWSDateTime!
+  id: ID!
+  updatedAt: AWSDateTime!
+  user_id: Int
+}
+
+type StaffLocations @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  id: ID!
+  latitude: Float
+  longitude: Float
+  updatedAt: AWSDateTime!
+  updated_at: String
+  user_id: Int
+}
+
+type Subscription {
+  onCreateActivityLogs(filter: ModelSubscriptionActivityLogsFilterInput): ActivityLogs @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createActivityLogs"])
+  onCreateBillings(filter: ModelSubscriptionBillingsFilterInput): Billings @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createBillings"])
+  onCreateChecklists(filter: ModelSubscriptionChecklistsFilterInput): Checklists @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createChecklists"])
+  onCreateClientDocuments(filter: ModelSubscriptionClientDocumentsFilterInput): ClientDocuments @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createClientDocuments"])
+  onCreateClientLicenses(filter: ModelSubscriptionClientLicensesFilterInput): ClientLicenses @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createClientLicenses"])
+  onCreateClients(filter: ModelSubscriptionClientsFilterInput): Clients @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createClients"])
+  onCreateCompanyBills(filter: ModelSubscriptionCompanyBillsFilterInput): CompanyBills @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createCompanyBills"])
+  onCreateDealActivities(filter: ModelSubscriptionDealActivitiesFilterInput): DealActivities @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createDealActivities"])
+  onCreateDealAssignees(filter: ModelSubscriptionDealAssigneesFilterInput): DealAssignees @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createDealAssignees"])
+  onCreateDealHandoverHistory(filter: ModelSubscriptionDealHandoverHistoryFilterInput): DealHandoverHistory @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createDealHandoverHistory"])
+  onCreateDealStageHistory(filter: ModelSubscriptionDealStageHistoryFilterInput): DealStageHistory @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createDealStageHistory"])
+  onCreateDeals(filter: ModelSubscriptionDealsFilterInput): Deals @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createDeals"])
+  onCreateDscRecords(filter: ModelSubscriptionDscRecordsFilterInput): DscRecords @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createDscRecords"])
+  onCreateInwardPosts(filter: ModelSubscriptionInwardPostsFilterInput): InwardPosts @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createInwardPosts"])
+  onCreateLicenseBilling(filter: ModelSubscriptionLicenseBillingFilterInput): LicenseBilling @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createLicenseBilling"])
+  onCreateLicenseNotifications(filter: ModelSubscriptionLicenseNotificationsFilterInput): LicenseNotifications @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createLicenseNotifications"])
+  onCreateLicenseServices(filter: ModelSubscriptionLicenseServicesFilterInput): LicenseServices @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createLicenseServices"])
+  onCreateLicenseTypes(filter: ModelSubscriptionLicenseTypesFilterInput): LicenseTypes @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createLicenseTypes"])
+  onCreateLocationHistory(filter: ModelSubscriptionLocationHistoryFilterInput): LocationHistory @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createLocationHistory"])
+  onCreateMessages(filter: ModelSubscriptionMessagesFilterInput): Messages @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createMessages"])
+  onCreateNotifications(filter: ModelSubscriptionNotificationsFilterInput): Notifications @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createNotifications"])
+  onCreateProperties(filter: ModelSubscriptionPropertiesFilterInput): Properties @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createProperties"])
+  onCreateServiceContent(filter: ModelSubscriptionServiceContentFilterInput): ServiceContent @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createServiceContent"])
+  onCreateServiceNames(filter: ModelSubscriptionServiceNamesFilterInput): ServiceNames @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createServiceNames"])
+  onCreateStaffAttendance(filter: ModelSubscriptionStaffAttendanceFilterInput): StaffAttendance @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createStaffAttendance"])
+  onCreateStaffLocations(filter: ModelSubscriptionStaffLocationsFilterInput): StaffLocations @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createStaffLocations"])
+  onCreateSysCronLogs(filter: ModelSubscriptionSysCronLogsFilterInput): SysCronLogs @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createSysCronLogs"])
+  onCreateTasks(filter: ModelSubscriptionTasksFilterInput): Tasks @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createTasks"])
+  onCreateTravelLogs(filter: ModelSubscriptionTravelLogsFilterInput): TravelLogs @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createTravelLogs"])
+  onCreateUserSessions(filter: ModelSubscriptionUserSessionsFilterInput): UserSessions @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createUserSessions"])
+  onCreateUsers(filter: ModelSubscriptionUsersFilterInput): Users @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["createUsers"])
+  onDeleteActivityLogs(filter: ModelSubscriptionActivityLogsFilterInput): ActivityLogs @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteActivityLogs"])
+  onDeleteBillings(filter: ModelSubscriptionBillingsFilterInput): Billings @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteBillings"])
+  onDeleteChecklists(filter: ModelSubscriptionChecklistsFilterInput): Checklists @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteChecklists"])
+  onDeleteClientDocuments(filter: ModelSubscriptionClientDocumentsFilterInput): ClientDocuments @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteClientDocuments"])
+  onDeleteClientLicenses(filter: ModelSubscriptionClientLicensesFilterInput): ClientLicenses @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteClientLicenses"])
+  onDeleteClients(filter: ModelSubscriptionClientsFilterInput): Clients @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteClients"])
+  onDeleteCompanyBills(filter: ModelSubscriptionCompanyBillsFilterInput): CompanyBills @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteCompanyBills"])
+  onDeleteDealActivities(filter: ModelSubscriptionDealActivitiesFilterInput): DealActivities @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteDealActivities"])
+  onDeleteDealAssignees(filter: ModelSubscriptionDealAssigneesFilterInput): DealAssignees @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteDealAssignees"])
+  onDeleteDealHandoverHistory(filter: ModelSubscriptionDealHandoverHistoryFilterInput): DealHandoverHistory @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteDealHandoverHistory"])
+  onDeleteDealStageHistory(filter: ModelSubscriptionDealStageHistoryFilterInput): DealStageHistory @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteDealStageHistory"])
+  onDeleteDeals(filter: ModelSubscriptionDealsFilterInput): Deals @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteDeals"])
+  onDeleteDscRecords(filter: ModelSubscriptionDscRecordsFilterInput): DscRecords @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteDscRecords"])
+  onDeleteInwardPosts(filter: ModelSubscriptionInwardPostsFilterInput): InwardPosts @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteInwardPosts"])
+  onDeleteLicenseBilling(filter: ModelSubscriptionLicenseBillingFilterInput): LicenseBilling @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteLicenseBilling"])
+  onDeleteLicenseNotifications(filter: ModelSubscriptionLicenseNotificationsFilterInput): LicenseNotifications @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteLicenseNotifications"])
+  onDeleteLicenseServices(filter: ModelSubscriptionLicenseServicesFilterInput): LicenseServices @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteLicenseServices"])
+  onDeleteLicenseTypes(filter: ModelSubscriptionLicenseTypesFilterInput): LicenseTypes @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteLicenseTypes"])
+  onDeleteLocationHistory(filter: ModelSubscriptionLocationHistoryFilterInput): LocationHistory @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteLocationHistory"])
+  onDeleteMessages(filter: ModelSubscriptionMessagesFilterInput): Messages @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteMessages"])
+  onDeleteNotifications(filter: ModelSubscriptionNotificationsFilterInput): Notifications @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteNotifications"])
+  onDeleteProperties(filter: ModelSubscriptionPropertiesFilterInput): Properties @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteProperties"])
+  onDeleteServiceContent(filter: ModelSubscriptionServiceContentFilterInput): ServiceContent @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteServiceContent"])
+  onDeleteServiceNames(filter: ModelSubscriptionServiceNamesFilterInput): ServiceNames @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteServiceNames"])
+  onDeleteStaffAttendance(filter: ModelSubscriptionStaffAttendanceFilterInput): StaffAttendance @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteStaffAttendance"])
+  onDeleteStaffLocations(filter: ModelSubscriptionStaffLocationsFilterInput): StaffLocations @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteStaffLocations"])
+  onDeleteSysCronLogs(filter: ModelSubscriptionSysCronLogsFilterInput): SysCronLogs @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteSysCronLogs"])
+  onDeleteTasks(filter: ModelSubscriptionTasksFilterInput): Tasks @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteTasks"])
+  onDeleteTravelLogs(filter: ModelSubscriptionTravelLogsFilterInput): TravelLogs @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteTravelLogs"])
+  onDeleteUserSessions(filter: ModelSubscriptionUserSessionsFilterInput): UserSessions @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteUserSessions"])
+  onDeleteUsers(filter: ModelSubscriptionUsersFilterInput): Users @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["deleteUsers"])
+  onUpdateActivityLogs(filter: ModelSubscriptionActivityLogsFilterInput): ActivityLogs @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateActivityLogs"])
+  onUpdateBillings(filter: ModelSubscriptionBillingsFilterInput): Billings @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateBillings"])
+  onUpdateChecklists(filter: ModelSubscriptionChecklistsFilterInput): Checklists @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateChecklists"])
+  onUpdateClientDocuments(filter: ModelSubscriptionClientDocumentsFilterInput): ClientDocuments @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateClientDocuments"])
+  onUpdateClientLicenses(filter: ModelSubscriptionClientLicensesFilterInput): ClientLicenses @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateClientLicenses"])
+  onUpdateClients(filter: ModelSubscriptionClientsFilterInput): Clients @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateClients"])
+  onUpdateCompanyBills(filter: ModelSubscriptionCompanyBillsFilterInput): CompanyBills @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateCompanyBills"])
+  onUpdateDealActivities(filter: ModelSubscriptionDealActivitiesFilterInput): DealActivities @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateDealActivities"])
+  onUpdateDealAssignees(filter: ModelSubscriptionDealAssigneesFilterInput): DealAssignees @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateDealAssignees"])
+  onUpdateDealHandoverHistory(filter: ModelSubscriptionDealHandoverHistoryFilterInput): DealHandoverHistory @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateDealHandoverHistory"])
+  onUpdateDealStageHistory(filter: ModelSubscriptionDealStageHistoryFilterInput): DealStageHistory @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateDealStageHistory"])
+  onUpdateDeals(filter: ModelSubscriptionDealsFilterInput): Deals @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateDeals"])
+  onUpdateDscRecords(filter: ModelSubscriptionDscRecordsFilterInput): DscRecords @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateDscRecords"])
+  onUpdateInwardPosts(filter: ModelSubscriptionInwardPostsFilterInput): InwardPosts @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateInwardPosts"])
+  onUpdateLicenseBilling(filter: ModelSubscriptionLicenseBillingFilterInput): LicenseBilling @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateLicenseBilling"])
+  onUpdateLicenseNotifications(filter: ModelSubscriptionLicenseNotificationsFilterInput): LicenseNotifications @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateLicenseNotifications"])
+  onUpdateLicenseServices(filter: ModelSubscriptionLicenseServicesFilterInput): LicenseServices @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateLicenseServices"])
+  onUpdateLicenseTypes(filter: ModelSubscriptionLicenseTypesFilterInput): LicenseTypes @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateLicenseTypes"])
+  onUpdateLocationHistory(filter: ModelSubscriptionLocationHistoryFilterInput): LocationHistory @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateLocationHistory"])
+  onUpdateMessages(filter: ModelSubscriptionMessagesFilterInput): Messages @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateMessages"])
+  onUpdateNotifications(filter: ModelSubscriptionNotificationsFilterInput): Notifications @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateNotifications"])
+  onUpdateProperties(filter: ModelSubscriptionPropertiesFilterInput): Properties @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateProperties"])
+  onUpdateServiceContent(filter: ModelSubscriptionServiceContentFilterInput): ServiceContent @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateServiceContent"])
+  onUpdateServiceNames(filter: ModelSubscriptionServiceNamesFilterInput): ServiceNames @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateServiceNames"])
+  onUpdateStaffAttendance(filter: ModelSubscriptionStaffAttendanceFilterInput): StaffAttendance @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateStaffAttendance"])
+  onUpdateStaffLocations(filter: ModelSubscriptionStaffLocationsFilterInput): StaffLocations @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateStaffLocations"])
+  onUpdateSysCronLogs(filter: ModelSubscriptionSysCronLogsFilterInput): SysCronLogs @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateSysCronLogs"])
+  onUpdateTasks(filter: ModelSubscriptionTasksFilterInput): Tasks @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateTasks"])
+  onUpdateTravelLogs(filter: ModelSubscriptionTravelLogsFilterInput): TravelLogs @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateTravelLogs"])
+  onUpdateUserSessions(filter: ModelSubscriptionUserSessionsFilterInput): UserSessions @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateUserSessions"])
+  onUpdateUsers(filter: ModelSubscriptionUsersFilterInput): Users @aws_cognito_user_pools @aws_iam @aws_subscribe(mutations : ["updateUsers"])
+}
+
+type SysCronLogs @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  id: ID!
+  job_name: String
+  last_run_date: String
+  updatedAt: AWSDateTime!
+}
+
+type Tasks @aws_cognito_user_pools @aws_iam {
+  assigned_by: Int
+  assigned_to: Int
+  client_name: String
+  createdAt: AWSDateTime!
+  created_at: String
+  description: String
+  due_date: String
+  id: ID!
+  location: String
+  phone_number: String
+  status: String
+  title: String
+  updatedAt: AWSDateTime!
+  updated_at: String
+}
+
+type TravelLogs @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  created_at: String
+  destination: String
+  id: ID!
+  updatedAt: AWSDateTime!
+  user_id: Int
+}
+
+type UserSessions @aws_cognito_user_pools @aws_iam {
+  active_seconds: Int
+  createdAt: AWSDateTime!
+  id: ID!
+  idle_seconds: Int
+  ip_address: String
+  is_active: Boolean
+  login_time: String
+  logout_time: String
+  status: String
+  updatedAt: AWSDateTime!
+  user_id: Int
+}
+
+type Users @aws_cognito_user_pools @aws_iam {
+  createdAt: AWSDateTime!
+  created_at: String
+  email: String
+  id: ID!
+  last_seen: String
+  name: String
+  password: String
+  role: String
+  updatedAt: AWSDateTime!
+  username: String
+}
+
+enum ModelAttributeTypes {
+  _null
+  binary
+  binarySet
+  bool
+  list
+  map
+  number
+  numberSet
+  string
+  stringSet
+}
+
+enum ModelSortDirection {
+  ASC
+  DESC
+}
+
+input AmplifyAIConversationTurnErrorInput {
+  errorType: String!
+  message: String!
+}
+
+input CreateActivityLogsInput {
+  action: String
+  created_at: String
+  details: String
+  id: ID
+  target_id: String
+  target_type: String
+  user_id: Int
+}
+
+input CreateBillingsInput {
+  amount: String
+  authorities: String
+  category: String
+  client_name: String
+  created_at: String
+  data: String
+  date: String
+  id: ID
+  invoice_no: String
+  status: String
+  type: String
+}
+
+input CreateChecklistsInput {
+  created_at: String
+  description: String
+  due_date: String
+  id: ID
+  manager_id: Int
+  reason: String
+  remarks: String
+  responsible_id: Int
+  status: String
+  title: String
+  updated_at: String
+}
+
+input CreateClientDocumentsInput {
+  client_id: String
+  client_name: String
+  created_at: String
+  document_name: String
+  id: ID
+  og_copy: String
+  remarks: String
+  storage_path: String
+}
+
+input CreateClientLicensesInput {
+  client_id: Int
+  created_at: String
+  expiry_date: String
+  file_no: String
+  id: ID
+  license_type_id: Int
+  manual_client_name: String
+  notes: String
+  service_date: String
+  status: String
+  updated_at: String
+}
+
+input CreateClientsInput {
+  address: String
+  balance_due: String
+  case_number: String
+  created_at: String
+  dob: String
+  email: String
+  file_date: String
+  file_no: String
+  id: ID
+  is_contacted: Boolean
+  managed_by: String
+  name: String
+  phone: String
+  review_rating: Int
+  type_of_work: String
+}
+
+input CreateCompanyBillsInput {
+  amount: Float
+  bill_date: String
+  category: String
+  created_at: String
+  description: String
+  id: ID
+  spent_by: Int
+  spent_by_name: String
+  status: String
+  title: String
+}
+
+input CreateDealActivitiesInput {
+  created_at: String
+  created_by: Int
+  deal_id: Int
+  description: String
+  due_date: String
+  id: ID
+  is_completed: Boolean
+  title: String
+  type: String
+}
+
+input CreateDealAssigneesInput {
+  assigned_at: String
+  deal_id: Int
+  id: ID
+  role: String
+  user_id: Int
+}
+
+input CreateDealHandoverHistoryInput {
+  deal_id: Int
+  from_user_id: Int
+  handed_over_at: String
+  id: ID
+  note: String
+  to_user_id: Int
+}
+
+input CreateDealStageHistoryInput {
+  changed_at: String
+  changed_by: Int
+  deal_id: Int
+  from_stage: String
+  id: ID
+  to_stage: String
+}
+
+input CreateDealsInput {
+  amount: Float
+  billing_id: Int
+  client_id: Int
+  client_name: String
+  closed_at: String
+  company: String
+  contact_info: String
+  contact_status: String
+  create_invoice_share: String
+  created_at: String
+  currency: String
+  description: String
+  drive_link: String
+  est_amount_work: Float
+  expense_spent: Float
+  expenses_list: String
+  files_asked: String
+  files_received: String
+  id: ID
+  invoice_amount: Float
+  is_won: Boolean
+  name: String
+  noc_obtained: Boolean
+  part_payment_amount: Float
+  payment_received: Float
+  payment_type: String
+  pipeline: String
+  priority: String
+  quotation_id: Int
+  referred_by: String
+  reg_fee_required: String
+  register_no: String
+  responsible_id: Int
+  responsible_name: String
+  send_to_customer: String
+  stage: String
+  updated_at: String
+  upload_invoice_path: String
+  work_type: String
+}
+
+input CreateDscRecordsInput {
+  client_name: String
+  created_at: String
+  dsc_expiry_date: String
+  dsc_taken_date: String
+  email_id: String
+  id: ID
+  password: String
+  phone_no: String
+  updated_at: String
+  username: String
+}
+
+input CreateInwardPostsInput {
+  created_at: String
+  description: String
+  id: ID
+  received_by: String
+  received_date: String
+  recipient_name: String
+  sender_name: String
+  status: String
+}
+
+input CreateLicenseBillingInput {
+  amount: Float
+  client_license_id: Int
+  created_at: String
+  id: ID
+  invoice_no: String
+  payment_date: String
+  payment_status: String
+}
+
+input CreateLicenseNotificationsInput {
+  client_license_id: Int
+  created_at: String
+  id: ID
+  is_sent: Boolean
+  message: String
+  notification_type: String
+  scheduled_date: String
+}
+
+input CreateLicenseServicesInput {
+  client_license_id: Int
+  created_at: String
+  id: ID
+  service_cost: Float
+  service_date: String
+  service_description: String
+}
+
+input CreateLicenseTypesInput {
+  created_at: String
+  description: String
+  id: ID
+  name: String
+  updated_at: String
+}
+
+input CreateLocationHistoryInput {
+  id: ID
+  latitude: Float
+  longitude: Float
+  recorded_at: String
+  user_id: Int
+}
+
+input CreateMessagesInput {
+  attachment_id: Int
+  attachment_type: String
+  content: String
+  created_at: String
+  id: ID
+  is_read: Boolean
+  receiver_id: Int
+  sender_id: Int
+}
+
+input CreateNotificationsInput {
+  created_at: String
+  deal_id: Int
+  id: ID
+  is_read: Boolean
+  message: String
+  task_id: Int
+  title: String
+  type: String
+  user_id: Int
+}
+
+input CreatePropertiesInput {
+  advance_amount: Float
+  area: String
+  balcony_count: Int
+  broker_details: String
+  care_of: String
+  client_name: String
+  created_at: String
+  expenses: String
+  floor: String
+  has_balcony: Boolean
+  has_car_parking: Boolean
+  has_legal_disputes: Boolean
+  has_multiple_owners: Boolean
+  id: ID
+  is_furnished: Boolean
+  is_negotiable: Boolean
+  location: String
+  notes: String
+  owner_name: String
+  owner_phone_numbers: [String]
+  period: String
+  photos: [String]
+  price: Float
+  property_name: String
+  property_type: String
+  status: String
+  transaction_type: String
+  updated_at: String
+}
+
+input CreateServiceContentInput {
+  description: String
+  details: String
+  id: ID
+  image_path: String
+  service_id: Int
+  title: String
+}
+
+input CreateServiceNamesInput {
+  created_at: String
+  id: ID
+  name: String
+}
+
+input CreateStaffAttendanceInput {
+  attendance_date: String
+  check_in_time: String
+  check_out_time: String
+  id: ID
+  user_id: Int
+}
+
+input CreateStaffLocationsInput {
+  id: ID
+  latitude: Float
+  longitude: Float
+  updated_at: String
+  user_id: Int
+}
+
+input CreateSysCronLogsInput {
+  id: ID
+  job_name: String
+  last_run_date: String
+}
+
+input CreateTasksInput {
+  assigned_by: Int
+  assigned_to: Int
+  client_name: String
+  created_at: String
+  description: String
+  due_date: String
+  id: ID
+  location: String
+  phone_number: String
+  status: String
+  title: String
+  updated_at: String
+}
+
+input CreateTravelLogsInput {
+  created_at: String
+  destination: String
+  id: ID
+  user_id: Int
+}
+
+input CreateUserSessionsInput {
+  active_seconds: Int
+  id: ID
+  idle_seconds: Int
+  ip_address: String
+  is_active: Boolean
+  login_time: String
+  logout_time: String
+  status: String
+  user_id: Int
+}
+
+input CreateUsersInput {
+  created_at: String
+  email: String
+  id: ID
+  last_seen: String
+  name: String
+  password: String
+  role: String
+  username: String
+}
+
+input DeleteActivityLogsInput {
+  id: ID!
+}
+
+input DeleteBillingsInput {
+  id: ID!
+}
+
+input DeleteChecklistsInput {
+  id: ID!
+}
+
+input DeleteClientDocumentsInput {
+  id: ID!
+}
+
+input DeleteClientLicensesInput {
+  id: ID!
+}
+
+input DeleteClientsInput {
+  id: ID!
+}
+
+input DeleteCompanyBillsInput {
+  id: ID!
+}
+
+input DeleteDealActivitiesInput {
+  id: ID!
+}
+
+input DeleteDealAssigneesInput {
+  id: ID!
+}
+
+input DeleteDealHandoverHistoryInput {
+  id: ID!
+}
+
+input DeleteDealStageHistoryInput {
+  id: ID!
+}
+
+input DeleteDealsInput {
+  id: ID!
+}
+
+input DeleteDscRecordsInput {
+  id: ID!
+}
+
+input DeleteInwardPostsInput {
+  id: ID!
+}
+
+input DeleteLicenseBillingInput {
+  id: ID!
+}
+
+input DeleteLicenseNotificationsInput {
+  id: ID!
+}
+
+input DeleteLicenseServicesInput {
+  id: ID!
+}
+
+input DeleteLicenseTypesInput {
+  id: ID!
+}
+
+input DeleteLocationHistoryInput {
+  id: ID!
+}
+
+input DeleteMessagesInput {
+  id: ID!
+}
+
+input DeleteNotificationsInput {
+  id: ID!
+}
+
+input DeletePropertiesInput {
+  id: ID!
+}
+
+input DeleteServiceContentInput {
+  id: ID!
+}
+
+input DeleteServiceNamesInput {
+  id: ID!
+}
+
+input DeleteStaffAttendanceInput {
+  id: ID!
+}
+
+input DeleteStaffLocationsInput {
+  id: ID!
+}
+
+input DeleteSysCronLogsInput {
+  id: ID!
+}
+
+input DeleteTasksInput {
+  id: ID!
+}
+
+input DeleteTravelLogsInput {
+  id: ID!
+}
+
+input DeleteUserSessionsInput {
+  id: ID!
+}
+
+input DeleteUsersInput {
+  id: ID!
+}
+
+input ModelActivityLogsConditionInput {
+  action: ModelStringInput
+  and: [ModelActivityLogsConditionInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  details: ModelStringInput
+  not: ModelActivityLogsConditionInput
+  or: [ModelActivityLogsConditionInput]
+  target_id: ModelStringInput
+  target_type: ModelStringInput
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelActivityLogsFilterInput {
+  action: ModelStringInput
+  and: [ModelActivityLogsFilterInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  details: ModelStringInput
+  id: ModelIDInput
+  not: ModelActivityLogsFilterInput
+  or: [ModelActivityLogsFilterInput]
+  target_id: ModelStringInput
+  target_type: ModelStringInput
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelBillingsConditionInput {
+  amount: ModelStringInput
+  and: [ModelBillingsConditionInput]
+  authorities: ModelStringInput
+  category: ModelStringInput
+  client_name: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  data: ModelStringInput
+  date: ModelStringInput
+  invoice_no: ModelStringInput
+  not: ModelBillingsConditionInput
+  or: [ModelBillingsConditionInput]
+  status: ModelStringInput
+  type: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelBillingsFilterInput {
+  amount: ModelStringInput
+  and: [ModelBillingsFilterInput]
+  authorities: ModelStringInput
+  category: ModelStringInput
+  client_name: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  data: ModelStringInput
+  date: ModelStringInput
+  id: ModelIDInput
+  invoice_no: ModelStringInput
+  not: ModelBillingsFilterInput
+  or: [ModelBillingsFilterInput]
+  status: ModelStringInput
+  type: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelBooleanInput {
+  attributeExists: Boolean
+  attributeType: ModelAttributeTypes
+  eq: Boolean
+  ne: Boolean
+}
+
+input ModelChecklistsConditionInput {
+  and: [ModelChecklistsConditionInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  description: ModelStringInput
+  due_date: ModelStringInput
+  manager_id: ModelIntInput
+  not: ModelChecklistsConditionInput
+  or: [ModelChecklistsConditionInput]
+  reason: ModelStringInput
+  remarks: ModelStringInput
+  responsible_id: ModelIntInput
+  status: ModelStringInput
+  title: ModelStringInput
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+}
+
+input ModelChecklistsFilterInput {
+  and: [ModelChecklistsFilterInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  description: ModelStringInput
+  due_date: ModelStringInput
+  id: ModelIDInput
+  manager_id: ModelIntInput
+  not: ModelChecklistsFilterInput
+  or: [ModelChecklistsFilterInput]
+  reason: ModelStringInput
+  remarks: ModelStringInput
+  responsible_id: ModelIntInput
+  status: ModelStringInput
+  title: ModelStringInput
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+}
+
+input ModelClientDocumentsConditionInput {
+  and: [ModelClientDocumentsConditionInput]
+  client_id: ModelStringInput
+  client_name: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  document_name: ModelStringInput
+  not: ModelClientDocumentsConditionInput
+  og_copy: ModelStringInput
+  or: [ModelClientDocumentsConditionInput]
+  remarks: ModelStringInput
+  storage_path: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelClientDocumentsFilterInput {
+  and: [ModelClientDocumentsFilterInput]
+  client_id: ModelStringInput
+  client_name: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  document_name: ModelStringInput
+  id: ModelIDInput
+  not: ModelClientDocumentsFilterInput
+  og_copy: ModelStringInput
+  or: [ModelClientDocumentsFilterInput]
+  remarks: ModelStringInput
+  storage_path: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelClientLicensesConditionInput {
+  and: [ModelClientLicensesConditionInput]
+  client_id: ModelIntInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  expiry_date: ModelStringInput
+  file_no: ModelStringInput
+  license_type_id: ModelIntInput
+  manual_client_name: ModelStringInput
+  not: ModelClientLicensesConditionInput
+  notes: ModelStringInput
+  or: [ModelClientLicensesConditionInput]
+  service_date: ModelStringInput
+  status: ModelStringInput
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+}
+
+input ModelClientLicensesFilterInput {
+  and: [ModelClientLicensesFilterInput]
+  client_id: ModelIntInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  expiry_date: ModelStringInput
+  file_no: ModelStringInput
+  id: ModelIDInput
+  license_type_id: ModelIntInput
+  manual_client_name: ModelStringInput
+  not: ModelClientLicensesFilterInput
+  notes: ModelStringInput
+  or: [ModelClientLicensesFilterInput]
+  service_date: ModelStringInput
+  status: ModelStringInput
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+}
+
+input ModelClientsConditionInput {
+  address: ModelStringInput
+  and: [ModelClientsConditionInput]
+  balance_due: ModelStringInput
+  case_number: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  dob: ModelStringInput
+  email: ModelStringInput
+  file_date: ModelStringInput
+  file_no: ModelStringInput
+  is_contacted: ModelBooleanInput
+  managed_by: ModelStringInput
+  name: ModelStringInput
+  not: ModelClientsConditionInput
+  or: [ModelClientsConditionInput]
+  phone: ModelStringInput
+  review_rating: ModelIntInput
+  type_of_work: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelClientsFilterInput {
+  address: ModelStringInput
+  and: [ModelClientsFilterInput]
+  balance_due: ModelStringInput
+  case_number: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  dob: ModelStringInput
+  email: ModelStringInput
+  file_date: ModelStringInput
+  file_no: ModelStringInput
+  id: ModelIDInput
+  is_contacted: ModelBooleanInput
+  managed_by: ModelStringInput
+  name: ModelStringInput
+  not: ModelClientsFilterInput
+  or: [ModelClientsFilterInput]
+  phone: ModelStringInput
+  review_rating: ModelIntInput
+  type_of_work: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelCompanyBillsConditionInput {
+  amount: ModelFloatInput
+  and: [ModelCompanyBillsConditionInput]
+  bill_date: ModelStringInput
+  category: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  description: ModelStringInput
+  not: ModelCompanyBillsConditionInput
+  or: [ModelCompanyBillsConditionInput]
+  spent_by: ModelIntInput
+  spent_by_name: ModelStringInput
+  status: ModelStringInput
+  title: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelCompanyBillsFilterInput {
+  amount: ModelFloatInput
+  and: [ModelCompanyBillsFilterInput]
+  bill_date: ModelStringInput
+  category: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  description: ModelStringInput
+  id: ModelIDInput
+  not: ModelCompanyBillsFilterInput
+  or: [ModelCompanyBillsFilterInput]
+  spent_by: ModelIntInput
+  spent_by_name: ModelStringInput
+  status: ModelStringInput
+  title: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelDealActivitiesConditionInput {
+  and: [ModelDealActivitiesConditionInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  created_by: ModelIntInput
+  deal_id: ModelIntInput
+  description: ModelStringInput
+  due_date: ModelStringInput
+  is_completed: ModelBooleanInput
+  not: ModelDealActivitiesConditionInput
+  or: [ModelDealActivitiesConditionInput]
+  title: ModelStringInput
+  type: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelDealActivitiesFilterInput {
+  and: [ModelDealActivitiesFilterInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  created_by: ModelIntInput
+  deal_id: ModelIntInput
+  description: ModelStringInput
+  due_date: ModelStringInput
+  id: ModelIDInput
+  is_completed: ModelBooleanInput
+  not: ModelDealActivitiesFilterInput
+  or: [ModelDealActivitiesFilterInput]
+  title: ModelStringInput
+  type: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelDealAssigneesConditionInput {
+  and: [ModelDealAssigneesConditionInput]
+  assigned_at: ModelStringInput
+  createdAt: ModelStringInput
+  deal_id: ModelIntInput
+  not: ModelDealAssigneesConditionInput
+  or: [ModelDealAssigneesConditionInput]
+  role: ModelStringInput
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelDealAssigneesFilterInput {
+  and: [ModelDealAssigneesFilterInput]
+  assigned_at: ModelStringInput
+  createdAt: ModelStringInput
+  deal_id: ModelIntInput
+  id: ModelIDInput
+  not: ModelDealAssigneesFilterInput
+  or: [ModelDealAssigneesFilterInput]
+  role: ModelStringInput
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelDealHandoverHistoryConditionInput {
+  and: [ModelDealHandoverHistoryConditionInput]
+  createdAt: ModelStringInput
+  deal_id: ModelIntInput
+  from_user_id: ModelIntInput
+  handed_over_at: ModelStringInput
+  not: ModelDealHandoverHistoryConditionInput
+  note: ModelStringInput
+  or: [ModelDealHandoverHistoryConditionInput]
+  to_user_id: ModelIntInput
+  updatedAt: ModelStringInput
+}
+
+input ModelDealHandoverHistoryFilterInput {
+  and: [ModelDealHandoverHistoryFilterInput]
+  createdAt: ModelStringInput
+  deal_id: ModelIntInput
+  from_user_id: ModelIntInput
+  handed_over_at: ModelStringInput
+  id: ModelIDInput
+  not: ModelDealHandoverHistoryFilterInput
+  note: ModelStringInput
+  or: [ModelDealHandoverHistoryFilterInput]
+  to_user_id: ModelIntInput
+  updatedAt: ModelStringInput
+}
+
+input ModelDealStageHistoryConditionInput {
+  and: [ModelDealStageHistoryConditionInput]
+  changed_at: ModelStringInput
+  changed_by: ModelIntInput
+  createdAt: ModelStringInput
+  deal_id: ModelIntInput
+  from_stage: ModelStringInput
+  not: ModelDealStageHistoryConditionInput
+  or: [ModelDealStageHistoryConditionInput]
+  to_stage: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelDealStageHistoryFilterInput {
+  and: [ModelDealStageHistoryFilterInput]
+  changed_at: ModelStringInput
+  changed_by: ModelIntInput
+  createdAt: ModelStringInput
+  deal_id: ModelIntInput
+  from_stage: ModelStringInput
+  id: ModelIDInput
+  not: ModelDealStageHistoryFilterInput
+  or: [ModelDealStageHistoryFilterInput]
+  to_stage: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelDealsConditionInput {
+  amount: ModelFloatInput
+  and: [ModelDealsConditionInput]
+  billing_id: ModelIntInput
+  client_id: ModelIntInput
+  client_name: ModelStringInput
+  closed_at: ModelStringInput
+  company: ModelStringInput
+  contact_info: ModelStringInput
+  contact_status: ModelStringInput
+  create_invoice_share: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  currency: ModelStringInput
+  description: ModelStringInput
+  drive_link: ModelStringInput
+  est_amount_work: ModelFloatInput
+  expense_spent: ModelFloatInput
+  expenses_list: ModelStringInput
+  files_asked: ModelStringInput
+  files_received: ModelStringInput
+  invoice_amount: ModelFloatInput
+  is_won: ModelBooleanInput
+  name: ModelStringInput
+  noc_obtained: ModelBooleanInput
+  not: ModelDealsConditionInput
+  or: [ModelDealsConditionInput]
+  part_payment_amount: ModelFloatInput
+  payment_received: ModelFloatInput
+  payment_type: ModelStringInput
+  pipeline: ModelStringInput
+  priority: ModelStringInput
+  quotation_id: ModelIntInput
+  referred_by: ModelStringInput
+  reg_fee_required: ModelStringInput
+  register_no: ModelStringInput
+  responsible_id: ModelIntInput
+  responsible_name: ModelStringInput
+  send_to_customer: ModelStringInput
+  stage: ModelStringInput
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+  upload_invoice_path: ModelStringInput
+  work_type: ModelStringInput
+}
+
+input ModelDealsFilterInput {
+  amount: ModelFloatInput
+  and: [ModelDealsFilterInput]
+  billing_id: ModelIntInput
+  client_id: ModelIntInput
+  client_name: ModelStringInput
+  closed_at: ModelStringInput
+  company: ModelStringInput
+  contact_info: ModelStringInput
+  contact_status: ModelStringInput
+  create_invoice_share: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  currency: ModelStringInput
+  description: ModelStringInput
+  drive_link: ModelStringInput
+  est_amount_work: ModelFloatInput
+  expense_spent: ModelFloatInput
+  expenses_list: ModelStringInput
+  files_asked: ModelStringInput
+  files_received: ModelStringInput
+  id: ModelIDInput
+  invoice_amount: ModelFloatInput
+  is_won: ModelBooleanInput
+  name: ModelStringInput
+  noc_obtained: ModelBooleanInput
+  not: ModelDealsFilterInput
+  or: [ModelDealsFilterInput]
+  part_payment_amount: ModelFloatInput
+  payment_received: ModelFloatInput
+  payment_type: ModelStringInput
+  pipeline: ModelStringInput
+  priority: ModelStringInput
+  quotation_id: ModelIntInput
+  referred_by: ModelStringInput
+  reg_fee_required: ModelStringInput
+  register_no: ModelStringInput
+  responsible_id: ModelIntInput
+  responsible_name: ModelStringInput
+  send_to_customer: ModelStringInput
+  stage: ModelStringInput
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+  upload_invoice_path: ModelStringInput
+  work_type: ModelStringInput
+}
+
+input ModelDscRecordsConditionInput {
+  and: [ModelDscRecordsConditionInput]
+  client_name: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  dsc_expiry_date: ModelStringInput
+  dsc_taken_date: ModelStringInput
+  email_id: ModelStringInput
+  not: ModelDscRecordsConditionInput
+  or: [ModelDscRecordsConditionInput]
+  password: ModelStringInput
+  phone_no: ModelStringInput
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+  username: ModelStringInput
+}
+
+input ModelDscRecordsFilterInput {
+  and: [ModelDscRecordsFilterInput]
+  client_name: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  dsc_expiry_date: ModelStringInput
+  dsc_taken_date: ModelStringInput
+  email_id: ModelStringInput
+  id: ModelIDInput
+  not: ModelDscRecordsFilterInput
+  or: [ModelDscRecordsFilterInput]
+  password: ModelStringInput
+  phone_no: ModelStringInput
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+  username: ModelStringInput
+}
+
+input ModelFloatInput {
+  attributeExists: Boolean
+  attributeType: ModelAttributeTypes
+  between: [Float]
+  eq: Float
+  ge: Float
+  gt: Float
+  le: Float
+  lt: Float
+  ne: Float
+}
+
+input ModelIDInput {
+  attributeExists: Boolean
+  attributeType: ModelAttributeTypes
+  beginsWith: ID
+  between: [ID]
+  contains: ID
+  eq: ID
+  ge: ID
+  gt: ID
+  le: ID
+  lt: ID
+  ne: ID
+  notContains: ID
+  size: ModelSizeInput
+}
+
+input ModelIntInput {
+  attributeExists: Boolean
+  attributeType: ModelAttributeTypes
+  between: [Int]
+  eq: Int
+  ge: Int
+  gt: Int
+  le: Int
+  lt: Int
+  ne: Int
+}
+
+input ModelInwardPostsConditionInput {
+  and: [ModelInwardPostsConditionInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  description: ModelStringInput
+  not: ModelInwardPostsConditionInput
+  or: [ModelInwardPostsConditionInput]
+  received_by: ModelStringInput
+  received_date: ModelStringInput
+  recipient_name: ModelStringInput
+  sender_name: ModelStringInput
+  status: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelInwardPostsFilterInput {
+  and: [ModelInwardPostsFilterInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  description: ModelStringInput
+  id: ModelIDInput
+  not: ModelInwardPostsFilterInput
+  or: [ModelInwardPostsFilterInput]
+  received_by: ModelStringInput
+  received_date: ModelStringInput
+  recipient_name: ModelStringInput
+  sender_name: ModelStringInput
+  status: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelLicenseBillingConditionInput {
+  amount: ModelFloatInput
+  and: [ModelLicenseBillingConditionInput]
+  client_license_id: ModelIntInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  invoice_no: ModelStringInput
+  not: ModelLicenseBillingConditionInput
+  or: [ModelLicenseBillingConditionInput]
+  payment_date: ModelStringInput
+  payment_status: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelLicenseBillingFilterInput {
+  amount: ModelFloatInput
+  and: [ModelLicenseBillingFilterInput]
+  client_license_id: ModelIntInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  id: ModelIDInput
+  invoice_no: ModelStringInput
+  not: ModelLicenseBillingFilterInput
+  or: [ModelLicenseBillingFilterInput]
+  payment_date: ModelStringInput
+  payment_status: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelLicenseNotificationsConditionInput {
+  and: [ModelLicenseNotificationsConditionInput]
+  client_license_id: ModelIntInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  is_sent: ModelBooleanInput
+  message: ModelStringInput
+  not: ModelLicenseNotificationsConditionInput
+  notification_type: ModelStringInput
+  or: [ModelLicenseNotificationsConditionInput]
+  scheduled_date: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelLicenseNotificationsFilterInput {
+  and: [ModelLicenseNotificationsFilterInput]
+  client_license_id: ModelIntInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  id: ModelIDInput
+  is_sent: ModelBooleanInput
+  message: ModelStringInput
+  not: ModelLicenseNotificationsFilterInput
+  notification_type: ModelStringInput
+  or: [ModelLicenseNotificationsFilterInput]
+  scheduled_date: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelLicenseServicesConditionInput {
+  and: [ModelLicenseServicesConditionInput]
+  client_license_id: ModelIntInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  not: ModelLicenseServicesConditionInput
+  or: [ModelLicenseServicesConditionInput]
+  service_cost: ModelFloatInput
+  service_date: ModelStringInput
+  service_description: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelLicenseServicesFilterInput {
+  and: [ModelLicenseServicesFilterInput]
+  client_license_id: ModelIntInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  id: ModelIDInput
+  not: ModelLicenseServicesFilterInput
+  or: [ModelLicenseServicesFilterInput]
+  service_cost: ModelFloatInput
+  service_date: ModelStringInput
+  service_description: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelLicenseTypesConditionInput {
+  and: [ModelLicenseTypesConditionInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  description: ModelStringInput
+  name: ModelStringInput
+  not: ModelLicenseTypesConditionInput
+  or: [ModelLicenseTypesConditionInput]
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+}
+
+input ModelLicenseTypesFilterInput {
+  and: [ModelLicenseTypesFilterInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  description: ModelStringInput
+  id: ModelIDInput
+  name: ModelStringInput
+  not: ModelLicenseTypesFilterInput
+  or: [ModelLicenseTypesFilterInput]
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+}
+
+input ModelLocationHistoryConditionInput {
+  and: [ModelLocationHistoryConditionInput]
+  createdAt: ModelStringInput
+  latitude: ModelFloatInput
+  longitude: ModelFloatInput
+  not: ModelLocationHistoryConditionInput
+  or: [ModelLocationHistoryConditionInput]
+  recorded_at: ModelStringInput
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelLocationHistoryFilterInput {
+  and: [ModelLocationHistoryFilterInput]
+  createdAt: ModelStringInput
+  id: ModelIDInput
+  latitude: ModelFloatInput
+  longitude: ModelFloatInput
+  not: ModelLocationHistoryFilterInput
+  or: [ModelLocationHistoryFilterInput]
+  recorded_at: ModelStringInput
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelMessagesConditionInput {
+  and: [ModelMessagesConditionInput]
+  attachment_id: ModelIntInput
+  attachment_type: ModelStringInput
+  content: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  is_read: ModelBooleanInput
+  not: ModelMessagesConditionInput
+  or: [ModelMessagesConditionInput]
+  receiver_id: ModelIntInput
+  sender_id: ModelIntInput
+  updatedAt: ModelStringInput
+}
+
+input ModelMessagesFilterInput {
+  and: [ModelMessagesFilterInput]
+  attachment_id: ModelIntInput
+  attachment_type: ModelStringInput
+  content: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  id: ModelIDInput
+  is_read: ModelBooleanInput
+  not: ModelMessagesFilterInput
+  or: [ModelMessagesFilterInput]
+  receiver_id: ModelIntInput
+  sender_id: ModelIntInput
+  updatedAt: ModelStringInput
+}
+
+input ModelNotificationsConditionInput {
+  and: [ModelNotificationsConditionInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  deal_id: ModelIntInput
+  is_read: ModelBooleanInput
+  message: ModelStringInput
+  not: ModelNotificationsConditionInput
+  or: [ModelNotificationsConditionInput]
+  task_id: ModelIntInput
+  title: ModelStringInput
+  type: ModelStringInput
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelNotificationsFilterInput {
+  and: [ModelNotificationsFilterInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  deal_id: ModelIntInput
+  id: ModelIDInput
+  is_read: ModelBooleanInput
+  message: ModelStringInput
+  not: ModelNotificationsFilterInput
+  or: [ModelNotificationsFilterInput]
+  task_id: ModelIntInput
+  title: ModelStringInput
+  type: ModelStringInput
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelPropertiesConditionInput {
+  advance_amount: ModelFloatInput
+  and: [ModelPropertiesConditionInput]
+  area: ModelStringInput
+  balcony_count: ModelIntInput
+  broker_details: ModelStringInput
+  care_of: ModelStringInput
+  client_name: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  expenses: ModelStringInput
+  floor: ModelStringInput
+  has_balcony: ModelBooleanInput
+  has_car_parking: ModelBooleanInput
+  has_legal_disputes: ModelBooleanInput
+  has_multiple_owners: ModelBooleanInput
+  is_furnished: ModelBooleanInput
+  is_negotiable: ModelBooleanInput
+  location: ModelStringInput
+  not: ModelPropertiesConditionInput
+  notes: ModelStringInput
+  or: [ModelPropertiesConditionInput]
+  owner_name: ModelStringInput
+  owner_phone_numbers: ModelStringInput
+  period: ModelStringInput
+  photos: ModelStringInput
+  price: ModelFloatInput
+  property_name: ModelStringInput
+  property_type: ModelStringInput
+  status: ModelStringInput
+  transaction_type: ModelStringInput
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+}
+
+input ModelPropertiesFilterInput {
+  advance_amount: ModelFloatInput
+  and: [ModelPropertiesFilterInput]
+  area: ModelStringInput
+  balcony_count: ModelIntInput
+  broker_details: ModelStringInput
+  care_of: ModelStringInput
+  client_name: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  expenses: ModelStringInput
+  floor: ModelStringInput
+  has_balcony: ModelBooleanInput
+  has_car_parking: ModelBooleanInput
+  has_legal_disputes: ModelBooleanInput
+  has_multiple_owners: ModelBooleanInput
+  id: ModelIDInput
+  is_furnished: ModelBooleanInput
+  is_negotiable: ModelBooleanInput
+  location: ModelStringInput
+  not: ModelPropertiesFilterInput
+  notes: ModelStringInput
+  or: [ModelPropertiesFilterInput]
+  owner_name: ModelStringInput
+  owner_phone_numbers: ModelStringInput
+  period: ModelStringInput
+  photos: ModelStringInput
+  price: ModelFloatInput
+  property_name: ModelStringInput
+  property_type: ModelStringInput
+  status: ModelStringInput
+  transaction_type: ModelStringInput
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+}
+
+input ModelServiceContentConditionInput {
+  and: [ModelServiceContentConditionInput]
+  createdAt: ModelStringInput
+  description: ModelStringInput
+  details: ModelStringInput
+  image_path: ModelStringInput
+  not: ModelServiceContentConditionInput
+  or: [ModelServiceContentConditionInput]
+  service_id: ModelIntInput
+  title: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelServiceContentFilterInput {
+  and: [ModelServiceContentFilterInput]
+  createdAt: ModelStringInput
+  description: ModelStringInput
+  details: ModelStringInput
+  id: ModelIDInput
+  image_path: ModelStringInput
+  not: ModelServiceContentFilterInput
+  or: [ModelServiceContentFilterInput]
+  service_id: ModelIntInput
+  title: ModelStringInput
+  updatedAt: ModelStringInput
+}
+
+input ModelServiceNamesConditionInput {
+  and: [ModelServiceNamesConditionInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  name: ModelStringInput
+  not: ModelServiceNamesConditionInput
+  or: [ModelServiceNamesConditionInput]
+  updatedAt: ModelStringInput
+}
+
+input ModelServiceNamesFilterInput {
+  and: [ModelServiceNamesFilterInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  id: ModelIDInput
+  name: ModelStringInput
+  not: ModelServiceNamesFilterInput
+  or: [ModelServiceNamesFilterInput]
+  updatedAt: ModelStringInput
+}
+
+input ModelSizeInput {
+  between: [Int]
+  eq: Int
+  ge: Int
+  gt: Int
+  le: Int
+  lt: Int
+  ne: Int
+}
+
+input ModelStaffAttendanceConditionInput {
+  and: [ModelStaffAttendanceConditionInput]
+  attendance_date: ModelStringInput
+  check_in_time: ModelStringInput
+  check_out_time: ModelStringInput
+  createdAt: ModelStringInput
+  not: ModelStaffAttendanceConditionInput
+  or: [ModelStaffAttendanceConditionInput]
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelStaffAttendanceFilterInput {
+  and: [ModelStaffAttendanceFilterInput]
+  attendance_date: ModelStringInput
+  check_in_time: ModelStringInput
+  check_out_time: ModelStringInput
+  createdAt: ModelStringInput
+  id: ModelIDInput
+  not: ModelStaffAttendanceFilterInput
+  or: [ModelStaffAttendanceFilterInput]
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelStaffLocationsConditionInput {
+  and: [ModelStaffLocationsConditionInput]
+  createdAt: ModelStringInput
+  latitude: ModelFloatInput
+  longitude: ModelFloatInput
+  not: ModelStaffLocationsConditionInput
+  or: [ModelStaffLocationsConditionInput]
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelStaffLocationsFilterInput {
+  and: [ModelStaffLocationsFilterInput]
+  createdAt: ModelStringInput
+  id: ModelIDInput
+  latitude: ModelFloatInput
+  longitude: ModelFloatInput
+  not: ModelStaffLocationsFilterInput
+  or: [ModelStaffLocationsFilterInput]
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelStringInput {
+  attributeExists: Boolean
+  attributeType: ModelAttributeTypes
+  beginsWith: String
+  between: [String]
+  contains: String
+  eq: String
+  ge: String
+  gt: String
+  le: String
+  lt: String
+  ne: String
+  notContains: String
+  size: ModelSizeInput
+}
+
+input ModelSubscriptionActivityLogsFilterInput {
+  action: ModelSubscriptionStringInput
+  and: [ModelSubscriptionActivityLogsFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  details: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  or: [ModelSubscriptionActivityLogsFilterInput]
+  target_id: ModelSubscriptionStringInput
+  target_type: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+  user_id: ModelSubscriptionIntInput
+}
+
+input ModelSubscriptionBillingsFilterInput {
+  amount: ModelSubscriptionStringInput
+  and: [ModelSubscriptionBillingsFilterInput]
+  authorities: ModelSubscriptionStringInput
+  category: ModelSubscriptionStringInput
+  client_name: ModelSubscriptionStringInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  data: ModelSubscriptionStringInput
+  date: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  invoice_no: ModelSubscriptionStringInput
+  or: [ModelSubscriptionBillingsFilterInput]
+  status: ModelSubscriptionStringInput
+  type: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionBooleanInput {
+  eq: Boolean
+  ne: Boolean
+}
+
+input ModelSubscriptionChecklistsFilterInput {
+  and: [ModelSubscriptionChecklistsFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  description: ModelSubscriptionStringInput
+  due_date: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  manager_id: ModelSubscriptionIntInput
+  or: [ModelSubscriptionChecklistsFilterInput]
+  reason: ModelSubscriptionStringInput
+  remarks: ModelSubscriptionStringInput
+  responsible_id: ModelSubscriptionIntInput
+  status: ModelSubscriptionStringInput
+  title: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+  updated_at: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionClientDocumentsFilterInput {
+  and: [ModelSubscriptionClientDocumentsFilterInput]
+  client_id: ModelSubscriptionStringInput
+  client_name: ModelSubscriptionStringInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  document_name: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  og_copy: ModelSubscriptionStringInput
+  or: [ModelSubscriptionClientDocumentsFilterInput]
+  remarks: ModelSubscriptionStringInput
+  storage_path: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionClientLicensesFilterInput {
+  and: [ModelSubscriptionClientLicensesFilterInput]
+  client_id: ModelSubscriptionIntInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  expiry_date: ModelSubscriptionStringInput
+  file_no: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  license_type_id: ModelSubscriptionIntInput
+  manual_client_name: ModelSubscriptionStringInput
+  notes: ModelSubscriptionStringInput
+  or: [ModelSubscriptionClientLicensesFilterInput]
+  service_date: ModelSubscriptionStringInput
+  status: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+  updated_at: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionClientsFilterInput {
+  address: ModelSubscriptionStringInput
+  and: [ModelSubscriptionClientsFilterInput]
+  balance_due: ModelSubscriptionStringInput
+  case_number: ModelSubscriptionStringInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  dob: ModelSubscriptionStringInput
+  email: ModelSubscriptionStringInput
+  file_date: ModelSubscriptionStringInput
+  file_no: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  is_contacted: ModelSubscriptionBooleanInput
+  managed_by: ModelSubscriptionStringInput
+  name: ModelSubscriptionStringInput
+  or: [ModelSubscriptionClientsFilterInput]
+  phone: ModelSubscriptionStringInput
+  review_rating: ModelSubscriptionIntInput
+  type_of_work: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionCompanyBillsFilterInput {
+  amount: ModelSubscriptionFloatInput
+  and: [ModelSubscriptionCompanyBillsFilterInput]
+  bill_date: ModelSubscriptionStringInput
+  category: ModelSubscriptionStringInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  description: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  or: [ModelSubscriptionCompanyBillsFilterInput]
+  spent_by: ModelSubscriptionIntInput
+  spent_by_name: ModelSubscriptionStringInput
+  status: ModelSubscriptionStringInput
+  title: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionDealActivitiesFilterInput {
+  and: [ModelSubscriptionDealActivitiesFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  created_by: ModelSubscriptionIntInput
+  deal_id: ModelSubscriptionIntInput
+  description: ModelSubscriptionStringInput
+  due_date: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  is_completed: ModelSubscriptionBooleanInput
+  or: [ModelSubscriptionDealActivitiesFilterInput]
+  title: ModelSubscriptionStringInput
+  type: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionDealAssigneesFilterInput {
+  and: [ModelSubscriptionDealAssigneesFilterInput]
+  assigned_at: ModelSubscriptionStringInput
+  createdAt: ModelSubscriptionStringInput
+  deal_id: ModelSubscriptionIntInput
+  id: ModelSubscriptionIDInput
+  or: [ModelSubscriptionDealAssigneesFilterInput]
+  role: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+  user_id: ModelSubscriptionIntInput
+}
+
+input ModelSubscriptionDealHandoverHistoryFilterInput {
+  and: [ModelSubscriptionDealHandoverHistoryFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  deal_id: ModelSubscriptionIntInput
+  from_user_id: ModelSubscriptionIntInput
+  handed_over_at: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  note: ModelSubscriptionStringInput
+  or: [ModelSubscriptionDealHandoverHistoryFilterInput]
+  to_user_id: ModelSubscriptionIntInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionDealStageHistoryFilterInput {
+  and: [ModelSubscriptionDealStageHistoryFilterInput]
+  changed_at: ModelSubscriptionStringInput
+  changed_by: ModelSubscriptionIntInput
+  createdAt: ModelSubscriptionStringInput
+  deal_id: ModelSubscriptionIntInput
+  from_stage: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  or: [ModelSubscriptionDealStageHistoryFilterInput]
+  to_stage: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionDealsFilterInput {
+  amount: ModelSubscriptionFloatInput
+  and: [ModelSubscriptionDealsFilterInput]
+  billing_id: ModelSubscriptionIntInput
+  client_id: ModelSubscriptionIntInput
+  client_name: ModelSubscriptionStringInput
+  closed_at: ModelSubscriptionStringInput
+  company: ModelSubscriptionStringInput
+  contact_info: ModelSubscriptionStringInput
+  contact_status: ModelSubscriptionStringInput
+  create_invoice_share: ModelSubscriptionStringInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  currency: ModelSubscriptionStringInput
+  description: ModelSubscriptionStringInput
+  drive_link: ModelSubscriptionStringInput
+  est_amount_work: ModelSubscriptionFloatInput
+  expense_spent: ModelSubscriptionFloatInput
+  expenses_list: ModelSubscriptionStringInput
+  files_asked: ModelSubscriptionStringInput
+  files_received: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  invoice_amount: ModelSubscriptionFloatInput
+  is_won: ModelSubscriptionBooleanInput
+  name: ModelSubscriptionStringInput
+  noc_obtained: ModelSubscriptionBooleanInput
+  or: [ModelSubscriptionDealsFilterInput]
+  part_payment_amount: ModelSubscriptionFloatInput
+  payment_received: ModelSubscriptionFloatInput
+  payment_type: ModelSubscriptionStringInput
+  pipeline: ModelSubscriptionStringInput
+  priority: ModelSubscriptionStringInput
+  quotation_id: ModelSubscriptionIntInput
+  referred_by: ModelSubscriptionStringInput
+  reg_fee_required: ModelSubscriptionStringInput
+  register_no: ModelSubscriptionStringInput
+  responsible_id: ModelSubscriptionIntInput
+  responsible_name: ModelSubscriptionStringInput
+  send_to_customer: ModelSubscriptionStringInput
+  stage: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+  updated_at: ModelSubscriptionStringInput
+  upload_invoice_path: ModelSubscriptionStringInput
+  work_type: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionDscRecordsFilterInput {
+  and: [ModelSubscriptionDscRecordsFilterInput]
+  client_name: ModelSubscriptionStringInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  dsc_expiry_date: ModelSubscriptionStringInput
+  dsc_taken_date: ModelSubscriptionStringInput
+  email_id: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  or: [ModelSubscriptionDscRecordsFilterInput]
+  password: ModelSubscriptionStringInput
+  phone_no: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+  updated_at: ModelSubscriptionStringInput
+  username: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionFloatInput {
+  between: [Float]
+  eq: Float
+  ge: Float
+  gt: Float
+  in: [Float]
+  le: Float
+  lt: Float
+  ne: Float
+  notIn: [Float]
+}
+
+input ModelSubscriptionIDInput {
+  beginsWith: ID
+  between: [ID]
+  contains: ID
+  eq: ID
+  ge: ID
+  gt: ID
+  in: [ID]
+  le: ID
+  lt: ID
+  ne: ID
+  notContains: ID
+  notIn: [ID]
+}
+
+input ModelSubscriptionIntInput {
+  between: [Int]
+  eq: Int
+  ge: Int
+  gt: Int
+  in: [Int]
+  le: Int
+  lt: Int
+  ne: Int
+  notIn: [Int]
+}
+
+input ModelSubscriptionInwardPostsFilterInput {
+  and: [ModelSubscriptionInwardPostsFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  description: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  or: [ModelSubscriptionInwardPostsFilterInput]
+  received_by: ModelSubscriptionStringInput
+  received_date: ModelSubscriptionStringInput
+  recipient_name: ModelSubscriptionStringInput
+  sender_name: ModelSubscriptionStringInput
+  status: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionLicenseBillingFilterInput {
+  amount: ModelSubscriptionFloatInput
+  and: [ModelSubscriptionLicenseBillingFilterInput]
+  client_license_id: ModelSubscriptionIntInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  invoice_no: ModelSubscriptionStringInput
+  or: [ModelSubscriptionLicenseBillingFilterInput]
+  payment_date: ModelSubscriptionStringInput
+  payment_status: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionLicenseNotificationsFilterInput {
+  and: [ModelSubscriptionLicenseNotificationsFilterInput]
+  client_license_id: ModelSubscriptionIntInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  is_sent: ModelSubscriptionBooleanInput
+  message: ModelSubscriptionStringInput
+  notification_type: ModelSubscriptionStringInput
+  or: [ModelSubscriptionLicenseNotificationsFilterInput]
+  scheduled_date: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionLicenseServicesFilterInput {
+  and: [ModelSubscriptionLicenseServicesFilterInput]
+  client_license_id: ModelSubscriptionIntInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  or: [ModelSubscriptionLicenseServicesFilterInput]
+  service_cost: ModelSubscriptionFloatInput
+  service_date: ModelSubscriptionStringInput
+  service_description: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionLicenseTypesFilterInput {
+  and: [ModelSubscriptionLicenseTypesFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  description: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  name: ModelSubscriptionStringInput
+  or: [ModelSubscriptionLicenseTypesFilterInput]
+  updatedAt: ModelSubscriptionStringInput
+  updated_at: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionLocationHistoryFilterInput {
+  and: [ModelSubscriptionLocationHistoryFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  latitude: ModelSubscriptionFloatInput
+  longitude: ModelSubscriptionFloatInput
+  or: [ModelSubscriptionLocationHistoryFilterInput]
+  recorded_at: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+  user_id: ModelSubscriptionIntInput
+}
+
+input ModelSubscriptionMessagesFilterInput {
+  and: [ModelSubscriptionMessagesFilterInput]
+  attachment_id: ModelSubscriptionIntInput
+  attachment_type: ModelSubscriptionStringInput
+  content: ModelSubscriptionStringInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  is_read: ModelSubscriptionBooleanInput
+  or: [ModelSubscriptionMessagesFilterInput]
+  receiver_id: ModelSubscriptionIntInput
+  sender_id: ModelSubscriptionIntInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionNotificationsFilterInput {
+  and: [ModelSubscriptionNotificationsFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  deal_id: ModelSubscriptionIntInput
+  id: ModelSubscriptionIDInput
+  is_read: ModelSubscriptionBooleanInput
+  message: ModelSubscriptionStringInput
+  or: [ModelSubscriptionNotificationsFilterInput]
+  task_id: ModelSubscriptionIntInput
+  title: ModelSubscriptionStringInput
+  type: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+  user_id: ModelSubscriptionIntInput
+}
+
+input ModelSubscriptionPropertiesFilterInput {
+  advance_amount: ModelSubscriptionFloatInput
+  and: [ModelSubscriptionPropertiesFilterInput]
+  area: ModelSubscriptionStringInput
+  balcony_count: ModelSubscriptionIntInput
+  broker_details: ModelSubscriptionStringInput
+  care_of: ModelSubscriptionStringInput
+  client_name: ModelSubscriptionStringInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  expenses: ModelSubscriptionStringInput
+  floor: ModelSubscriptionStringInput
+  has_balcony: ModelSubscriptionBooleanInput
+  has_car_parking: ModelSubscriptionBooleanInput
+  has_legal_disputes: ModelSubscriptionBooleanInput
+  has_multiple_owners: ModelSubscriptionBooleanInput
+  id: ModelSubscriptionIDInput
+  is_furnished: ModelSubscriptionBooleanInput
+  is_negotiable: ModelSubscriptionBooleanInput
+  location: ModelSubscriptionStringInput
+  notes: ModelSubscriptionStringInput
+  or: [ModelSubscriptionPropertiesFilterInput]
+  owner_name: ModelSubscriptionStringInput
+  owner_phone_numbers: ModelSubscriptionStringInput
+  period: ModelSubscriptionStringInput
+  photos: ModelSubscriptionStringInput
+  price: ModelSubscriptionFloatInput
+  property_name: ModelSubscriptionStringInput
+  property_type: ModelSubscriptionStringInput
+  status: ModelSubscriptionStringInput
+  transaction_type: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+  updated_at: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionServiceContentFilterInput {
+  and: [ModelSubscriptionServiceContentFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  description: ModelSubscriptionStringInput
+  details: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  image_path: ModelSubscriptionStringInput
+  or: [ModelSubscriptionServiceContentFilterInput]
+  service_id: ModelSubscriptionIntInput
+  title: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionServiceNamesFilterInput {
+  and: [ModelSubscriptionServiceNamesFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  name: ModelSubscriptionStringInput
+  or: [ModelSubscriptionServiceNamesFilterInput]
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionStaffAttendanceFilterInput {
+  and: [ModelSubscriptionStaffAttendanceFilterInput]
+  attendance_date: ModelSubscriptionStringInput
+  check_in_time: ModelSubscriptionStringInput
+  check_out_time: ModelSubscriptionStringInput
+  createdAt: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  or: [ModelSubscriptionStaffAttendanceFilterInput]
+  updatedAt: ModelSubscriptionStringInput
+  user_id: ModelSubscriptionIntInput
+}
+
+input ModelSubscriptionStaffLocationsFilterInput {
+  and: [ModelSubscriptionStaffLocationsFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  latitude: ModelSubscriptionFloatInput
+  longitude: ModelSubscriptionFloatInput
+  or: [ModelSubscriptionStaffLocationsFilterInput]
+  updatedAt: ModelSubscriptionStringInput
+  updated_at: ModelSubscriptionStringInput
+  user_id: ModelSubscriptionIntInput
+}
+
+input ModelSubscriptionStringInput {
+  beginsWith: String
+  between: [String]
+  contains: String
+  eq: String
+  ge: String
+  gt: String
+  in: [String]
+  le: String
+  lt: String
+  ne: String
+  notContains: String
+  notIn: [String]
+}
+
+input ModelSubscriptionSysCronLogsFilterInput {
+  and: [ModelSubscriptionSysCronLogsFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  job_name: ModelSubscriptionStringInput
+  last_run_date: ModelSubscriptionStringInput
+  or: [ModelSubscriptionSysCronLogsFilterInput]
+  updatedAt: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionTasksFilterInput {
+  and: [ModelSubscriptionTasksFilterInput]
+  assigned_by: ModelSubscriptionIntInput
+  assigned_to: ModelSubscriptionIntInput
+  client_name: ModelSubscriptionStringInput
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  description: ModelSubscriptionStringInput
+  due_date: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  location: ModelSubscriptionStringInput
+  or: [ModelSubscriptionTasksFilterInput]
+  phone_number: ModelSubscriptionStringInput
+  status: ModelSubscriptionStringInput
+  title: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+  updated_at: ModelSubscriptionStringInput
+}
+
+input ModelSubscriptionTravelLogsFilterInput {
+  and: [ModelSubscriptionTravelLogsFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  destination: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  or: [ModelSubscriptionTravelLogsFilterInput]
+  updatedAt: ModelSubscriptionStringInput
+  user_id: ModelSubscriptionIntInput
+}
+
+input ModelSubscriptionUserSessionsFilterInput {
+  active_seconds: ModelSubscriptionIntInput
+  and: [ModelSubscriptionUserSessionsFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  idle_seconds: ModelSubscriptionIntInput
+  ip_address: ModelSubscriptionStringInput
+  is_active: ModelSubscriptionBooleanInput
+  login_time: ModelSubscriptionStringInput
+  logout_time: ModelSubscriptionStringInput
+  or: [ModelSubscriptionUserSessionsFilterInput]
+  status: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+  user_id: ModelSubscriptionIntInput
+}
+
+input ModelSubscriptionUsersFilterInput {
+  and: [ModelSubscriptionUsersFilterInput]
+  createdAt: ModelSubscriptionStringInput
+  created_at: ModelSubscriptionStringInput
+  email: ModelSubscriptionStringInput
+  id: ModelSubscriptionIDInput
+  last_seen: ModelSubscriptionStringInput
+  name: ModelSubscriptionStringInput
+  or: [ModelSubscriptionUsersFilterInput]
+  password: ModelSubscriptionStringInput
+  role: ModelSubscriptionStringInput
+  updatedAt: ModelSubscriptionStringInput
+  username: ModelSubscriptionStringInput
+}
+
+input ModelSysCronLogsConditionInput {
+  and: [ModelSysCronLogsConditionInput]
+  createdAt: ModelStringInput
+  job_name: ModelStringInput
+  last_run_date: ModelStringInput
+  not: ModelSysCronLogsConditionInput
+  or: [ModelSysCronLogsConditionInput]
+  updatedAt: ModelStringInput
+}
+
+input ModelSysCronLogsFilterInput {
+  and: [ModelSysCronLogsFilterInput]
+  createdAt: ModelStringInput
+  id: ModelIDInput
+  job_name: ModelStringInput
+  last_run_date: ModelStringInput
+  not: ModelSysCronLogsFilterInput
+  or: [ModelSysCronLogsFilterInput]
+  updatedAt: ModelStringInput
+}
+
+input ModelTasksConditionInput {
+  and: [ModelTasksConditionInput]
+  assigned_by: ModelIntInput
+  assigned_to: ModelIntInput
+  client_name: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  description: ModelStringInput
+  due_date: ModelStringInput
+  location: ModelStringInput
+  not: ModelTasksConditionInput
+  or: [ModelTasksConditionInput]
+  phone_number: ModelStringInput
+  status: ModelStringInput
+  title: ModelStringInput
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+}
+
+input ModelTasksFilterInput {
+  and: [ModelTasksFilterInput]
+  assigned_by: ModelIntInput
+  assigned_to: ModelIntInput
+  client_name: ModelStringInput
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  description: ModelStringInput
+  due_date: ModelStringInput
+  id: ModelIDInput
+  location: ModelStringInput
+  not: ModelTasksFilterInput
+  or: [ModelTasksFilterInput]
+  phone_number: ModelStringInput
+  status: ModelStringInput
+  title: ModelStringInput
+  updatedAt: ModelStringInput
+  updated_at: ModelStringInput
+}
+
+input ModelTravelLogsConditionInput {
+  and: [ModelTravelLogsConditionInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  destination: ModelStringInput
+  not: ModelTravelLogsConditionInput
+  or: [ModelTravelLogsConditionInput]
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelTravelLogsFilterInput {
+  and: [ModelTravelLogsFilterInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  destination: ModelStringInput
+  id: ModelIDInput
+  not: ModelTravelLogsFilterInput
+  or: [ModelTravelLogsFilterInput]
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelUserSessionsConditionInput {
+  active_seconds: ModelIntInput
+  and: [ModelUserSessionsConditionInput]
+  createdAt: ModelStringInput
+  idle_seconds: ModelIntInput
+  ip_address: ModelStringInput
+  is_active: ModelBooleanInput
+  login_time: ModelStringInput
+  logout_time: ModelStringInput
+  not: ModelUserSessionsConditionInput
+  or: [ModelUserSessionsConditionInput]
+  status: ModelStringInput
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelUserSessionsFilterInput {
+  active_seconds: ModelIntInput
+  and: [ModelUserSessionsFilterInput]
+  createdAt: ModelStringInput
+  id: ModelIDInput
+  idle_seconds: ModelIntInput
+  ip_address: ModelStringInput
+  is_active: ModelBooleanInput
+  login_time: ModelStringInput
+  logout_time: ModelStringInput
+  not: ModelUserSessionsFilterInput
+  or: [ModelUserSessionsFilterInput]
+  status: ModelStringInput
+  updatedAt: ModelStringInput
+  user_id: ModelIntInput
+}
+
+input ModelUsersConditionInput {
+  and: [ModelUsersConditionInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  email: ModelStringInput
+  last_seen: ModelStringInput
+  name: ModelStringInput
+  not: ModelUsersConditionInput
+  or: [ModelUsersConditionInput]
+  password: ModelStringInput
+  role: ModelStringInput
+  updatedAt: ModelStringInput
+  username: ModelStringInput
+}
+
+input ModelUsersFilterInput {
+  and: [ModelUsersFilterInput]
+  createdAt: ModelStringInput
+  created_at: ModelStringInput
+  email: ModelStringInput
+  id: ModelIDInput
+  last_seen: ModelStringInput
+  name: ModelStringInput
+  not: ModelUsersFilterInput
+  or: [ModelUsersFilterInput]
+  password: ModelStringInput
+  role: ModelStringInput
+  updatedAt: ModelStringInput
+  username: ModelStringInput
+}
+
+input UpdateActivityLogsInput {
+  action: String
+  created_at: String
+  details: String
+  id: ID!
+  target_id: String
+  target_type: String
+  user_id: Int
+}
+
+input UpdateBillingsInput {
+  amount: String
+  authorities: String
+  category: String
+  client_name: String
+  created_at: String
+  data: String
+  date: String
+  id: ID!
+  invoice_no: String
+  status: String
+  type: String
+}
+
+input UpdateChecklistsInput {
+  created_at: String
+  description: String
+  due_date: String
+  id: ID!
+  manager_id: Int
+  reason: String
+  remarks: String
+  responsible_id: Int
+  status: String
+  title: String
+  updated_at: String
+}
+
+input UpdateClientDocumentsInput {
+  client_id: String
+  client_name: String
+  created_at: String
+  document_name: String
+  id: ID!
+  og_copy: String
+  remarks: String
+  storage_path: String
+}
+
+input UpdateClientLicensesInput {
+  client_id: Int
+  created_at: String
+  expiry_date: String
+  file_no: String
+  id: ID!
+  license_type_id: Int
+  manual_client_name: String
+  notes: String
+  service_date: String
+  status: String
+  updated_at: String
+}
+
+input UpdateClientsInput {
+  address: String
+  balance_due: String
+  case_number: String
+  created_at: String
+  dob: String
+  email: String
+  file_date: String
+  file_no: String
+  id: ID!
+  is_contacted: Boolean
+  managed_by: String
+  name: String
+  phone: String
+  review_rating: Int
+  type_of_work: String
+}
+
+input UpdateCompanyBillsInput {
+  amount: Float
+  bill_date: String
+  category: String
+  created_at: String
+  description: String
+  id: ID!
+  spent_by: Int
+  spent_by_name: String
+  status: String
+  title: String
+}
+
+input UpdateDealActivitiesInput {
+  created_at: String
+  created_by: Int
+  deal_id: Int
+  description: String
+  due_date: String
+  id: ID!
+  is_completed: Boolean
+  title: String
+  type: String
+}
+
+input UpdateDealAssigneesInput {
+  assigned_at: String
+  deal_id: Int
+  id: ID!
+  role: String
+  user_id: Int
+}
+
+input UpdateDealHandoverHistoryInput {
+  deal_id: Int
+  from_user_id: Int
+  handed_over_at: String
+  id: ID!
+  note: String
+  to_user_id: Int
+}
+
+input UpdateDealStageHistoryInput {
+  changed_at: String
+  changed_by: Int
+  deal_id: Int
+  from_stage: String
+  id: ID!
+  to_stage: String
+}
+
+input UpdateDealsInput {
+  amount: Float
+  billing_id: Int
+  client_id: Int
+  client_name: String
+  closed_at: String
+  company: String
+  contact_info: String
+  contact_status: String
+  create_invoice_share: String
+  created_at: String
+  currency: String
+  description: String
+  drive_link: String
+  est_amount_work: Float
+  expense_spent: Float
+  expenses_list: String
+  files_asked: String
+  files_received: String
+  id: ID!
+  invoice_amount: Float
+  is_won: Boolean
+  name: String
+  noc_obtained: Boolean
+  part_payment_amount: Float
+  payment_received: Float
+  payment_type: String
+  pipeline: String
+  priority: String
+  quotation_id: Int
+  referred_by: String
+  reg_fee_required: String
+  register_no: String
+  responsible_id: Int
+  responsible_name: String
+  send_to_customer: String
+  stage: String
+  updated_at: String
+  upload_invoice_path: String
+  work_type: String
+}
+
+input UpdateDscRecordsInput {
+  client_name: String
+  created_at: String
+  dsc_expiry_date: String
+  dsc_taken_date: String
+  email_id: String
+  id: ID!
+  password: String
+  phone_no: String
+  updated_at: String
+  username: String
+}
+
+input UpdateInwardPostsInput {
+  created_at: String
+  description: String
+  id: ID!
+  received_by: String
+  received_date: String
+  recipient_name: String
+  sender_name: String
+  status: String
+}
+
+input UpdateLicenseBillingInput {
+  amount: Float
+  client_license_id: Int
+  created_at: String
+  id: ID!
+  invoice_no: String
+  payment_date: String
+  payment_status: String
+}
+
+input UpdateLicenseNotificationsInput {
+  client_license_id: Int
+  created_at: String
+  id: ID!
+  is_sent: Boolean
+  message: String
+  notification_type: String
+  scheduled_date: String
+}
+
+input UpdateLicenseServicesInput {
+  client_license_id: Int
+  created_at: String
+  id: ID!
+  service_cost: Float
+  service_date: String
+  service_description: String
+}
+
+input UpdateLicenseTypesInput {
+  created_at: String
+  description: String
+  id: ID!
+  name: String
+  updated_at: String
+}
+
+input UpdateLocationHistoryInput {
+  id: ID!
+  latitude: Float
+  longitude: Float
+  recorded_at: String
+  user_id: Int
+}
+
+input UpdateMessagesInput {
+  attachment_id: Int
+  attachment_type: String
+  content: String
+  created_at: String
+  id: ID!
+  is_read: Boolean
+  receiver_id: Int
+  sender_id: Int
+}
+
+input UpdateNotificationsInput {
+  created_at: String
+  deal_id: Int
+  id: ID!
+  is_read: Boolean
+  message: String
+  task_id: Int
+  title: String
+  type: String
+  user_id: Int
+}
+
+input UpdatePropertiesInput {
+  advance_amount: Float
+  area: String
+  balcony_count: Int
+  broker_details: String
+  care_of: String
+  client_name: String
+  created_at: String
+  expenses: String
+  floor: String
+  has_balcony: Boolean
+  has_car_parking: Boolean
+  has_legal_disputes: Boolean
+  has_multiple_owners: Boolean
+  id: ID!
+  is_furnished: Boolean
+  is_negotiable: Boolean
+  location: String
+  notes: String
+  owner_name: String
+  owner_phone_numbers: [String]
+  period: String
+  photos: [String]
+  price: Float
+  property_name: String
+  property_type: String
+  status: String
+  transaction_type: String
+  updated_at: String
+}
+
+input UpdateServiceContentInput {
+  description: String
+  details: String
+  id: ID!
+  image_path: String
+  service_id: Int
+  title: String
+}
+
+input UpdateServiceNamesInput {
+  created_at: String
+  id: ID!
+  name: String
+}
+
+input UpdateStaffAttendanceInput {
+  attendance_date: String
+  check_in_time: String
+  check_out_time: String
+  id: ID!
+  user_id: Int
+}
+
+input UpdateStaffLocationsInput {
+  id: ID!
+  latitude: Float
+  longitude: Float
+  updated_at: String
+  user_id: Int
+}
+
+input UpdateSysCronLogsInput {
+  id: ID!
+  job_name: String
+  last_run_date: String
+}
+
+input UpdateTasksInput {
+  assigned_by: Int
+  assigned_to: Int
+  client_name: String
+  created_at: String
+  description: String
+  due_date: String
+  id: ID!
+  location: String
+  phone_number: String
+  status: String
+  title: String
+  updated_at: String
+}
+
+input UpdateTravelLogsInput {
+  created_at: String
+  destination: String
+  id: ID!
+  user_id: Int
+}
+
+input UpdateUserSessionsInput {
+  active_seconds: Int
+  id: ID!
+  idle_seconds: Int
+  ip_address: String
+  is_active: Boolean
+  login_time: String
+  logout_time: String
+  status: String
+  user_id: Int
+}
+
+input UpdateUsersInput {
+  created_at: String
+  email: String
+  id: ID!
+  last_seen: String
+  name: String
+  password: String
+  role: String
+  username: String
+}

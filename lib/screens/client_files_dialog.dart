@@ -10,6 +10,7 @@ import '../theme.dart';
 import '../models/client.dart';
 import '../services/logging_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 // Isolate upload bytes was removed because Amplify Storage handles its own isolate/upload management.
 
@@ -183,7 +184,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
             og_copy: details['og_copy'],
             remarks: details['remarks'],
           );
-          await Amplify.API.mutate(request: ModelMutations.create(newDoc)).response;
+          await BackupAwareApi().create(newDoc);
         } catch (dbError) {
           debugPrint('Failed to log document to DB: $dbError');
         }

@@ -7,6 +7,7 @@ import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import '../services/logging_service.dart';
 import '../services/security_service.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class StaffManagementScreen extends StatefulWidget {
   const StaffManagementScreen({super.key});
@@ -57,7 +58,28 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     try {
       final uReq = ModelQueries.list(amplify_models.Users.classType);
       final uRes = await Amplify.API.query(request: uReq).response;
-      var usersRes = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      var usersResRaw = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      
+      // Deduplicate users by username, prioritizing UUID-based IDs (Cognito)
+      final Map<String, amplify_models.Users> uniqueUsers = {};
+      for (var u in usersResRaw) {
+        final un = u.username?.toLowerCase() ?? '';
+        if (un.isEmpty) {
+          uniqueUsers[u.id] = u; // Keep if no username
+          continue;
+        }
+        if (uniqueUsers.containsKey(un)) {
+          final existing = uniqueUsers[un]!;
+          final isNewUuid = u.id.contains('-');
+          final isExistingUuid = existing.id.contains('-');
+          if (isNewUuid && !isExistingUuid) {
+            uniqueUsers[un] = u;
+          }
+        } else {
+          uniqueUsers[un] = u;
+        }
+      }
+      var usersRes = uniqueUsers.values.toList();
       
       usersRes.sort((a, b) {
         int r = (a.role ?? '').compareTo(b.role ?? '');
@@ -237,7 +259,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                                 password: hashedPassword,
                                 role: role,
                               );
-                              await Amplify.API.mutate(request: ModelMutations.create(newUser)).response;
+                              await BackupAwareApi().create(newUser);
                               await LoggingService().logAction(action: 'CREATE_STAFF', targetType: 'Staff', targetId: username.text, details: 'Added new staff member: ${name.text}');
                             } else {
                               final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()));
@@ -250,7 +272,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                                   email: email.text,
                                   role: role,
                                 );
-                                await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+                                await BackupAwareApi().update(updated);
                                 await LoggingService().logAction(action: 'UPDATE_STAFF', targetType: 'Staff', targetId: username.text, details: 'Updated staff member: ${name.text}');
                               }
                             }
@@ -312,7 +334,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                   if (res.data?.items.isNotEmpty == true) {
                     final existing = res.data!.items.first!;
                     final updated = existing.copyWith(password: hashedPassword);
-                    await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+                    await BackupAwareApi().update(updated);
                   }
                   await LoggingService().logAction(action: 'RESET_PASSWORD', targetType: 'Staff', targetId: user['username'], details: 'Reset password for ${user['name']}');
                   if (mounted) Navigator.pop(context);
@@ -345,7 +367,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
         final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(id.toString()));
         final res = await Amplify.API.query(request: req).response;
         if (res.data?.items.isNotEmpty == true) {
-          await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!)).response;
+          await BackupAwareApi().delete(res.data!.items.first!);
         }
         await LoggingService().logAction(action: 'DELETE_STAFF', targetType: 'Staff', targetId: id.toString(), details: 'Deleted staff member');
         _fetchStaff();

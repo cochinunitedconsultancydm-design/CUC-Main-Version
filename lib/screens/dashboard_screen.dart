@@ -48,6 +48,7 @@ import 'inward_post_screen.dart';
 import 'document_list_screen.dart';
 import 'verification_history_view.dart';
 import 'travel_log_screen.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -289,7 +290,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             user_id: userId,
                             destination: dest,
                           );
-                          await Amplify.API.mutate(request: ModelMutations.create(newLog)).response;
+                          await BackupAwareApi().create(newLog);
                           if (mounted) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -634,14 +635,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSidebar() {
-    return Container(
-      width: 260,
-      decoration: BoxDecoration(
-        color: const Color(0xFF13131A), // Deep dark slate
-        border: Border(
-          right: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+    return Material(
+      color: const Color(0xFF13131A), // Deep dark slate
+      child: Container(
+        width: 260,
+        decoration: BoxDecoration(
+          border: Border(
+            right: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+          ),
         ),
-      ),
       child: Column(
         children: [
           const SizedBox(height: 40),
@@ -765,7 +767,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _sidebarItem(int index, IconData icon, String label, {String? badge}) {
@@ -973,7 +975,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisCount: isNarrow ? 2 : 3,
             mainAxisSpacing: isNarrow ? 12 : 24,
             crossAxisSpacing: isNarrow ? 12 : 24,
-            childAspectRatio: isNarrow ? 1.8 : 3.0,
+            childAspectRatio: isNarrow ? 1.8 : 2.0,
             children: mainStats.animate(interval: 100.ms).fadeIn(duration: 500.ms).slideY(begin: 0.1),
           ),
           const SizedBox(height: 32),
@@ -985,7 +987,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisCount: isNarrow ? 2 : 2,
             mainAxisSpacing: isNarrow ? 12 : 24,
             crossAxisSpacing: isNarrow ? 12 : 24,
-            childAspectRatio: isNarrow ? 1.9 : 3.2,
+            childAspectRatio: isNarrow ? 1.9 : 2.2,
             children: actionableStats.animate(interval: 100.ms).fadeIn(duration: 500.ms, delay: 200.ms).slideY(begin: 0.1),
           ),
           const SizedBox(height: 32),
@@ -1441,14 +1443,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (isPaid) d['payment_date'] = DateTime.now().toIso8601String();
 
         final reqBill = amplify_models.Billings(id: b.id.toString(), status: isPaid ? 'Received' : 'Pending', data: jsonEncode(d));
-        await amplify_core.Amplify.API.mutate(request: ModelMutations.update(reqBill)).response;
+        await BackupAwareApi().update(reqBill);
         
         if (b.clientName != null && b.clientName!.isNotEmpty) {
            final q = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.NAME.eq(b.clientName!));
            final r = await amplify_core.Amplify.API.query(request: q).response;
            if (r.data?.items.isNotEmpty == true) {
              final clientToUpdate = r.data!.items.first!.copyWith(balance_due: d['balance_due'].toString());
-             await amplify_core.Amplify.API.mutate(request: ModelMutations.update(clientToUpdate)).response;
+             await BackupAwareApi().update(clientToUpdate);
            }
         }
 
@@ -1476,7 +1478,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (ok == true) {
       try {
-        await amplify_core.Amplify.API.mutate(request: ModelMutations.deleteById(amplify_models.Billings.classType, amplify_models.BillingsModelIdentifier(id: b.id.toString()))).response;
+        await BackupAwareApi().deleteById(amplify_models.Billings.classType, amplify_models.BillingsModelIdentifier(id: b.id.toString()));
         _fetchStats();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice deleted successfully')));
       } catch (e) {
@@ -1976,7 +1978,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     }
                     
                     // Update password
-                    await amplify_core.Amplify.API.mutate(request: ModelMutations.update(amplify_models.Users(id: myId.toString(), password: newController.text))).response;
+                    await BackupAwareApi().update(amplify_models.Users(id: myId.toString(), password: newController.text));
                     
                     if (mounted) {
                       Navigator.pop(context);

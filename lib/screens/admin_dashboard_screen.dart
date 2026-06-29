@@ -242,15 +242,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildSidebar(bool isWide) {
-    return Container(
-      width: 260,
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        border: Border(
-          right: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+    return Material(
+      color: AppTheme.surfaceColor,
+      child: Container(
+        width: 260,
+        decoration: BoxDecoration(
+          border: Border(
+            right: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+          ),
         ),
+        child: _buildSidebarContent(isWide),
       ),
-      child: _buildSidebarContent(isWide),
     );
   }
 

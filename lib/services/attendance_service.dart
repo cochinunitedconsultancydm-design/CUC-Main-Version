@@ -2,6 +2,7 @@ import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import 'location_tracking_service.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class AttendanceService {
   // Check if currently checked in
@@ -59,7 +60,7 @@ class AttendanceService {
       check_in_time: DateTime.now().toUtc().toIso8601String(),
       attendance_date: DateTime.now().toIso8601String().split('T')[0],
     );
-    await Amplify.API.mutate(request: ModelMutations.create(att)).response;
+    await BackupAwareApi().create(att);
     await LocationTrackingService().startTracking();
     return true;
   }
@@ -71,7 +72,7 @@ class AttendanceService {
     if (res.data?.items.isNotEmpty == true) {
       final att = res.data!.items.first!;
       final updated = att.copyWith(check_out_time: DateTime.now().toUtc().toIso8601String());
-      await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+      await BackupAwareApi().update(updated);
     }
     await LocationTrackingService().stopTracking();
     return true;

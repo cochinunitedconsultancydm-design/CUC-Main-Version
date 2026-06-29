@@ -8,6 +8,7 @@ import '../models/license_billing.dart';
 import '../services/excel_service.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class LicenseManagementScreen extends StatefulWidget {
   final String? initialFilter;
@@ -357,7 +358,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
           id: license.id.toString(),
           status: 'Renewed'
         );
-        await Amplify.API.mutate(request: ModelMutations.update(updatedModel)).response;
+        await BackupAwareApi().update(updatedModel);
         
         final newLicense = amplify_models.ClientLicenses(
           client_id: license.clientId,
@@ -369,7 +370,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
           status: 'Active',
           manual_client_name: license.manualClientName,
         );
-        await Amplify.API.mutate(request: ModelMutations.create(newLicense)).response;
+        await BackupAwareApi().create(newLicense);
         _fetchLicenses();
         _showSuccess('License renewed successfully');
       } catch (e) {
@@ -412,7 +413,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
           id: license.id.toString(),
           status: 'Not Interested'
         );
-        await Amplify.API.mutate(request: ModelMutations.update(updatedModel)).response;
+        await BackupAwareApi().update(updatedModel);
         _fetchLicenses();
         _showSuccess('License marked as Not Interested');
       } catch (e) {
@@ -440,7 +441,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
 
     if (confirmed == true) {
       try {
-        await Amplify.API.mutate(request: ModelMutations.deleteById(amplify_models.ClientLicenses.classType, amplify_models.ClientLicensesModelIdentifier(id: id.toString()))).response;
+        await BackupAwareApi().deleteById(amplify_models.ClientLicenses.classType, amplify_models.ClientLicensesModelIdentifier(id: id.toString()));
         _fetchLicenses();
         _showSuccess('License deleted successfully');
       } catch (e) {
@@ -636,7 +637,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                     payment_status: status,
                     payment_date: date.toIso8601String(),
                   );
-                  await Amplify.API.mutate(request: ModelMutations.create(newBilling)).response;
+                  await BackupAwareApi().create(newBilling);
                   if (mounted) Navigator.pop(context);
                   _fetchDetails(licenseId);
                   _showSuccess('Billing record added successfully');
@@ -756,7 +757,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                       notes: notesController.text,
                       status: 'Active',
                     );
-                    await Amplify.API.mutate(request: ModelMutations.create(newLic)).response;
+                    await BackupAwareApi().create(newLic);
                   } else {
                     final updateLic = amplify_models.ClientLicenses(
                       id: license.id.toString(),
@@ -767,7 +768,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                       expiry_date: expiryDate?.toIso8601String(),
                       notes: notesController.text,
                     );
-                    await Amplify.API.mutate(request: ModelMutations.update(updateLic)).response;
+                    await BackupAwareApi().update(updateLic);
                   }
                   if (mounted) Navigator.pop(context);
                   _fetchLicenses();

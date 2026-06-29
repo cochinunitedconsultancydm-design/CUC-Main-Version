@@ -19,6 +19,7 @@ import 'dart:io' show Platform;
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import '../services/attendance_service.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class DeliveryDashboardScreen extends StatefulWidget {
   const DeliveryDashboardScreen({super.key});
@@ -234,7 +235,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                             user_id: userId,
                             destination: dest,
                           );
-                          await Amplify.API.mutate(request: ModelMutations.create(newLog)).response;
+                          await BackupAwareApi().create(newLog);
                           if (mounted) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(

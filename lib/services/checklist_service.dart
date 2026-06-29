@@ -5,6 +5,7 @@ import '../models/checklist.dart' as old;
 import 'auth_service.dart';
 import 'notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class ChecklistService {
 
@@ -106,7 +107,7 @@ class ChecklistService {
     );
 
     try {
-      final res = await Amplify.API.mutate(request: ModelMutations.create(newChecklist)).response;
+      final res = await BackupAwareApi().create(newChecklist);
       final checklistId = res.data?.id;
 
       if (checklist.responsibleId != null) {
@@ -145,7 +146,7 @@ class ChecklistService {
         responsible_id: respId,
       );
       
-      await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+      await BackupAwareApi().update(updated);
 
       if (c.manager_id != null) {
         String responsibleName = 'Staff';
@@ -200,9 +201,8 @@ class ChecklistService {
 
   Future<void> deleteChecklist(dynamic id) async {
     try {
-      await Amplify.API.mutate(
-        request: ModelMutations.deleteById(Checklists.classType, ChecklistsModelIdentifier(id: id.toString()))
-      ).response;
+      await BackupAwareApi().deleteById(Checklists.classType, ChecklistsModelIdentifier(id: id.toString())
+      );
     } catch (e) {
       safePrint('Error deleteChecklist: $e');
       throw e;

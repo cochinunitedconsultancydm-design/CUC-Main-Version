@@ -12,6 +12,7 @@ import '../models/deal.dart';
 import 'deal_detail_screen.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 class ChatScreen extends StatefulWidget {
   final int? targetUserId; // If null, staff is chatting with Admin
   final String? targetUserName;
@@ -134,7 +135,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (uRes.data?.items.isNotEmpty == true) {
              final u = uRes.data!.items.first!;
              final updated = u.copyWith(last_seen: DateTime.now().toIso8601String());
-             await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+             await BackupAwareApi().update(updated);
           }
         } catch (_) {}
       }
@@ -173,7 +174,7 @@ class _ChatScreenState extends State<ChatScreen> {
                if (msgRes.data?.items.isNotEmpty == true) {
                  final msg = msgRes.data!.items.first!;
                  final updated = msg.copyWith(is_read: true);
-                 await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+                 await BackupAwareApi().update(updated);
                }
              } catch (_) {}
            }
@@ -227,7 +228,7 @@ class _ChatScreenState extends State<ChatScreen> {
         is_read: false,
         created_at: DateTime.now().toIso8601String(),
       );
-      await Amplify.API.mutate(request: ModelMutations.create(newMsg)).response;
+      await BackupAwareApi().create(newMsg);
 
       String senderName = await AuthService().getUserName() ?? 'Someone';
       String preview = content.isEmpty ? '📎 Attached a work' : content;

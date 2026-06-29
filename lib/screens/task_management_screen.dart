@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'task_detail_screen.dart';
 import 'dart:async';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class TaskManagementScreen extends StatefulWidget {
   final String? initialStatus;
@@ -199,7 +200,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
       if (res.data?.items.isNotEmpty == true) {
         final existingTask = res.data!.items.first!;
         final updated = existingTask.copyWith(status: newStatus);
-        await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+        await BackupAwareApi().update(updated);
       }
       _fetchTasks();
     } catch (e) {
@@ -224,7 +225,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
         final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(id.toString()));
         final res = await Amplify.API.query(request: req).response;
         if (res.data?.items.isNotEmpty == true) {
-          await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!)).response;
+          await BackupAwareApi().delete(res.data!.items.first!);
         }
         _fetchTasks();
       } catch (e) {
@@ -325,7 +326,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                         phone_number: phoneCtrl.text.isEmpty ? null : phoneCtrl.text,
                         status: 'Pending',
                       );
-                      final res = await Amplify.API.mutate(request: ModelMutations.create(newTask)).response;
+                      final res = await BackupAwareApi().create(newTask);
                       final newId = res.data?.id;
                       final tName = titleCtrl.text;
                       
@@ -352,7 +353,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                           client_name: clientCtrl.text.isEmpty ? null : clientCtrl.text,
                           phone_number: phoneCtrl.text.isEmpty ? null : phoneCtrl.text,
                         );
-                        await Amplify.API.mutate(request: ModelMutations.update(updatedTask)).response;
+                        await BackupAwareApi().update(updatedTask);
                       }
                       
                       await LoggingService().logAction(action: 'TASK_UPDATED', targetType: 'Task', targetId: task.id.toString(), details: 'Updated task: ${titleCtrl.text}');

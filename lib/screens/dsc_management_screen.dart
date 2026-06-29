@@ -8,6 +8,7 @@ import '../services/logging_service.dart';
 import '../services/excel_service.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class DscManagementScreen extends StatefulWidget {
   const DscManagementScreen({super.key});
@@ -74,7 +75,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
 
     if (confirmed == true) {
       try {
-        await Amplify.API.mutate(request: ModelMutations.deleteById(amplify_models.DscRecords.classType, amplify_models.DscRecordsModelIdentifier(id: id.toString()))).response;
+        await BackupAwareApi().deleteById(amplify_models.DscRecords.classType, amplify_models.DscRecordsModelIdentifier(id: id.toString()));
         _fetchRecords();
       } catch (e) {
         _showError('Delete failed: $e');
@@ -188,7 +189,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                       dsc_taken_date: takenDate?.toIso8601String(),
                       dsc_expiry_date: expiryDate?.toIso8601String(),
                     );
-                    await Amplify.API.mutate(request: ModelMutations.create(newDsc)).response;
+                    await BackupAwareApi().create(newDsc);
                     await LoggingService().logAction(action: 'SIGNATURE_CREATED', targetType: 'Signature', targetId: clientNameController.text, details: 'Added new digital signature');
                   } else {
                     final updateDsc = amplify_models.DscRecords(
@@ -201,7 +202,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                       dsc_taken_date: takenDate?.toIso8601String(),
                       dsc_expiry_date: expiryDate?.toIso8601String(),
                     );
-                    await Amplify.API.mutate(request: ModelMutations.update(updateDsc)).response;
+                    await BackupAwareApi().update(updateDsc);
                     await LoggingService().logAction(action: 'SIGNATURE_UPDATED', targetType: 'Signature', targetId: record.id.toString(), details: 'Updated signature for ${clientNameController.text}');
                   }
                   if (mounted) Navigator.pop(context);

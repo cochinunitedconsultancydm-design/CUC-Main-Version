@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class TimeTrackingService with WindowListener {
   static final TimeTrackingService _instance = TimeTrackingService._internal();
@@ -109,7 +110,7 @@ class TimeTrackingService with WindowListener {
           );
         }
 
-        await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+        await BackupAwareApi().update(updated);
       }
     } catch (e) {
       debugPrint('Error syncing time tracker: $e');

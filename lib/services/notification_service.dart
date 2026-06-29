@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import 'dart:async';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class AppNotification {
   final dynamic id;
@@ -211,7 +212,7 @@ class NotificationService {
       if (res.data?.items.isNotEmpty == true) {
         final notif = res.data!.items.first!;
         final updated = notif.copyWith(is_read: true);
-        await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+        await BackupAwareApi().update(updated);
       }
     } catch (e) {
       debugPrint('Error marking notification as read: $e');
@@ -227,7 +228,7 @@ class NotificationService {
       
       for (var notif in unread) {
         final updated = notif.copyWith(is_read: true);
-        await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+        await BackupAwareApi().update(updated);
       }
     } catch (e) {
       debugPrint('Error marking all as read: $e');
@@ -253,7 +254,7 @@ class NotificationService {
         is_read: false,
         created_at: DateTime.now().toIso8601String()
       );
-      await Amplify.API.mutate(request: ModelMutations.create(notif)).response;
+      await BackupAwareApi().create(notif);
 
       // Show local/desktop notification on sender device (skip for chat — receiver gets it via realtime)
       if (type != 'chat') {
@@ -266,25 +267,26 @@ class NotificationService {
 
   void startRealtimeListener(dynamic userId) {
     if (_subscription != null) return;
-
-    final subReq = ModelSubscriptions.onCreate(Notifications.classType);
-    _subscription = Amplify.API.subscribe(
-      subReq,
-      onEstablished: () => debugPrint('Notification subscription established'),
-    ).listen((event) {
-      final data = event.data;
-      if (data != null && data.user_id?.toString() == userId.toString()) {
-        final newNotif = AppNotification.fromMap(data.toMap());
-        _notificationController.add(newNotif);
-        showLocalNotification(
-          title: newNotif.title,
-          message: newNotif.message,
-          payload: newNotif.taskId?.toString() ?? newNotif.dealId?.toString(),
-        );
-      }
-    }, onError: (dynamic e) {
-      debugPrint('Notification subscription stream error: $e');
-    });
+    
+    debugPrint('Real-time notification listener disabled: Notifications model not found in backend.');
+    // final subReq = ModelSubscriptions.onCreate(Notifications.classType);
+    // _subscription = Amplify.API.subscribe(
+    //   subReq,
+    //   onEstablished: () => debugPrint('Notification subscription established'),
+    // ).listen((event) {
+    //   final data = event.data;
+    //   if (data != null && data.user_id?.toString() == userId.toString()) {
+    //     final newNotif = AppNotification.fromMap(data.toMap());
+    //     _notificationController.add(newNotif);
+    //     showLocalNotification(
+    //       title: newNotif.title,
+    //       message: newNotif.message,
+    //       payload: newNotif.taskId?.toString() ?? newNotif.dealId?.toString(),
+    //     );
+    //   }
+    // }, onError: (dynamic e) {
+    //   debugPrint('Notification subscription stream error: $e');
+    // });
   }
 
   void stopRealtimeListener() {

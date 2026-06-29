@@ -8,6 +8,7 @@ import '../models/ModelProvider.dart';
 import '../theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:amplify_storage_s3/amplify_storage_s3.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class UploadedFilesScreen extends StatefulWidget {
   const UploadedFilesScreen({super.key});
@@ -81,7 +82,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
         } else if (field == 'remarks') {
           updated = doc.copyWith(remarks: value);
         }
-        await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+        await BackupAwareApi().update(updated);
       }
       
       if (mounted) {
@@ -143,7 +144,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
         final req = ModelQueries.list(ClientDocuments.classType, where: ClientDocuments.ID.eq(doc.id));
         final res = await Amplify.API.query(request: req).response;
         if (res.data?.items.isNotEmpty == true) {
-          await Amplify.API.mutate(request: ModelMutations.delete(res.data!.items.first!)).response;
+          await BackupAwareApi().delete(res.data!.items.first!);
         }
         _fetchDocuments();
       } catch (e) {

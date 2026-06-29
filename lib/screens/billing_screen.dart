@@ -19,6 +19,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import '../widgets/premium_app_bar.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class BillingScreen extends StatefulWidget {
   const BillingScreen({super.key});
@@ -62,6 +63,7 @@ class _BillingScreenState extends State<BillingScreen> {
     'Jitha': 'J',
     'Darshana': 'I',
     'Jayan & Midhun': 'VP',
+    'Sariga': 'K',
   };
 
   @override
@@ -1218,7 +1220,15 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   Future<void> _fetchStaffs() async {
     try {
       final users = await DealService().getAllUsers();
-      final List<String> fetchedStaffs = users.map((u) => u['name'].toString()).toList();
+      final List<String> fetchedStaffs = users
+          .map((u) => u['name'].toString())
+          .where((name) {
+            final lower = name.toLowerCase();
+            return !lower.contains('master admin') && 
+                   !lower.contains('jayan') && 
+                   !lower.contains('midhun');
+          })
+          .toList();
       
       final prefs = await SharedPreferences.getInstance();
       final currentUserName = prefs.getString('user_name') ?? '';
@@ -1231,10 +1241,10 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
             orElse: () => ''
           );
           if (matchKey.isNotEmpty) {
-            return '${_BillingScreenState.staffMapping[matchKey]} - $n';
+            return '${_BillingScreenState.staffMapping[matchKey]} - $matchKey';
           }
           return n;
-        }).toList();
+        }).toSet().toList();
 
         if (widget.billing == null && _authorities.isEmpty) {
           final matchKey = _BillingScreenState.staffMapping.keys.firstWhere(
@@ -1447,7 +1457,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           status: _status,
           data: jsonEncode(d),
         );
-        final res = await Amplify.API.mutate(request: ModelMutations.create(newBilling)).response;
+        final res = await BackupAwareApi().create(newBilling);
         if (res.errors.isNotEmpty) {
           throw Exception(res.errors.map((e) => e.message).join(', '));
         }
@@ -1471,7 +1481,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           status: _status,
           data: jsonEncode(d),
         );
-        final res = await Amplify.API.mutate(request: ModelMutations.update(updateBilling)).response;
+        final res = await BackupAwareApi().update(updateBilling);
         if (res.errors.isNotEmpty) {
           throw Exception(res.errors.map((e) => e.message).join(', '));
         }
@@ -1578,9 +1588,8 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                 const SizedBox(height: 16),
                 _buildSelector('DOCUMENT TYPE', _type, ['INVOICE', 'QUOTATION'], (v) {
                   setState(() {
-                    final oldType = _type;
-                    _type = v;
-                    if (oldType == 'INVOICE' && _type == 'QUOTATION') {
+                    if (_type != v) {
+                      _type = v;
                       _quotationTerms = _getDefaultTerms(_category);
                       _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
                     }
@@ -1604,9 +1613,8 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                   const SizedBox(width: 16),
                   Expanded(child: _buildSelector('DOCUMENT TYPE', _type, ['INVOICE', 'QUOTATION'], (v) {
                     setState(() {
-                      final oldType = _type;
-                      _type = v;
-                      if (oldType == 'INVOICE' && _type == 'QUOTATION') {
+                      if (_type != v) {
+                        _type = v;
                         _quotationTerms = _getDefaultTerms(_category);
                         _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
                       }

@@ -20,6 +20,7 @@ import '../models/client.dart';
 import '../services/google_docs_service.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'google_docs_webview_screen.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class DealDetailScreen extends StatefulWidget {
   final Deal? deal;
@@ -84,7 +85,7 @@ class _DealDetailScreenState extends State<DealDetailScreen>
   final ScrollController _pipelineScrollController = ScrollController();
 
   String? _currentDescription;
-  int? _selectedVerifierId;
+  dynamic _selectedVerifierId;
   bool _isDraftCreated = false;
 
   @override
@@ -618,7 +619,7 @@ final dLink = "";
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<int>(
+                        child: DropdownButtonFormField<dynamic>(
                           initialValue: _selectedVerifierId,
                           hint: const Text('Select a staff member...'),
                           decoration: InputDecoration(
@@ -650,7 +651,7 @@ final dLink = "";
                         onPressed: _selectedVerifierId == null
                             ? null
                             : () {
-                                final vUser = _allUsers.firstWhere((u) => int.tryParse(u['id'].toString()) == _selectedVerifierId);
+                                final vUser = _allUsers.firstWhere((u) => u['id'].toString() == _selectedVerifierId.toString(), orElse: () => {'name': 'Unknown'});
                                 _updateVerification(
                                   verifierId: _selectedVerifierId,
                                   verifierName: vUser['name'].toString(),
@@ -735,7 +736,7 @@ final dLink = "";
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<int>(
+                        child: DropdownButtonFormField<dynamic>(
                           initialValue: _selectedVerifierId,
                           hint: const Text('Select new verifier...'),
                           decoration: InputDecoration(
@@ -767,7 +768,7 @@ final dLink = "";
                         onPressed: _selectedVerifierId == null || _selectedVerifierId == parsedVer.verifierId
                             ? null
                             : () {
-                                final vUser = _allUsers.firstWhere((u) => int.tryParse(u['id'].toString()) == _selectedVerifierId);
+                                final vUser = _allUsers.firstWhere((u) => u['id'].toString() == _selectedVerifierId.toString(), orElse: () => {'name': 'Unknown'});
                                 _updateVerification(
                                   verifierId: _selectedVerifierId,
                                   verifierName: vUser['name'].toString(),
@@ -1044,7 +1045,7 @@ final dLink = "";
             data['balance_due'] = balance.toString();
 
             final updatedBill = billObj.copyWith(data: jsonEncode(data));
-            await Amplify.API.mutate(request: ModelMutations.update(updatedBill)).response;
+            await BackupAwareApi().update(updatedBill);
           }
           }
         }
@@ -1114,7 +1115,7 @@ final dLink = "";
               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
               if (dealObj != null) {
                 final updatedDeal = dealObj.copyWith(billing_id: int.tryParse(id.toString()));
-                await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
+                await BackupAwareApi().update(updatedDeal);
               }
               
               if (mounted) {
@@ -1199,7 +1200,7 @@ final dLink = "";
               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
               if (dealObj != null) {
                 final updatedDeal = dealObj.copyWith(quotation_id: int.tryParse(id.toString()));
-                await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
+                await BackupAwareApi().update(updatedDeal);
               }
               
               if (mounted) {
@@ -1355,7 +1356,7 @@ final dLink = "";
           final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
           if (dealObj != null) {
             final updatedDeal = dealObj.copyWith(billing_id: selectedId);
-            await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
+            await BackupAwareApi().update(updatedDeal);
           }
           
           if (mounted) {
@@ -1572,7 +1573,7 @@ final dLink = "";
           final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
           if (dealObj != null) {
             final updatedDeal = dealObj.copyWith(quotation_id: selectedId);
-            await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
+            await BackupAwareApi().update(updatedDeal);
           }
           
           if (mounted) {
@@ -2291,7 +2292,7 @@ final dLink = "";
                                                 final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
                                                 if (dealObj != null) {
                                                   final updatedDeal = dealObj.copyWith(quotation_id: null);
-                                                  await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
+                                                  await BackupAwareApi().update(updatedDeal);
                                                 }
                                                 
                                                 setState(() {
@@ -2484,7 +2485,7 @@ final dLink = "";
                                         style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569)),
                                       ),
                                       const SizedBox(height: 8),
-                                      DropdownButtonFormField<int>(
+                                      DropdownButtonFormField<dynamic>(
                                         initialValue: _selectedVerifierId,
                                         hint: const Text('Select a staff member...'),
                                         decoration: InputDecoration(
@@ -2635,7 +2636,7 @@ final dLink = "";
                                                 // Realistically:
                                                 if (dealObj != null) {
                                                   final updatedDeal = dealObj.copyWith(billing_id: 0);
-                                                  await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
+                                                  await BackupAwareApi().update(updatedDeal);
                                                 }
 
                                                 setState(() {
@@ -3020,7 +3021,7 @@ final dLink = "";
                                               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
                                               if (dealObj != null) {
                                                 final updatedDeal = dealObj.copyWith(quotation_id: 0);
-                                                await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
+                                                await BackupAwareApi().update(updatedDeal);
                                               }
 
                                               setState(() {
@@ -3207,7 +3208,7 @@ final dLink = "";
                                           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569)),
                                         ),
                                         const SizedBox(height: 8),
-                                        DropdownButtonFormField<int>(
+                                        DropdownButtonFormField<dynamic>(
                                           initialValue: _selectedVerifierId,
                                           hint: const Text('Select a staff member...'),
                                           decoration: InputDecoration(
@@ -3344,7 +3345,7 @@ final dLink = "";
                                               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
                                               if (dealObj != null) {
                                                 final updatedDeal = dealObj.copyWith(billing_id: 0);
-                                                await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
+                                                await BackupAwareApi().update(updatedDeal);
                                               }
 
                                               setState(() {
@@ -5350,7 +5351,7 @@ final dLink = "";
     final descController = TextEditingController();
     String selectedType = 'task';
     DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
-    int? assignedTo = _responsibleId;
+    dynamic assignedTo = _responsibleId;
 
     showDialog(
       context: context,
@@ -5419,14 +5420,14 @@ final dLink = "";
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
+                      child: DropdownButton<dynamic>(
                         value: assignedTo,
                         isExpanded: true,
                         icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
                         style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
                         hint: const Text('Assign To...'),
-                        items: _allUsers.map((u) => DropdownMenuItem<int>(
-                          value: int.tryParse(u['id'].toString()) ?? 0,
+                        items: _allUsers.map((u) => DropdownMenuItem<dynamic>(
+                          value: u['id'],
                           child: Text(u['name'].toString()),
                         )).toList(),
                         onChanged: (v) => setState(() => assignedTo = v),
@@ -5561,7 +5562,7 @@ final dLink = "";
                                 status: taskData['status'] as String,
                               );
                               
-                              final res = await Amplify.API.mutate(request: ModelMutations.create(newTask)).response;
+                              final res = await BackupAwareApi().create(newTask);
                               final newTaskId = int.tryParse(res.data?.id ?? '0') ?? 0;
 
                               // Trigger Notification

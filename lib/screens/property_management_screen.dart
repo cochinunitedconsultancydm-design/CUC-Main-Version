@@ -6,6 +6,7 @@ import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 class PropertyManagementScreen extends StatefulWidget {
   const PropertyManagementScreen({super.key});
 
@@ -118,7 +119,7 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await Amplify.API.mutate(request: ModelMutations.delete(property)).response;
+      await BackupAwareApi().delete(property);
       _showSuccess('Property deleted successfully');
       _fetchProperties();
     } catch (e) {
@@ -643,7 +644,7 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
           expenses: _expensesCtrl.text.trim(),
           photos: photos,
         );
-        await Amplify.API.mutate(request: ModelMutations.create(newProp)).response;
+        await BackupAwareApi().create(newProp);
       } else {
         final updated = widget.property!.copyWith(
           property_name: _nameCtrl.text.trim(),
@@ -672,7 +673,7 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
           expenses: _expensesCtrl.text.trim(),
           photos: photos,
         );
-        await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+        await BackupAwareApi().update(updated);
       }
       widget.onSaved();
     } catch (e) {

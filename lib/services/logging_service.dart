@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class LoggingService {
   static final LoggingService _instance = LoggingService._internal();
@@ -27,7 +28,7 @@ class LoggingService {
           target_id: targetId,
           details: details,
         );
-        await Amplify.API.mutate(request: ModelMutations.create(logEntry)).response;
+        await BackupAwareApi().create(logEntry);
       }
     } catch (e) {
       debugPrint('Logging error: $e');

@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../services/notification_service.dart';
 import '../services/logging_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class AddReminderDialog extends StatefulWidget {
   final dynamic currentUserId;
@@ -63,7 +64,7 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
         status: 'Pending',
       );
 
-      final res = await Amplify.API.mutate(request: ModelMutations.create(task)).response;
+      final res = await BackupAwareApi().create(task);
       final newTask = res.data;
       final newId = newTask?.id;
 

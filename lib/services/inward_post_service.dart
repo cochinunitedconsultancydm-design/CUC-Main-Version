@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import '../models/inward_post_model.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class InwardPostService {
   /// Fetch all inward posts
@@ -43,7 +44,7 @@ class InwardPostService {
         status: post.status.toString(),
         received_date: post.receivedDate.toIso8601String(),
       );
-      await Amplify.API.mutate(request: ModelMutations.create(newPost)).response;
+      await BackupAwareApi().create(newPost);
     } catch (e) {
       debugPrint('Error adding inward post: $e');
     }
@@ -57,7 +58,7 @@ class InwardPostService {
       if (res.data?.items.isNotEmpty == true) {
         final item = res.data!.items.first!;
         final updated = item.copyWith(status: status.toString());
-        await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+        await BackupAwareApi().update(updated);
       }
     } catch (e) {
       debugPrint('Error updating inward post status: $e');

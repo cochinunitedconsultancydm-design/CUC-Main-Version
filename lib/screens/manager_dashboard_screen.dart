@@ -41,6 +41,7 @@ import 'dart:async';
 import 'document_list_screen.dart';
 import 'verification_history_view.dart';
 import 'property_management_screen.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class ManagerDashboardScreen extends StatefulWidget {
   const ManagerDashboardScreen({super.key});
@@ -148,21 +149,23 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     try {
       
       // 1. Basic Stats
-      final clientsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Clients.classType)).response;
+      final clientsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Clients.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools)).response;
+      debugPrint('DEBUG: clientsRes errors: ${clientsRes.errors}');
+      debugPrint('DEBUG: clientsRes data length: ${(clientsRes.data?.items ?? []).length}');
       final clientsCount = (clientsRes.data?.items ?? []).length;
       
-      final licensesRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ClientLicenses.classType, where: amplify_models.ClientLicenses.STATUS.eq('Active'))).response;
+      final licensesRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ClientLicenses.classType, limit: 10000, where: amplify_models.ClientLicenses.STATUS.eq('Active'), authorizationMode: APIAuthorizationType.userPools)).response;
       final licensesCount = (licensesRes.data?.items ?? []).length;
       
-      final tasksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.STATUS.ne('Completed'))).response;
+      final tasksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, limit: 10000, where: amplify_models.Tasks.STATUS.ne('Completed'), authorizationMode: APIAuthorizationType.userPools)).response;
       final pendingTasksCount = (tasksRes.data?.items ?? []).length;
       
-      final worksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed'))).response;
+      final worksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Deals.classType, limit: 10000, where: amplify_models.Deals.STAGE.ne('Completed'), authorizationMode: APIAuthorizationType.userPools)).response;
       final pendingWorksCount = (worksRes.data?.items ?? []).length;
       
-      final billingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.STATUS.eq('Received').and(amplify_models.Billings.TYPE.eq('INVOICE')))).response;
+      final billingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType, limit: 10000, where: amplify_models.Billings.STATUS.eq('Received').and(amplify_models.Billings.TYPE.eq('INVOICE')), authorizationMode: APIAuthorizationType.userPools)).response;
       
-      final companyBillsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.CompanyBills.classType)).response;
+      final companyBillsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.CompanyBills.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools)).response;
 
       // Calculate Revenue
       double totalRevenue = 0;
@@ -183,7 +186,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       }
 
       // 2. Recent Activity & Billings
-      final allBillingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType)).response;
+      final allBillingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools)).response;
       final allBillings = (allBillingsRes.data?.items.whereType<amplify_models.Billings>().toList() ?? []);
       allBillings.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
       
@@ -211,15 +214,15 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       // 3. Staff Activity (Handle potential empty staff list)
       List<Map<String, dynamic>> combinedStaffActivity = [];
       try {
-        final staffUsersRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Users.classType)).response;
+        final staffUsersRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Users.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools)).response;
         final staffUsers = (staffUsersRes.data?.items ?? []).where((u) => u != null && ['staff', 'delivery', 'accountant'].contains(u.role)).take(20).toList();
         final staffIds = staffUsers.map((u) => u!.id).toList();
         
         if (staffIds.isNotEmpty) {
-          final sessionsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.UserSessions.classType)).response;
+          final sessionsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.UserSessions.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools)).response;
           final sessions = (sessionsRes.data?.items ?? []).where((s) => s != null && staffIds.contains(s.user_id?.toString())).toList();
           
-          final tasksQueryRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.STATUS.eq('In Progress'))).response;
+          final tasksQueryRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, limit: 10000, where: amplify_models.Tasks.STATUS.eq('In Progress'), authorizationMode: APIAuthorizationType.userPools)).response;
           final tasks = (tasksQueryRes.data?.items ?? []).where((t) => t != null && staffIds.contains(t.assigned_to?.toString())).toList();
 
           for (var u in staffUsers) {
@@ -249,14 +252,14 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       List<Map<String, dynamic>> staffLogs = [];
       List<Map<String, dynamic>> peakActivity = [];
       try {
-        final staffLogsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ActivityLogs.classType)).response;
+        final staffLogsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ActivityLogs.classType, limit: 10000)).response;
         final allLogs = (staffLogsRes.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? []);
         allLogs.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
         
         final latestLogs = allLogs.take(5).toList();
         
         // Fetch user names for logs
-        final allUsersRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Users.classType)).response;
+        final allUsersRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Users.classType, limit: 10000)).response;
         final allUsers = allUsersRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
         final userMap = {for (var u in allUsers) u.id: u.name};
         
@@ -452,15 +455,17 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   }
 
   Widget _buildSidebar(bool isWide) {
-    return Container(
-      width: 260,
-      decoration: BoxDecoration(
-        color: const Color(0xFF13131A), // Deep dark slate
-        border: Border(
-          right: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+    return Material(
+      color: const Color(0xFF13131A), // Deep dark slate
+      child: Container(
+        width: 260,
+        decoration: BoxDecoration(
+          border: Border(
+            right: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+          ),
         ),
+        child: _buildSidebarContent(isWide),
       ),
-      child: _buildSidebarContent(isWide),
     );
   }
 
@@ -778,7 +783,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             crossAxisCount: isWide ? 3 : 2,
             mainAxisSpacing: isWide ? 24 : 12,
             crossAxisSpacing: isWide ? 24 : 12,
-            childAspectRatio: isWide ? 3.0 : 1.8,
+            childAspectRatio: isWide ? 2.0 : 1.8,
             children: [
               PremiumStatCard(title: 'Total Revenue', value: _adminStats['monthlyRevenue'], trend: '+24%', icon: Icons.account_balance_wallet_rounded, color: AppTheme.primaryColor, isNarrow: !isWide, onTap: () => setState(() => _selectedCategory = 'Bills to Receive')),
               PremiumStatCard(title: 'Company Expenses', value: _adminStats['totalExpenses'], trend: 'Payables', icon: Icons.outbound_rounded, color: AppTheme.textColor, isNarrow: !isWide, onTap: () => setState(() => _selectedIndex = 11)),
@@ -1765,7 +1770,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final billing = res.data?.items.first;
         if (billing != null) {
           final updatedBilling = billing.copyWith(data: jsonEncode(d));
-          await Amplify.API.mutate(request: ModelMutations.update(updatedBilling)).response;
+          await BackupAwareApi().update(updatedBilling);
         }
         _fetchAdminStats();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deadline updated successfully')));
@@ -1866,7 +1871,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final billing = res.data?.items.first;
         if (billing != null) {
           final updatedBilling = billing.copyWith(status: isPaid ? 'Received' : 'Pending', data: jsonEncode(d));
-          await Amplify.API.mutate(request: ModelMutations.update(updatedBilling)).response;
+          await BackupAwareApi().update(updatedBilling);
         }
         
         if (b.clientName != null && b.clientName!.isNotEmpty) {
@@ -1875,7 +1880,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
            final client = cRes.data?.items.isNotEmpty == true ? cRes.data?.items.first : null;
            if (client != null) {
              final updatedClient = client.copyWith(balance_due: d['balance_due'].toString());
-             await Amplify.API.mutate(request: ModelMutations.update(updatedClient)).response;
+             await BackupAwareApi().update(updatedClient);
            }
         }
 
@@ -1907,7 +1912,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final res = await Amplify.API.query(request: req).response;
         final billing = res.data?.items.first;
         if (billing != null) {
-          await Amplify.API.mutate(request: ModelMutations.delete(billing)).response;
+          await BackupAwareApi().delete(billing);
         }
         _fetchAdminStats();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice deleted successfully')));
@@ -2260,7 +2265,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                         name: nameController.text.trim(),
                                         email: emailController.text.trim(),
                                       );
-                                      await Amplify.API.mutate(request: ModelMutations.update(updatedUser)).response;
+                                      await BackupAwareApi().update(updatedUser);
                                     }
                                     
                                     if (context.mounted) {
@@ -2521,7 +2526,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                   // Update password
                                   if (userObj != null) {
                                     final updatedUser = userObj.copyWith(password: newPass);
-                                    await Amplify.API.mutate(request: ModelMutations.update(updatedUser)).response;
+                                    await BackupAwareApi().update(updatedUser);
                                   }
                                   
                                   if (context.mounted) {

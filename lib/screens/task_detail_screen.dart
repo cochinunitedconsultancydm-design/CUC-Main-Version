@@ -8,6 +8,7 @@ import '../models/task.dart';
 import '../theme.dart';
 import '../services/notification_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final Task task;
@@ -57,7 +58,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           description: desc,
         );
 
-        await Amplify.API.mutate(request: ModelMutations.update(updatedAmplifyTask)).response;
+        await BackupAwareApi().update(updatedAmplifyTask);
 
         // Re-fetch to get joined user data for UI mapping
         final fetchedUpdatedTask = await _fetchTask(_task.id.toString());
@@ -523,7 +524,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                               final updatedAmplifyTask = existingTask.copyWith(
                                                 description: newDesc,
                                               );
-                                              await Amplify.API.mutate(request: ModelMutations.update(updatedAmplifyTask)).response;
+                                              await BackupAwareApi().update(updatedAmplifyTask);
                                             }
                                             
                                             await _updateStatus('Adjourned');

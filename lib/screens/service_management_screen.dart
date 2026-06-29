@@ -9,6 +9,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import 'dart:convert';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class ServiceManagementScreen extends StatefulWidget {
   const ServiceManagementScreen({super.key});
@@ -167,7 +168,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                'document_url': file.uri.toString(),
             })
           );
-          await Amplify.API.mutate(request: ModelMutations.create(newService)).response;
+          await BackupAwareApi().create(newService);
           imported++;
         } catch (e) {
           debugPrint('Failed to import ${file.path}: $e');
@@ -275,7 +276,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                               description: descController.text.trim(),
                               service_id: 1,
                             );
-                            await Amplify.API.mutate(request: ModelMutations.create(newService)).response;
+                            await BackupAwareApi().create(newService);
                             if (mounted) Navigator.pop(context);
                             _fetchServices();
                             _showSuccess('Service created successfully');
@@ -791,7 +792,7 @@ class _EditServiceFormState extends State<_EditServiceForm> {
         details: jsonEncode(_details),
       );
       
-      await Amplify.API.mutate(request: ModelMutations.update(updatedService)).response;
+      await BackupAwareApi().update(updatedService);
       
       widget.onSaved();
     } catch (e) {

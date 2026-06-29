@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/ModelProvider.dart';
 import '../models/billing.dart';
 import '../utils/number_to_words.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class BillingService {
   Future<List<Billing>> getPendingBillings() async {
@@ -95,7 +96,7 @@ class BillingService {
     if (cRes.data?.items.isNotEmpty == true) {
       final client = cRes.data!.items.first!;
       final updated = client.copyWith(balance_due: finalBalance);
-      await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+      await BackupAwareApi().update(updated);
     }
   }
 
@@ -265,17 +266,15 @@ class BillingService {
         authorities: updates['authorities'] ?? b.authorities,
         status: updates['status'] ?? b.status,
       );
-      await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+      await BackupAwareApi().update(updated);
     }
   }
 
   Future<void> deleteBilling(dynamic id) async {
-    await Amplify.API.mutate(
-      request: ModelMutations.deleteById(
+    await BackupAwareApi().deleteById(
         Billings.classType, 
         BillingsModelIdentifier(id: id.toString())
-      )
-    ).response;
+    );
   }
 
   Future<String?> getNextInvoiceNo(String prefix) async {

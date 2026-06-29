@@ -8,6 +8,7 @@ import '../models/deal.dart' as old;
 import '../models/deal_activity.dart' as oldActivity;
 import 'notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class DealService {
 
@@ -77,9 +78,8 @@ class DealService {
 
   Future<void> deleteDeal(dynamic id) async {
     try {
-      await Amplify.API.mutate(
-        request: ModelMutations.deleteById(Deals.classType, DealsModelIdentifier(id: id.toString()))
-      ).response;
+      await BackupAwareApi().deleteById(Deals.classType, DealsModelIdentifier(id: id.toString())
+      );
     } catch (e) {
       debugPrint('Error deleteDeal: $e');
     }
@@ -137,12 +137,12 @@ class DealService {
 
     try {
       final newDeal = Deals.fromJson(values);
-      final res = await Amplify.API.mutate(request: ModelMutations.create(newDeal)).response;
+      final res = await BackupAwareApi().create(newDeal);
       final dealId = res.data?.id;
 
       if (dealId != null && userId != null) {
         final assignee = DealAssignees(deal_id: int.tryParse(dealId.toString()), user_id: userId, role: 'Lead');
-        await Amplify.API.mutate(request: ModelMutations.create(assignee)).response;
+        await BackupAwareApi().create(assignee);
       }
 
       if (dealId != null) {
@@ -216,7 +216,7 @@ class DealService {
         expenses_list: values['expenses_list'] is List ? jsonEncode(values['expenses_list']) : values['expenses_list']?.toString(),
       );
       
-      await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+      await BackupAwareApi().update(updated);
 
       await NotificationService().notifyStakeholders(
         title: 'Work Updated',
@@ -239,7 +239,7 @@ class DealService {
       
       final c = res.data!.items.first!;
       final updated = c.copyWith(stage: toStage);
-      await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+      await BackupAwareApi().update(updated);
 
       final hist = DealStageHistory(
         deal_id: int.tryParse(dealId.toString()),
@@ -247,7 +247,7 @@ class DealService {
         to_stage: toStage,
         changed_by: userId,
       );
-      await Amplify.API.mutate(request: ModelMutations.create(hist)).response;
+      await BackupAwareApi().create(hist);
 
       final dealName = c.name ?? 'Unknown Deal';
       final responsibleId = c.responsible_id;
@@ -280,7 +280,7 @@ class DealService {
         to_user_id: toUserId,
         note: note,
       );
-      await Amplify.API.mutate(request: ModelMutations.create(handover)).response;
+      await BackupAwareApi().create(handover);
 
       // 2. Update primary responsible person
       String toUserName = 'Unknown';
@@ -296,24 +296,24 @@ class DealService {
           responsible_id: toUserId,
           responsible_name: toUserName,
         );
-        await Amplify.API.mutate(request: ModelMutations.update(updated)).response;
+        await BackupAwareApi().update(updated);
 
         // 3. Ensure new person is an assignee with Lead role
         final aReq1 = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(dealId.toString()).and(DealAssignees.USER_ID.eq(fromUserId)));
         final aRes1 = await Amplify.API.query(request: aReq1).response;
         if (aRes1.data?.items.isNotEmpty == true) {
           final a1 = aRes1.data!.items.first!;
-          await Amplify.API.mutate(request: ModelMutations.update(a1.copyWith(role: 'Collaborator'))).response;
+          await BackupAwareApi().update(a1.copyWith(role: 'Collaborator'));
         }
 
         final aReq2 = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(dealId.toString()).and(DealAssignees.USER_ID.eq(toUserId)));
         final aRes2 = await Amplify.API.query(request: aReq2).response;
         if (aRes2.data?.items.isNotEmpty == true) {
           final a2 = aRes2.data!.items.first!;
-          await Amplify.API.mutate(request: ModelMutations.update(a2.copyWith(role: 'Lead'))).response;
+          await BackupAwareApi().update(a2.copyWith(role: 'Lead'));
         } else {
           final newA = DealAssignees(deal_id: int.tryParse(dealId.toString()), user_id: toUserId, role: 'Lead');
-          await Amplify.API.mutate(request: ModelMutations.create(newA)).response;
+          await BackupAwareApi().create(newA);
         }
 
         String fromUserName = 'Unknown';
@@ -341,10 +341,10 @@ class DealService {
       final aRes = await Amplify.API.query(request: aReq).response;
       if (aRes.data?.items.isNotEmpty == true) {
         final a = aRes.data!.items.first!;
-        await Amplify.API.mutate(request: ModelMutations.update(a.copyWith(role: role))).response;
+        await BackupAwareApi().update(a.copyWith(role: role));
       } else {
         final newA = DealAssignees(deal_id: int.tryParse(dealId.toString()), user_id: userId, role: role);
-        await Amplify.API.mutate(request: ModelMutations.create(newA)).response;
+        await BackupAwareApi().create(newA);
       }
 
       String dealName = 'Work';
@@ -368,7 +368,7 @@ class DealService {
       final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(dealId.toString()).and(DealAssignees.USER_ID.eq(userId)));
       final aRes = await Amplify.API.query(request: aReq).response;
       if (aRes.data?.items.isNotEmpty == true) {
-        await Amplify.API.mutate(request: ModelMutations.delete(aRes.data!.items.first!)).response;
+        await BackupAwareApi().delete(aRes.data!.items.first!);
       }
     } catch (e) {
       debugPrint('Error removeAssignee: $e');
@@ -409,7 +409,7 @@ class DealService {
       values['deal_id'] = values['deal_id']?.toString();
       
       final newAct = DealActivities.fromJson(values);
-      await Amplify.API.mutate(request: ModelMutations.create(newAct)).response;
+      await BackupAwareApi().create(newAct);
     } catch (e) {
       debugPrint('Error addActivity: $e');
     }
@@ -507,7 +507,7 @@ class DealService {
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
         final c = res.data!.items.first!;
-        await Amplify.API.mutate(request: ModelMutations.update(c.copyWith(is_completed: completed))).response;
+        await BackupAwareApi().update(c.copyWith(is_completed: completed));
       }
     } catch (e) {
       debugPrint('Error toggleActivityCompletion: $e');

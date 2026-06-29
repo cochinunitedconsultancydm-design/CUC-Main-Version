@@ -4,6 +4,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class AddLicenseDialog extends StatefulWidget {
   const AddLicenseDialog({super.key});
@@ -125,7 +126,7 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
         status: 'Active',
       );
 
-      await Amplify.API.mutate(request: ModelMutations.create(license)).response;
+      await BackupAwareApi().create(license);
 
       if (mounted) {
         Navigator.of(context).pop(true);

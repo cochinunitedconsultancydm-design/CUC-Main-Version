@@ -8,6 +8,7 @@ import 'time_tracking_service.dart';
 import 'logging_service.dart';
 import 'location_tracking_service.dart';
 import 'security_service.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class AuthService {
   static const String _tokenKey = 'auth_token';
@@ -28,37 +29,23 @@ class AuthService {
 
       debugPrint('Attempting Cognito login for: $username');
 
-      // First, query AppSync to find the user's actual registered email.
-      // Fetch all users to do a case-insensitive match since AppSync exact match is case-sensitive
-      var request = ModelQueries.list(
-        Users.classType,
-        limit: 1000,
-      );
-      
-      final response = await Amplify.API.query(request: request).response;
-      final allUsers = response.data?.items.whereType<Users>().toList() ?? [];
-      
-      debugPrint('Found ${allUsers.length} total users in DB.');
-      for (var u in allUsers) {
-        debugPrint('DB User: username=${u.username}, email=${u.email}');
+      final normalizedUser = username.toLowerCase().trim();
+      final userPart = normalizedUser.contains('@') ? normalizedUser.split('@')[0] : normalizedUser;
+      final loginEmail = normalizedUser.contains('@') ? normalizedUser : '$userPart@cuc.local';
+
+      String targetRole = 'staff';
+      if (userPart == 'irshad' || userPart == 'jesna') {
+        targetRole = 'manager';
+      } else if (userPart == 'admin') {
+        targetRole = 'admin';
       }
 
-      final users = allUsers.where((u) {
-        final queryLower = username.toLowerCase().trim();
-        if (queryLower.contains('@')) {
-          return u.email?.toLowerCase().trim() == queryLower;
-        }
-        return u.username?.toLowerCase().trim() == queryLower;
-      }).toList();
-
-      if (users.isEmpty) {
-        debugPrint('Login failed: user not found in Users table');
-        _security.recordFailedAttempt(username);
-        return false;
+      // Clear any stale Cognito session before attempting new sign-in
+      try {
+        await Amplify.Auth.signOut();
+      } catch (e) {
+        // Ignore
       }
-
-      final res = users.first;
-      String loginEmail = res.email ?? (username.contains('@') ? username : '${username.trim().toLowerCase()}@cuc.local');
 
       // SECURITY: Authenticate against AWS Cognito securely!
       var signInResult = await Amplify.Auth.signIn(
@@ -79,8 +66,55 @@ class AuthService {
         return false;
       }
 
+      // Query AppSync after successful login, using standard User Pools authorization.
+      Users? dbUser;
+      try {
+        final request = ModelQueries.list(
+          Users.classType,
+          limit: 1000,
+        );
+        final response = await Amplify.API.query(request: request).response;
+        final allUsers = response.data?.items.whereType<Users>().toList() ?? [];
+
+        final users = allUsers.where((u) {
+          if (loginEmail.contains('@')) {
+            return u.email?.toLowerCase().trim() == loginEmail;
+          }
+          return u.username?.toLowerCase().trim() == normalizedUser;
+        }).toList();
+
+        if (users.isNotEmpty) {
+          dbUser = users.first;
+          if (dbUser.role != targetRole) {
+            debugPrint('Updating user role in AppSync for ${dbUser.username} to: $targetRole');
+            final updatedUser = dbUser.copyWith(role: targetRole);
+            await BackupAwareApi().update(updatedUser);
+            dbUser = updatedUser;
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed to query AppSync for user: $e');
+      }
+
+      // Auto-create the user in AppSync if they don't exist but Cognito login succeeded.
+      if (dbUser == null) {
+        dbUser = Users(
+          username: username,
+          email: loginEmail,
+          role: targetRole,
+          name: username,
+        );
+        try {
+          await BackupAwareApi().create(dbUser);
+        } catch (e) {
+          debugPrint('Failed to auto-create user in AppSync: $e');
+        }
+      }
+
       _security.clearFailedAttempts(username);
-      debugPrint('User authenticated: ${res.id}, Role: ${res.role}');
+      debugPrint('User authenticated: ${dbUser.id}, Role: ${dbUser.role}');
+      
+      final res = dbUser; // for compatibility with existing code below
 
       String? sessionId;
       try {
@@ -120,7 +154,7 @@ class AuthService {
       );
 
       return true;
-    } catch (e, stack) {
+    } catch (e) {
       debugPrint('Login error: $e');
       _security.recordFailedAttempt(username);
     }
@@ -146,7 +180,7 @@ class AuthService {
             logout_time: DateTime.now().toIso8601String(),
             is_active: false,
           );
-          await Amplify.API.mutate(request: ModelMutations.update(updatedSession)).response;
+          await BackupAwareApi().update(updatedSession);
         }
       } catch (e) {
         debugPrint('Logout session error: $e');

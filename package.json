@@ -1,5 +1,5 @@
 {
-  "name": "cuc-main-version",
+  "name": "legal",
   "version": "1.0.0",
   "description": "A new Flutter project.",
   "main": "amplify_main.dart.js",
@@ -32,9 +32,13 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@aws-crypto/sha256-js": "^5.2.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.1075.0",
     "@aws-sdk/client-dynamodb": "^3.1075.0",
+    "@aws-sdk/credential-provider-node": "^3.972.58",
     "@aws-sdk/lib-dynamodb": "^3.1073.0",
+    "@aws-sdk/protocol-http": "^3.370.0",
+    "@aws-sdk/signature-v4": "^3.370.0",
     "aws-amplify": "^6.18.0"
   }
 }

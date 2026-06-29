@@ -12,6 +12,7 @@ import '../services/deal_service.dart';
 import '../services/client_service.dart';
 import '../services/google_docs_service.dart';
 import 'google_docs_webview_screen.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 
 class DocumentListScreen extends StatefulWidget {
@@ -369,7 +370,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
         final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
         if (dealObj != null) {
           final updatedDeal = dealObj.copyWith(drive_link: url);
-          await Amplify.API.mutate(request: ModelMutations.update(updatedDeal)).response;
+          await BackupAwareApi().update(updatedDeal);
         }
       } catch (e) {
         debugPrint('Failed to update deal: $e');
@@ -387,7 +388,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
           og_copy: 'Original',
           remarks: 'Google Doc',
         );
-        await Amplify.API.mutate(request: ModelMutations.create(newClientDoc)).response;
+        await BackupAwareApi().create(newClientDoc);
       } catch (e) {
         debugPrint('Failed to update client docs: $e');
       }

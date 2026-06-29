@@ -29,17 +29,27 @@ class AuthService {
       debugPrint('Attempting Cognito login for: $username');
 
       // First, query AppSync to find the user's actual registered email.
-      // This is needed because they might enter a username, but Cognito needs their email.
+      // Fetch all users to do a case-insensitive match since AppSync exact match is case-sensitive
       var request = ModelQueries.list(
         Users.classType,
-        where: username.contains('@') 
-            ? Users.EMAIL.eq(username) 
-            : Users.USERNAME.eq(username),
-        limit: 1,
+        limit: 1000,
       );
       
       final response = await Amplify.API.query(request: request).response;
-      final users = response.data?.items.whereType<Users>().toList() ?? [];
+      final allUsers = response.data?.items.whereType<Users>().toList() ?? [];
+      
+      debugPrint('Found ${allUsers.length} total users in DB.');
+      for (var u in allUsers) {
+        debugPrint('DB User: username=${u.username}, email=${u.email}');
+      }
+
+      final users = allUsers.where((u) {
+        final queryLower = username.toLowerCase().trim();
+        if (queryLower.contains('@')) {
+          return u.email?.toLowerCase().trim() == queryLower;
+        }
+        return u.username?.toLowerCase().trim() == queryLower;
+      }).toList();
 
       if (users.isEmpty) {
         debugPrint('Login failed: user not found in Users table');

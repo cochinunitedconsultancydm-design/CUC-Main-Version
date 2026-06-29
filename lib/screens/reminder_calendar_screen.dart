@@ -316,7 +316,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
         
         double dynamicAspectRatio = cellWidth / cellHeight;
         if (dynamicAspectRatio < 0.6) dynamicAspectRatio = 0.6;
-        if (dynamicAspectRatio > 2.0) dynamicAspectRatio = 2.0;
+        if (dynamicAspectRatio > 4.0) dynamicAspectRatio = 4.0;
 
         Widget buildGridCell(int index) {
           if (index < offset) return const SizedBox.shrink();
@@ -331,9 +331,6 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
           final dayEvents = filteredEvents.where((e) {
             return e.date.year == currentDay.year && e.date.month == currentDay.month && e.date.day == currentDay.day;
           }).toList();
-
-          final taskCount = dayEvents.where((e) => e.type == 'Task').length;
-          final expCount = dayEvents.where((e) => e.type == 'License' || e.type == 'DSC').length;
 
           Color borderColor = Colors.grey.shade200;
           if (isSelected) {
@@ -374,36 +371,40 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
                   ),
                   if (dayEvents.isNotEmpty)
                     Positioned(
-                      bottom: 8,
-                      right: 8,
-                      left: 8,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                      top: 38,
+                      left: 6,
+                      right: 6,
+                      bottom: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          if (taskCount > 0)
-                            Flexible(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                margin: const EdgeInsets.only(left: 4),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text('$taskCount Task', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.primaryColor), overflow: TextOverflow.ellipsis),
+                          ...dayEvents.take(isDesktop ? 3 : 1).map((e) {
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 3),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: _getEventColor(e.type).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: _getEventColor(e.type).withValues(alpha: 0.2)),
                               ),
-                            ),
-                          if (expCount > 0)
-                            Flexible(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                margin: const EdgeInsets.only(left: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade50,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.red.shade200),
-                                  boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))],
+                              child: Text(
+                                e.title,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: _getEventColor(e.type).withAlpha(220),
                                 ),
-                                child: Text('$expCount Exp', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.red.shade700), overflow: TextOverflow.ellipsis),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }),
+                          if (dayEvents.length > (isDesktop ? 3 : 1))
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4, top: 1),
+                              child: Text(
+                                '+${dayEvents.length - (isDesktop ? 3 : 1)} more',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600),
                               ),
                             ),
                         ],
@@ -417,7 +418,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
 
         final gridWidget = GridView.builder(
           shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 7,
             crossAxisSpacing: 8,

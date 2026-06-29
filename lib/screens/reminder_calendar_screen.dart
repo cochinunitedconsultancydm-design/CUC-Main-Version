@@ -309,14 +309,14 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
         final double gridMaxWidth = constraints.maxWidth;
 
         final rowsCount = (totalGridItems / 7).ceil();
-        final cellWidth = (gridMaxWidth - 48) / 7;
         
-        // Handle constrained height vs unbounded
-        final double cellHeight = isDesktop ? ((gridMaxHeight - 80) / rowsCount).clamp(60.0, 150.0) : 80.0;
+        final double maxCellWidth = (gridMaxWidth - 48) / 7;
+        final double maxCellHeight = isDesktop ? ((gridMaxHeight - 120) / rowsCount) : 80.0;
         
-        double dynamicAspectRatio = cellWidth / cellHeight;
-        if (dynamicAspectRatio < 0.6) dynamicAspectRatio = 0.6;
-        if (dynamicAspectRatio > 4.0) dynamicAspectRatio = 4.0;
+        final double cellSize = isDesktop ? (maxCellWidth < maxCellHeight ? maxCellWidth : maxCellHeight) : maxCellWidth;
+        final double constrainedGridWidth = isDesktop ? (cellSize * 7) + 48 : gridMaxWidth;
+        
+        double dynamicAspectRatio = isDesktop ? 1.0 : (maxCellWidth / 80.0).clamp(0.6, 2.0);
 
         Widget buildGridCell(int index) {
           if (index < offset) return const SizedBox.shrink();
@@ -449,20 +449,50 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            GridView.count(
-              crossAxisCount: 7,
-              crossAxisSpacing: 8,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 2.5,
-              children: weekdays.map((day) {
-                return Center(
-                  child: Text(day, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
-                );
-              }).toList(),
+            Expanded(
+              child: isDesktop
+                ? Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: constrainedGridWidth),
+                      child: Column(
+                        children: [
+                          GridView.count(
+                            crossAxisCount: 7,
+                            crossAxisSpacing: 8,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            childAspectRatio: 2.5,
+                            children: weekdays.map((day) {
+                              return Center(
+                                child: Text(day, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(child: gridWidget),
+                        ],
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: [
+                      GridView.count(
+                        crossAxisCount: 7,
+                        crossAxisSpacing: 8,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        childAspectRatio: 2.5,
+                        children: weekdays.map((day) {
+                          return Center(
+                            child: Text(day, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 8),
+                      gridWidget,
+                    ],
+                  ),
             ),
-            const SizedBox(height: 8),
-            isDesktop ? Expanded(child: gridWidget) : gridWidget,
           ],
         );
       },

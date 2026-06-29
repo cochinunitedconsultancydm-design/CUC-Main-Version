@@ -7,6 +7,22 @@ import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sig
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:io' show Platform;
+import 'package:desktop_webview_auth/desktop_webview_auth.dart';
+import 'package:desktop_webview_auth/google.dart';
+
+class AuthClientWrapper extends http.BaseClient {
+  final http.Client _client = http.Client();
+  final String _accessToken;
+
+  AuthClientWrapper(this._accessToken);
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    request.headers['Authorization'] = 'Bearer $_accessToken';
+    return _client.send(request);
+  }
+}
 
 class GoogleDocsService {
   // 1. Paste your Web Client ID here
@@ -23,10 +39,26 @@ class GoogleDocsService {
     scopes: _scopes,
   );
 
+  static String? _windowsAccessToken;
+
   static Future<String?> signIn() async {
     try {
-      final account = await _googleSignIn.signIn();
-      return account != null ? 'Authenticated User' : null;
+      if (!kIsWeb && Platform.isWindows) {
+        final args = GoogleSignInArgs(
+          clientId: _webClientId,
+          redirectUri: 'http://localhost',
+          scope: _scopes.join(' '),
+        );
+        final result = await DesktopWebviewAuth.signIn(args);
+        if (result != null && result.accessToken != null) {
+          _windowsAccessToken = result.accessToken;
+          return 'Authenticated User';
+        }
+        return null;
+      } else {
+        final account = await _googleSignIn.signIn();
+        return account != null ? 'Authenticated User' : null;
+      }
     } catch (e) {
       debugPrint('Google Sign-In Error: $e');
       return null;
@@ -34,10 +66,21 @@ class GoogleDocsService {
   }
 
   static Future<void> signOut() async {
-    await _googleSignIn.signOut();
+    if (!kIsWeb && Platform.isWindows) {
+      _windowsAccessToken = null;
+    } else {
+      await _googleSignIn.signOut();
+    }
   }
 
   static Future<http.Client?> _getAuthenticatedClient() async {
+    if (!kIsWeb && Platform.isWindows) {
+      if (_windowsAccessToken != null) {
+        return AuthClientWrapper(_windowsAccessToken!);
+      }
+      return null;
+    }
+
     GoogleSignInAccount? account = await _googleSignIn.signInSilently();
     if (account == null) {
       try {

@@ -20,6 +20,7 @@ import 'screens/delivery_dashboard_screen.dart';
 import 'services/time_tracking_service.dart';
 import 'services/location_tracking_service.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+
 final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 String? _amplifyStartupError;
 

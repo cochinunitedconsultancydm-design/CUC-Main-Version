@@ -20,7 +20,9 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
   List<Map<String, dynamic>> _staffList = [];
   bool _isLoading = true;
   String _filterCategory = 'All';
-  final List<String> _categories = ['All', 'Electricity', 'Water', 'Internet', 'Mobile Recharge', 'Rent', 'Salary', 'Stationery', 'Other'];
+  final List<String> _expenseCategories = ['Electricity', 'Water', 'Internet', 'Mobile Recharge', 'Rent', 'Salary', 'Stationery', 'Other'];
+  final List<String> _incomeCategories = ['Client Payment', 'Consulting Fee', 'Refund', 'Commission', 'Other Income'];
+  List<String> get _categories => ['All', ..._expenseCategories, ..._incomeCategories];
 
   @override
   void initState() {
@@ -74,9 +76,17 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
 
   void _showForm([CompanyBill? bill]) {
     final title = TextEditingController(text: bill?.title);
-    final amount = TextEditingController(text: bill?.amount.toString());
+    final amount = TextEditingController(text: bill != null ? bill.amount.abs().toString() : '');
     final desc = TextEditingController(text: bill?.description);
-    String category = bill?.category ?? 'Electricity';
+    
+    bool isIncoming = bill != null && bill.amount < 0;
+    List<String> currentCategories = isIncoming ? _incomeCategories : _expenseCategories;
+    
+    String category = bill?.category ?? currentCategories.first;
+    if (!currentCategories.contains(category)) {
+      category = currentCategories.first;
+    }
+
     DateTime selectedDate = bill?.billDate ?? DateTime.now();
     String status = bill?.status ?? 'Pending';
     dynamic selectedStaffId = bill?.spentBy;
@@ -149,17 +159,49 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   DropdownButtonFormField<String>(
+                    key: ValueKey(isIncoming),
                     initialValue: category,
                     decoration: inputDec('Category', Icons.category_rounded),
                     icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.primaryColor),
                     dropdownColor: Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    items: _categories.where((c) => c != 'All').map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                    items: currentCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                     onChanged: (v) => setModalState(() => category = v!),
                   ),
                   const SizedBox(height: 16),
                   TextField(controller: title, decoration: inputDec('Title (e.g. March 2024)', Icons.title_rounded)),
                   const SizedBox(height: 16),
+                  
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: Text('Transaction Type', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      ),
+                      Row(
+                        children: [
+                          statusChip('Expense (Outgoing)', !isIncoming, (v) {
+                            setModalState(() {
+                              isIncoming = false;
+                              currentCategories = _expenseCategories;
+                              if (!currentCategories.contains(category)) category = currentCategories.first;
+                            });
+                          }),
+                          const SizedBox(width: 12),
+                          statusChip('Income (Incoming)', isIncoming, (v) {
+                            setModalState(() {
+                              isIncoming = true;
+                              currentCategories = _incomeCategories;
+                              if (!currentCategories.contains(category)) category = currentCategories.first;
+                            });
+                          }),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
                   TextField(controller: amount, decoration: inputDec('Amount (₹)', Icons.currency_rupee_rounded), keyboardType: TextInputType.number),
                   const SizedBox(height: 16),
                   
@@ -284,6 +326,10 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                   final uid = await AuthService().getUserId();
                   final uname = await AuthService().getUserName();
 
+                  double parsedAmount = double.tryParse(amount.text) ?? 0;
+                  if (isIncoming) parsedAmount = -parsedAmount.abs();
+                  else parsedAmount = parsedAmount.abs();
+
                   final finalSpentBy = selectedStaffId ?? uid;
                   final finalSpentByName = selectedStaffName ?? uname;
 
@@ -291,7 +337,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                     id: bill?.id,
                     category: category,
                     title: title.text,
-                    amount: double.tryParse(amount.text) ?? 0,
+                    amount: parsedAmount,
                     billDate: selectedDate,
                     status: status,
                     description: desc.text,
@@ -581,8 +627,8 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '₹${NumberFormat("#,##,###").format(bill.amount)}',
-                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF1E293B)),
+                    '${bill.amount < 0 ? "+" : "-"} ₹${NumberFormat("#,##,###").format(bill.amount.abs())}',
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: bill.amount < 0 ? Colors.green.shade700 : Colors.red.shade600),
                   ),
                   const SizedBox(height: 6),
                   Container(

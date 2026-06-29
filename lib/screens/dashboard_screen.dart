@@ -677,8 +677,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   _sidebarItem(0, Icons.grid_view_rounded, 'Dashboard'),
                   _sidebarItem(12, Icons.playlist_add_check_rounded, 'Today\'s Checklist', badge: _stats['pendingChecklists'] > 0 ? _stats['pendingChecklists'].toString() : null),
-                  if (_userRole == 'accountant')
-                    _sidebarItem(11, Icons.business_rounded, 'Company Bills'),
+                  _sidebarItem(11, Icons.account_balance_wallet_rounded, 'Accounting & Pay'),
                   _sidebarItem(2, Icons.receipt_long_rounded, 'Billing'),
                   _sidebarItem(3, Icons.people_alt_rounded, 'Client Data'),
 

@@ -225,7 +225,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
                     childAspectRatio: isWide ? 1.5 : 1.3,
                     children: [
                       _buildModuleItem('Billing', Icons.receipt_long_rounded, Colors.blue, () => widget.onNavigate?.call(2)),
-                      _buildModuleItem('Company Bills', Icons.business_rounded, Colors.purple, () => widget.onNavigate?.call(11)),
+                      _buildModuleItem('Accounting & Pay', Icons.account_balance_wallet_rounded, Colors.purple, () => widget.onNavigate?.call(11)),
                       _buildModuleItem('Clients', Icons.people_alt_rounded, Colors.green, () => widget.onNavigate?.call(3)),
                       _buildModuleItem('Work Tracker', Icons.work_rounded, Colors.indigo, () => widget.onNavigate?.call(6)),
                     ],

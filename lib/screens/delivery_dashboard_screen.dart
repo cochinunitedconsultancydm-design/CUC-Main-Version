@@ -8,6 +8,7 @@ import 'login_screen.dart';
 import 'task_management_screen.dart';
 import 'staff_chat_list_screen.dart';
 import 'inward_post_screen.dart';
+import 'company_bill_management_screen.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
@@ -618,6 +619,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
       _buildHomeView(),
       TaskManagementScreen(initialStatus: _taskFilter),
       const StaffChatListScreen(),
+      CompanyBillManagementScreen(),
     ];
 
     return PopScope(
@@ -724,6 +726,11 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                     selectedIcon: Icon(Icons.chat_bubble_rounded),
                     label: Text('Chat'),
                   ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.account_balance_wallet_outlined),
+                    selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+                    label: Text('Expenses'),
+                  ),
                 ],
               ),
               const VerticalDivider(thickness: 1, width: 1),
@@ -767,6 +774,11 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                   icon: Icon(Icons.chat_bubble_outline_rounded),
                   activeIcon: Icon(Icons.chat_bubble_rounded),
                   label: 'Chat',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.account_balance_wallet_outlined),
+                  activeIcon: Icon(Icons.account_balance_wallet_rounded),
+                  label: 'Expenses',
                 ),
               ],
             ),

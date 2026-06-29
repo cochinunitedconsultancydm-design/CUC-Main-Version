@@ -29,6 +29,8 @@ import 'travel_log_screen.dart';
 import 'document_list_screen.dart';
 import 'verification_history_view.dart';
 import 'property_management_screen.dart';
+import '../widgets/add_license_dialog.dart';
+import 'company_bill_management_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -281,6 +283,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _sidebarItem(0, Icons.dashboard_outlined, 'Command Overview', isWide),
                 _sidebarItem(12, Icons.playlist_add_check_rounded, 'Today\'s Checklist', isWide),
                 _sidebarItem(17, Icons.calendar_month_rounded, 'Reminder Calendar', isWide),
+                _sidebarItem(11, Icons.account_balance_wallet_rounded, 'Accounting & Pay', isWide),
                 _sidebarItem(1, Icons.security_rounded, 'Security & Audit', isWide),
                 _sidebarItem(2, Icons.people_outline_rounded, 'Staff Management', isWide),
                 _sidebarItem(6, Icons.location_on_outlined, 'Staff Locations', isWide),
@@ -408,6 +411,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 8: return const TravelLogScreen();
       case 12: return const ChecklistScreen();
       case 17: return const ReminderCalendarScreen();
+      case 11: return CompanyBillManagementScreen();
       case 19: return const DocumentListScreen(userEmail: 'admin@cochinunited.com');
       case 20: return const VerificationHistoryView();
       case 21: return const PropertyManagementScreen();

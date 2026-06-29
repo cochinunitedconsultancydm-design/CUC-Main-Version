@@ -10,6 +10,7 @@ import '../widgets/add_license_dialog.dart';
 import 'license_management_screen.dart';
 import 'client_files_dialog.dart';
 import '../services/excel_service.dart';
+import 'company_bill_management_screen.dart';
 
 class LicenseDashboardScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -288,11 +289,31 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
                   appBar: AppBar(
                     backgroundColor: Colors.transparent,
                     elevation: 0,
-                    iconTheme: const IconThemeData(color: Colors.black87),
+                    leading: const BackButton(color: Colors.black),
+                    title: const Text('Manage License Types', style: TextStyle(color: Colors.black)),
                   ),
                   body: const SafeArea(child: LicenseManagementScreen()),
                 )),
               ).then((_) => _fetchDashboardData());
+            },
+          ),
+          const SizedBox(width: 12),
+          _buildActionButton(
+            label: 'Accounting & Pay',
+            icon: Icons.account_balance_wallet_rounded,
+            backgroundColor: const Color(0xFF8B5CF6), // Purple
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => Scaffold(
+                  appBar: AppBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    leading: const BackButton(color: Colors.black),
+                  ),
+                  body: const CompanyBillManagementScreen(),
+                )),
+              );
             },
           ),
           const SizedBox(width: 12),

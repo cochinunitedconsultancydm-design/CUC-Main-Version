@@ -25,6 +25,13 @@ class SupabaseBackupService {
     'ClientDocuments': 'client_documents',
     'ActivityLogs': 'activity_logs',
     'InwardPosts': 'inward_posts',
+    'UserSessions': 'user_sessions',
+    'Notifications': 'notifications',
+    'LocationHistory': 'location_history',
+    'StaffLocations': 'staff_locations',
+    'ClientLicenses': 'client_licenses',
+    'LicenseTypes': 'license_types',
+    'LicenseBilling': 'license_billing',
   };
 
   Map<String, String> get _headers => {
@@ -56,6 +63,9 @@ class SupabaseBackupService {
         final idVal = int.tryParse(cleanData['id'].toString());
         if (idVal != null) {
           cleanData['id'] = idVal;
+        } else {
+          // If it's a UUID, remove it so Supabase can auto-generate an integer ID
+          cleanData.remove('id');
         }
       }
 
@@ -90,7 +100,11 @@ class SupabaseBackupService {
           ..remove('updatedAt');
         if (clean['id'] != null) {
           final idVal = int.tryParse(clean['id'].toString());
-          if (idVal != null) clean['id'] = idVal;
+          if (idVal != null) {
+            clean['id'] = idVal;
+          } else {
+            clean.remove('id');
+          }
         }
         return clean;
       }).toList();
@@ -118,6 +132,11 @@ class SupabaseBackupService {
   Future<bool> deleteRecord(String modelName, dynamic id) async {
     final table = _tableMap[modelName];
     if (table == null) return false;
+
+    // Do not attempt to delete by UUID since Supabase uses integer IDs
+    if (int.tryParse(id.toString()) == null) {
+      return true; // Skip gracefully
+    }
 
     try {
       final response = await http.delete(

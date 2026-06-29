@@ -9,6 +9,8 @@ import '../services/excel_service.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import 'package:cuc_app/services/backup_aware_api.dart';
+import '../screens/client_files_dialog.dart';
+import '../models/client.dart';
 
 class LicenseManagementScreen extends StatefulWidget {
   final String? initialFilter;
@@ -135,10 +137,30 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Billing Records', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              TextButton.icon(
-                onPressed: () => _showBillingForm(l.id!),
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Add', style: TextStyle(fontSize: 12)),
+              Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: () {
+                      if (l.clientId != null) {
+                        showDialog(
+                          context: context,
+                          builder: (context) => ClientFilesDialog(
+                            client: Client(id: l.clientId.toString(), name: l.clientName ?? 'Unknown', fileNo: l.fileNo ?? ''),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client information not available for this license')));
+                      }
+                    },
+                    icon: const Icon(Icons.folder_shared_rounded, size: 16),
+                    label: const Text('Open Vault', style: TextStyle(fontSize: 12)),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _showBillingForm(l.id!),
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Add Bill', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
               ),
             ],
           ),
@@ -229,7 +251,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
 
   Future<void> _fetchLicenseTypes() async {
     try {
-      final req = ModelQueries.list(amplify_models.LicenseTypes.classType);
+      final req = ModelQueries.list(amplify_models.LicenseTypes.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final typesList = res.data?.items.whereType<amplify_models.LicenseTypes>().toList() ?? [];
       typesList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
@@ -250,10 +272,10 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
   Future<void> _fetchLicenses() async {
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.ClientLicenses.classType);
+      final req = ModelQueries.list(amplify_models.ClientLicenses.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       
-      final clientReq = ModelQueries.list(amplify_models.Clients.classType);
+      final clientReq = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final clientRes = await Amplify.API.query(request: clientReq).response;
       final clientsList = clientRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
       
@@ -262,8 +284,8 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
       
       setState(() {
         _licenses = licenseList.map((row) {
-          final client = clientsList.firstWhere((c) => c.id == row.client_id, orElse: () => amplify_models.Clients(name: 'Unknown'));
-          final type = _licenseTypes.firstWhere((t) => t['id'] == row.license_type_id, orElse: () => {'name': null});
+          final client = clientsList.firstWhere((c) => c.id == row.client_id.toString(), orElse: () => amplify_models.Clients(name: 'Unknown'));
+          final type = _licenseTypes.firstWhere((t) => t['id'].toString() == row.license_type_id.toString(), orElse: () => {'name': null});
           
           return ClientLicense(
             id: int.tryParse(row.id), // Dynamic -> int for legacy compatibility
@@ -289,7 +311,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
 
   Future<void> _fetchDetails(int licenseId) async {
     try {
-      final req = ModelQueries.list(amplify_models.LicenseBilling.classType, where: amplify_models.LicenseBilling.CLIENT_LICENSE_ID.eq(licenseId.toString()));
+      final req = ModelQueries.list(amplify_models.LicenseBilling.classType, where: amplify_models.LicenseBilling.CLIENT_LICENSE_ID.eq(licenseId.toString()), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final billingList = res.data?.items.whereType<amplify_models.LicenseBilling>().toList() ?? [];
       
@@ -464,7 +486,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     bool pickerLoading = true;
 
     try {
-      final req = ModelQueries.list(amplify_models.Billings.classType);
+      final req = ModelQueries.list(amplify_models.Billings.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final billList = res.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
       billList.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));

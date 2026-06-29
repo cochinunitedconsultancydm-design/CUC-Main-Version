@@ -58,17 +58,17 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
       final thirtyDaysFromNow = now.add(const Duration(days: 30));
       
       // Fetch all license types first
-      final typesReq = ModelQueries.list(amplify_models.LicenseTypes.classType);
+      final typesReq = ModelQueries.list(amplify_models.LicenseTypes.classType, limit: 10000);
       final typesResRaw = await Amplify.API.query(request: typesReq).response;
       final fetchedTypes = typesResRaw.data?.items.whereType<amplify_models.LicenseTypes>().toList() ?? [];
 
       // Fetch all clients
-      final clientReq = ModelQueries.list(amplify_models.Clients.classType);
+      final clientReq = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final clientRes = await Amplify.API.query(request: clientReq).response;
       final clientsList = clientRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
 
       // Fetch all licenses
-      final licensesReq = ModelQueries.list(amplify_models.ClientLicenses.classType);
+      final licensesReq = ModelQueries.list(amplify_models.ClientLicenses.classType, limit: 10000);
       final licensesRes = await Amplify.API.query(request: licensesReq).response;
       final licenses = licensesRes.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
       
@@ -83,7 +83,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
         
         String clientName = l.manual_client_name ?? 'Unknown';
         if (l.client_id != null) {
-          final matchedClient = clientsList.firstWhere((c) => c.id == l.client_id, orElse: () => amplify_models.Clients(name: 'Unknown'));
+          final matchedClient = clientsList.firstWhere((c) => c.id == l.client_id.toString(), orElse: () => amplify_models.Clients(name: 'Unknown'));
           if (matchedClient.name != null && matchedClient.name!.isNotEmpty) {
             clientName = matchedClient.name!;
           }
@@ -91,7 +91,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
         
         String typeName = 'License';
         if (l.license_type_id != null) {
-          final matchedType = fetchedTypes.firstWhere((t) => t.id == l.license_type_id, orElse: () => amplify_models.LicenseTypes(name: 'License'));
+          final matchedType = fetchedTypes.firstWhere((t) => t.id == l.license_type_id.toString(), orElse: () => amplify_models.LicenseTypes(name: 'License'));
           if (matchedType.name != null && matchedType.name!.isNotEmpty && matchedType.name != 'License') {
             typeName = matchedType.name!;
           } else {
@@ -143,7 +143,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
       }
       
       // Fetch Pending Amount
-      final billingReq = ModelQueries.list(amplify_models.LicenseBilling.classType, where: amplify_models.LicenseBilling.PAYMENT_STATUS.eq('Pending'));
+      final billingReq = ModelQueries.list(amplify_models.LicenseBilling.classType, where: amplify_models.LicenseBilling.PAYMENT_STATUS.eq('Pending'), limit: 10000);
       final billingRes = await Amplify.API.query(request: billingReq).response;
       final billingItems = billingRes.data?.items.whereType<amplify_models.LicenseBilling>().toList() ?? [];
       double pending = 0;
@@ -184,7 +184,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
   Future<void> _exportData() async {
     // Basic export functionality placeholder or call the existing export
     try {
-      final req = ModelQueries.list(amplify_models.ClientLicenses.classType);
+      final req = ModelQueries.list(amplify_models.ClientLicenses.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       
       final clientReq = ModelQueries.list(amplify_models.Clients.classType);
@@ -491,7 +491,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
                           showDialog(
                             context: context,
                             builder: (context) => ClientFilesDialog(
-                              client: Client(id: item['clientId'], name: item['clientName'], fileNo: item['fileNo']),
+                              client: Client(id: item['clientId'].toString(), name: item['clientName'], fileNo: item['fileNo']),
                             ),
                           );
                         } else {

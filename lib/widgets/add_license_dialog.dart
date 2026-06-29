@@ -5,6 +5,8 @@ import '../models/ModelProvider.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 
 class AddLicenseDialog extends StatefulWidget {
   const AddLicenseDialog({super.key});
@@ -38,6 +40,8 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
   final _manualClientController = TextEditingController();
   final _fileNoController = TextEditingController();
   DateTime? _expiryDate;
+  File? _selectedFile;
+  String? _selectedFileName;
 
   @override
   void initState() {
@@ -103,6 +107,20 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
     }
   }
 
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.pickFiles(allowMultiple: false);
+      if (result != null && result.files.single.path != null) {
+        setState(() {
+          _selectedFile = File(result.files.single.path!);
+          _selectedFileName = result.files.single.name;
+        });
+      }
+    } catch (e) {
+      _showSnack('Error selecting file: $e', isError: true);
+    }
+  }
+
   Future<void> _submit() async {
     if (_selectedTypeId == null) {
       _showSnack('Please select a license type', isError: true);
@@ -127,6 +145,28 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
       );
 
       await BackupAwareApi().create(license);
+
+      if (_selectedFile != null && _selectedClientId != null) {
+        final matchedClient = _clients.firstWhere((c) => c.id == _selectedClientId.toString(), orElse: () => Clients(name: _manualClientController.text));
+        final typeName = _licenseTypes.firstWhere((t) => t.id == _selectedTypeId.toString(), orElse: () => LicenseTypes(name: 'License')).name;
+        
+        final docName = '[License] - $typeName - ${_fileNoController.text.trim()}';
+        final path = 'public/$_selectedClientId/work/$_selectedFileName';
+        
+        await Amplify.Storage.uploadFile(
+          localFile: AWSFile.fromPath(_selectedFile!.path),
+          path: StoragePath.fromString(path),
+        ).result;
+        
+        final doc = ClientDocuments(
+          client_id: _selectedClientId.toString(),
+          client_name: matchedClient.name,
+          document_name: docName,
+          storage_path: path,
+          created_at: DateTime.now().toIso8601String(),
+        );
+        await BackupAwareApi().create(doc);
+      }
 
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -329,6 +369,53 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    
+                    if (_selectedClientId != null) ...[
+                      const Text('ATTACHMENTS (Optional)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                      const SizedBox(height: 16),
+                      InkWell(
+                        onTap: _pickFile,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            border: Border.all(color: Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.upload_file_rounded, color: AppTheme.primaryColor.withValues(alpha: 0.7), size: 20),
+                                  const SizedBox(width: 16),
+                                  Text(
+                                    _selectedFileName ?? 'Upload License Document',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: _selectedFileName == null ? FontWeight.normal : FontWeight.w500,
+                                      color: _selectedFileName == null ? Colors.grey.shade500 : AppTheme.textColor,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                              if (_selectedFileName != null)
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  icon: const Icon(Icons.close_rounded, size: 20, color: Colors.grey),
+                                  onPressed: () => setState(() { _selectedFile = null; _selectedFileName = null; }),
+                                )
+                              else
+                                const Icon(Icons.attach_file_rounded, size: 20, color: Colors.grey),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

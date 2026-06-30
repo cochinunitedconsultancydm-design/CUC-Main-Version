@@ -106,10 +106,9 @@ class InvoicePdfService {
                             style: pw.TextStyle(font: bodyFont, fontSize: 8),
                           ),
                           pw.Text(
-                            isLegal ? 'COMBARA JUNCTION, ERNAKULAM - 682018' : 'Near North Railway Station, North Railway Station, Ernakulam, Kerala 682018',
+                            isLegal ? 'COMBARA JUNCTION, ERNAKULAM - 682018' : 'Near North Railway Station, Ernakulam, Kerala 682018',
                             style: pw.TextStyle(font: bodyFont, fontSize: 8),
                           ),
-                          if (!isLegal) pw.Text('Ernakulam, Kerala 682018', style: pw.TextStyle(font: bodyFont, fontSize: 8)),
                           pw.SizedBox(height: 2),
                           pw.Text('email id: cochinunitedconsultancydm@gmail.com', style: pw.TextStyle(font: bodyFont, fontSize: 8, color: PdfColors.blue700)),
                           pw.Text('mob no: +91 8590290105', style: pw.TextStyle(font: bodyFont, fontSize: 8)),

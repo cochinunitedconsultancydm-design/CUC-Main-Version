@@ -459,6 +459,136 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
     );
   }
 
+  void _showLicenseDetailsDialog(BuildContext context, Map<String, dynamic> item) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        Color statusColor = Colors.green;
+        String statusText = 'Active';
+        if (item['isExpired'] == true) {
+          statusColor = Colors.red;
+          statusText = 'Expired';
+        } else if (item['isExpiringSoon'] == true) {
+          statusColor = Colors.orange;
+          statusText = 'Expiring Soon';
+        }
+
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('License Details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                const SizedBox(height: 16),
+                _buildDetailRow('Client Name', item['clientName']),
+                const SizedBox(height: 12),
+                _buildDetailRow('License Type', item['typeName'] ?? 'N/A'),
+                const SizedBox(height: 12),
+                _buildDetailRow('File No', item['fileNo']),
+                const SizedBox(height: 12),
+                _buildDetailRow('Expiry Date', item['expiryDate'] != null ? DateFormat('dd MMM yyyy').format(item['expiryDate']) : 'N/A'),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Expanded(flex: 2, child: Text('Status', style: TextStyle(color: Colors.grey, fontSize: 13))),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        statusText,
+                        style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppTheme.primaryColor,
+                          side: const BorderSide(color: AppTheme.primaryColor),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: () {
+                          if (item['clientId'] != null) {
+                            Navigator.pop(context);
+                            showDialog(
+                              context: context,
+                              builder: (context) => ClientFilesDialog(
+                                client: Client(id: item['clientId'].toString(), name: item['clientName'], fileNo: item['fileNo']),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client information not available for this license')));
+                          }
+                        },
+                        icon: const Icon(Icons.folder_open),
+                        label: const Text('View Files'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const Scaffold(
+                            backgroundColor: AppTheme.backgroundColor,
+                            body: SafeArea(child: LicenseManagementScreen(initialFilter: 'All')),
+                          )));
+                        },
+                        child: const Text('Manage'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 2,
+          child: Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+        ),
+        Expanded(
+          flex: 3,
+          child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSection({
     required String title,
     required IconData icon,
@@ -508,16 +638,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
                     child: ListTile(
                       onTap: () {
-                        if (item['clientId'] != null) {
-                          showDialog(
-                            context: context,
-                            builder: (context) => ClientFilesDialog(
-                              client: Client(id: item['clientId'].toString(), name: item['clientName'], fileNo: item['fileNo']),
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client information not available for this license')));
-                        }
+                        _showLicenseDetailsDialog(context, item);
                       },
                       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
                       title: Text(item['clientName'], style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),

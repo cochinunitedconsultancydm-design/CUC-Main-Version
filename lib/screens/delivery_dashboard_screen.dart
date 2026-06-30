@@ -719,7 +719,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                   NavigationRailDestination(
                     icon: Icon(Icons.assignment_outlined),
                     selectedIcon: Icon(Icons.assignment_rounded),
-                    label: Text('Tasks'),
+                    label: Text('Deliveries and Pickup'),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.chat_bubble_outline_rounded),
@@ -768,7 +768,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.assignment_outlined),
                   activeIcon: Icon(Icons.assignment_rounded),
-                  label: 'Tasks',
+                  label: 'Deliveries and Pickup',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.chat_bubble_outline_rounded),

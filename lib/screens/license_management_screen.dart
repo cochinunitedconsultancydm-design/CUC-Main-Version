@@ -256,7 +256,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
       final typesList = res.data?.items.whereType<amplify_models.LicenseTypes>().toList() ?? [];
       typesList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       setState(() {
-        _licenseTypes = typesList.map((t) => {'id': t.id, 'name': t.name}).toList();
+        _licenseTypes = typesList.map((t) => <String, dynamic>{'id': t.id, 'name': t.name}).toList();
       });
     } catch (e) {
       debugPrint('Error fetching types: $e');
@@ -264,7 +264,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     
     if (_licenseTypes.isEmpty) {
       setState(() {
-        _licenseTypes = _fallbackLicenseTypes.entries.map((e) => {'id': e.key, 'name': e.value}).toList();
+        _licenseTypes = _fallbackLicenseTypes.entries.map((e) => <String, dynamic>{'id': e.key, 'name': e.value}).toList();
       });
     }
   }
@@ -285,7 +285,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
       setState(() {
         _licenses = licenseList.map((row) {
           final client = clientsList.firstWhere((c) => c.id == row.client_id.toString(), orElse: () => amplify_models.Clients(name: 'Unknown'));
-          final type = _licenseTypes.firstWhere((t) => t['id'].toString() == row.license_type_id.toString(), orElse: () => {'name': null});
+          final type = _licenseTypes.firstWhere((t) => t['id'].toString() == row.license_type_id.toString(), orElse: () => <String, dynamic>{'name': null});
           
           return ClientLicense(
             id: int.tryParse(row.id), // Dynamic -> int for legacy compatibility
@@ -843,7 +843,18 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const Text('Licences Management', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -1)),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (Navigator.of(context).canPop())
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          onPressed: () => Navigator.pop(context),
+                          padding: const EdgeInsets.only(right: 16),
+                        ),
+                      const Text('Licences Management', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -1)),
+                    ],
+                  ),
                   Row(
                     children: [
                       SizedBox(
@@ -869,7 +880,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: _filterType,
+                            value: ['All', 'Active', 'Expiring Soon', 'Expired'].contains(_filterType) ? _filterType : 'All',
                             items: const [
                               DropdownMenuItem(value: 'All', child: Text('All Licenses')),
                               DropdownMenuItem(value: 'Active', child: Text('Active')),
@@ -903,7 +914,18 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                 ],
               )
             else ...[
-              const Text('Licences Management', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -1)),
+              Row(
+                children: [
+                  if (Navigator.of(context).canPop())
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      onPressed: () => Navigator.pop(context),
+                      padding: const EdgeInsets.only(right: 16),
+                      constraints: const BoxConstraints(),
+                    ),
+                  const Text('Licences Management', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -1)),
+                ],
+              ),
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -929,7 +951,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: _filterType,
+                        value: ['All', 'Active', 'Expiring Soon', 'Expired'].contains(_filterType) ? _filterType : 'All',
                         isDense: true,
                         items: const [
                           DropdownMenuItem(value: 'All', child: Text('All')),

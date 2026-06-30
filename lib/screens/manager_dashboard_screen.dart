@@ -42,6 +42,7 @@ import 'document_list_screen.dart';
 import 'verification_history_view.dart';
 import 'property_management_screen.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import 'file_acknowledgement_screen.dart';
 
 class ManagerDashboardScreen extends StatefulWidget {
   const ManagerDashboardScreen({super.key});
@@ -123,7 +124,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             const Text("Today's Task"),
           ],
         ),
-        content: Text("You have $count pending tasks in your checklist for today. Would you like to view them now?"),
+        content: Text("You have $count pending tasks for today. Would you like to view them now?"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Later")),
           ElevatedButton(
@@ -492,7 +493,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             child: Column(
               children: [
                 _sidebarItem(0, Icons.insights_rounded, 'Operations Overview', isWide),
-                _sidebarItem(12, Icons.playlist_add_check_rounded, 'Today\'s Checklist', isWide),
+                _sidebarItem(12, Icons.playlist_add_check_rounded, 'Today\'s Task', isWide),
                 _sidebarItem(1, Icons.design_services_outlined, 'Service Content', isWide),
                 _sidebarItem(2, Icons.people_outline_rounded, 'Staff Management', isWide),
                 _sidebarItem(3, Icons.people_alt_rounded, 'Client Data', isWide),
@@ -502,13 +503,14 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 _sidebarItem(9, Icons.vpn_key_rounded, 'Digital Signature', isWide),
                 _sidebarItem(6, Icons.work_rounded, 'Work Management', isWide),
                 _sidebarItem(13, Icons.rate_review_rounded, 'Verification', isWide),
-                _sidebarItem(8, Icons.task_alt_rounded, 'Task Management', isWide),
+                _sidebarItem(8, Icons.task_alt_rounded, 'Deliveries and Pickup', isWide),
                 _sidebarItem(17, Icons.calendar_month_rounded, 'Reminder Calendar', isWide),
                 _sidebarItem(10, Icons.chat_bubble_outline_rounded, 'Staff Chat', isWide),
                 _sidebarItem(15, Icons.location_on_outlined, 'Staff Locations', isWide),
                 _sidebarItem(16, Icons.directions_car_filled_outlined, 'Travel Logs', isWide),
                 _sidebarItem(14, Icons.table_view_rounded, 'Upload Table', isWide),
                 _sidebarItem(18, Icons.mark_email_unread_rounded, 'Post Register', isWide),
+                _sidebarItem(22, Icons.handshake_rounded, 'File Acknowledgement', isWide),
                 _sidebarItem(19, Icons.cloud_sync, 'Google Docs Vault', isWide),
                 _sidebarItem(20, Icons.history_rounded, 'Verification History', isWide),
                 _sidebarItem(21, Icons.real_estate_agent_rounded, 'Property Management', isWide),
@@ -649,6 +651,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       case 19: return const DocumentListScreen(userEmail: 'manager@cochinunited.com');
       case 20: return const VerificationHistoryView();
       case 21: return const PropertyManagementScreen();
+      case 22: return const FileAcknowledgementScreen(currentUserRole: 'manager', currentUserName: 'Manager');
       case 7: return _buildSettingsPage();
       default: return _buildPlaceholderView('Coming Soon');
     }
@@ -789,7 +792,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               PremiumStatCard(title: 'Company Expenses', value: _adminStats['totalExpenses'], trend: 'Payables', icon: Icons.outbound_rounded, color: AppTheme.textColor, isNarrow: !isWide, onTap: () => setState(() => _selectedIndex = 11)),
               PremiumStatCard(title: 'Total Clients', value: _adminStats['totalClients'], trend: '+12%', icon: Icons.people_rounded, color: AppTheme.primaryColor, isNarrow: !isWide, onTap: () {}),
               PremiumStatCard(title: 'Active Licenses', value: _adminStats['activeLicenses'], trend: '+5%', icon: Icons.verified_user_rounded, color: AppTheme.textColor, isNarrow: !isWide, onTap: () => setState(() => _selectedCategory = 'Expiring Licences')),
-              PremiumStatCard(title: 'Pending Tasks', value: _adminStats['pendingTasks'], trend: 'Needs Action', icon: Icons.task_alt_rounded, color: AppTheme.primaryColor, isNarrow: !isWide, onTap: () => setState(() => _selectedIndex = 8)),
+              PremiumStatCard(title: 'Pending Deliveries/Pickup', value: _adminStats['pendingTasks'], trend: 'Needs Action', icon: Icons.task_alt_rounded, color: AppTheme.primaryColor, isNarrow: !isWide, onTap: () => setState(() => _selectedIndex = 8)),
               PremiumStatCard(title: 'Active Projects', value: _adminStats['pendingWorks'], trend: 'In Pipeline', icon: Icons.work_history_rounded, color: AppTheme.textColor, isNarrow: !isWide, onTap: () => setState(() => _selectedCategory = 'Work Management')),
             ].animate(interval: 100.ms).fadeIn().slideY(begin: 0.1),
           ),
@@ -1237,7 +1240,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _buildBannerAction('Assign Task', Icons.add_task_rounded, () => setState(() => _selectedIndex = 8)),
+                  _buildBannerAction('Assign Delivery/Pickup/Visit', Icons.add_task_rounded, () => setState(() => _selectedIndex = 8)),
                   _buildBannerAction('Create Work', Icons.assignment_add, () => setState(() => _selectedIndex = 6)),
                   _buildBannerAction('Manage Staff', Icons.person_add_alt_1_rounded, () => setState(() => _selectedIndex = 2)),
                   _buildBannerAction('Broadcast', Icons.campaign_rounded, () => setState(() => _selectedIndex = 6)),

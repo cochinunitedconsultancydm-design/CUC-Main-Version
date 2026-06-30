@@ -95,43 +95,47 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     InputDecoration inputDec(String label, IconData icon) {
       return InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: AppTheme.primaryColor, size: 20),
+        labelStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
+        prefixIcon: Icon(icon, color: AppTheme.primaryColor.withOpacity(0.7), size: 22),
         filled: true,
         fillColor: Colors.grey.shade50,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppTheme.primaryColor)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       );
     }
 
     Widget statusChip(String label, bool isSelected, Function(String) onSelect) {
-      final color = label == 'Paid' ? Colors.green : Colors.orange;
-      final icon = label == 'Paid' ? Icons.check_circle_rounded : Icons.pending_actions_rounded;
+      final color = (label == 'Paid' || label == 'Income (Incoming)') ? Colors.green : (label == 'Pending' ? Colors.orange : AppTheme.primaryColor);
+      final icon = label == 'Paid' ? Icons.check_circle_rounded 
+                 : label == 'Pending' ? Icons.pending_actions_rounded
+                 : label == 'Income (Incoming)' ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded;
       return Expanded(
         child: InkWell(
           onTap: () => onSelect(label),
           borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: isSelected ? color.withValues(alpha: 0.1) : Colors.grey.shade50,
-              border: Border.all(color: isSelected ? color : Colors.grey.shade200),
+              color: isSelected ? color.withOpacity(0.1) : Colors.grey.shade50,
+              border: Border.all(color: isSelected ? color.withOpacity(0.5) : Colors.grey.shade200, width: isSelected ? 1.5 : 1),
               borderRadius: BorderRadius.circular(12),
             ),
             alignment: Alignment.center,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 16, color: isSelected ? color : Colors.grey),
+                Icon(icon, size: 18, color: isSelected ? color : Colors.grey.shade400),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? color : Colors.grey,
-                      fontSize: 13,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                      color: isSelected ? color : Colors.grey.shade600,
+                      fontSize: 14,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -146,250 +150,311 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-          contentPadding: const EdgeInsets.all(24),
-          title: Text(bill == null ? 'Add Company Bill' : 'Edit Bill', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
-          content: SingleChildScrollView(
-            child: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.9,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  DropdownButtonFormField<String>(
-                    key: ValueKey(isIncoming),
-                    initialValue: category,
-                    decoration: inputDec('Category', Icons.category_rounded),
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.primaryColor),
-                    dropdownColor: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    items: currentCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                    onChanged: (v) => setModalState(() => category = v!),
+        builder: (context, setModalState) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 800),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 30, offset: const Offset(0, 10)),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                   ),
-                  const SizedBox(height: 16),
-                  TextField(controller: title, decoration: inputDec('Title (e.g. March 2024)', Icons.title_rounded)),
-                  const SizedBox(height: 16),
-                  
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.only(left: 4, bottom: 8),
-                        child: Text('Transaction Type', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
-                      ),
                       Row(
                         children: [
-                          statusChip('Expense (Outgoing)', !isIncoming, (v) {
-                            setModalState(() {
-                              isIncoming = false;
-                              currentCategories = _expenseCategories;
-                              if (!currentCategories.contains(category)) category = currentCategories.first;
-                            });
-                          }),
-                          const SizedBox(width: 12),
-                          statusChip('Income (Incoming)', isIncoming, (v) {
-                            setModalState(() {
-                              isIncoming = true;
-                              currentCategories = _incomeCategories;
-                              if (!currentCategories.contains(category)) category = currentCategories.first;
-                            });
-                          }),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+                            child: Icon(bill == null ? Icons.add_circle_outline_rounded : Icons.edit_note_rounded, color: Colors.white),
+                          ),
+                          const SizedBox(width: 16),
+                          Text(bill == null ? 'Add Company Bill' : 'Edit Bill', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Colors.white)),
                         ],
                       ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded, color: Colors.white),
+                        style: IconButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.1)),
+                      )
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  
-                  TextField(controller: amount, decoration: inputDec('Amount (₹)', Icons.currency_rupee_rounded), keyboardType: TextInputType.number),
-                  const SizedBox(height: 16),
-                  
-                  // Date Picker styled like an input field
-                  InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: selectedDate,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
-                        builder: (context, child) => Theme(
-                          data: Theme.of(context).copyWith(
-                            colorScheme: const ColorScheme.light(primary: AppTheme.primaryColor),
-                          ),
-                          child: child!,
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          key: ValueKey(isIncoming),
+                          initialValue: category,
+                          decoration: inputDec('Category', Icons.category_rounded),
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.primaryColor),
+                          dropdownColor: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          items: currentCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                          onChanged: (v) => setModalState(() => category = v!),
                         ),
-                      );
-                      if (picked != null) setModalState(() => selectedDate = picked);
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        border: Border.all(color: Colors.grey.shade200),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.calendar_month_rounded, color: AppTheme.primaryColor, size: 20),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Bill Date', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                              const SizedBox(height: 2),
-                              Text(DateFormat('dd MMM yyyy').format(selectedDate), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(left: 4, bottom: 8),
-                        child: Text('Payment Status', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
-                      ),
-                      Row(
-                        children: [
-                          statusChip('Pending', status == 'Pending', (v) => setModalState(() => status = v)),
-                          const SizedBox(width: 12),
-                          statusChip('Paid', status == 'Paid', (v) => setModalState(() => status = v)),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(controller: desc, decoration: inputDec('Description', Icons.description_rounded), maxLines: 2),
-                  const SizedBox(height: 16),
-                  const Text('Attributed to Staff', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
-                  const SizedBox(height: 12),
-                  InkWell(
-                    onTap: () async {
-                      final result = await _showStaffPicker();
-                      if (result != null) {
-                        setModalState(() {
-                          selectedStaffId = result['id'];
-                          selectedStaffName = result['name'];
-                        });
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.person_search_rounded, size: 20, color: selectedStaffId == null ? Colors.grey : AppTheme.primaryColor),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              selectedStaffName ?? 'Select Staff Member (Default: Me)',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: selectedStaffId == null ? Colors.grey : Colors.black,
-                                fontWeight: selectedStaffId == null ? FontWeight.normal : FontWeight.bold,
+                        const SizedBox(height: 24),
+                        TextField(controller: title, decoration: inputDec('Title (e.g. March 2024)', Icons.title_rounded)),
+                        const SizedBox(height: 24),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(left: 4, bottom: 12),
+                              child: Text('Transaction Type', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                            ),
+                            Row(
+                              children: [
+                                statusChip('Expense (Outgoing)', !isIncoming, (v) {
+                                  setModalState(() {
+                                    isIncoming = false;
+                                    currentCategories = _expenseCategories;
+                                    if (!currentCategories.contains(category)) category = currentCategories.first;
+                                  });
+                                }),
+                                const SizedBox(width: 12),
+                                statusChip('Income (Incoming)', isIncoming, (v) {
+                                  setModalState(() {
+                                    isIncoming = true;
+                                    currentCategories = _incomeCategories;
+                                    if (!currentCategories.contains(category)) category = currentCategories.first;
+                                  });
+                                }),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        TextField(controller: amount, decoration: inputDec('Amount (₹)', Icons.currency_rupee_rounded), keyboardType: TextInputType.number),
+                        const SizedBox(height: 24),
+                        InkWell(
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2030),
+                              builder: (context, child) => Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: const ColorScheme.light(primary: AppTheme.primaryColor),
+                                ),
+                                child: child!,
                               ),
+                            );
+                            if (picked != null) setModalState(() => selectedDate = picked);
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              border: Border.all(color: Colors.grey.shade200),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.calendar_month_rounded, color: AppTheme.primaryColor.withOpacity(0.7), size: 22),
+                                const SizedBox(width: 16),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Bill Date', style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500)),
+                                    const SizedBox(height: 4),
+                                    Text(DateFormat('dd MMM yyyy').format(selectedDate), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
-                          const Icon(Icons.arrow_drop_down_rounded, color: Colors.grey),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 24),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(left: 4, bottom: 12),
+                              child: Text('Payment Status', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                            ),
+                            Row(
+                              children: [
+                                statusChip('Pending', status == 'Pending', (v) => setModalState(() => status = v)),
+                                const SizedBox(width: 12),
+                                statusChip('Paid', status == 'Paid', (v) => setModalState(() => status = v)),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        TextField(controller: desc, decoration: inputDec('Description', Icons.description_rounded), maxLines: 2),
+                        const SizedBox(height: 24),
+                        const Padding(
+                          padding: EdgeInsets.only(left: 4, bottom: 12),
+                          child: Text('Attributed to Staff', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                        ),
+                        InkWell(
+                          onTap: () async {
+                            final result = await _showStaffPicker();
+                            if (result != null) {
+                              setModalState(() {
+                                selectedStaffId = result['id'];
+                                selectedStaffName = result['name'];
+                              });
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.person_search_rounded, size: 22, color: selectedStaffId == null ? Colors.grey : AppTheme.primaryColor.withOpacity(0.7)),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Text(
+                                    selectedStaffName ?? 'Select Staff Member (Default: Me)',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: selectedStaffId == null ? Colors.grey : Colors.black,
+                                      fontWeight: selectedStaffId == null ? FontWeight.normal : FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_drop_down_rounded, color: Colors.grey),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(32, 16, 32, 24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), offset: const Offset(0, -4), blurRadius: 10)],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context), 
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.grey.shade600,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
+                        ),
+                        child: const Text('Cancel')
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        onPressed: () async {
+                          if (title.text.isEmpty || amount.text.isEmpty) {
+                            _msg('Please enter title and amount', false);
+                            return;
+                          }
+                          try {
+                            final uid = await AuthService().getUserId();
+                            final uname = await AuthService().getUserName();
+          
+                            double parsedAmount = double.tryParse(amount.text) ?? 0;
+                            if (isIncoming) parsedAmount = -parsedAmount.abs();
+                            else parsedAmount = parsedAmount.abs();
+          
+                            final finalSpentBy = selectedStaffId ?? uid;
+                            final finalSpentByName = selectedStaffName ?? uname;
+          
+                            final newBill = CompanyBill(
+                              id: bill?.id,
+                              category: category,
+                              title: title.text,
+                              amount: parsedAmount,
+                              billDate: selectedDate,
+                              status: status,
+                              description: desc.text,
+                              spentBy: finalSpentBy,
+                              spentByName: finalSpentByName,
+                            );
+          
+                            if (bill == null) {
+                              final model = amplify_models.CompanyBills(
+                                category: newBill.category,
+                                title: newBill.title,
+                                amount: newBill.amount,
+                                bill_date: newBill.billDate.toIso8601String(),
+                                status: newBill.status,
+                                description: newBill.description,
+                                spent_by: int.tryParse(newBill.spentBy?.toString() ?? ''),
+                                spent_by_name: newBill.spentByName,
+                              );
+                              final req = ModelMutations.create(model);
+                              await Amplify.API.mutate(request: req).response;
+                            } else {
+                              final model = amplify_models.CompanyBills(
+                                id: newBill.id,
+                                category: newBill.category,
+                                title: newBill.title,
+                                amount: newBill.amount,
+                                bill_date: newBill.billDate.toIso8601String(),
+                                status: newBill.status,
+                                description: newBill.description,
+                                spent_by: int.tryParse(newBill.spentBy?.toString() ?? ''),
+                                spent_by_name: newBill.spentByName,
+                              );
+                              final req = ModelMutations.update(model);
+                              await Amplify.API.mutate(request: req).response;
+                            }
+                            if (mounted) Navigator.pop(context);
+                            _fetchBills();
+                            _msg('Saved successfully', true);
+                          } catch (e) {
+                            _msg('Error: ', false);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 2,
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.save_rounded, size: 20),
+                            SizedBox(width: 8),
+                            Text('Save Bill', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context), 
-              style: TextButton.styleFrom(foregroundColor: Colors.grey, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
-              child: const Text('Cancel')
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (title.text.isEmpty || amount.text.isEmpty) {
-                  _msg('Please enter title and amount', false);
-                  return;
-                }
-                try {
-                  final uid = await AuthService().getUserId();
-                  final uname = await AuthService().getUserName();
-
-                  double parsedAmount = double.tryParse(amount.text) ?? 0;
-                  if (isIncoming) parsedAmount = -parsedAmount.abs();
-                  else parsedAmount = parsedAmount.abs();
-
-                  final finalSpentBy = selectedStaffId ?? uid;
-                  final finalSpentByName = selectedStaffName ?? uname;
-
-                  final newBill = CompanyBill(
-                    id: bill?.id,
-                    category: category,
-                    title: title.text,
-                    amount: parsedAmount,
-                    billDate: selectedDate,
-                    status: status,
-                    description: desc.text,
-                    spentBy: finalSpentBy,
-                    spentByName: finalSpentByName,
-                  );
-
-                  if (bill == null) {
-                    final model = amplify_models.CompanyBills(
-                      category: newBill.category,
-                      title: newBill.title,
-                      amount: newBill.amount,
-                      bill_date: newBill.billDate.toIso8601String(),
-                      status: newBill.status,
-                      description: newBill.description,
-                      spent_by: int.tryParse(newBill.spentBy?.toString() ?? ''),
-                      spent_by_name: newBill.spentByName,
-                    );
-                    final req = ModelMutations.create(model);
-                    await Amplify.API.mutate(request: req).response;
-                  } else {
-                    final model = amplify_models.CompanyBills(
-                      id: newBill.id,
-                      category: newBill.category,
-                      title: newBill.title,
-                      amount: newBill.amount,
-                      bill_date: newBill.billDate.toIso8601String(),
-                      status: newBill.status,
-                      description: newBill.description,
-                      spent_by: int.tryParse(newBill.spentBy?.toString() ?? ''),
-                      spent_by_name: newBill.spentByName,
-                    );
-                    final req = ModelMutations.update(model);
-                    await Amplify.API.mutate(request: req).response;
-                  }
-                  if (mounted) Navigator.pop(context);
-                  _fetchBills();
-                  _msg('Saved successfully', true);
-                } catch (e) {
-                  _msg('Error: $e', false);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
-              child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
         ),
       ),
     );
@@ -445,13 +510,13 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         child: Column(
           children: [
-          // ─── SUMMARY HEADER ───
+          // â”€â”€â”€ SUMMARY HEADER â”€â”€â”€
           _buildSummaryHeader(totalMonthly, pendingCount),
           
-          // ─── CATEGORY FILTER ───
+          // â”€â”€â”€ CATEGORY FILTER â”€â”€â”€
           _buildCategoryFilter(),
           
-          // ─── BILL LIST ───
+          // â”€â”€â”€ BILL LIST â”€â”€â”€
           Expanded(
             child: _isLoading 
                 ? const Center(child: CircularProgressIndicator())
@@ -512,7 +577,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                 const Text('Monthly Expenses', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 4),
                 Text(
-                  '₹${NumberFormat("#,##,###.##").format(total)}',
+                  '\u20B9${NumberFormat("#,##,###.##").format(total)}',
                   style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
                 ),
               ],
@@ -627,7 +692,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${bill.amount < 0 ? "+" : "-"} ₹${NumberFormat("#,##,###").format(bill.amount.abs())}',
+                    '${bill.amount < 0 ? "+" : "-"} \u20B9${NumberFormat("#,##,###").format(bill.amount.abs())}',
                     style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: bill.amount < 0 ? Colors.green.shade700 : Colors.red.shade600),
                   ),
                   const SizedBox(height: 6),

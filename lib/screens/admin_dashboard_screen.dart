@@ -13,6 +13,7 @@ import 'monitor_screen.dart';
 import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/premium_app_bar.dart';
+import 'file_acknowledgement_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
@@ -87,7 +88,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             const Text("Today's Task"),
           ],
         ),
-        content: Text("You have $count pending tasks in your checklist for today. Would you like to view them now?"),
+        content: Text("You have $count pending deliveries and pickup in your checklist for today. Would you like to view them now?"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Later")),
           ElevatedButton(
@@ -292,6 +293,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _sidebarItem(4, Icons.storage_rounded, 'System Maintenance', isWide),
                 _sidebarItem(5, Icons.health_and_safety_outlined, 'System Health', isWide),
                 _sidebarItem(19, Icons.cloud_sync, 'Google Docs Vault', isWide),
+                _sidebarItem(22, Icons.handshake_rounded, 'File Acknowledgement', isWide),
                 _sidebarItem(20, Icons.history_rounded, 'Verification History', isWide),
                 _sidebarItem(21, Icons.real_estate_agent_rounded, 'Property Management', isWide),
               ],
@@ -415,6 +417,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 19: return const DocumentListScreen(userEmail: 'admin@cochinunited.com');
       case 20: return const VerificationHistoryView();
       case 21: return const PropertyManagementScreen();
+      case 22: return const FileAcknowledgementScreen(currentUserRole: 'admin', currentUserName: 'Admin');
       default: return _buildPlaceholderView('Coming Soon');
     }
   }

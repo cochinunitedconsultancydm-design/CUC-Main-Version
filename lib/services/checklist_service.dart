@@ -191,8 +191,26 @@ class ChecklistService {
       final req = ModelQueries.list(Users.classType);
       final res = await Amplify.API.query(request: req).response;
       var items = res.data?.items.where((e) => e != null).cast<Users>().toList() ?? [];
-      items.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
-      return items.map((u) => u.toJson()).toList();
+      
+      final Map<String, Users> uniqueUsers = {};
+      for (var user in items) {
+        final name = (user.name ?? '').trim();
+        if (name.isEmpty) continue;
+        
+        final firstWord = name.split(' ').first.toLowerCase();
+        
+        if (!uniqueUsers.containsKey(firstWord)) {
+          uniqueUsers[firstWord] = user;
+        } else {
+          if (name.length > (uniqueUsers[firstWord]!.name ?? '').length) {
+            uniqueUsers[firstWord] = user;
+          }
+        }
+      }
+      
+      var uniqueItems = uniqueUsers.values.toList();
+      uniqueItems.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+      return uniqueItems.map((u) => u.toJson()).toList();
     } catch (e) {
       safePrint('Error getAllUsers: $e');
       return [];

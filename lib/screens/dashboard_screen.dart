@@ -49,6 +49,7 @@ import 'document_list_screen.dart';
 import 'verification_history_view.dart';
 import 'travel_log_screen.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import 'file_acknowledgement_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -339,7 +340,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const Text("Today's Task"),
           ],
         ),
-        content: Text("You have $count pending tasks in your checklist for today. Would you like to view them now?"),
+        content: Text("You have $count pending tasks for today. Would you like to view them now?"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Later")),
           ElevatedButton(
@@ -630,6 +631,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 17: return const DocumentListScreen(userEmail: 'staff@cochinunited.com');
       case 18: return const VerificationHistoryView();
       case 19: return const TravelLogScreen();
+      case 20: return FileAcknowledgementScreen(currentUserRole: _userRole, currentUserName: _userName);
       default: return const Center(child: Text('Page not found'));
     }
   }
@@ -676,7 +678,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 children: [
                   _sidebarItem(0, Icons.grid_view_rounded, 'Dashboard'),
-                  _sidebarItem(12, Icons.playlist_add_check_rounded, 'Today\'s Checklist', badge: _stats['pendingChecklists'] > 0 ? _stats['pendingChecklists'].toString() : null),
+                  _sidebarItem(12, Icons.playlist_add_check_rounded, 'Today\'s Task', badge: _stats['pendingChecklists'] > 0 ? _stats['pendingChecklists'].toString() : null),
                   _sidebarItem(11, Icons.account_balance_wallet_rounded, 'Accounting & Pay'),
                   _sidebarItem(2, Icons.receipt_long_rounded, 'Billing'),
                   _sidebarItem(3, Icons.people_alt_rounded, 'Client Data'),
@@ -687,7 +689,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   _sidebarItem(6, Icons.work_rounded, 'Work Management'),
                   _sidebarItem(13, Icons.rate_review_rounded, 'Verification'),
-                  _sidebarItem(10, Icons.task_alt_rounded, 'Tasks'),
+                  _sidebarItem(10, Icons.task_alt_rounded, 'Deliveries and Pickup'),
                   _sidebarItem(14, Icons.calendar_month_rounded, 'Reminder Calendar'),
                   _sidebarItem(1, Icons.business_center_rounded, 'Our Services'),
                   _sidebarItem(4, Icons.verified_user_rounded, 'Licences'),
@@ -704,6 +706,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _sidebarItem(9, Icons.chat_bubble_outline_rounded, 'Internal Chat'),
                   _sidebarItem(15, Icons.table_view_rounded, 'Upload Table'),
                   _sidebarItem(16, Icons.mark_email_unread_rounded, 'Post Register'),
+                  _sidebarItem(20, Icons.handshake_rounded, 'File Acknowledgement'),
                   _sidebarItem(17, Icons.cloud_sync, 'Google Docs Vault'),
                   _sidebarItem(18, Icons.history_rounded, 'Verification History'),
                   _sidebarItem(19, Icons.directions_car_filled_outlined, 'Travel Logs'),
@@ -949,7 +952,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       ),
       PremiumStatCard(
-        title: _isAdmin ? 'All Tasks' : 'My Tasks',
+        title: _isAdmin ? 'All Deliveries and Pickup' : 'My Deliveries and Pickup',
         value: _stats['pendingTasks'].toString(),
         trend: _stats['tasksDetail'] ?? '0 pending',
         icon: Icons.task_alt_rounded,

@@ -34,6 +34,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   int? _selectedDealId;
   TextEditingController? _staffTextController;
   DateTime _selectedDate = DateTime.now();
+  TimeOfDay _selectedTime = TimeOfDay.now();
 
   @override
   void initState() {
@@ -46,11 +47,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     _userId = await _authService.getUserId();
     _isManager = await _authService.isManager() || await _authService.isAdmin();
     
-    if (_isManager) {
-      final allUsers = await _checklistService.getAllUsers();
-      _users = allUsers.where((u) => u['id'] != _userId).toList();
-      _deals = await DealService().getAllDeals();
-    }
+    final allUsers = await _checklistService.getAllUsers();
+    _users = allUsers;
+    _deals = await DealService().getAllDeals();
     
     await _fetchChecklists();
     setState(() => _isLoading = false);
@@ -59,11 +58,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   Future<void> _fetchChecklists() async {
     if (_userId == null) return;
     
-    if (_isManager) {
-      _checklists = await _checklistService.getAllChecklists();
-    } else {
-      _checklists = await _checklistService.getChecklistsForUser(_userId!);
-    }
+    _checklists = await _checklistService.getAllChecklists();
   }
 
   Future<void> _handleRefresh() async {
@@ -82,7 +77,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         title: const Text("Today's Task", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: _buildChecklistList(),
-      floatingActionButton: _isManager ? FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           showDialog(
             context: context,
@@ -99,7 +94,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         label: const Text('Create Task', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
-      ) : null,
+      ),
     );
   }
 
@@ -110,7 +105,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         child: ListView(
           children: const [
             SizedBox(height: 100),
-            Center(child: Text("No checklists for today.", style: TextStyle(color: Colors.grey))),
+            Center(child: Text("No tasks for today.", style: TextStyle(color: Colors.grey))),
           ],
         ),
       );
@@ -138,6 +133,14 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       case 'Pending': statusColor = Colors.blue; break;
     }
 
+    String displayTitle = checklist.title;
+    String? displayTime;
+    final timeMatch = RegExp(r'^\[(.*?)\]\s+(.*)$').firstMatch(checklist.title);
+    if (timeMatch != null) {
+      displayTime = timeMatch.group(1);
+      displayTitle = timeMatch.group(2)!;
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -154,9 +157,24 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    checklist.title,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayTitle,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      if (displayTime != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.access_time, size: 14, color: AppTheme.primaryColor),
+                            const SizedBox(width: 4),
+                            Text(displayTime, style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 13)),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 Container(
@@ -197,7 +215,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 const Icon(Icons.person_outline, size: 16, color: Colors.grey),
                 const SizedBox(width: 4),
                 Text(
-                  _isManager ? "Responsible: ${checklist.responsibleName ?? 'Unknown'}" : "Assigned by: ${checklist.managerName ?? 'Manager'}",
+                  (checklist.managerId == _userId || _isManager) ? "Responsible: ${checklist.responsibleName ?? 'Unknown'}" : "Assigned by: ${checklist.managerName ?? 'Manager'}",
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
@@ -251,6 +269,14 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   }
 
   void _showChecklistDetails(Checklist checklist, Color statusColor) {
+    String displayTitle = checklist.title;
+    String? displayTime;
+    final timeMatch = RegExp(r'^\[(.*?)\]\s+(.*)$').firstMatch(checklist.title);
+    if (timeMatch != null) {
+      displayTime = timeMatch.group(1);
+      displayTitle = timeMatch.group(2)!;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -270,7 +296,17 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(checklist.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(displayTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              if (displayTime != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, size: 16, color: AppTheme.primaryColor),
+                    const SizedBox(width: 6),
+                    Text(displayTime, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                  ],
+                ),
+              ],
               const SizedBox(height: 16),
               if (checklist.description != null && checklist.description!.isNotEmpty) ...[
                 const Text("Description", style: TextStyle(color: Colors.grey, fontSize: 12)),
@@ -394,7 +430,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text("Create New Task", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                              Text("Assign a daily checklist to a staff member", style: TextStyle(color: AppTheme.mutedTextColor)),
+                              Text("Assign a daily task to a staff member", style: TextStyle(color: AppTheme.mutedTextColor)),
                             ],
                           ),
                         ),
@@ -461,6 +497,26 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                         }
                       },
                     ).animate().fadeIn(delay: 250.ms, duration: 400.ms).slideX(begin: 0.05),
+                    const SizedBox(height: 20),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("Task Time", style: TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(_selectedTime.format(context), style: const TextStyle(fontSize: 16)),
+                      trailing: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                        child: const Icon(Icons.access_time, color: AppTheme.primaryColor),
+                      ),
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: _selectedTime,
+                        );
+                        if (picked != null) {
+                          setDialogState(() => _selectedTime = picked);
+                        }
+                      },
+                    ).animate().fadeIn(delay: 300.ms, duration: 400.ms).slideX(begin: 0.05),
                     const SizedBox(height: 20),
                     LayoutBuilder(
                       builder: (context, constraints) {
@@ -672,7 +728,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         }
 
         final checklist = Checklist(
-          title: _titleController.text,
+          title: '[${_selectedTime.format(context)}] ${_titleController.text}',
           description: _descController.text,
           responsibleId: respId,
           dealId: _selectedDealId,
@@ -688,10 +744,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         _selectedStaff.clear();
         _selectedDealId = null;
         _selectedDate = DateTime.now();
+        _selectedTime = TimeOfDay.now();
       });
       
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Checklist assigned successfully!")),
+        const SnackBar(content: Text("Task assigned successfully!")),
       );
       
       Navigator.pop(context); // Close the dialog

@@ -33,10 +33,10 @@ class InwardPostService {
     }
   }
 
-  /// Add a new inward post
   static Future<void> addPost(InwardPost post) async {
     try {
       final newPost = InwardPosts(
+        id: post.id,
         sender_name: post.senderName,
         received_by: post.receivedBy,
         recipient_name: post.recipientName,
@@ -47,6 +47,26 @@ class InwardPostService {
       await BackupAwareApi().create(newPost);
     } catch (e) {
       debugPrint('Error adding inward post: $e');
+    }
+  }
+
+  /// Update an existing inward post
+  static Future<void> updatePost(InwardPost post) async {
+    try {
+      final req = ModelQueries.list(InwardPosts.classType, where: InwardPosts.ID.eq(post.id));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data?.items.isNotEmpty == true) {
+        final item = res.data!.items.first!;
+        final updated = item.copyWith(
+          sender_name: post.senderName,
+          recipient_name: post.recipientName,
+          description: post.description,
+          status: post.status.toString(),
+        );
+        await BackupAwareApi().update(updated);
+      }
+    } catch (e) {
+      debugPrint('Error updating inward post: $e');
     }
   }
   

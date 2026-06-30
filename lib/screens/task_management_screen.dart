@@ -36,9 +36,9 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
   List<Task> _allTasks = []; // For Admins
 
   List<Map<String, dynamic>> _allUsers = [];
+  List<amplify_models.Clients> _allClients = [];
   final _searchController = TextEditingController();
   String _statusFilter = 'All';
-
   StreamSubscription? _createSub;
   StreamSubscription? _updateSub;
   StreamSubscription? _deleteSub;
@@ -88,6 +88,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     await Future.wait([
       _fetchTasks(),
       _fetchUsers(),
+      _fetchClients(),
     ]);
     
     _subscribeToTasks();
@@ -117,11 +118,35 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     super.dispose();
   }
 
+  Future<void> _fetchClients() async {
+    try {
+      final req = ModelQueries.list(amplify_models.Clients.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final clients = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+      clients.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+      if (mounted) setState(() => _allClients = clients);
+    } catch (_) {}
+  }
+
   Future<void> _fetchUsers() async {
     try {
       final req = ModelQueries.list(amplify_models.Users.classType);
       final res = await Amplify.API.query(request: req).response;
-      var users = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      var items = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      final Map<String, amplify_models.Users> uniqueUsers = {};
+      for (var user in items) {
+        final name = (user.name ?? '').trim();
+        if (name.isEmpty) continue;
+        final firstWord = name.split(' ').first.toLowerCase();
+        if (!uniqueUsers.containsKey(firstWord)) {
+          uniqueUsers[firstWord] = user;
+        } else {
+          if (name.length > (uniqueUsers[firstWord]!.name ?? '').length) {
+            uniqueUsers[firstWord] = user;
+          }
+        }
+      }
+      var users = uniqueUsers.values.toList();
       users.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       if (mounted) {
         setState(() {
@@ -235,7 +260,18 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
   }
 
   void _showTaskDialog([Task? task]) {
-    final titleCtrl = TextEditingController(text: task?.title);
+    String selectedTaskType = 'Delivery';
+    bool needsReturn = false;
+    String cleanTitle = task?.title ?? '';
+
+    if (cleanTitle.contains('[Delivery]')) { selectedTaskType = 'Delivery'; cleanTitle = cleanTitle.replaceAll('[Delivery]', ''); }
+    else if (cleanTitle.contains('[Pickup]')) { selectedTaskType = 'Pickup'; cleanTitle = cleanTitle.replaceAll('[Pickup]', ''); }
+    else if (cleanTitle.contains('[Visit]')) { selectedTaskType = 'Visit'; cleanTitle = cleanTitle.replaceAll('[Visit]', ''); }
+    
+    if (cleanTitle.contains('[Requires Return]')) { needsReturn = true; cleanTitle = cleanTitle.replaceAll('[Requires Return]', ''); }
+    cleanTitle = cleanTitle.trim();
+
+    final titleCtrl = TextEditingController(text: cleanTitle);
     final descCtrl = TextEditingController(text: task?.description);
     final locCtrl = TextEditingController(text: task?.location);
     final clientCtrl = TextEditingController(text: task?.clientName);
@@ -247,136 +283,346 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
-          return AlertDialog(
-            title: Text(task == null ? 'Assign New Task' : 'Edit Task'),
-            content: SizedBox(
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            elevation: 8,
+            backgroundColor: Colors.transparent,
+            child: Container(
               width: MediaQuery.of(context).size.width * 0.9,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Task Title', border: OutlineInputBorder())),
-                    const SizedBox(height: 16),
-                    TextField(controller: descCtrl, maxLines: 3, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
-                    const SizedBox(height: 16),
-                    TextField(controller: locCtrl, decoration: const InputDecoration(labelText: 'Location (Optional)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.location_on_outlined))),
-                    const SizedBox(height: 16),
-                    TextField(controller: clientCtrl, decoration: const InputDecoration(labelText: 'Client Name (Optional)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person_outline))),
-                    const SizedBox(height: 16),
-                    TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Phone Number (Optional)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone_outlined))),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<dynamic>(
-                      initialValue: assignedTo,
-                      decoration: const InputDecoration(labelText: 'Assign To', border: OutlineInputBorder()),
-                      items: _allUsers.map((u) => DropdownMenuItem<dynamic>(
-                        value: u['id'],
-                        child: Text(u['name'].toString()),
-                      )).toList(),
-                      onChanged: (v) => setModalState(() => assignedTo = v),
+              constraints: const BoxConstraints(maxWidth: 600),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10)),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.08),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                     ),
-                    const SizedBox(height: 16),
-                    ListTile(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade300)),
-                      title: Text(dueDate == null ? 'Select Due Date & Time' : 'Due: ${DateFormat('MMM dd, yyyy - hh:mm a').format(dueDate!)}'),
-                      trailing: const Icon(Icons.calendar_today),
-                      onTap: () async {
-                        final d = await showDatePicker(
-                          context: context,
-                          initialDate: dueDate ?? DateTime.now().add(const Duration(days: 1)),
-                          firstDate: DateTime.now().subtract(const Duration(days: 1)),
-                          lastDate: DateTime.now().add(const Duration(days: 365)),
-                        );
-                        if (d != null) {
-                          if (!context.mounted) return;
-                          final t = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay.fromDateTime(dueDate ?? DateTime.now()),
-                          );
-                          if (t != null) {
-                            setModalState(() => dueDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
-                          } else {
-                            setModalState(() => dueDate = d);
-                          }
-                        }
-                      },
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(task == null ? Icons.add_task_rounded : Icons.edit_note_rounded, color: AppTheme.primaryColor, size: 24),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            task == null ? 'Assign Delivery/Pickup/Visit' : 'Edit Delivery/Pickup/Visit',
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, color: Colors.black54),
+                          onPressed: () => Navigator.pop(context),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  // Content
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: selectedTaskType,
+                                  decoration: InputDecoration(
+                                    labelText: 'Type',
+                                    prefixIcon: const Icon(Icons.category_outlined, color: Colors.black54),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor)),
+                                  ),
+                                  items: ['Delivery', 'Pickup', 'Visit'].map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontWeight: FontWeight.w500)))).toList(),
+                                  onChanged: (v) => setModalState(() => selectedTaskType = v!),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: CheckboxListTile(
+                                  title: const Text('File Needs to Return', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                                  value: needsReturn,
+                                  onChanged: (v) => setModalState(() => needsReturn = v ?? false),
+                                  controlAffinity: ListTileControlAffinity.leading,
+                                  contentPadding: EdgeInsets.zero,
+                                  activeColor: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _buildPremiumTextField(titleCtrl, 'Subject / Reference (e.g. Doc Pickup)', Icons.title_rounded),
+                          const SizedBox(height: 16),
+                          _buildPremiumTextField(descCtrl, 'Instructions / Remarks', Icons.description_outlined, maxLines: 3),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(child: _buildPremiumTextField(locCtrl, 'Complete Address / Location', Icons.location_on_outlined)),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Autocomplete<amplify_models.Clients>(
+                                  initialValue: TextEditingValue(text: clientCtrl.text),
+                                  displayStringForOption: (c) => c.name ?? '',
+                                  optionsBuilder: (TextEditingValue textEditingValue) {
+                                    if (textEditingValue.text.isEmpty) {
+                                      return const Iterable<amplify_models.Clients>.empty();
+                                    }
+                                    return _allClients.where((c) {
+                                      return (c.name ?? '').toLowerCase().contains(textEditingValue.text.toLowerCase());
+                                    });
+                                  },
+                                  onSelected: (amplify_models.Clients selection) {
+                                    clientCtrl.text = selection.name ?? '';
+                                    if (locCtrl.text.isEmpty && selection.address != null) locCtrl.text = selection.address!;
+                                    if (phoneCtrl.text.isEmpty && selection.phone != null) phoneCtrl.text = selection.phone!;
+                                  },
+                                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                                    controller.addListener(() {
+                                      if (clientCtrl.text != controller.text) clientCtrl.text = controller.text;
+                                    });
+                                    return _buildPremiumTextField(controller, 'Client / Contact Person', Icons.person_outline_rounded, focusNode: focusNode);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(child: _buildPremiumTextField(phoneCtrl, 'Contact Number', Icons.phone_outlined)),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: DropdownButtonFormField<dynamic>(
+                                  initialValue: assignedTo,
+                                  decoration: InputDecoration(
+                                    labelText: 'Assign To',
+                                    prefixIcon: const Icon(Icons.badge_outlined, color: Colors.black54),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor)),
+                                  ),
+                                  items: _allUsers.map((u) => DropdownMenuItem<dynamic>(
+                                    value: u['id'],
+                                    child: Text(u['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w500)),
+                                  )).toList(),
+                                  onChanged: (v) => setModalState(() => assignedTo = v),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          InkWell(
+                            onTap: () async {
+                              final d = await showDatePicker(
+                                context: context,
+                                initialDate: dueDate ?? DateTime.now().add(const Duration(days: 1)),
+                                firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                                lastDate: DateTime.now().add(const Duration(days: 365)),
+                                builder: (context, child) {
+                                  return Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: const ColorScheme.light(primary: AppTheme.primaryColor),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
+                              );
+                              if (d != null) {
+                                if (!context.mounted) return;
+                                final t = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay.fromDateTime(dueDate ?? DateTime.now()),
+                                  builder: (context, child) {
+                                    return Theme(
+                                      data: Theme.of(context).copyWith(
+                                        colorScheme: const ColorScheme.light(primary: AppTheme.primaryColor),
+                                      ),
+                                      child: child!,
+                                    );
+                                  },
+                                );
+                                if (t != null) {
+                                  setModalState(() => dueDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
+                                } else {
+                                  setModalState(() => dueDate = d);
+                                }
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              decoration: BoxDecoration(
+                                color: dueDate == null ? Colors.grey.shade50 : AppTheme.primaryColor.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: dueDate == null ? Colors.grey.shade200 : AppTheme.primaryColor.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.calendar_month_rounded, color: dueDate == null ? Colors.black54 : AppTheme.primaryColor),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      dueDate == null ? 'Select Due Date & Time' : 'Due: ${DateFormat('MMM dd, yyyy - hh:mm a').format(dueDate!)}',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: dueDate == null ? Colors.black54 : AppTheme.primaryColor,
+                                        fontWeight: dueDate == null ? FontWeight.normal : FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(Icons.chevron_right_rounded, color: dueDate == null ? Colors.black54 : AppTheme.primaryColor),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Footer Actions
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                      border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black54)),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton(
+                          onPressed: () async {
+                            if (titleCtrl.text.isEmpty || assignedTo == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill title and assignee')));
+                              return;
+                            }
+                            try {
+                              final finalTitle = '[$selectedTaskType]${needsReturn ? ' [Requires Return]' : ''} ${titleCtrl.text}'.trim();
+                              
+                              if (task == null) {
+                                final newTask = amplify_models.Tasks(
+                                  title: finalTitle,
+                                  description: descCtrl.text,
+                                  assigned_to: int.tryParse(assignedTo.toString()),
+                                  assigned_by: int.tryParse(_currentUserId.toString()),
+                                  due_date: dueDate?.toIso8601String(),
+                                  location: locCtrl.text.isEmpty ? null : locCtrl.text,
+                                  client_name: clientCtrl.text.isEmpty ? null : clientCtrl.text,
+                                  phone_number: phoneCtrl.text.isEmpty ? null : phoneCtrl.text,
+                                  status: 'Pending',
+                                );
+                                final res = await BackupAwareApi().create(newTask);
+                                final newId = res.data?.id;
+                                
+                                if (newId != null) {
+                                  await NotificationService().notifyStakeholders(
+                                    taskId: newId,
+                                    title: 'New Delivery/Pickup/Visit Assigned',
+                                    message: '"$finalTitle" has been created and assigned.',
+                                    type: 'assignment',
+                                  );
+                                }
+                                await LoggingService().logAction(action: 'TASK_CREATED', targetType: 'Task', targetId: finalTitle, details: 'Assigned to ID: $assignedTo');
+                              } else {
+                                final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(task.id.toString()));
+                                final res = await Amplify.API.query(request: req).response;
+                                if (res.data?.items.isNotEmpty == true) {
+                                  final existingTask = res.data!.items.first!;
+                                  final updatedTask = existingTask.copyWith(
+                                    title: finalTitle,
+                                    description: descCtrl.text,
+                                    assigned_to: int.tryParse(assignedTo.toString()),
+                                    due_date: dueDate?.toIso8601String(),
+                                    location: locCtrl.text.isEmpty ? null : locCtrl.text,
+                                    client_name: clientCtrl.text.isEmpty ? null : clientCtrl.text,
+                                    phone_number: phoneCtrl.text.isEmpty ? null : phoneCtrl.text,
+                                  );
+                                  await BackupAwareApi().update(updatedTask);
+                                }
+                                
+                                await LoggingService().logAction(action: 'TASK_UPDATED', targetType: 'Task', targetId: task.id.toString(), details: 'Updated task: $finalTitle');
+                                await NotificationService().notifyStakeholders(
+                                  taskId: task.id,
+                                  title: 'Delivery/Pickup/Visit Updated',
+                                  message: '"$finalTitle" has been updated.',
+                                  type: 'info',
+                                );
+                              }
+                              if (mounted) Navigator.pop(context);
+                              _fetchTasks();
+                            } catch (e) {
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: Text(task == null ? 'Assign Now' : 'Save Changes', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-              ElevatedButton(
-                onPressed: () async {
-                  if (titleCtrl.text.isEmpty || assignedTo == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill title and assignee')));
-                    return;
-                  }
-                  try {
-                    if (task == null) {
-                      final newTask = amplify_models.Tasks(
-                        title: titleCtrl.text,
-                        description: descCtrl.text,
-                        assigned_to: int.tryParse(assignedTo.toString()),
-                        assigned_by: int.tryParse(_currentUserId.toString()),
-                        due_date: dueDate?.toIso8601String(),
-                        location: locCtrl.text.isEmpty ? null : locCtrl.text,
-                        client_name: clientCtrl.text.isEmpty ? null : clientCtrl.text,
-                        phone_number: phoneCtrl.text.isEmpty ? null : phoneCtrl.text,
-                        status: 'Pending',
-                      );
-                      final res = await BackupAwareApi().create(newTask);
-                      final newId = res.data?.id;
-                      final tName = titleCtrl.text;
-                      
-                      if (newId != null) {
-                        await NotificationService().notifyStakeholders(
-                          taskId: newId,
-                          title: 'New Task Created',
-                          message: 'Task "$tName" has been created and assigned.',
-                          type: 'assignment',
-                        );
-                      }
-                      await LoggingService().logAction(action: 'TASK_CREATED', targetType: 'Task', targetId: tName, details: 'Assigned to ID: $assignedTo');
-                    } else {
-                      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(task.id.toString()));
-                      final res = await Amplify.API.query(request: req).response;
-                      if (res.data?.items.isNotEmpty == true) {
-                        final existingTask = res.data!.items.first!;
-                        final updatedTask = existingTask.copyWith(
-                          title: titleCtrl.text,
-                          description: descCtrl.text,
-                          assigned_to: int.tryParse(assignedTo.toString()),
-                          due_date: dueDate?.toIso8601String(),
-                          location: locCtrl.text.isEmpty ? null : locCtrl.text,
-                          client_name: clientCtrl.text.isEmpty ? null : clientCtrl.text,
-                          phone_number: phoneCtrl.text.isEmpty ? null : phoneCtrl.text,
-                        );
-                        await BackupAwareApi().update(updatedTask);
-                      }
-                      
-                      await LoggingService().logAction(action: 'TASK_UPDATED', targetType: 'Task', targetId: task.id.toString(), details: 'Updated task: ${titleCtrl.text}');
-                      await NotificationService().notifyStakeholders(
-                        taskId: task.id,
-                        title: 'Task Updated',
-                        message: 'Task "${titleCtrl.text}" has been updated.',
-                        type: 'info',
-                      );
-                    }
-                    if (mounted) Navigator.pop(context);
-                    _fetchTasks();
-                  } catch (e) {
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                  }
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
-                child: const Text('Save Task'),
-              ),
-            ],
           );
         }
       )
+    );
+  }
+
+  Widget _buildPremiumTextField(TextEditingController controller, String label, IconData icon, {int maxLines = 1, FocusNode? focusNode}) {
+    return TextField(
+      controller: controller,
+      focusNode: focusNode,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.black54),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor)),
+      ),
     );
   }
 
@@ -398,7 +644,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text('Task Management', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.2, color: const Color(0xFF1E293B))),
+                Text('Deliveries and Pickups', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.2, color: const Color(0xFF1E293B))),
                 Row(
                   children: [
                     IconButton(
@@ -410,7 +656,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                     ElevatedButton.icon(
                       onPressed: () => _showTaskDialog(),
                       icon: const Icon(Icons.add_task),
-                      label: const Text('Assign Task'),
+                      label: const Text('Assign Delivery/Pickup'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
                         foregroundColor: Colors.white,
@@ -423,7 +669,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
               ],
             )
           else ...[
-            Text('Task Management', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -1.2, color: const Color(0xFF1E293B))),
+            Text('Deliveries and Pickups', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -1.2, color: const Color(0xFF1E293B))),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -437,7 +683,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                   child: ElevatedButton.icon(
                     onPressed: () => _showTaskDialog(),
                     icon: const Icon(Icons.add_task),
-                    label: const Text('Assign Task'),
+                    label: const Text('Assign Delivery/Pickup'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.white,
@@ -458,9 +704,9 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
             indicatorSize: TabBarIndicatorSize.label,
             labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             tabs: [
-              const Tab(text: 'My Tasks'),
-              const Tab(text: 'Delegated Tasks'),
-              if (_isAdmin) const Tab(text: 'All Tasks'),
+              const Tab(text: 'My Deliveries/Pickups'),
+              const Tab(text: 'Delegated Deliveries/Pickups'),
+              if (_isAdmin) const Tab(text: 'All Deliveries/Pickups'),
             ],
           ),
           const SizedBox(height: 16),
@@ -470,7 +716,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Search tasks, clients or locations...',
+                    hintText: 'Search deliveries, pickups, clients...',
                     prefixIcon: const Icon(Icons.search),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     isDense: true,
@@ -536,7 +782,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
           children: [
             Icon(Icons.assignment_turned_in_outlined, size: 80, color: Colors.grey.shade300),
             const SizedBox(height: 16),
-            Text(_searchController.text.isEmpty && _statusFilter == 'All' ? 'No tasks found!' : 'No matching tasks!', style: TextStyle(color: Colors.grey.shade500, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(_searchController.text.isEmpty && _statusFilter == 'All' ? 'No deliveries or pickups found!' : 'No matching deliveries/pickups!', style: TextStyle(color: Colors.grey.shade500, fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
       );

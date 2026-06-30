@@ -9,6 +9,7 @@ import 'logging_service.dart';
 import 'location_tracking_service.dart';
 import 'security_service.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import 'supabase_backup_service.dart';
 
 class AuthService {
   static const String _tokenKey = 'auth_token';
@@ -116,10 +117,12 @@ class AuthService {
       
       final res = dbUser; // for compatibility with existing code below
 
+      int supabaseUserId = await SupabaseBackupService().getUserIdByUsername(username) ?? 0;
+
       String? sessionId;
       try {
         final session = UserSessions(
-          user_id: int.tryParse(res.id) ?? 0,
+          user_id: supabaseUserId,
           login_time: DateTime.now().toIso8601String(),
           is_active: true,
         );
@@ -144,7 +147,7 @@ class AuthService {
       }
 
       await prefs.setString('${_userIdKey}_str', res.id);
-      await prefs.setInt(_userIdKey, int.tryParse(res.id) ?? 0);
+      await prefs.setInt(_userIdKey, supabaseUserId);
 
       await LoggingService().logAction(
         action: 'LOGIN',

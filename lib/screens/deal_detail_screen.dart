@@ -21,6 +21,7 @@ import '../services/google_docs_service.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'google_docs_webview_screen.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import 'file_acknowledgement_screen.dart';
 
 class DealDetailScreen extends StatefulWidget {
   final Deal? deal;
@@ -1707,6 +1708,35 @@ final dLink = "";
                       ),
                     ],
                   ),
+                  if (askedList.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.handshake, size: 18),
+                        label: const Text('Acknowledge Receipt of Files'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppTheme.primaryColor,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FileAcknowledgementScreen(
+                                currentUserRole: 'Staff',
+                                currentUserName: _currentUserName ?? 'Staff',
+                                initialAction: 'Received',
+                                initialDeal: widget.deal,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

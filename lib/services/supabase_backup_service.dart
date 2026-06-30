@@ -162,4 +162,23 @@ class SupabaseBackupService {
       return false;
     }
   }
+
+  /// Get user ID by username
+  Future<int?> getUserIdByUsername(String username) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_supabaseUrl/rest/v1/users?username=eq.$username&select=id'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        if (data.isNotEmpty) {
+          return data.first['id'] as int;
+        }
+      }
+    } catch (e) {
+      debugPrint('Supabase getUserId error: $e');
+    }
+    return null;
+  }
 }

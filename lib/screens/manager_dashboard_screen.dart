@@ -1386,9 +1386,20 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             return _buildGenericList(
               headers: ['Client Name', 'Invoice No', 'Amount'],
               items: data.map((map) {
+                Map<String, dynamic>? parsedData;
+                if (map['data'] != null) {
+                  if (map['data'] is Map) {
+                    parsedData = map['data'];
+                  } else if (map['data'] is String) {
+                    try {
+                      parsedData = jsonDecode(map['data']);
+                    } catch (_) {}
+                  }
+                }
+                
                 return {
                   'title': map['client_name'] ?? 'Unknown',
-                  'sub': 'Inv: ${map['invoice_no'] ?? '-'}${map['data'] != null && map['data']['payment_deadline'] != null && map['data']['payment_deadline'].toString().isNotEmpty ? '  •  Due: ${map['data']['payment_deadline']}' : ''}',
+                  'sub': 'Inv: ${map['invoice_no'] ?? '-'}${parsedData != null && parsedData['payment_deadline'] != null && parsedData['payment_deadline'].toString().isNotEmpty ? '  •  Due: ${parsedData['payment_deadline']}' : ''}',
                   'status': 'Unpaid',
                   'statusColor': AppTheme.primaryColor,
                   'trailing': map['amount'] ?? '-',
@@ -1526,13 +1537,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                   ],
                 ),
               )
-            : GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: MediaQuery.of(context).size.width > 800 ? 2 : 1,
-                  childAspectRatio: 3,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                ),
+            : ListView.builder(
                 itemCount: filteredItems.length,
                 padding: const EdgeInsets.only(bottom: 40),
                 itemBuilder: (context, index) {
@@ -1540,6 +1545,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                   final statusColor = item['statusColor'] as Color;
                   
                   return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),

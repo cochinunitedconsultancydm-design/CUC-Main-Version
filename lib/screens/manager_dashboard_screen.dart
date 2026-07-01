@@ -170,37 +170,16 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       final worksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Deals.classType, limit: 10000, where: amplify_models.Deals.STAGE.ne('Completed'), authorizationMode: APIAuthorizationType.userPools)).response;
       final pendingWorksCount = (worksRes.data?.items ?? []).length;
       
-      final billingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType, limit: 10000, where: amplify_models.Billings.STATUS.eq('Received').and(amplify_models.Billings.TYPE.eq('INVOICE')), authorizationMode: APIAuthorizationType.userPools)).response;
-      
       final companyBillsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.CompanyBills.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools)).response;
 
       final now = DateTime.now();
 
-      // Calculate Revenue
+      // Calculate Revenue and Expenses from CompanyBills
       double totalRevenue = 0;
-      for (var row in billingsRes.data?.items ?? []) {
-        if (row != null) {
-          DateTime? recordDate;
-          try {
-             if (row.data != null) {
-                final d = jsonDecode(row.data!);
-                if (d['payment_date'] != null) recordDate = DateTime.parse(d['payment_date']);
-             }
-          } catch (_) {}
-          recordDate ??= row.createdAt?.getDateTimeInUtc();
-          
-          if (recordDate != null && recordDate.month == now.month && recordDate.year == now.year) {
-            final amtStr = row.amount ?? '0';
-            final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
-            totalRevenue += double.tryParse(cleanAmt) ?? 0.0;
-          }
-        }
-      }
-
-      // Calculate Expenses
       double totalExpenses = 0;
+      
       for (var row in companyBillsRes.data?.items ?? []) {
-        if (row != null && (row.amount ?? 0) > 0) {
+        if (row != null) {
           DateTime? billDate;
           try {
             if (row.bill_date != null) billDate = DateTime.parse(row.bill_date!);
@@ -208,7 +187,12 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           billDate ??= row.createdAt?.getDateTimeInUtc();
           
           if (billDate != null && billDate.month == now.month && billDate.year == now.year) {
-            totalExpenses += row.amount ?? 0.0;
+            double amount = row.amount ?? 0.0;
+            if (amount > 0) {
+              totalExpenses += amount;
+            } else if (amount < 0) {
+              totalRevenue += amount.abs();
+            }
           }
         }
       }

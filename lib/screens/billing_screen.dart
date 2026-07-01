@@ -742,11 +742,15 @@ class _BillingScreenState extends State<BillingScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final bool isWide = constraints.maxWidth > 900;
-        final filtered = _billings.where((b) =>
-          _searchTerm.trim().isEmpty ||
-          (b.clientName?.toLowerCase().contains(_searchTerm.toLowerCase()) ?? false) ||
-          (b.invoiceNo?.toLowerCase().contains(_searchTerm.toLowerCase()) ?? false)
-        ).toList();
+        final filtered = _billings.where((b) {
+          if (_searchTerm.trim().isEmpty) return true;
+          final query = _searchTerm.toLowerCase().trim();
+          final cName = b.clientName?.toLowerCase() ?? '';
+          final invNo = b.invoiceNo?.toLowerCase() ?? '';
+          final amt = b.amount?.toLowerCase() ?? '';
+          final dataStr = b.data?.toString().toLowerCase() ?? '';
+          return cName.contains(query) || invNo.contains(query) || amt.contains(query) || dataStr.contains(query);
+        }).toList();
         
         final paidCount = _billings.where((b) => b.data?['payment_received'] == true).length;
         final pendingCount = _billings.length - paidCount;

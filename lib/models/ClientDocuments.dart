@@ -22,6 +22,7 @@
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
 
+
 /** This is an auto generated class representing the ClientDocuments type in your schema. */
 class ClientDocuments extends amplify_core.Model {
   static const classType = const _ClientDocumentsModelType();
@@ -38,84 +39,56 @@ class ClientDocuments extends amplify_core.Model {
 
   @override
   getInstanceType() => classType;
-
-  @Deprecated(
-    '[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.',
-  )
+  
+  @Deprecated('[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.')
   @override
   String getId() => id;
-
+  
   ClientDocumentsModelIdentifier get modelIdentifier {
-    return ClientDocumentsModelIdentifier(id: id);
+      return ClientDocumentsModelIdentifier(
+        id: id
+      );
   }
-
+  
   String? get client_id {
     return _client_id;
   }
-
+  
   String? get client_name {
     return _client_name;
   }
-
+  
   String? get document_name {
     return _document_name;
   }
-
+  
   String? get storage_path {
     return _storage_path;
   }
-
+  
   String? get og_copy {
     return _og_copy;
   }
-
+  
   String? get remarks {
     return _remarks;
   }
-
+  
   String? get created_at {
     return _created_at;
   }
-
+  
   amplify_core.TemporalDateTime? get createdAt {
     return _createdAt;
   }
-
+  
   amplify_core.TemporalDateTime? get updatedAt {
     return _updatedAt;
   }
-
-  const ClientDocuments._internal({
-    required this.id,
-    client_id,
-    client_name,
-    document_name,
-    storage_path,
-    og_copy,
-    remarks,
-    created_at,
-    createdAt,
-    updatedAt,
-  }) : _client_id = client_id,
-       _client_name = client_name,
-       _document_name = document_name,
-       _storage_path = storage_path,
-       _og_copy = og_copy,
-       _remarks = remarks,
-       _created_at = created_at,
-       _createdAt = createdAt,
-       _updatedAt = updatedAt;
-
-  factory ClientDocuments({
-    String? id,
-    String? client_id,
-    String? client_name,
-    String? document_name,
-    String? storage_path,
-    String? og_copy,
-    String? remarks,
-    String? created_at,
-  }) {
+  
+  const ClientDocuments._internal({required this.id, client_id, client_name, document_name, storage_path, og_copy, remarks, created_at, createdAt, updatedAt}): _client_id = client_id, _client_name = client_name, _document_name = document_name, _storage_path = storage_path, _og_copy = og_copy, _remarks = remarks, _created_at = created_at, _createdAt = createdAt, _updatedAt = updatedAt;
+  
+  factory ClientDocuments({String? id, String? client_id, String? client_name, String? document_name, String? storage_path, String? og_copy, String? remarks, String? created_at}) {
     return ClientDocuments._internal(
       id: id == null ? amplify_core.UUID.getUUID() : id,
       client_id: client_id,
@@ -124,35 +97,34 @@ class ClientDocuments extends amplify_core.Model {
       storage_path: storage_path,
       og_copy: og_copy,
       remarks: remarks,
-      created_at: created_at,
-    );
+      created_at: created_at);
   }
-
+  
   bool equals(Object other) {
     return this == other;
   }
-
+  
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
     return other is ClientDocuments &&
-        id == other.id &&
-        _client_id == other._client_id &&
-        _client_name == other._client_name &&
-        _document_name == other._document_name &&
-        _storage_path == other._storage_path &&
-        _og_copy == other._og_copy &&
-        _remarks == other._remarks &&
-        _created_at == other._created_at;
+      id == other.id &&
+      _client_id == other._client_id &&
+      _client_name == other._client_name &&
+      _document_name == other._document_name &&
+      _storage_path == other._storage_path &&
+      _og_copy == other._og_copy &&
+      _remarks == other._remarks &&
+      _created_at == other._created_at;
   }
-
+  
   @override
   int get hashCode => toString().hashCode;
-
+  
   @override
   String toString() {
     var buffer = new StringBuffer();
-
+    
     buffer.write("ClientDocuments {");
     buffer.write("id=" + "$id" + ", ");
     buffer.write("client_id=" + "$_client_id" + ", ");
@@ -162,28 +134,14 @@ class ClientDocuments extends amplify_core.Model {
     buffer.write("og_copy=" + "$_og_copy" + ", ");
     buffer.write("remarks=" + "$_remarks" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write(
-      "createdAt=" +
-          (_createdAt != null ? _createdAt!.format() : "null") +
-          ", ",
-    );
-    buffer.write(
-      "updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"),
-    );
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
     buffer.write("}");
-
+    
     return buffer.toString();
   }
-
-  ClientDocuments copyWith({
-    String? client_id,
-    String? client_name,
-    String? document_name,
-    String? storage_path,
-    String? og_copy,
-    String? remarks,
-    String? created_at,
-  }) {
+  
+  ClientDocuments copyWith({String? client_id, String? client_name, String? document_name, String? storage_path, String? og_copy, String? remarks, String? created_at}) {
     return ClientDocuments._internal(
       id: id,
       client_id: client_id ?? this.client_id,
@@ -192,10 +150,9 @@ class ClientDocuments extends amplify_core.Model {
       storage_path: storage_path ?? this.storage_path,
       og_copy: og_copy ?? this.og_copy,
       remarks: remarks ?? this.remarks,
-      created_at: created_at ?? this.created_at,
-    );
+      created_at: created_at ?? this.created_at);
   }
-
+  
   ClientDocuments copyWithModelFieldValues({
     ModelFieldValue<String?>? client_id,
     ModelFieldValue<String?>? client_name,
@@ -203,25 +160,21 @@ class ClientDocuments extends amplify_core.Model {
     ModelFieldValue<String?>? storage_path,
     ModelFieldValue<String?>? og_copy,
     ModelFieldValue<String?>? remarks,
-    ModelFieldValue<String?>? created_at,
+    ModelFieldValue<String?>? created_at
   }) {
     return ClientDocuments._internal(
       id: id,
       client_id: client_id == null ? this.client_id : client_id.value,
       client_name: client_name == null ? this.client_name : client_name.value,
-      document_name: document_name == null
-          ? this.document_name
-          : document_name.value,
-      storage_path: storage_path == null
-          ? this.storage_path
-          : storage_path.value,
+      document_name: document_name == null ? this.document_name : document_name.value,
+      storage_path: storage_path == null ? this.storage_path : storage_path.value,
       og_copy: og_copy == null ? this.og_copy : og_copy.value,
       remarks: remarks == null ? this.remarks : remarks.value,
-      created_at: created_at == null ? this.created_at : created_at.value,
+      created_at: created_at == null ? this.created_at : created_at.value
     );
   }
-
-  ClientDocuments.fromJson(Map<String, dynamic> json)
+  
+  ClientDocuments.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
       _client_id = json['client_id'],
       _client_name = json['client_name'],
@@ -230,26 +183,13 @@ class ClientDocuments extends amplify_core.Model {
       _og_copy = json['og_copy'],
       _remarks = json['remarks'],
       _created_at = json['created_at'],
-      _createdAt = json['createdAt'] != null
-          ? amplify_core.TemporalDateTime.fromString(json['createdAt'])
-          : null,
-      _updatedAt = json['updatedAt'] != null
-          ? amplify_core.TemporalDateTime.fromString(json['updatedAt'])
-          : null;
-
+      _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
+      _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
+  
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'client_id': _client_id,
-    'client_name': _client_name,
-    'document_name': _document_name,
-    'storage_path': _storage_path,
-    'og_copy': _og_copy,
-    'remarks': _remarks,
-    'created_at': _created_at,
-    'createdAt': _createdAt?.format(),
-    'updatedAt': _updatedAt?.format(),
+    'id': id, 'client_id': _client_id, 'client_name': _client_name, 'document_name': _document_name, 'storage_path': _storage_path, 'og_copy': _og_copy, 'remarks': _remarks, 'created_at': _created_at, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
   };
-
+  
   Map<String, Object?> toMap() => {
     'id': id,
     'client_id': _client_id,
@@ -260,161 +200,105 @@ class ClientDocuments extends amplify_core.Model {
     'remarks': _remarks,
     'created_at': _created_at,
     'createdAt': _createdAt,
-    'updatedAt': _updatedAt,
+    'updatedAt': _updatedAt
   };
 
-  static final amplify_core.QueryModelIdentifier<ClientDocumentsModelIdentifier>
-  MODEL_IDENTIFIER =
-      amplify_core.QueryModelIdentifier<ClientDocumentsModelIdentifier>();
+  static final amplify_core.QueryModelIdentifier<ClientDocumentsModelIdentifier> MODEL_IDENTIFIER = amplify_core.QueryModelIdentifier<ClientDocumentsModelIdentifier>();
   static final ID = amplify_core.QueryField(fieldName: "id");
   static final CLIENT_ID = amplify_core.QueryField(fieldName: "client_id");
   static final CLIENT_NAME = amplify_core.QueryField(fieldName: "client_name");
-  static final DOCUMENT_NAME = amplify_core.QueryField(
-    fieldName: "document_name",
-  );
-  static final STORAGE_PATH = amplify_core.QueryField(
-    fieldName: "storage_path",
-  );
+  static final DOCUMENT_NAME = amplify_core.QueryField(fieldName: "document_name");
+  static final STORAGE_PATH = amplify_core.QueryField(fieldName: "storage_path");
   static final OG_COPY = amplify_core.QueryField(fieldName: "og_copy");
   static final REMARKS = amplify_core.QueryField(fieldName: "remarks");
   static final CREATED_AT = amplify_core.QueryField(fieldName: "created_at");
-  static var schema = amplify_core.Model.defineSchema(
-    define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
-      modelSchemaDefinition.name = "ClientDocuments";
-      modelSchemaDefinition.pluralName = "ClientDocuments";
-
-      modelSchemaDefinition.authRules = [
-        amplify_core.AuthRule(
-          authStrategy: amplify_core.AuthStrategy.PUBLIC,
-          provider: amplify_core.AuthRuleProvider.IAM,
-          operations: const [
-            amplify_core.ModelOperation.CREATE,
-            amplify_core.ModelOperation.UPDATE,
-            amplify_core.ModelOperation.DELETE,
-            amplify_core.ModelOperation.READ,
-          ],
-        ),
-        amplify_core.AuthRule(
-          authStrategy: amplify_core.AuthStrategy.PRIVATE,
-          operations: const [
-            amplify_core.ModelOperation.CREATE,
-            amplify_core.ModelOperation.UPDATE,
-            amplify_core.ModelOperation.DELETE,
-            amplify_core.ModelOperation.READ,
-          ],
-        ),
-      ];
-
-      modelSchemaDefinition.indexes = [
-        amplify_core.ModelIndex(fields: const ["id"], name: null),
-      ];
-
-      modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: ClientDocuments.CLIENT_ID,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: ClientDocuments.CLIENT_NAME,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: ClientDocuments.DOCUMENT_NAME,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: ClientDocuments.STORAGE_PATH,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: ClientDocuments.OG_COPY,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: ClientDocuments.REMARKS,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: ClientDocuments.CREATED_AT,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.nonQueryField(
-          fieldName: 'createdAt',
-          isRequired: false,
-          isReadOnly: true,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.dateTime,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.nonQueryField(
-          fieldName: 'updatedAt',
-          isRequired: false,
-          isReadOnly: true,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.dateTime,
-          ),
-        ),
-      );
-    },
-  );
+  static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
+    modelSchemaDefinition.name = "ClientDocuments";
+    modelSchemaDefinition.pluralName = "ClientDocuments";
+    
+    modelSchemaDefinition.authRules = [
+      amplify_core.AuthRule(
+        authStrategy: amplify_core.AuthStrategy.PRIVATE,
+        operations: const [
+          amplify_core.ModelOperation.CREATE,
+          amplify_core.ModelOperation.UPDATE,
+          amplify_core.ModelOperation.DELETE,
+          amplify_core.ModelOperation.READ
+        ])
+    ];
+    
+    modelSchemaDefinition.indexes = [
+      amplify_core.ModelIndex(fields: const ["id"], name: null)
+    ];
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ClientDocuments.CLIENT_ID,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ClientDocuments.CLIENT_NAME,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ClientDocuments.DOCUMENT_NAME,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ClientDocuments.STORAGE_PATH,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ClientDocuments.OG_COPY,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ClientDocuments.REMARKS,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ClientDocuments.CREATED_AT,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
+      fieldName: 'createdAt',
+      isRequired: false,
+      isReadOnly: true,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
+      fieldName: 'updatedAt',
+      isRequired: false,
+      isReadOnly: true,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
+    ));
+  });
 }
 
-class _ClientDocumentsModelType
-    extends amplify_core.ModelType<ClientDocuments> {
+class _ClientDocumentsModelType extends amplify_core.ModelType<ClientDocuments> {
   const _ClientDocumentsModelType();
-
+  
   @override
   ClientDocuments fromJson(Map<String, dynamic> jsonData) {
     return ClientDocuments.fromJson(jsonData);
   }
-
+  
   @override
   String modelName() {
     return 'ClientDocuments';
@@ -425,36 +309,41 @@ class _ClientDocumentsModelType
  * This is an auto generated class representing the model identifier
  * of [ClientDocuments] in your schema.
  */
-class ClientDocumentsModelIdentifier
-    implements amplify_core.ModelIdentifier<ClientDocuments> {
+class ClientDocumentsModelIdentifier implements amplify_core.ModelIdentifier<ClientDocuments> {
   final String id;
 
   /** Create an instance of ClientDocumentsModelIdentifier using [id] the primary key. */
-  const ClientDocumentsModelIdentifier({required this.id});
-
+  const ClientDocumentsModelIdentifier({
+    required this.id});
+  
   @override
-  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{'id': id});
-
+  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{
+    'id': id
+  });
+  
   @override
-  List<Map<String, dynamic>> serializeAsList() => serializeAsMap().entries
-      .map((entry) => (<String, dynamic>{entry.key: entry.value}))
-      .toList();
-
+  List<Map<String, dynamic>> serializeAsList() => serializeAsMap()
+    .entries
+    .map((entry) => (<String, dynamic>{ entry.key: entry.value }))
+    .toList();
+  
   @override
   String serializeAsString() => serializeAsMap().values.join('#');
-
+  
   @override
   String toString() => 'ClientDocumentsModelIdentifier(id: $id)';
-
+  
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) {
       return true;
     }
-
-    return other is ClientDocumentsModelIdentifier && id == other.id;
+    
+    return other is ClientDocumentsModelIdentifier &&
+      id == other.id;
   }
-
+  
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode =>
+    id.hashCode;
 }

@@ -729,7 +729,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                   NavigationRailDestination(
                     icon: Icon(Icons.account_balance_wallet_outlined),
                     selectedIcon: Icon(Icons.account_balance_wallet_rounded),
-                    label: Text('Expenses'),
+                    label: Text('Accounting & Pay'),
                   ),
                 ],
               ),
@@ -778,7 +778,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.account_balance_wallet_outlined),
                   activeIcon: Icon(Icons.account_balance_wallet_rounded),
-                  label: 'Expenses',
+                  label: 'Accounting & Pay',
                 ),
               ],
             ),

@@ -22,6 +22,7 @@
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
 
+
 /** This is an auto generated class representing the SysCronLogs type in your schema. */
 class SysCronLogs extends amplify_core.Model {
   static const classType = const _SysCronLogsModelType();
@@ -33,231 +34,171 @@ class SysCronLogs extends amplify_core.Model {
 
   @override
   getInstanceType() => classType;
-
-  @Deprecated(
-    '[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.',
-  )
+  
+  @Deprecated('[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.')
   @override
   String getId() => id;
-
+  
   SysCronLogsModelIdentifier get modelIdentifier {
-    return SysCronLogsModelIdentifier(id: id);
+      return SysCronLogsModelIdentifier(
+        id: id
+      );
   }
-
+  
   String? get job_name {
     return _job_name;
   }
-
+  
   String? get last_run_date {
     return _last_run_date;
   }
-
+  
   amplify_core.TemporalDateTime? get createdAt {
     return _createdAt;
   }
-
+  
   amplify_core.TemporalDateTime? get updatedAt {
     return _updatedAt;
   }
-
-  const SysCronLogs._internal({
-    required this.id,
-    job_name,
-    last_run_date,
-    createdAt,
-    updatedAt,
-  }) : _job_name = job_name,
-       _last_run_date = last_run_date,
-       _createdAt = createdAt,
-       _updatedAt = updatedAt;
-
+  
+  const SysCronLogs._internal({required this.id, job_name, last_run_date, createdAt, updatedAt}): _job_name = job_name, _last_run_date = last_run_date, _createdAt = createdAt, _updatedAt = updatedAt;
+  
   factory SysCronLogs({String? id, String? job_name, String? last_run_date}) {
     return SysCronLogs._internal(
       id: id == null ? amplify_core.UUID.getUUID() : id,
       job_name: job_name,
-      last_run_date: last_run_date,
-    );
+      last_run_date: last_run_date);
   }
-
+  
   bool equals(Object other) {
     return this == other;
   }
-
+  
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
     return other is SysCronLogs &&
-        id == other.id &&
-        _job_name == other._job_name &&
-        _last_run_date == other._last_run_date;
+      id == other.id &&
+      _job_name == other._job_name &&
+      _last_run_date == other._last_run_date;
   }
-
+  
   @override
   int get hashCode => toString().hashCode;
-
+  
   @override
   String toString() {
     var buffer = new StringBuffer();
-
+    
     buffer.write("SysCronLogs {");
     buffer.write("id=" + "$id" + ", ");
     buffer.write("job_name=" + "$_job_name" + ", ");
     buffer.write("last_run_date=" + "$_last_run_date" + ", ");
-    buffer.write(
-      "createdAt=" +
-          (_createdAt != null ? _createdAt!.format() : "null") +
-          ", ",
-    );
-    buffer.write(
-      "updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"),
-    );
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
     buffer.write("}");
-
+    
     return buffer.toString();
   }
-
+  
   SysCronLogs copyWith({String? job_name, String? last_run_date}) {
     return SysCronLogs._internal(
       id: id,
       job_name: job_name ?? this.job_name,
-      last_run_date: last_run_date ?? this.last_run_date,
-    );
+      last_run_date: last_run_date ?? this.last_run_date);
   }
-
+  
   SysCronLogs copyWithModelFieldValues({
     ModelFieldValue<String?>? job_name,
-    ModelFieldValue<String?>? last_run_date,
+    ModelFieldValue<String?>? last_run_date
   }) {
     return SysCronLogs._internal(
       id: id,
       job_name: job_name == null ? this.job_name : job_name.value,
-      last_run_date: last_run_date == null
-          ? this.last_run_date
-          : last_run_date.value,
+      last_run_date: last_run_date == null ? this.last_run_date : last_run_date.value
     );
   }
-
-  SysCronLogs.fromJson(Map<String, dynamic> json)
+  
+  SysCronLogs.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
       _job_name = json['job_name'],
       _last_run_date = json['last_run_date'],
-      _createdAt = json['createdAt'] != null
-          ? amplify_core.TemporalDateTime.fromString(json['createdAt'])
-          : null,
-      _updatedAt = json['updatedAt'] != null
-          ? amplify_core.TemporalDateTime.fromString(json['updatedAt'])
-          : null;
-
+      _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
+      _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
+  
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'job_name': _job_name,
-    'last_run_date': _last_run_date,
-    'createdAt': _createdAt?.format(),
-    'updatedAt': _updatedAt?.format(),
+    'id': id, 'job_name': _job_name, 'last_run_date': _last_run_date, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
   };
-
+  
   Map<String, Object?> toMap() => {
     'id': id,
     'job_name': _job_name,
     'last_run_date': _last_run_date,
     'createdAt': _createdAt,
-    'updatedAt': _updatedAt,
+    'updatedAt': _updatedAt
   };
 
-  static final amplify_core.QueryModelIdentifier<SysCronLogsModelIdentifier>
-  MODEL_IDENTIFIER =
-      amplify_core.QueryModelIdentifier<SysCronLogsModelIdentifier>();
+  static final amplify_core.QueryModelIdentifier<SysCronLogsModelIdentifier> MODEL_IDENTIFIER = amplify_core.QueryModelIdentifier<SysCronLogsModelIdentifier>();
   static final ID = amplify_core.QueryField(fieldName: "id");
   static final JOB_NAME = amplify_core.QueryField(fieldName: "job_name");
-  static final LAST_RUN_DATE = amplify_core.QueryField(
-    fieldName: "last_run_date",
-  );
-  static var schema = amplify_core.Model.defineSchema(
-    define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
-      modelSchemaDefinition.name = "SysCronLogs";
-      modelSchemaDefinition.pluralName = "SysCronLogs";
-
-      modelSchemaDefinition.authRules = [
-        amplify_core.AuthRule(
-          authStrategy: amplify_core.AuthStrategy.PUBLIC,
-          provider: amplify_core.AuthRuleProvider.IAM,
-          operations: const [
-            amplify_core.ModelOperation.CREATE,
-            amplify_core.ModelOperation.UPDATE,
-            amplify_core.ModelOperation.DELETE,
-            amplify_core.ModelOperation.READ,
-          ],
-        ),
-        amplify_core.AuthRule(
-          authStrategy: amplify_core.AuthStrategy.PRIVATE,
-          operations: const [
-            amplify_core.ModelOperation.CREATE,
-            amplify_core.ModelOperation.UPDATE,
-            amplify_core.ModelOperation.DELETE,
-            amplify_core.ModelOperation.READ,
-          ],
-        ),
-      ];
-
-      modelSchemaDefinition.indexes = [
-        amplify_core.ModelIndex(fields: const ["id"], name: null),
-      ];
-
-      modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: SysCronLogs.JOB_NAME,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: SysCronLogs.LAST_RUN_DATE,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.nonQueryField(
-          fieldName: 'createdAt',
-          isRequired: false,
-          isReadOnly: true,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.dateTime,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.nonQueryField(
-          fieldName: 'updatedAt',
-          isRequired: false,
-          isReadOnly: true,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.dateTime,
-          ),
-        ),
-      );
-    },
-  );
+  static final LAST_RUN_DATE = amplify_core.QueryField(fieldName: "last_run_date");
+  static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
+    modelSchemaDefinition.name = "SysCronLogs";
+    modelSchemaDefinition.pluralName = "SysCronLogs";
+    
+    modelSchemaDefinition.authRules = [
+      amplify_core.AuthRule(
+        authStrategy: amplify_core.AuthStrategy.PRIVATE,
+        operations: const [
+          amplify_core.ModelOperation.CREATE,
+          amplify_core.ModelOperation.UPDATE,
+          amplify_core.ModelOperation.DELETE,
+          amplify_core.ModelOperation.READ
+        ])
+    ];
+    
+    modelSchemaDefinition.indexes = [
+      amplify_core.ModelIndex(fields: const ["id"], name: null)
+    ];
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: SysCronLogs.JOB_NAME,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: SysCronLogs.LAST_RUN_DATE,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
+      fieldName: 'createdAt',
+      isRequired: false,
+      isReadOnly: true,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
+      fieldName: 'updatedAt',
+      isRequired: false,
+      isReadOnly: true,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
+    ));
+  });
 }
 
 class _SysCronLogsModelType extends amplify_core.ModelType<SysCronLogs> {
   const _SysCronLogsModelType();
-
+  
   @override
   SysCronLogs fromJson(Map<String, dynamic> jsonData) {
     return SysCronLogs.fromJson(jsonData);
   }
-
+  
   @override
   String modelName() {
     return 'SysCronLogs';
@@ -268,36 +209,41 @@ class _SysCronLogsModelType extends amplify_core.ModelType<SysCronLogs> {
  * This is an auto generated class representing the model identifier
  * of [SysCronLogs] in your schema.
  */
-class SysCronLogsModelIdentifier
-    implements amplify_core.ModelIdentifier<SysCronLogs> {
+class SysCronLogsModelIdentifier implements amplify_core.ModelIdentifier<SysCronLogs> {
   final String id;
 
   /** Create an instance of SysCronLogsModelIdentifier using [id] the primary key. */
-  const SysCronLogsModelIdentifier({required this.id});
-
+  const SysCronLogsModelIdentifier({
+    required this.id});
+  
   @override
-  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{'id': id});
-
+  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{
+    'id': id
+  });
+  
   @override
-  List<Map<String, dynamic>> serializeAsList() => serializeAsMap().entries
-      .map((entry) => (<String, dynamic>{entry.key: entry.value}))
-      .toList();
-
+  List<Map<String, dynamic>> serializeAsList() => serializeAsMap()
+    .entries
+    .map((entry) => (<String, dynamic>{ entry.key: entry.value }))
+    .toList();
+  
   @override
   String serializeAsString() => serializeAsMap().values.join('#');
-
+  
   @override
   String toString() => 'SysCronLogsModelIdentifier(id: $id)';
-
+  
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) {
       return true;
     }
-
-    return other is SysCronLogsModelIdentifier && id == other.id;
+    
+    return other is SysCronLogsModelIdentifier &&
+      id == other.id;
   }
-
+  
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode =>
+    id.hashCode;
 }

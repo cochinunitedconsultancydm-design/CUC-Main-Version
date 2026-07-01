@@ -22,6 +22,7 @@
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
 
+
 /** This is an auto generated class representing the StaffLocations type in your schema. */
 class StaffLocations extends amplify_core.Model {
   static const classType = const _StaffLocationsModelType();
@@ -35,174 +36,124 @@ class StaffLocations extends amplify_core.Model {
 
   @override
   getInstanceType() => classType;
-
-  @Deprecated(
-    '[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.',
-  )
+  
+  @Deprecated('[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.')
   @override
   String getId() => id;
-
+  
   StaffLocationsModelIdentifier get modelIdentifier {
-    return StaffLocationsModelIdentifier(id: id);
+      return StaffLocationsModelIdentifier(
+        id: id
+      );
   }
-
+  
   int? get user_id {
     return _user_id;
   }
-
+  
   double? get latitude {
     return _latitude;
   }
-
+  
   double? get longitude {
     return _longitude;
   }
-
+  
   String? get updated_at {
     return _updated_at;
   }
-
+  
   amplify_core.TemporalDateTime? get createdAt {
     return _createdAt;
   }
-
+  
   amplify_core.TemporalDateTime? get updatedAt {
     return _updatedAt;
   }
-
-  const StaffLocations._internal({
-    required this.id,
-    user_id,
-    latitude,
-    longitude,
-    updated_at,
-    createdAt,
-    updatedAt,
-  }) : _user_id = user_id,
-       _latitude = latitude,
-       _longitude = longitude,
-       _updated_at = updated_at,
-       _createdAt = createdAt,
-       _updatedAt = updatedAt;
-
-  factory StaffLocations({
-    String? id,
-    int? user_id,
-    double? latitude,
-    double? longitude,
-    String? updated_at,
-  }) {
+  
+  const StaffLocations._internal({required this.id, user_id, latitude, longitude, updated_at, createdAt, updatedAt}): _user_id = user_id, _latitude = latitude, _longitude = longitude, _updated_at = updated_at, _createdAt = createdAt, _updatedAt = updatedAt;
+  
+  factory StaffLocations({String? id, int? user_id, double? latitude, double? longitude, String? updated_at}) {
     return StaffLocations._internal(
       id: id == null ? amplify_core.UUID.getUUID() : id,
       user_id: user_id,
       latitude: latitude,
       longitude: longitude,
-      updated_at: updated_at,
-    );
+      updated_at: updated_at);
   }
-
+  
   bool equals(Object other) {
     return this == other;
   }
-
+  
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
     return other is StaffLocations &&
-        id == other.id &&
-        _user_id == other._user_id &&
-        _latitude == other._latitude &&
-        _longitude == other._longitude &&
-        _updated_at == other._updated_at;
+      id == other.id &&
+      _user_id == other._user_id &&
+      _latitude == other._latitude &&
+      _longitude == other._longitude &&
+      _updated_at == other._updated_at;
   }
-
+  
   @override
   int get hashCode => toString().hashCode;
-
+  
   @override
   String toString() {
     var buffer = new StringBuffer();
-
+    
     buffer.write("StaffLocations {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write(
-      "user_id=" + (_user_id != null ? _user_id!.toString() : "null") + ", ",
-    );
-    buffer.write(
-      "latitude=" + (_latitude != null ? _latitude!.toString() : "null") + ", ",
-    );
-    buffer.write(
-      "longitude=" +
-          (_longitude != null ? _longitude!.toString() : "null") +
-          ", ",
-    );
+    buffer.write("user_id=" + (_user_id != null ? _user_id!.toString() : "null") + ", ");
+    buffer.write("latitude=" + (_latitude != null ? _latitude!.toString() : "null") + ", ");
+    buffer.write("longitude=" + (_longitude != null ? _longitude!.toString() : "null") + ", ");
     buffer.write("updated_at=" + "$_updated_at" + ", ");
-    buffer.write(
-      "createdAt=" +
-          (_createdAt != null ? _createdAt!.format() : "null") +
-          ", ",
-    );
-    buffer.write(
-      "updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"),
-    );
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
     buffer.write("}");
-
+    
     return buffer.toString();
   }
-
-  StaffLocations copyWith({
-    int? user_id,
-    double? latitude,
-    double? longitude,
-    String? updated_at,
-  }) {
+  
+  StaffLocations copyWith({int? user_id, double? latitude, double? longitude, String? updated_at}) {
     return StaffLocations._internal(
       id: id,
       user_id: user_id ?? this.user_id,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
-      updated_at: updated_at ?? this.updated_at,
-    );
+      updated_at: updated_at ?? this.updated_at);
   }
-
+  
   StaffLocations copyWithModelFieldValues({
     ModelFieldValue<int?>? user_id,
     ModelFieldValue<double?>? latitude,
     ModelFieldValue<double?>? longitude,
-    ModelFieldValue<String?>? updated_at,
+    ModelFieldValue<String?>? updated_at
   }) {
     return StaffLocations._internal(
       id: id,
       user_id: user_id == null ? this.user_id : user_id.value,
       latitude: latitude == null ? this.latitude : latitude.value,
       longitude: longitude == null ? this.longitude : longitude.value,
-      updated_at: updated_at == null ? this.updated_at : updated_at.value,
+      updated_at: updated_at == null ? this.updated_at : updated_at.value
     );
   }
-
-  StaffLocations.fromJson(Map<String, dynamic> json)
+  
+  StaffLocations.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
       _user_id = (json['user_id'] as num?)?.toInt(),
       _latitude = (json['latitude'] as num?)?.toDouble(),
       _longitude = (json['longitude'] as num?)?.toDouble(),
       _updated_at = json['updated_at'],
-      _createdAt = json['createdAt'] != null
-          ? amplify_core.TemporalDateTime.fromString(json['createdAt'])
-          : null,
-      _updatedAt = json['updatedAt'] != null
-          ? amplify_core.TemporalDateTime.fromString(json['updatedAt'])
-          : null;
-
+      _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
+      _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
+  
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'user_id': _user_id,
-    'latitude': _latitude,
-    'longitude': _longitude,
-    'updated_at': _updated_at,
-    'createdAt': _createdAt?.format(),
-    'updatedAt': _updatedAt?.format(),
+    'id': id, 'user_id': _user_id, 'latitude': _latitude, 'longitude': _longitude, 'updated_at': _updated_at, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
   };
-
+  
   Map<String, Object?> toMap() => {
     'id': id,
     'user_id': _user_id,
@@ -210,119 +161,80 @@ class StaffLocations extends amplify_core.Model {
     'longitude': _longitude,
     'updated_at': _updated_at,
     'createdAt': _createdAt,
-    'updatedAt': _updatedAt,
+    'updatedAt': _updatedAt
   };
 
-  static final amplify_core.QueryModelIdentifier<StaffLocationsModelIdentifier>
-  MODEL_IDENTIFIER =
-      amplify_core.QueryModelIdentifier<StaffLocationsModelIdentifier>();
+  static final amplify_core.QueryModelIdentifier<StaffLocationsModelIdentifier> MODEL_IDENTIFIER = amplify_core.QueryModelIdentifier<StaffLocationsModelIdentifier>();
   static final ID = amplify_core.QueryField(fieldName: "id");
   static final USER_ID = amplify_core.QueryField(fieldName: "user_id");
   static final LATITUDE = amplify_core.QueryField(fieldName: "latitude");
   static final LONGITUDE = amplify_core.QueryField(fieldName: "longitude");
   static final UPDATED_AT = amplify_core.QueryField(fieldName: "updated_at");
-  static var schema = amplify_core.Model.defineSchema(
-    define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
-      modelSchemaDefinition.name = "StaffLocations";
-      modelSchemaDefinition.pluralName = "StaffLocations";
-
-      modelSchemaDefinition.authRules = [
-        amplify_core.AuthRule(
-          authStrategy: amplify_core.AuthStrategy.PUBLIC,
-          provider: amplify_core.AuthRuleProvider.IAM,
-          operations: const [
-            amplify_core.ModelOperation.CREATE,
-            amplify_core.ModelOperation.UPDATE,
-            amplify_core.ModelOperation.DELETE,
-            amplify_core.ModelOperation.READ,
-          ],
-        ),
-        amplify_core.AuthRule(
-          authStrategy: amplify_core.AuthStrategy.PRIVATE,
-          operations: const [
-            amplify_core.ModelOperation.CREATE,
-            amplify_core.ModelOperation.UPDATE,
-            amplify_core.ModelOperation.DELETE,
-            amplify_core.ModelOperation.READ,
-          ],
-        ),
-      ];
-
-      modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: StaffLocations.USER_ID,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.int,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: StaffLocations.LATITUDE,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.double,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: StaffLocations.LONGITUDE,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.double,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: StaffLocations.UPDATED_AT,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.nonQueryField(
-          fieldName: 'createdAt',
-          isRequired: false,
-          isReadOnly: true,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.dateTime,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.nonQueryField(
-          fieldName: 'updatedAt',
-          isRequired: false,
-          isReadOnly: true,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.dateTime,
-          ),
-        ),
-      );
-    },
-  );
+  static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
+    modelSchemaDefinition.name = "StaffLocations";
+    modelSchemaDefinition.pluralName = "StaffLocations";
+    
+    modelSchemaDefinition.authRules = [
+      amplify_core.AuthRule(
+        authStrategy: amplify_core.AuthStrategy.PRIVATE,
+        operations: const [
+          amplify_core.ModelOperation.CREATE,
+          amplify_core.ModelOperation.UPDATE,
+          amplify_core.ModelOperation.DELETE,
+          amplify_core.ModelOperation.READ
+        ])
+    ];
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: StaffLocations.USER_ID,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.int)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: StaffLocations.LATITUDE,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.double)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: StaffLocations.LONGITUDE,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.double)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: StaffLocations.UPDATED_AT,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
+      fieldName: 'createdAt',
+      isRequired: false,
+      isReadOnly: true,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
+      fieldName: 'updatedAt',
+      isRequired: false,
+      isReadOnly: true,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
+    ));
+  });
 }
 
 class _StaffLocationsModelType extends amplify_core.ModelType<StaffLocations> {
   const _StaffLocationsModelType();
-
+  
   @override
   StaffLocations fromJson(Map<String, dynamic> jsonData) {
     return StaffLocations.fromJson(jsonData);
   }
-
+  
   @override
   String modelName() {
     return 'StaffLocations';
@@ -333,36 +245,41 @@ class _StaffLocationsModelType extends amplify_core.ModelType<StaffLocations> {
  * This is an auto generated class representing the model identifier
  * of [StaffLocations] in your schema.
  */
-class StaffLocationsModelIdentifier
-    implements amplify_core.ModelIdentifier<StaffLocations> {
+class StaffLocationsModelIdentifier implements amplify_core.ModelIdentifier<StaffLocations> {
   final String id;
 
   /** Create an instance of StaffLocationsModelIdentifier using [id] the primary key. */
-  const StaffLocationsModelIdentifier({required this.id});
-
+  const StaffLocationsModelIdentifier({
+    required this.id});
+  
   @override
-  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{'id': id});
-
+  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{
+    'id': id
+  });
+  
   @override
-  List<Map<String, dynamic>> serializeAsList() => serializeAsMap().entries
-      .map((entry) => (<String, dynamic>{entry.key: entry.value}))
-      .toList();
-
+  List<Map<String, dynamic>> serializeAsList() => serializeAsMap()
+    .entries
+    .map((entry) => (<String, dynamic>{ entry.key: entry.value }))
+    .toList();
+  
   @override
   String serializeAsString() => serializeAsMap().values.join('#');
-
+  
   @override
   String toString() => 'StaffLocationsModelIdentifier(id: $id)';
-
+  
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) {
       return true;
     }
-
-    return other is StaffLocationsModelIdentifier && id == other.id;
+    
+    return other is StaffLocationsModelIdentifier &&
+      id == other.id;
   }
-
+  
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode =>
+    id.hashCode;
 }

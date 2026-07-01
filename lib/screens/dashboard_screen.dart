@@ -33,6 +33,8 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'dart:convert';
+import 'reminder_calendar_screen.dart';
+import 'client_files_screen.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../widgets/premium_app_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -632,6 +634,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 18: return const VerificationHistoryView();
       case 19: return const TravelLogScreen();
       case 20: return FileAcknowledgementScreen(currentUserRole: _userRole, currentUserName: _userName);
+      case 21: return const ClientFilesScreen();
       default: return const Center(child: Text('Page not found'));
     }
   }
@@ -682,6 +685,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _sidebarItem(11, Icons.account_balance_wallet_rounded, 'Accounting & Pay'),
                   _sidebarItem(2, Icons.receipt_long_rounded, 'Billing'),
                   _sidebarItem(3, Icons.people_alt_rounded, 'Client Data'),
+                  _sidebarItem(21, Icons.folder_shared_rounded, 'Work File'),
 
                   const Padding(
                     padding: EdgeInsets.fromLTRB(24, 24, 24, 8),

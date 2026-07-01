@@ -104,6 +104,7 @@ class BillingService {
     required int limit,
     required int offset,
     String statusFilter = 'All',
+    String typeFilter = 'All',
     DateTime? startDate,
     DateTime? endDate,
     String sortBy = 'Newest First',
@@ -157,11 +158,21 @@ class BillingService {
       else if (statusFilter == 'Interested' && b.status == 'Interested') match = true;
       else if (statusFilter == 'Not Interested' && b.status == 'Not Interested') match = true;
       
+      if (match && typeFilter != 'All') {
+        if (typeFilter == 'Quotation' && b.type != 'QUOTATION') match = false;
+        else if (typeFilter == 'Invoice' && b.type == 'QUOTATION') match = false;
+      }
+      
       if (match && searchTerm.isNotEmpty) {
         final query = searchTerm.toLowerCase();
         final cName = b.client_name?.toLowerCase() ?? '';
         final invNo = b.invoice_no?.toLowerCase() ?? '';
-        if (!cName.contains(query) && !invNo.contains(query)) {
+        final dataStr = b.data?.toLowerCase() ?? '';
+        final amt = b.amount?.toLowerCase() ?? '';
+        if (!cName.contains(query) && 
+            !invNo.contains(query) &&
+            !dataStr.contains(query) &&
+            !amt.contains(query)) {
           match = false;
         }
       }
@@ -212,15 +223,24 @@ class BillingService {
         // Use INVOICE DATE exclusively for chronological sorting
         if (a.date != null && a.date!.isNotEmpty) {
           try {
-            final p = a.date!.split('/');
+            var dateStr = a.date!.replaceAll('-', '/');
+            final p = dateStr.split('/');
             if (p.length == 3) dateA = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
           } catch (_) {}
         }
+        if (dateA.millisecondsSinceEpoch == 0 && a.createdAt != null) {
+          try { dateA = DateTime.parse(a.createdAt!); } catch (_) {}
+        }
+
         if (b.date != null && b.date!.isNotEmpty) {
           try {
-            final p = b.date!.split('/');
+            var dateStr = b.date!.replaceAll('-', '/');
+            final p = dateStr.split('/');
             if (p.length == 3) dateB = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
           } catch (_) {}
+        }
+        if (dateB.millisecondsSinceEpoch == 0 && b.createdAt != null) {
+          try { dateB = DateTime.parse(b.createdAt!); } catch (_) {}
         }
         
         int comp = sortBy == 'Newest First' ? dateB.compareTo(dateA) : dateA.compareTo(dateB);

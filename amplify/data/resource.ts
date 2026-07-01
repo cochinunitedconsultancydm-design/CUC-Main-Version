@@ -59,6 +59,14 @@ const schema = a.schema({
     image_path: a.string(),
     details: a.string(),
   }).authorization((allow) => [allow.authenticated()]),
+  Sops: a.model({
+    id: a.id().required(),
+    title: a.string(),
+    description: a.string(),
+    content: a.string(),
+    created_at: a.string(),
+    updated_at: a.string(),
+  }).authorization((allow) => [allow.authenticated()]),
   StaffLocations: a.model({
     user_id: a.integer(),
     latitude: a.float(),

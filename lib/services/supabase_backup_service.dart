@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:amplify_api/amplify_api.dart';
+import '../models/ModelProvider.dart' as amplify_models;
 /// Lightweight Supabase backup service.
 /// Mirrors critical DynamoDB data to Supabase for disaster recovery.
 class SupabaseBackupService {
@@ -160,6 +162,52 @@ class SupabaseBackupService {
       return response.statusCode == 200;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Imports missing billings from Supabase to Amplify.
+  Future<void> importMissingBillings() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_supabaseUrl/rest/v1/billings?select=*'),
+        headers: _headers,
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> sbBillings = json.decode(response.body);
+        
+        // Fetch existing Amplify billings
+        var req = ModelQueries.list(amplify_models.Billings.classType, limit: 10000);
+        var res = await Amplify.API.query(request: req).response;
+        final existingIds = (res.data?.items ?? []).map((b) => b?.id).toSet();
+        
+        int importedCount = 0;
+        for (var sbData in sbBillings) {
+          final String sbId = sbData['id'].toString();
+          if (!existingIds.contains(sbId)) {
+            final newBilling = amplify_models.Billings(
+              id: sbId,
+              client_name: sbData['client_name']?.toString(),
+              invoice_no: sbData['invoice_no']?.toString(),
+              date: sbData['date']?.toString(),
+              amount: sbData['amount']?.toString(),
+              type: sbData['type']?.toString(),
+              category: sbData['category']?.toString(),
+              authorities: sbData['authorities']?.toString(),
+              status: sbData['status']?.toString(),
+              created_at: sbData['created_at']?.toString(),
+              data: sbData['data'] != null ? (sbData['data'] is String ? sbData['data'] : jsonEncode(sbData['data'])) : null,
+            );
+            final mutReq = ModelMutations.create(newBilling);
+            await Amplify.API.mutate(request: mutReq).response;
+            importedCount++;
+          }
+        }
+        debugPrint('Successfully imported $importedCount missing billings from Supabase.');
+      } else {
+        debugPrint('Supabase import failed: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('Supabase import error: $e');
     }
   }
 

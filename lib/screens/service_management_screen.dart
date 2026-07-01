@@ -390,7 +390,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Service Catalog', 
+                      'Service Checklist', 
                       style: TextStyle(
                         fontSize: isWide ? 32 : 24, 
                         fontWeight: FontWeight.w900, 

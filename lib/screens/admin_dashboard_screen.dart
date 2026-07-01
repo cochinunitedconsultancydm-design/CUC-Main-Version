@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme.dart';
 import 'login_screen.dart';
+import 'client_files_screen.dart';
 import 'service_management_screen.dart';
 import 'staff_management_screen.dart';
 import 'monitor_screen.dart';
@@ -23,6 +24,7 @@ import '../services/excel_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'checklist_screen.dart';
 import 'reminder_calendar_screen.dart';
+import 'sop_screen.dart';
 import '../widgets/upcoming_reminders_widget.dart';
 import '../services/checklist_service.dart';
 import 'staff_location_screen.dart';
@@ -123,11 +125,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       var billingsList = (res3.data?.items ?? []).where((e) => e != null).cast<Billings>().toList();
       billingsList.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
       
+      final now = DateTime.now();
       double totalRevenue = 0;
       for (var row in billingsList.where((b) => b.status == 'Received')) {
-        final amtStr = row.amount?.toString() ?? '0';
-        final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
-        totalRevenue += double.tryParse(cleanAmt) ?? 0.0;
+        DateTime? recordDate;
+        try {
+           if (row.data != null) {
+              final d = jsonDecode(row.data!);
+              if (d['payment_date'] != null) recordDate = DateTime.parse(d['payment_date']);
+           }
+        } catch (_) {}
+        recordDate ??= row.createdAt?.getDateTimeInUtc();
+        
+        if (recordDate != null && recordDate.month == now.month && recordDate.year == now.year) {
+          final amtStr = row.amount?.toString() ?? '0';
+          final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
+          totalRevenue += double.tryParse(cleanAmt) ?? 0.0;
+        }
       }
 
       final activityRes = billingsList.take(5).toList();
@@ -286,10 +300,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _sidebarItem(17, Icons.calendar_month_rounded, 'Reminder Calendar', isWide),
                 _sidebarItem(11, Icons.account_balance_wallet_rounded, 'Accounting & Pay', isWide),
                 _sidebarItem(1, Icons.security_rounded, 'Security & Audit', isWide),
+                _sidebarItem(24, Icons.folder_shared_rounded, 'Work File', isWide),
                 _sidebarItem(2, Icons.people_outline_rounded, 'Staff Management', isWide),
                 _sidebarItem(6, Icons.location_on_outlined, 'Staff Locations', isWide),
                 _sidebarItem(8, Icons.directions_car_filled_outlined, 'Travel Logs', isWide),
-                _sidebarItem(3, Icons.layers_outlined, 'Service Catalog', isWide),
+                _sidebarItem(3, Icons.layers_outlined, 'Service Checklist', isWide),
+                _sidebarItem(23, Icons.menu_book_rounded, 'SOP', isWide),
                 _sidebarItem(4, Icons.storage_rounded, 'System Maintenance', isWide),
                 _sidebarItem(5, Icons.health_and_safety_outlined, 'System Health', isWide),
                 _sidebarItem(19, Icons.cloud_sync, 'Google Docs Vault', isWide),
@@ -418,6 +434,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 20: return const VerificationHistoryView();
       case 21: return const PropertyManagementScreen();
       case 22: return const FileAcknowledgementScreen(currentUserRole: 'admin', currentUserName: 'Admin');
+      case 24: return const ClientFilesScreen();
+      case 23: return const SopScreen();
       default: return _buildPlaceholderView('Coming Soon');
     }
   }

@@ -364,6 +364,16 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
     bool recipientIsCompany = action == 'Received';
     bool senderIsCompany = action == 'Returned';
 
+    String fromName = action == 'Returned' ? post.senderName : post.recipientName;
+    bool fromIsCompany = action == 'Returned' ? senderIsCompany : recipientIsCompany;
+
+    String toName = action == 'Returned' ? post.recipientName : post.senderName;
+    bool toIsCompany = action == 'Returned' ? recipientIsCompany : senderIsCompany;
+    
+    String bodyText = action == 'Returned' 
+        ? 'We are hereby returning the below mentioned documents' 
+        : 'I hereby acknowledge that I have received the below mentioned documents';
+
     pw.MemoryImage? logoImage;
     try {
       final ByteData bytes = await rootBundle.load('assets/logo.png');
@@ -445,7 +455,7 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
                           padding: const pw.EdgeInsets.only(left: 40, top: 8),
                           child: pw.Column(
                             crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: buildAddress(post.recipientName, recipientIsCompany),
+                            children: buildAddress(fromName, fromIsCompany),
                           ),
                         ),
                         
@@ -456,7 +466,7 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
                           padding: const pw.EdgeInsets.only(left: 40, top: 8),
                           child: pw.Column(
                             crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: buildAddress(post.senderName, senderIsCompany),
+                            children: buildAddress(toName, toIsCompany),
                           ),
                         ),
                         
@@ -466,61 +476,54 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
                         
                         pw.SizedBox(height: 20),
                         
-                        pw.Text('I Hereby Acknowledge the Receipt of The Following', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                        pw.Text(bodyText, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
                         
                         pw.SizedBox(height: 20),
                         
                         pw.Padding(
-                          padding: const pw.EdgeInsets.only(left: 20),
-                          child: pw.Column(
-                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: List.generate(fileNames.length, (index) {
-                              String fName = fileNames[index];
-                              String fileRemark = '';
-                              if (fName.contains('::')) {
-                                final parts = fName.split('::');
-                                fName = parts[0].trim();
-                                if (parts.length > 1) {
-                                  fileRemark = parts[1].trim();
+                          padding: const pw.EdgeInsets.symmetric(horizontal: 20),
+                          child: pw.Table(
+                            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+                            columnWidths: {
+                              0: const pw.FixedColumnWidth(40),
+                              1: const pw.FlexColumnWidth(3),
+                              2: const pw.FixedColumnWidth(60),
+                              3: const pw.FlexColumnWidth(2),
+                            },
+                            children: [
+                              pw.TableRow(
+                                decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                                children: [
+                                  pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Sl No', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold), textAlign: pw.TextAlign.center)),
+                                  pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Document Name', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold))),
+                                  pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Type', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold), textAlign: pw.TextAlign.center)),
+                                  pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Remarks', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold))),
+                                ],
+                              ),
+                              ...List.generate(fileNames.length, (index) {
+                                String fName = fileNames[index];
+                                String fileRemark = '';
+                                if (fName.contains('::')) {
+                                  final parts = fName.split('::');
+                                  fName = parts[0].trim();
+                                  if (parts.length > 1) {
+                                    fileRemark = parts[1].trim();
+                                  }
                                 }
-                              }
-                              if (fileRemark.isEmpty && remarks.isNotEmpty) {
-                                fileRemark = remarks;
-                              }
+                                if (fileRemark.isEmpty && remarks.isNotEmpty) {
+                                  fileRemark = remarks;
+                                }
 
-                              return pw.Padding(
-                                padding: const pw.EdgeInsets.only(bottom: 12),
-                                child: pw.Row(
-                                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                return pw.TableRow(
                                   children: [
-                                    pw.Text('${index + 1}. ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                                    pw.Expanded(
-                                      child: pw.Column(
-                                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                        children: [
-                                          pw.Row(
-                                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                            children: [
-                                              pw.Text(fName.toUpperCase(), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                                              if (fileTypeStr.isNotEmpty)
-                                                pw.Padding(
-                                                  padding: const pw.EdgeInsets.only(left: 4),
-                                                  child: pw.Text(fileTypeStr, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                                                ),
-                                            ]
-                                          ),
-                                          if (fileRemark.isNotEmpty)
-                                            pw.Padding(
-                                              padding: const pw.EdgeInsets.only(top: 4),
-                                              child: pw.Text('($fileRemark)', style: pw.TextStyle(fontSize: 10, fontStyle: pw.FontStyle.italic, color: PdfColors.grey800)),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
+                                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('${index + 1}', style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.center)),
+                                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(fName.toUpperCase(), style: const pw.TextStyle(fontSize: 10))),
+                                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(fileTypeStr, style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.center)),
+                                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(fileRemark, style: const pw.TextStyle(fontSize: 10))),
                                   ],
-                                ),
-                              );
-                            }),
+                                );
+                              }),
+                            ],
                           ),
                         ),
                       ],
@@ -547,7 +550,7 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
                           children: [
                             pw.Text('Yours faithfully', style: const pw.TextStyle(fontSize: 11)),
                             pw.SizedBox(height: 40),
-                            pw.Text(post.recipientName.toUpperCase(), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                            pw.Text(fromName.toUpperCase(), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
                           ],
                         ),
                       ]
@@ -1108,6 +1111,8 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
 
   Widget _buildUserAutocomplete({required TextEditingController controller, required String hint, required IconData icon}) {
     return Autocomplete<Map<String, dynamic>>(
+      key: ValueKey('${controller.hashCode}_$_actionType'),
+      initialValue: TextEditingValue(text: controller.text),
       optionsBuilder: (TextEditingValue textEditingValue) {
         if (textEditingValue.text.isEmpty) return _users;
         return _users.where((u) => 
@@ -1119,35 +1124,43 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
         controller.text = u['name']?.toString() ?? '';
       },
       fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-        // Sync text back to our controller
-        textEditingController.addListener(() {
-          controller.text = textEditingController.text;
-        });
-        // Initial value
-        if (textEditingController.text != controller.text) {
-          textEditingController.text = controller.text;
-        }
-
-        return Container(
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200, width: 1),
-          ),
-          child: TextFormField(
-            controller: textEditingController,
-            focusNode: focusNode,
-            style: const TextStyle(color: AppTheme.textColor, fontSize: 14),
-            minLines: 1,
-            maxLines: 5,
-            decoration: InputDecoration(
-              prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 20),
-              hintText: hint,
-              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-              contentPadding: const EdgeInsets.all(16),
-              border: InputBorder.none,
-            ),
-          ),
+        return ValueListenableBuilder<TextEditingValue>(
+          valueListenable: controller,
+          builder: (context, value, child) {
+            if (textEditingController.text != value.text) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (textEditingController.text != value.text) {
+                  textEditingController.text = value.text;
+                }
+              });
+            }
+            return Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200, width: 1),
+              ),
+              child: TextFormField(
+                controller: textEditingController,
+                focusNode: focusNode,
+                style: const TextStyle(color: AppTheme.textColor, fontSize: 14),
+                minLines: 1,
+                maxLines: 5,
+                onChanged: (val) {
+                  if (controller.text != val) {
+                    controller.text = val;
+                  }
+                },
+                decoration: InputDecoration(
+                  prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 20),
+                  hintText: hint,
+                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                  contentPadding: const EdgeInsets.all(16),
+                  border: InputBorder.none,
+                ),
+              ),
+            );
+          },
         );
       },
       optionsViewBuilder: (context, onSelected, options) {

@@ -12,6 +12,7 @@ import '../services/excel_service.dart';
 import '../services/logging_service.dart';
 import '../services/invoice_pdf_service.dart';
 import '../services/deal_service.dart';
+import '../services/auth_service.dart';
 import '../utils/number_to_words.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,7 +21,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import '../widgets/premium_app_bar.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
-
+import '../services/supabase_backup_service.dart';
 class BillingScreen extends StatefulWidget {
   const BillingScreen({super.key});
   @override
@@ -43,6 +44,7 @@ class _BillingScreenState extends State<BillingScreen> {
   Timer? _debounce;
   final FocusNode _searchFocusNode = FocusNode();
   String _statusFilter = 'All';
+  String _typeFilter = 'All';
   String _sortBy = 'Newest First';
   DateTime? _startDate;
   DateTime? _endDate;
@@ -147,9 +149,11 @@ class _BillingScreenState extends State<BillingScreen> {
         limit: _limit,
         offset: _offset,
         statusFilter: _statusFilter,
+        typeFilter: _typeFilter,
         startDate: _startDate,
         endDate: _endDate,
         sortBy: _sortBy,
+        searchTerm: _searchTerm,
       );
       
       if (mounted) {
@@ -248,6 +252,9 @@ class _BillingScreenState extends State<BillingScreen> {
         double newlyReceived = double.tryParse(receivedController.text) ?? 0;
         if (newlyReceived <= 0) return;
 
+        // Log payment in accounting
+        await _logAccountingEntry(b, newlyReceived);
+
         double totalReceived = previouslyReceived + newlyReceived;
         double updatedBalance = grandTotal - totalReceived;
         if (updatedBalance < 0) updatedBalance = 0;
@@ -261,7 +268,7 @@ class _BillingScreenState extends State<BillingScreen> {
         if (isPaid) d['payment_date'] = DateTime.now().toIso8601String();
 
         await _billingService.updateBilling(b.id!, {
-          'status': isPaid ? 'Received' : 'Pending',
+          'status': isPaid ? 'Received' : (totalReceived > 0 ? 'Part Payment' : 'Pending'),
           'data': d,
         });
         
@@ -279,14 +286,222 @@ class _BillingScreenState extends State<BillingScreen> {
     }
   }
 
-  Future<void> _updateStatus(Billing b, String status) async {
+  Future<void> _updateStatus(Billing b, String status, {String? approvedAmount, String? partPayment}) async {
     try {
-      await _billingService.updateBilling(b.id!, {'status': status});
+      final updates = <String, dynamic>{'status': status};
+      if (approvedAmount != null || partPayment != null) {
+        final d = Map<String, dynamic>.from(b.data ?? {});
+        if (approvedAmount != null) d['approved_amount'] = approvedAmount;
+        
+        if (partPayment != null && partPayment.isNotEmpty) {
+          double advance = double.tryParse(partPayment) ?? 0;
+          if (advance > 0) {
+            // Log payment in accounting
+            await _logAccountingEntry(b, advance);
+
+            double currentAdvance = double.tryParse(d['advance_received']?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0;
+            double totalAdvance = currentAdvance + advance;
+            d['advance_received'] = NumberToWords.formatIndianCurrency(totalAdvance);
+            
+            double approved = double.tryParse(d['approved_amount']?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0;
+            if (approved == 0) {
+               approved = double.tryParse(b.amount?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0;
+            }
+            double balance = approved - totalAdvance;
+            if (balance < 0) balance = 0;
+            d['balance_due'] = balance > 0 ? NumberToWords.formatIndianCurrency(balance) : '0/-';
+          }
+        }
+        updates['data'] = d;
+      }
+      await _billingService.updateBilling(b.id!, updates);
       _fetchBillings(refresh: true);
       _msg('Status updated to $status', true);
       await _log.logAction(action: 'INVOICE_STATUS_UPDATED', targetType: 'Invoice', targetId: b.invoiceNo ?? '', details: 'Status changed to $status');
     } catch (e) {
       _msg('Failed: $e', false);
+    }
+  }
+
+  Future<void> _logAccountingEntry(Billing b, double amount) async {
+    try {
+      final uid = await AuthService().getUserId();
+      final uname = await AuthService().getUserName();
+      
+      String creatorName = uname ?? '';
+      if (b.authorities != null && b.authorities!.isNotEmpty) {
+        final parts = b.authorities!.split('-');
+        if (parts.length > 1) {
+          creatorName = parts.last.trim();
+        } else {
+          creatorName = b.authorities!.trim();
+        }
+      }
+      
+      double totalAmount = double.tryParse(b.amount?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0;
+      String paymentType = (amount >= totalAmount) ? 'Full Payment' : 'Part Payment';
+      
+      final bill = CompanyBills(
+        category: 'Client Payment',
+        title: '${b.type ?? 'Invoice'} Payment ($paymentType) - ${b.invoiceNo ?? ''}',
+        amount: -amount.abs(), // Income is stored as negative in CompanyBills
+        bill_date: DateTime.now().toIso8601String(),
+        status: 'Paid',
+        description: 'Payment from ${b.clientName ?? 'Client'}. Auto-logged from Billing.',
+        spent_by: int.tryParse(uid?.toString() ?? ''),
+        spent_by_name: creatorName,
+      );
+      
+      final req = ModelMutations.create(bill);
+      await Amplify.API.mutate(request: req).response;
+    } catch (e) {
+      debugPrint('Failed to log accounting entry: $e');
+    }
+  }
+
+  Future<void> _syncOldBillsToAccounting() async {
+    setState(() => _isLoading = true);
+    _msg('Starting sync of old bills to accounting...', true);
+    try {
+      final uid = await AuthService().getUserId();
+      final uname = await AuthService().getUserName();
+      
+      final allBillings = await _billingService.fetchBillings(limit: 1000, offset: 0); 
+      
+      final req = ModelQueries.list(CompanyBills.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final existingBills = res.data?.items.whereType<CompanyBills>().toList() ?? [];
+      
+      int added = 0;
+      
+      for (final b in allBillings) {
+        double amountToLog = 0;
+        
+        String creatorName = uname ?? '';
+        if (b.authorities != null && b.authorities!.isNotEmpty) {
+          final parts = b.authorities!.split('-');
+          if (parts.length > 1) {
+            creatorName = parts.last.trim();
+          } else {
+            creatorName = b.authorities!.trim();
+          }
+        }
+        
+        final bool isPaid = b.data?['payment_received'] == true || b.data?['payment_received'] == 'true';
+        if (isPaid) {
+           amountToLog = double.tryParse(b.amount?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0;
+        } 
+        else if (b.data?['advance_received'] != null) {
+           amountToLog = double.tryParse(b.data!['advance_received'].toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0;
+        }
+        
+        if (amountToLog > 0) {
+          double totalAmount = double.tryParse(b.amount?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0;
+          String paymentType = (amountToLog >= totalAmount) ? 'Full Payment' : 'Part Payment';
+          
+          final targetTitle = '${b.type ?? 'Invoice'} Payment ($paymentType) - ${b.invoiceNo ?? ''}';
+          final exists = existingBills.any((eb) => eb.title == targetTitle || eb.title == '${b.type ?? 'Invoice'} Payment - ${b.invoiceNo ?? ''}');
+          
+          if (!exists) {
+            DateTime parsedDate = DateTime.now();
+            if (b.date != null && b.date!.isNotEmpty) {
+              try {
+                parsedDate = DateFormat('dd/MM/yyyy').parseLoose(b.date!);
+              } catch (_) {}
+            }
+            
+            final bill = CompanyBills(
+              category: 'Client Payment',
+              title: targetTitle,
+              amount: -amountToLog.abs(),
+              bill_date: parsedDate.toIso8601String(),
+              status: 'Paid',
+              description: 'Payment from ${b.clientName ?? 'Client'}. Auto-logged from Billing.',
+              spent_by: int.tryParse(uid?.toString() ?? ''),
+              spent_by_name: creatorName,
+            );
+            
+            final mutReq = ModelMutations.create(bill);
+            await Amplify.API.mutate(request: mutReq).response;
+            added++;
+          }
+        }
+      }
+      _msg('Sync complete! Added $added old payments to accounting.', true);
+    } catch (e) {
+      _msg('Failed to sync: $e', false);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _markInterested(Billing b) async {
+    final controller = TextEditingController(text: b.data?['approved_amount']?.toString() ?? b.amount?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '');
+    final partPaymentController = TextEditingController();
+    bool includePartPayment = false;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Approve Quotation', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Enter the approved amount for this quotation:'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Approved Amount',
+                  prefixText: '₹ ',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                title: const Text('Add Part Payment / Advance?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                value: includePartPayment,
+                activeThumbColor: Colors.teal,
+                onChanged: (val) {
+                  setModalState(() {
+                    includePartPayment = val;
+                    if (!val) partPaymentController.clear();
+                  });
+                },
+                contentPadding: EdgeInsets.zero,
+              ),
+              if (includePartPayment) ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: partPaymentController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Part Payment (₹)',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
+              onPressed: () => Navigator.pop(c, true), 
+              child: const Text('Confirm')
+            ),
+          ],
+        )
+      )
+    );
+
+    if (ok == true) {
+      await _updateStatus(b, 'Interested', approvedAmount: controller.text, partPayment: includePartPayment ? partPaymentController.text : null);
     }
   }
 
@@ -365,9 +580,7 @@ class _BillingScreenState extends State<BillingScreen> {
       status: 'Pending',
       data: Map<String, dynamic>.from(b.data ?? {})
         ..remove('payment_received')
-        ..remove('advance_received')
         ..remove('payment_date')
-        ..remove('balance_due')
         ..remove('quotation_terms'),
     );
 
@@ -463,11 +676,11 @@ class _BillingScreenState extends State<BillingScreen> {
                       trailing: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: (isPaid ? Colors.green : (b.status == 'Interested' ? Colors.teal : (b.status == 'Not Interested' ? Colors.blueGrey : Colors.orange))).withValues(alpha: 0.1),
+                          color: (isPaid ? Colors.green : (b.status == 'Interested' ? Colors.teal : (b.status == 'Not Interested' ? Colors.blueGrey : (b.status == 'Part Payment' ? Colors.indigo : Colors.orange)))).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8)
                         ),
-                        child: Text(isPaid ? 'PAID' : (b.status == 'Interested' ? 'INTERESTED' : (b.status == 'Not Interested' ? 'NOT INT' : 'PENDING')), 
-                          style: TextStyle(color: isPaid ? Colors.green : (b.status == 'Interested' ? Colors.teal : (b.status == 'Not Interested' ? Colors.blueGrey : Colors.orange)), fontWeight: FontWeight.bold, fontSize: 10))
+                        child: Text(isPaid ? 'PAID' : (b.status == 'Interested' ? 'INTERESTED' : (b.status == 'Not Interested' ? 'NOT INT' : (b.status == 'Part Payment' ? 'PARTIAL' : 'PENDING'))), 
+                          style: TextStyle(color: isPaid ? Colors.green : (b.status == 'Interested' ? Colors.teal : (b.status == 'Not Interested' ? Colors.blueGrey : (b.status == 'Part Payment' ? Colors.indigo : Colors.orange))), fontWeight: FontWeight.bold, fontSize: 10))
                       ),
                     );
                   },
@@ -569,7 +782,57 @@ class _BillingScreenState extends State<BillingScreen> {
                       _statBadge('$_totalPending Pending', Colors.orange),
                     ]),
                   ]),
-                    Row(children: [
+                    Expanded(child: Wrap(alignment: WrapAlignment.end, crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 8, children: [
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.sync_rounded, size: 18),
+                        label: const Text('Sync Old Bills'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () async {
+                          await _syncOldBillsToAccounting();
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.cloud_download, size: 18),
+                        label: const Text('Sync from Supabase'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () async {
+                          _msg('Importing missing billings...', true);
+                          await SupabaseBackupService().importMissingBillings();
+                          _msg('Import complete.', true);
+                          _fetchBillings(refresh: true);
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        height: 45,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _typeFilter,
+                            icon: const Icon(Icons.filter_alt_outlined, size: 20, color: Colors.indigo),
+                            items: ['All', 'Invoice', 'Quotation'].map((s) => DropdownMenuItem(value: s, child: Text(s == 'All' ? 'All Types' : s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() => _typeFilter = v);
+                                _fetchBillings(refresh: true);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Container(
                         height: 45,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -577,7 +840,8 @@ class _BillingScreenState extends State<BillingScreen> {
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: _statusFilter,
-                            items: ['All', 'Paid', 'Pending', 'Overdue', 'Interested', 'Not Interested'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
+                            icon: const Icon(Icons.fact_check_outlined, size: 20, color: Colors.teal),
+                            items: ['All', 'Paid', 'Pending', 'Overdue', 'Interested', 'Not Interested'].map((s) => DropdownMenuItem(value: s, child: Text(s == 'All' ? 'All Statuses' : s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
                             onChanged: (v) {
                               if (v != null) {
                                 setState(() => _statusFilter = v);
@@ -653,7 +917,7 @@ class _BillingScreenState extends State<BillingScreen> {
                       onPressed: () => _openCreator(), icon: const Icon(Icons.add_rounded, size: 20), label: const Text('Create Invoice', style: TextStyle(fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     ),
-                  ]),
+                  ])),
                 ],
               )
             else ...[
@@ -899,6 +1163,10 @@ class _BillingScreenState extends State<BillingScreen> {
               Text('AMOUNT', style: TextStyle(color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
               Text(b.amount ?? '0/-', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+              if (b.type == 'QUOTATION' && (b.data?['approved_amount']?.isNotEmpty ?? false) && b.data!['approved_amount'] != '0/-' && b.data!['approved_amount'] != '0') ...[
+                const SizedBox(height: 2),
+                Text('Appr: ${b.data!['approved_amount']}', style: TextStyle(color: Colors.green.shade600, fontSize: 11, fontWeight: FontWeight.bold)),
+              ],
               if (!isPaid && (b.data?['balance_due']?.isNotEmpty ?? false) && b.data!['balance_due'] != '0/-') ...[
                 const SizedBox(height: 2),
                 Text('Bal: ${b.data!['balance_due']}', style: TextStyle(color: Colors.orange.shade700, fontSize: 11, fontWeight: FontWeight.bold)),
@@ -928,8 +1196,8 @@ class _BillingScreenState extends State<BillingScreen> {
                 if (isPaid) IconButton(onPressed: () => _generateReceipt(b), icon: const Icon(Icons.receipt_rounded, color: Colors.teal), tooltip: 'Generate Receipt'),
                 if (b.type == 'QUOTATION') ...[
                   IconButton(onPressed: () => _convertToInvoice(b), icon: const Icon(Icons.transform_rounded, color: Colors.deepPurple), tooltip: 'Convert to Invoice'),
-                  IconButton(onPressed: () => _updateStatus(b, 'Interested'), icon: Icon(Icons.thumb_up_alt_rounded, color: b.status == 'Interested' ? Colors.teal : Colors.grey.shade400, size: 22), tooltip: 'Interested'),
-                  IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.thumb_down_alt_rounded, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 22), tooltip: 'Not Interested'),
+                  IconButton(onPressed: () => _markInterested(b), icon: Icon(Icons.check_circle_outline_rounded, color: b.status == 'Interested' ? Colors.teal : Colors.grey.shade400, size: 22), tooltip: 'Interested'),
+                  IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.cancel_outlined, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 22), tooltip: 'Not Interested'),
                 ],
                 IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 22), tooltip: 'Duplicate'),
                 IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 28), tooltip: 'Edit'),
@@ -961,6 +1229,10 @@ class _BillingScreenState extends State<BillingScreen> {
               const SizedBox(width: 12),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Text(b.amount ?? '0/-', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                if (b.type == 'QUOTATION' && (b.data?['approved_amount']?.isNotEmpty ?? false) && b.data!['approved_amount'] != '0/-' && b.data!['approved_amount'] != '0') ...[
+                  const SizedBox(height: 2),
+                  Text('Appr: ${b.data!['approved_amount']}', style: TextStyle(color: Colors.green.shade600, fontSize: 11, fontWeight: FontWeight.bold)),
+                ],
                 Text(b.date ?? '-', style: TextStyle(color: Colors.grey.shade400, fontSize: 10)),
                 if (b.data?['payment_deadline'] != null && b.data!['payment_deadline'].toString().isNotEmpty)
                   Text('Due: ${b.data!['payment_deadline']}', style: TextStyle(color: Colors.red.shade400, fontSize: 10, fontWeight: FontWeight.bold)),
@@ -982,11 +1254,11 @@ class _BillingScreenState extends State<BillingScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), alignment: Alignment.center, decoration: BoxDecoration(
-                color: (isPaid ? Colors.green : (b.status == 'Interested' ? Colors.teal : (b.status == 'Not Interested' ? Colors.blueGrey : (isOverdue ? Colors.red : Colors.orange)))).withValues(alpha: 0.1), 
+                color: (isPaid ? Colors.green : (b.status == 'Interested' ? Colors.teal : (b.status == 'Not Interested' ? Colors.blueGrey : (b.status == 'Part Payment' ? Colors.indigo : (isOverdue ? Colors.red : Colors.orange))))).withValues(alpha: 0.1), 
                 borderRadius: BorderRadius.circular(6)
               ),
-                child: Text(isPaid ? 'PAID' : (b.status == 'Interested' ? 'INTERESTED' : (b.status == 'Not Interested' ? 'NOT INT' : (isOverdue ? 'OVERDUE' : 'PENDING'))), 
-                  style: TextStyle(color: isPaid ? Colors.green.shade700 : (b.status == 'Interested' ? Colors.teal.shade700 : (b.status == 'Not Interested' ? Colors.blueGrey.shade700 : (isOverdue ? Colors.red.shade700 : Colors.orange.shade700))), fontSize: 9, fontWeight: FontWeight.w900))),
+                child: Text(isPaid ? 'PAID' : (b.status == 'Interested' ? 'INTERESTED' : (b.status == 'Not Interested' ? 'NOT INT' : (b.status == 'Part Payment' ? 'PARTIAL' : (isOverdue ? 'OVERDUE' : 'PENDING')))), 
+                  style: TextStyle(color: isPaid ? Colors.green.shade700 : (b.status == 'Interested' ? Colors.teal.shade700 : (b.status == 'Not Interested' ? Colors.blueGrey.shade700 : (b.status == 'Part Payment' ? Colors.indigo.shade700 : (isOverdue ? Colors.red.shade700 : Colors.orange.shade700)))), fontSize: 9, fontWeight: FontWeight.w900))),
               Expanded(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -999,8 +1271,8 @@ class _BillingScreenState extends State<BillingScreen> {
                       if (isPaid) IconButton(onPressed: () => _generateReceipt(b), icon: const Icon(Icons.receipt_rounded, color: Colors.teal, size: 20), tooltip: 'Receipt', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       if (b.type == 'QUOTATION') ...[
                         IconButton(onPressed: () => _convertToInvoice(b), icon: const Icon(Icons.transform_rounded, color: Colors.deepPurple, size: 20), tooltip: 'Convert', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
-                        IconButton(onPressed: () => _updateStatus(b, 'Interested'), icon: Icon(Icons.thumb_up_alt_rounded, color: b.status == 'Interested' ? Colors.teal : Colors.grey.shade400, size: 18), tooltip: 'Interested', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
-                        IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.thumb_down_alt_rounded, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 18), tooltip: 'Not Interested', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
+                        IconButton(onPressed: () => _markInterested(b), icon: Icon(Icons.check_circle_outline_rounded, color: b.status == 'Interested' ? Colors.teal : Colors.grey.shade400, size: 18), tooltip: 'Interested', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
+                        IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.cancel_outlined, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 18), tooltip: 'Not Interested', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       ],
                       IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 20), tooltip: 'Duplicate', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 24), tooltip: 'Edit', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
@@ -1088,7 +1360,7 @@ class InvoiceCreatorPage extends StatefulWidget {
 
 class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   late String _type, _category, _authorities, _status;
-  late TextEditingController _clientName, _clientAddress, _date, _invoiceNo, _outstanding, _advanceReceived, _deadlineDate;
+  late TextEditingController _clientName, _clientAddress, _date, _invoiceNo, _outstanding, _advanceReceived, _deadlineDate, _approvedAmount;
   late List<Map<String, dynamic>> _items;
   late List<TextEditingController> _itemDescControllers;
   late List<TextEditingController> _itemAmountControllers;
@@ -1118,6 +1390,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     _invoiceNo = TextEditingController(text: b?.invoiceNo);
     _outstanding = TextEditingController(text: b?.outstandingAmount);
     _advanceReceived = TextEditingController(text: b?.data?['advance_received']?.toString() ?? '');
+    _approvedAmount = TextEditingController(text: b?.data?['approved_amount']?.toString() ?? '');
     _authorities = b?.authorities ?? '';
     _items = b?.items ?? [{'description': '', 'amount': ''}];
 
@@ -1312,6 +1585,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     _invoiceNo.dispose();
     _outstanding.dispose();
     _advanceReceived.dispose();
+    _approvedAmount.dispose();
     for (var c in _itemDescControllers) {
       c.dispose();
     }
@@ -1438,6 +1712,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         'client_address': _clientAddress.text, 
         'quotation_terms': _quotationTerms,
         'payment_deadline': _deadlineDate.text,
+        'approved_amount': _approvedAmount.text,
         'payment_received': (NumberToWords.parseCurrency(_advanceReceived.text) > 0 && NumberToWords.parseCurrency(_advanceReceived.text) >= NumberToWords.parseCurrency(_grandTotal.isEmpty ? _totalAmount : _grandTotal)) || (widget.billing?.data?['payment_received'] == true), 
         'payment_date': widget.billing?.data?['payment_date']
       };
@@ -1710,6 +1985,10 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                   if (_grandTotal.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     _summaryRow('Grand Total', _grandTotal, isPrimary: true),
+                  ],
+                  if (_type == 'QUOTATION') ...[
+                    const SizedBox(height: 16),
+                    _buildField('Approved Amount', _approvedAmount, '0/-', isCurrency: true),
                   ],
                   const SizedBox(height: 16),
                   _buildField('Advance / Received', _advanceReceived, '0/-', onChanged: (_) => _calc(), isCurrency: true),

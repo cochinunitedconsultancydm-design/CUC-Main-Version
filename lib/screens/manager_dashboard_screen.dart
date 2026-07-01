@@ -7,6 +7,9 @@ import '../theme.dart';
 import 'login_screen.dart';
 import 'service_management_screen.dart';
 import 'staff_management_screen.dart';
+import '../screens/property_management_screen.dart';
+import '../screens/file_acknowledgement_screen.dart';
+import '../screens/sop_screen.dart';
 import 'staff_chat_list_screen.dart';
 import 'task_management_screen.dart';
 import 'billing_screen.dart';
@@ -30,6 +33,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'checklist_screen.dart';
 import 'uploaded_files_screen.dart';
 import 'reminder_calendar_screen.dart';
+import '../models/inward_post_model.dart';
+import '../services/inward_post_service.dart';
+import 'client_files_screen.dart';
 import 'inward_post_screen.dart';
 import '../services/checklist_service.dart';
 import 'staff_location_screen.dart';
@@ -168,21 +174,42 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       
       final companyBillsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.CompanyBills.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools)).response;
 
+      final now = DateTime.now();
+
       // Calculate Revenue
       double totalRevenue = 0;
       for (var row in billingsRes.data?.items ?? []) {
         if (row != null) {
-          final amtStr = row.amount ?? '0';
-          final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
-          totalRevenue += double.tryParse(cleanAmt) ?? 0.0;
+          DateTime? recordDate;
+          try {
+             if (row.data != null) {
+                final d = jsonDecode(row.data!);
+                if (d['payment_date'] != null) recordDate = DateTime.parse(d['payment_date']);
+             }
+          } catch (_) {}
+          recordDate ??= row.createdAt?.getDateTimeInUtc();
+          
+          if (recordDate != null && recordDate.month == now.month && recordDate.year == now.year) {
+            final amtStr = row.amount ?? '0';
+            final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
+            totalRevenue += double.tryParse(cleanAmt) ?? 0.0;
+          }
         }
       }
 
       // Calculate Expenses
       double totalExpenses = 0;
       for (var row in companyBillsRes.data?.items ?? []) {
-        if (row != null) {
-          totalExpenses += row.amount ?? 0.0;
+        if (row != null && (row.amount ?? 0) > 0) {
+          DateTime? billDate;
+          try {
+            if (row.bill_date != null) billDate = DateTime.parse(row.bill_date!);
+          } catch (_) {}
+          billDate ??= row.createdAt?.getDateTimeInUtc();
+          
+          if (billDate != null && billDate.month == now.month && billDate.year == now.year) {
+            totalExpenses += row.amount ?? 0.0;
+          }
         }
       }
 
@@ -494,8 +521,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               children: [
                 _sidebarItem(0, Icons.insights_rounded, 'Operations Overview', isWide),
                 _sidebarItem(12, Icons.playlist_add_check_rounded, 'Today\'s Task', isWide),
-                _sidebarItem(1, Icons.design_services_outlined, 'Service Content', isWide),
+                _sidebarItem(1, Icons.design_services_outlined, 'Service Checklist', isWide),
+                _sidebarItem(23, Icons.menu_book_rounded, 'SOP', isWide),
                 _sidebarItem(2, Icons.people_outline_rounded, 'Staff Management', isWide),
+                _sidebarItem(24, Icons.folder_shared_rounded, 'Work File', isWide),
                 _sidebarItem(3, Icons.people_alt_rounded, 'Client Data', isWide),
                 _sidebarItem(4, Icons.receipt_long_rounded, 'Billing', isWide),
                 _sidebarItem(11, Icons.account_balance_wallet_rounded, 'Accounting & Pay', isWide),
@@ -652,6 +681,8 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       case 20: return const VerificationHistoryView();
       case 21: return const PropertyManagementScreen();
       case 22: return const FileAcknowledgementScreen(currentUserRole: 'manager', currentUserName: 'Manager');
+      case 24: return const ClientFilesScreen();
+      case 23: return const SopScreen();
       case 7: return _buildSettingsPage();
       default: return _buildPlaceholderView('Coming Soon');
     }

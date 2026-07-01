@@ -22,6 +22,7 @@
 import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
 
+
 /** This is an auto generated class representing the ServiceNames type in your schema. */
 class ServiceNames extends amplify_core.Model {
   static const classType = const _ServiceNamesModelType();
@@ -33,227 +34,171 @@ class ServiceNames extends amplify_core.Model {
 
   @override
   getInstanceType() => classType;
-
-  @Deprecated(
-    '[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.',
-  )
+  
+  @Deprecated('[getId] is being deprecated in favor of custom primary key feature. Use getter [modelIdentifier] to get model identifier.')
   @override
   String getId() => id;
-
+  
   ServiceNamesModelIdentifier get modelIdentifier {
-    return ServiceNamesModelIdentifier(id: id);
+      return ServiceNamesModelIdentifier(
+        id: id
+      );
   }
-
+  
   String? get name {
     return _name;
   }
-
+  
   String? get created_at {
     return _created_at;
   }
-
+  
   amplify_core.TemporalDateTime? get createdAt {
     return _createdAt;
   }
-
+  
   amplify_core.TemporalDateTime? get updatedAt {
     return _updatedAt;
   }
-
-  const ServiceNames._internal({
-    required this.id,
-    name,
-    created_at,
-    createdAt,
-    updatedAt,
-  }) : _name = name,
-       _created_at = created_at,
-       _createdAt = createdAt,
-       _updatedAt = updatedAt;
-
+  
+  const ServiceNames._internal({required this.id, name, created_at, createdAt, updatedAt}): _name = name, _created_at = created_at, _createdAt = createdAt, _updatedAt = updatedAt;
+  
   factory ServiceNames({String? id, String? name, String? created_at}) {
     return ServiceNames._internal(
       id: id == null ? amplify_core.UUID.getUUID() : id,
       name: name,
-      created_at: created_at,
-    );
+      created_at: created_at);
   }
-
+  
   bool equals(Object other) {
     return this == other;
   }
-
+  
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
     return other is ServiceNames &&
-        id == other.id &&
-        _name == other._name &&
-        _created_at == other._created_at;
+      id == other.id &&
+      _name == other._name &&
+      _created_at == other._created_at;
   }
-
+  
   @override
   int get hashCode => toString().hashCode;
-
+  
   @override
   String toString() {
     var buffer = new StringBuffer();
-
+    
     buffer.write("ServiceNames {");
     buffer.write("id=" + "$id" + ", ");
     buffer.write("name=" + "$_name" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write(
-      "createdAt=" +
-          (_createdAt != null ? _createdAt!.format() : "null") +
-          ", ",
-    );
-    buffer.write(
-      "updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"),
-    );
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
     buffer.write("}");
-
+    
     return buffer.toString();
   }
-
+  
   ServiceNames copyWith({String? name, String? created_at}) {
     return ServiceNames._internal(
       id: id,
       name: name ?? this.name,
-      created_at: created_at ?? this.created_at,
-    );
+      created_at: created_at ?? this.created_at);
   }
-
+  
   ServiceNames copyWithModelFieldValues({
     ModelFieldValue<String?>? name,
-    ModelFieldValue<String?>? created_at,
+    ModelFieldValue<String?>? created_at
   }) {
     return ServiceNames._internal(
       id: id,
       name: name == null ? this.name : name.value,
-      created_at: created_at == null ? this.created_at : created_at.value,
+      created_at: created_at == null ? this.created_at : created_at.value
     );
   }
-
-  ServiceNames.fromJson(Map<String, dynamic> json)
+  
+  ServiceNames.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
       _name = json['name'],
       _created_at = json['created_at'],
-      _createdAt = json['createdAt'] != null
-          ? amplify_core.TemporalDateTime.fromString(json['createdAt'])
-          : null,
-      _updatedAt = json['updatedAt'] != null
-          ? amplify_core.TemporalDateTime.fromString(json['updatedAt'])
-          : null;
-
+      _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
+      _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
+  
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': _name,
-    'created_at': _created_at,
-    'createdAt': _createdAt?.format(),
-    'updatedAt': _updatedAt?.format(),
+    'id': id, 'name': _name, 'created_at': _created_at, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
   };
-
+  
   Map<String, Object?> toMap() => {
     'id': id,
     'name': _name,
     'created_at': _created_at,
     'createdAt': _createdAt,
-    'updatedAt': _updatedAt,
+    'updatedAt': _updatedAt
   };
 
-  static final amplify_core.QueryModelIdentifier<ServiceNamesModelIdentifier>
-  MODEL_IDENTIFIER =
-      amplify_core.QueryModelIdentifier<ServiceNamesModelIdentifier>();
+  static final amplify_core.QueryModelIdentifier<ServiceNamesModelIdentifier> MODEL_IDENTIFIER = amplify_core.QueryModelIdentifier<ServiceNamesModelIdentifier>();
   static final ID = amplify_core.QueryField(fieldName: "id");
   static final NAME = amplify_core.QueryField(fieldName: "name");
   static final CREATED_AT = amplify_core.QueryField(fieldName: "created_at");
-  static var schema = amplify_core.Model.defineSchema(
-    define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
-      modelSchemaDefinition.name = "ServiceNames";
-      modelSchemaDefinition.pluralName = "ServiceNames";
-
-      modelSchemaDefinition.authRules = [
-        amplify_core.AuthRule(
-          authStrategy: amplify_core.AuthStrategy.PUBLIC,
-          provider: amplify_core.AuthRuleProvider.IAM,
-          operations: const [
-            amplify_core.ModelOperation.CREATE,
-            amplify_core.ModelOperation.UPDATE,
-            amplify_core.ModelOperation.DELETE,
-            amplify_core.ModelOperation.READ,
-          ],
-        ),
-        amplify_core.AuthRule(
-          authStrategy: amplify_core.AuthStrategy.PRIVATE,
-          operations: const [
-            amplify_core.ModelOperation.CREATE,
-            amplify_core.ModelOperation.UPDATE,
-            amplify_core.ModelOperation.DELETE,
-            amplify_core.ModelOperation.READ,
-          ],
-        ),
-      ];
-
-      modelSchemaDefinition.indexes = [
-        amplify_core.ModelIndex(fields: const ["id"], name: null),
-      ];
-
-      modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: ServiceNames.NAME,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.field(
-          key: ServiceNames.CREATED_AT,
-          isRequired: false,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.string,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.nonQueryField(
-          fieldName: 'createdAt',
-          isRequired: false,
-          isReadOnly: true,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.dateTime,
-          ),
-        ),
-      );
-
-      modelSchemaDefinition.addField(
-        amplify_core.ModelFieldDefinition.nonQueryField(
-          fieldName: 'updatedAt',
-          isRequired: false,
-          isReadOnly: true,
-          ofType: amplify_core.ModelFieldType(
-            amplify_core.ModelFieldTypeEnum.dateTime,
-          ),
-        ),
-      );
-    },
-  );
+  static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
+    modelSchemaDefinition.name = "ServiceNames";
+    modelSchemaDefinition.pluralName = "ServiceNames";
+    
+    modelSchemaDefinition.authRules = [
+      amplify_core.AuthRule(
+        authStrategy: amplify_core.AuthStrategy.PRIVATE,
+        operations: const [
+          amplify_core.ModelOperation.CREATE,
+          amplify_core.ModelOperation.UPDATE,
+          amplify_core.ModelOperation.DELETE,
+          amplify_core.ModelOperation.READ
+        ])
+    ];
+    
+    modelSchemaDefinition.indexes = [
+      amplify_core.ModelIndex(fields: const ["id"], name: null)
+    ];
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.id());
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ServiceNames.NAME,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ServiceNames.CREATED_AT,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
+      fieldName: 'createdAt',
+      isRequired: false,
+      isReadOnly: true,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
+      fieldName: 'updatedAt',
+      isRequired: false,
+      isReadOnly: true,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
+    ));
+  });
 }
 
 class _ServiceNamesModelType extends amplify_core.ModelType<ServiceNames> {
   const _ServiceNamesModelType();
-
+  
   @override
   ServiceNames fromJson(Map<String, dynamic> jsonData) {
     return ServiceNames.fromJson(jsonData);
   }
-
+  
   @override
   String modelName() {
     return 'ServiceNames';
@@ -264,36 +209,41 @@ class _ServiceNamesModelType extends amplify_core.ModelType<ServiceNames> {
  * This is an auto generated class representing the model identifier
  * of [ServiceNames] in your schema.
  */
-class ServiceNamesModelIdentifier
-    implements amplify_core.ModelIdentifier<ServiceNames> {
+class ServiceNamesModelIdentifier implements amplify_core.ModelIdentifier<ServiceNames> {
   final String id;
 
   /** Create an instance of ServiceNamesModelIdentifier using [id] the primary key. */
-  const ServiceNamesModelIdentifier({required this.id});
-
+  const ServiceNamesModelIdentifier({
+    required this.id});
+  
   @override
-  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{'id': id});
-
+  Map<String, dynamic> serializeAsMap() => (<String, dynamic>{
+    'id': id
+  });
+  
   @override
-  List<Map<String, dynamic>> serializeAsList() => serializeAsMap().entries
-      .map((entry) => (<String, dynamic>{entry.key: entry.value}))
-      .toList();
-
+  List<Map<String, dynamic>> serializeAsList() => serializeAsMap()
+    .entries
+    .map((entry) => (<String, dynamic>{ entry.key: entry.value }))
+    .toList();
+  
   @override
   String serializeAsString() => serializeAsMap().values.join('#');
-
+  
   @override
   String toString() => 'ServiceNamesModelIdentifier(id: $id)';
-
+  
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) {
       return true;
     }
-
-    return other is ServiceNamesModelIdentifier && id == other.id;
+    
+    return other is ServiceNamesModelIdentifier &&
+      id == other.id;
   }
-
+  
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode =>
+    id.hashCode;
 }

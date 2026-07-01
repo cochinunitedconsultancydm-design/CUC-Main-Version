@@ -1,5 +1,6 @@
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
@@ -19,6 +20,8 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
   List<CompanyBill> _bills = [];
   List<Map<String, dynamic>> _staffList = [];
   bool _isLoading = true;
+  DateTime? _startDate;
+  DateTime? _endDate;
   String _filterCategory = 'All';
   final List<String> _expenseCategories = ['Electricity', 'Water', 'Internet', 'Mobile Recharge', 'Rent', 'Salary', 'Stationery', 'Other'];
   final List<String> _incomeCategories = ['Client Payment', 'Consulting Fee', 'Refund', 'Commission', 'Other Income'];
@@ -74,13 +77,26 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     content: Text(t), backgroundColor: ok ? Colors.green : Colors.redAccent,
   ));
 
-  void _showForm([CompanyBill? bill]) {
+  Future<void> _showBillDialog([CompanyBill? bill]) async {
     final title = TextEditingController(text: bill?.title);
     final amount = TextEditingController(text: bill != null ? bill.amount.abs().toString() : '');
     final desc = TextEditingController(text: bill?.description);
     
-    bool isIncoming = bill != null && bill.amount < 0;
+    bool isIncoming = bill != null ? bill.amount < 0 : false;
+    String linkedInvoiceNo = '';
     List<String> currentCategories = isIncoming ? _incomeCategories : _expenseCategories;
+    
+    List<amplify_models.Billings> availableInvoices = [];
+    try {
+      final req = ModelQueries.list(amplify_models.Billings.classType);
+      final res = await Amplify.API.query(request: req).response;
+      availableInvoices = res.data?.items.whereType<amplify_models.Billings>().where((b) {
+         return b.status != 'Received' && (b.invoice_no != null && b.invoice_no!.isNotEmpty);
+      }).toList() ?? [];
+      
+      // Sort newest first
+      availableInvoices.sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
+    } catch (_) {}
     
     String category = bill?.category ?? currentCategories.first;
     if (!currentCategories.contains(category)) {
@@ -241,6 +257,27 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                             ),
                           ],
                         ),
+                        if (isIncoming) ...[
+                          const SizedBox(height: 24),
+                          DropdownButtonFormField<String>(
+                            decoration: inputDec('Connect to Bill / Invoice No (Optional)', Icons.link_rounded),
+                            isExpanded: true,
+                            items: [
+                              const DropdownMenuItem(value: '', child: Text('None (Standalone Income)')),
+                              ...availableInvoices.map((inv) {
+                                final display = '${inv.invoice_no ?? ''} - ${inv.client_name ?? ''} (₹${inv.amount ?? ''})';
+                                return DropdownMenuItem(value: inv.invoice_no, child: Text(display, overflow: TextOverflow.ellipsis));
+                              }),
+                            ],
+                            onChanged: (val) {
+                              linkedInvoiceNo = (val == null) ? '' : val.trim();
+                              if (linkedInvoiceNo.isNotEmpty) {
+                                title.text = 'Client Payment - $linkedInvoiceNo';
+                                desc.text = 'Payment for Invoice $linkedInvoiceNo';
+                              }
+                            },
+                          ),
+                        ],
                         const SizedBox(height: 24),
                         TextField(controller: amount, decoration: inputDec('Amount (₹)', Icons.currency_rupee_rounded), keyboardType: TextInputType.number),
                         const SizedBox(height: 24),
@@ -426,6 +463,48 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                               final req = ModelMutations.update(model);
                               await Amplify.API.mutate(request: req).response;
                             }
+                            
+                            // Link and update the Billing page if an invoice number was provided
+                            if (linkedInvoiceNo.isNotEmpty && isIncoming) {
+                              try {
+                                final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.INVOICE_NO.eq(linkedInvoiceNo));
+                                final res = await Amplify.API.query(request: req).response;
+                                if (res.data != null && res.data!.items.isNotEmpty) {
+                                  final b = res.data!.items.first!;
+                                  
+                                  Map<String, dynamic> oldData = {};
+                                  if (b.data != null && b.data!.isNotEmpty) {
+                                    try { oldData = jsonDecode(b.data!); } catch (_) {}
+                                  }
+                                  
+                                  final amountStr = b.amount?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '0';
+                                  double totalAmount = double.tryParse(amountStr) ?? 0;
+                                  
+                                  double previouslyReceived = 0;
+                                  if (oldData['advance_received'] != null) {
+                                     previouslyReceived = double.tryParse(oldData['advance_received'].toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0;
+                                  }
+                                  double newlyReceived = parsedAmount.abs();
+                                  
+                                  double totalReceived = previouslyReceived + newlyReceived;
+                                  double updatedBalance = totalAmount - totalReceived;
+                                  if (updatedBalance < 0) updatedBalance = 0;
+                                  
+                                  bool isPaid = updatedBalance <= 0;
+                                  
+                                  oldData['payment_received'] = isPaid;
+                                  oldData['advance_received'] = totalReceived.toStringAsFixed(0) + '/-';
+                                  oldData['balance_due'] = updatedBalance > 0 ? updatedBalance.toStringAsFixed(0) + '/-' : '0/-';
+                                  if (isPaid) oldData['payment_date'] = DateTime.now().toIso8601String();
+                                  
+                                  final updatedBill = b.copyWith(status: isPaid ? 'Received' : (totalReceived > 0 ? 'Part Payment' : 'Pending'), data: jsonEncode(oldData));
+                                  await Amplify.API.mutate(request: ModelMutations.update(updatedBill)).response;
+                                }
+                              } catch (e) {
+                                debugPrint('Error linking bill: $e');
+                              }
+                            }
+                            
                             if (mounted) Navigator.pop(context);
                             _fetchBills();
                             _msg('Saved successfully', true);
@@ -479,22 +558,237 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     }
   }
 
+  Future<String?> _getClientBalance(String clientName) async {
+    try {
+      final req = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.NAME.eq(clientName));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data != null && res.data!.items.isNotEmpty) {
+        return res.data!.items.first!.balance_due;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<String?> _getInvoiceBalance(String invoiceNo) async {
+    try {
+      final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.INVOICE_NO.eq(invoiceNo));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data != null && res.data!.items.isNotEmpty) {
+        final billingDataStr = res.data!.items.first!.data;
+        if (billingDataStr != null) {
+          final decoded = jsonDecode(billingDataStr);
+          if (decoded['balance_due'] != null) {
+             String balanceStr = decoded['balance_due'].toString().replaceAll(RegExp(r'[^0-9.]'), '');
+             return balanceStr.isEmpty ? '0' : balanceStr;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  void _showDetails(CompanyBill bill) {
+    String? balance;
+    String? clientName;
+    String? invoiceNo;
+    bool hasFetched = false;
+    
+    if (bill.category == 'Client Payment' && (bill.description?.contains('Payment from') ?? false)) {
+      final match = RegExp(r'Payment from (.*?)\. Auto-logged').firstMatch(bill.description ?? '');
+      if (match != null) {
+         clientName = match.group(1);
+      }
+      final invMatch = RegExp(r'-\s*([A-Za-z0-9_-]+)$').firstMatch(bill.title);
+      if (invMatch != null) {
+         invoiceNo = invMatch.group(1);
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          if (clientName != null && !hasFetched) {
+            hasFetched = true;
+            Future<void> fetchBal() async {
+              String? b;
+              if (invoiceNo != null) {
+                b = await _getInvoiceBalance(invoiceNo!);
+              }
+              if (b == null || b == '0') {
+                final cb = await _getClientBalance(clientName!);
+                if (cb != null) b = cb;
+              }
+              if (mounted) setModalState(() => balance = b ?? '0');
+            }
+            fetchBal();
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('Transaction Details', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(bill.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 12),
+                  _detailRow(Icons.category_rounded, 'Category', bill.category),
+                  _detailRow(Icons.currency_rupee_rounded, 'Amount', '${bill.amount < 0 ? '+' : '-'} \u20B9${NumberFormat("#,##,###").format(bill.amount.abs())}'),
+                  _detailRow(Icons.calendar_month_rounded, 'Date', DateFormat('dd MMM yyyy').format(bill.billDate)),
+                  if (bill.spentByName != null) _detailRow(Icons.person_rounded, 'By', bill.spentByName!),
+                  
+                  const SizedBox(height: 16),
+                  const Text('Description', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(10)),
+                    child: Text(bill.description ?? 'No description provided.', style: const TextStyle(fontSize: 14)),
+                  ),
+                  
+                  if (clientName != null) ...[
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withValues(alpha: 0.1))),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.person_pin_rounded, color: Colors.blue, size: 20),
+                              SizedBox(width: 8),
+                              Text('Customer Info', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.blue)),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(clientName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                          const SizedBox(height: 6),
+                          if (balance != null)
+                            Row(
+                              children: [
+                                const Text('Balance to receive: ', style: TextStyle(color: Colors.black87)),
+                                Text('\u20B9$balance', style: TextStyle(fontWeight: FontWeight.w900, color: balance == '0' ? Colors.green : Colors.orange.shade700, fontSize: 16)),
+                              ],
+                            )
+                          else
+                            const Text('Fetching balance...', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                  ]
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context), 
+                child: const Text('Close', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.edit_rounded, size: 16),
+                label: const Text('Edit'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showBillDialog(bill);
+                },
+              ),
+            ],
+          );
+        }
+      )
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Colors.grey.shade500),
+          const SizedBox(width: 8),
+          SizedBox(width: 70, child: Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13))),
+          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14))),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final thisMonthBills = _bills.where((b) => b.billDate.month == now.month && b.billDate.year == now.year).toList();
-    final totalMonthly = thisMonthBills.fold(0.0, (sum, b) => sum + b.amount);
-    final pendingCount = _bills.where((b) => b.status != 'Paid').length;
+    final start = _startDate ?? DateTime(DateTime.now().year, DateTime.now().month, 1);
+    final end = _endDate ?? DateTime(DateTime.now().year, DateTime.now().month + 1, 0, 23, 59, 59);
+
+    final thisMonthBills = _bills.where((b) {
+      return b.billDate.isAfter(start.subtract(const Duration(days: 1))) && 
+             b.billDate.isBefore(end.add(const Duration(days: 1)));
+    }).toList();
+    final monthlyExpenses = thisMonthBills.where((b) => b.amount > 0).fold(0.0, (sum, b) => sum + b.amount);
+    final monthlyIncome = thisMonthBills.where((b) => b.amount < 0).fold(0.0, (sum, b) => sum + b.amount.abs());
+    final pendingCount = thisMonthBills.where((b) => b.status != 'Paid').length;
 
     final filteredBills = _filterCategory == 'All' 
-        ? _bills 
-        : _bills.where((b) => b.category == _filterCategory).toList();
+        ? thisMonthBills 
+        : thisMonthBills.where((b) => b.category == _filterCategory).toList();
+
+    final incomeBills = filteredBills.where((b) => b.amount < 0).toList();
+    final expenseBills = filteredBills.where((b) => b.amount >= 0).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: PremiumAppBar(
         title: const Text('Company Bills', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 24)),
         actions: [
+          InkWell(
+            onTap: () async {
+              final range = await showDateRangePicker(
+                context: context,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2100),
+                initialDateRange: _startDate != null && _endDate != null 
+                    ? DateTimeRange(start: _startDate!, end: _endDate!) 
+                    : null,
+                builder: (context, child) {
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 400, maxHeight: 550),
+                      child: child,
+                    ),
+                  );
+                },
+              );
+              if (range != null) {
+                setState(() {
+                  _startDate = range.start;
+                  _endDate = range.end;
+                });
+              }
+            }, 
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
+              child: Row(
+                children: [
+                  const Icon(Icons.date_range_rounded, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Text(_startDate != null ? 'Filtered' : 'Filter Date', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                  if (_startDate != null) ...[
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () => setState(() { _startDate = null; _endDate = null; }),
+                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                    )
+                  ]
+                ]
+              )
+            )
+          ),
+          const SizedBox(width: 12),
           IconButton(
             onPressed: _fetchBills, 
             icon: Container(
@@ -511,7 +805,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
         child: Column(
           children: [
           // â”€â”€â”€ SUMMARY HEADER â”€â”€â”€
-          _buildSummaryHeader(totalMonthly, pendingCount),
+          _buildSummaryHeader(monthlyIncome, monthlyExpenses, pendingCount),
           
           // â”€â”€â”€ CATEGORY FILTER â”€â”€â”€
           _buildCategoryFilter(),
@@ -520,25 +814,72 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
           Expanded(
             child: _isLoading 
                 ? const Center(child: CircularProgressIndicator())
-                : filteredBills.isEmpty
-                    ? _buildEmptyState()
-                    : Card(
-                        margin: EdgeInsets.zero,
-                        child: ListView.separated(
-                            padding: EdgeInsets.zero,
-                            itemCount: filteredBills.length,
-                            separatorBuilder: (_, _) => const Divider(height: 1),
-                            itemBuilder: (context, index) {
-                              return _buildBillCard(filteredBills[index], index);
-                            },
-                          ),
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // â”€â”€â”€ INCOME COLUMN â”€â”€â”€
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                              child: const Text('INCOME', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green, letterSpacing: 1.2), textAlign: TextAlign.center),
+                            ),
+                            Expanded(
+                              child: incomeBills.isEmpty
+                                  ? _buildEmptyState()
+                                  : Card(
+                                      margin: EdgeInsets.zero,
+                                      child: ListView.separated(
+                                        padding: EdgeInsets.zero,
+                                        itemCount: incomeBills.length,
+                                        separatorBuilder: (_, _) => const Divider(height: 1),
+                                        itemBuilder: (context, index) => _buildBillCard(incomeBills[index], index),
+                                      ),
+                                    ),
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 16),
+                      // â”€â”€â”€ EXPENDITURE COLUMN â”€â”€â”€
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                              child: const Text('EXPENDITURE', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.red, letterSpacing: 1.2), textAlign: TextAlign.center),
+                            ),
+                            Expanded(
+                              child: expenseBills.isEmpty
+                                  ? _buildEmptyState()
+                                  : Card(
+                                      margin: EdgeInsets.zero,
+                                      child: ListView.separated(
+                                        padding: EdgeInsets.zero,
+                                        itemCount: expenseBills.length,
+                                        separatorBuilder: (_, _) => const Divider(height: 1),
+                                        itemBuilder: (context, index) => _buildBillCard(expenseBills[index], index),
+                                      ),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),
     ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showForm(),
+        onPressed: () => _showBillDialog(),
         label: const Text('NEW BILL', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
         icon: const Icon(Icons.add_rounded),
         backgroundColor: const Color(0xFF1E293B),
@@ -548,7 +889,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     );
   }
 
-  Widget _buildSummaryHeader(double total, int pending) {
+  Widget _buildSummaryHeader(double income, double expenses, int pending) {
     return Container(
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(24),
@@ -569,16 +910,49 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  DateFormat('MMMM yyyy').format(DateTime.now()).toUpperCase(),
-                  style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _startDate != null 
+                          ? '${DateFormat('dd MMM yyyy').format(_startDate!)} - ${DateFormat('dd MMM yyyy').format(_endDate!)}'.toUpperCase()
+                          : DateFormat('MMMM yyyy').format(DateTime.now()).toUpperCase(),
+                      style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.calendar_month_rounded, color: Colors.white60, size: 12),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                const Text('Monthly Expenses', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 4),
-                Text(
-                  '\u20B9${NumberFormat("#,##,###.##").format(total)}',
-                  style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Monthly Income', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
+                          const SizedBox(height: 4),
+                          Text(
+                            '\u20B9${NumberFormat("#,##,###").format(income)}',
+                            style: const TextStyle(color: Colors.greenAccent, fontSize: 24, fontWeight: FontWeight.w900),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Monthly Expenses', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
+                          const SizedBox(height: 4),
+                          Text(
+                            '\u20B9${NumberFormat("#,##,###").format(expenses)}',
+                            style: const TextStyle(color: Colors.redAccent, fontSize: 24, fontWeight: FontWeight.w900),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -646,7 +1020,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     final color = _getCategoryColor(bill.category);
 
     return InkWell(
-        onTap: () => _showForm(bill),
+        onTap: () => _showDetails(bill),
         onLongPress: () => _delete(bill.id.toString()),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -676,7 +1050,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              'By ${bill.spentByName}', 
+                              '${bill.amount < 0 ? "Received by" : "Spent by"} ${bill.spentByName}', 
                               style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, fontStyle: FontStyle.italic),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,

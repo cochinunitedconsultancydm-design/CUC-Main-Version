@@ -41,6 +41,7 @@ import 'LicenseTypes.dart';
 import 'LocationHistory.dart';
 import 'Messages.dart';
 import 'Notifications.dart';
+import 'Properties.dart';
 import 'ServiceContent.dart';
 import 'ServiceNames.dart';
 import 'StaffAttendance.dart';
@@ -50,7 +51,7 @@ import 'Tasks.dart';
 import 'TravelLogs.dart';
 import 'UserSessions.dart';
 import 'Users.dart';
-import 'Properties.dart';
+
 export 'ActivityLogs.dart';
 export 'Billings.dart';
 export 'Checklists.dart';
@@ -72,6 +73,7 @@ export 'LicenseTypes.dart';
 export 'LocationHistory.dart';
 export 'Messages.dart';
 export 'Notifications.dart';
+export 'Properties.dart';
 export 'ServiceContent.dart';
 export 'ServiceNames.dart';
 export 'StaffAttendance.dart';
@@ -81,53 +83,20 @@ export 'Tasks.dart';
 export 'TravelLogs.dart';
 export 'UserSessions.dart';
 export 'Users.dart';
-export 'Properties.dart';
 
 class ModelProvider implements amplify_core.ModelProviderInterface {
   @override
-  String version = "0f510e0c6ddf696dafddce15288cc15d";
+  String version = "d0cebf091a0ece1bd10122415af9caef";
   @override
-  List<amplify_core.ModelSchema> modelSchemas = [
-    ActivityLogs.schema,
-    Billings.schema,
-    Checklists.schema,
-    ClientDocuments.schema,
-    ClientLicenses.schema,
-    Clients.schema,
-    CompanyBills.schema,
-    DealActivities.schema,
-    DealAssignees.schema,
-    DealHandoverHistory.schema,
-    DealStageHistory.schema,
-    Deals.schema,
-    DscRecords.schema,
-    InwardPosts.schema,
-    LicenseBilling.schema,
-    LicenseNotifications.schema,
-    LicenseServices.schema,
-    LicenseTypes.schema,
-    LocationHistory.schema,
-    Messages.schema,
-    Notifications.schema,
-    ServiceContent.schema,
-    ServiceNames.schema,
-    StaffAttendance.schema,
-    StaffLocations.schema,
-    SysCronLogs.schema,
-    Tasks.schema,
-    TravelLogs.schema,
-    UserSessions.schema,
-    Users.schema,
-    Properties.schema,
-  ];
+  List<amplify_core.ModelSchema> modelSchemas = [ActivityLogs.schema, Billings.schema, Checklists.schema, ClientDocuments.schema, ClientLicenses.schema, Clients.schema, CompanyBills.schema, DealActivities.schema, DealAssignees.schema, DealHandoverHistory.schema, DealStageHistory.schema, Deals.schema, DscRecords.schema, InwardPosts.schema, LicenseBilling.schema, LicenseNotifications.schema, LicenseServices.schema, LicenseTypes.schema, LocationHistory.schema, Messages.schema, Notifications.schema, Properties.schema, ServiceContent.schema, ServiceNames.schema, StaffAttendance.schema, StaffLocations.schema, SysCronLogs.schema, Tasks.schema, TravelLogs.schema, UserSessions.schema, Users.schema];
   @override
   List<amplify_core.ModelSchema> customTypeSchemas = [];
   static final ModelProvider _instance = ModelProvider();
 
   static ModelProvider get instance => _instance;
-
+  
   amplify_core.ModelType getModelTypeByModelName(String modelName) {
-    switch (modelName) {
+    switch(modelName) {
       case "ActivityLogs":
         return ActivityLogs.classType;
       case "Billings":
@@ -191,12 +160,11 @@ class ModelProvider implements amplify_core.ModelProviderInterface {
       case "Users":
         return Users.classType;
       default:
-        throw Exception(
-          "Failed to find model in model provider for model name: " + modelName,
-        );
+        throw Exception("Failed to find model in model provider for model name: " + modelName);
     }
   }
 }
+
 
 class ModelFieldValue<T> {
   const ModelFieldValue.value(this.value);

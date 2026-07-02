@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
+
 import 'dart:async';
 import 'dart:io' show Platform;
 import '../theme.dart';
@@ -75,7 +75,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _checkInTimeStr;
   int _dailyTotalMinutes = 0;
   bool _isAttendanceLoading = true;
-  StreamSubscription<ServiceStatus>? _locationStatusStream;
+
   
   Map<String, dynamic> _stats = {
     'expiringLicences': 0,
@@ -93,7 +93,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _notifSubscription?.cancel();
-    _locationStatusStream?.cancel();
+
     super.dispose();
   }
 
@@ -120,13 +120,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _checkTodayChecklists();
     _fetchAttendanceStatus();
 
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-      _locationStatusStream = Geolocator.getServiceStatusStream().listen((ServiceStatus status) {
-        if (status == ServiceStatus.disabled && _isCheckedIn && _attendanceId != null) {
-          _forceCheckOut();
-        }
-      });
-    }
+
   }
 
   Future<void> _forceCheckOut() async {
@@ -192,47 +186,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Checked Out Successfully')));
         }
       } else {
-        // Pre-check for location enabled
-        if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-          bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-          if (!serviceEnabled) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Please turn on GPS Location to check in.'),
-                backgroundColor: Colors.redAccent,
-              ));
-              setState(() => _isAttendanceLoading = false);
-            }
-            return;
-          }
 
-          LocationPermission permission = await Geolocator.checkPermission();
-          if (permission == LocationPermission.denied) {
-            permission = await Geolocator.requestPermission();
-            if (permission == LocationPermission.denied) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Location permissions are required to check in.'),
-                  backgroundColor: Colors.redAccent,
-                ));
-                setState(() => _isAttendanceLoading = false);
-              }
-              return;
-            }
-          }
-
-          if (permission == LocationPermission.deniedForever) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Location permissions are permanently denied. Please enable them in app settings.'),
-                backgroundColor: Colors.redAccent,
-              ));
-              setState(() => _isAttendanceLoading = false);
-            }
-            return;
-          }
-        }
-        
         final success = await AttendanceService().checkIn(userId);
         if (success && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Checked In Successfully')));

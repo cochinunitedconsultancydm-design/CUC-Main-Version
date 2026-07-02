@@ -22,6 +22,7 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'google_docs_webview_screen.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import 'file_acknowledgement_screen.dart';
+import 'client_files_screen.dart';
 
 class DealDetailScreen extends StatefulWidget {
   final Deal? deal;
@@ -1385,6 +1386,22 @@ final dLink = "";
           ),
         );
       }
+    }
+  }
+
+  Future<void> _openWorkFileDialog() async {
+    if (widget.deal == null) return;
+    try {
+      final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()));
+      final res = await Amplify.API.query(request: req).response;
+      final match = res.data?.items.firstWhere((e) => e != null);
+      if (match != null && mounted) {
+        showDialog(context: context, builder: (_) => WorkFileDetailDialog(workFile: match, onUpdate: _loadDetails));
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Work file not found in database.')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -5124,6 +5141,13 @@ final dLink = "";
                         const Color(0xFF4285F4),
                         width: itemWidth,
                         onTap: _openDriveLink,
+                      ),
+                      _quickActionBtn(
+                        Icons.folder_shared_rounded,
+                        'WORK FILE',
+                        const Color(0xFF8B5CF6),
+                        width: itemWidth,
+                        onTap: _openWorkFileDialog,
                       ),
                     ],
                   );

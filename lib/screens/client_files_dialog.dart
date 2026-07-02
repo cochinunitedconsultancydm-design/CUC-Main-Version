@@ -16,8 +16,9 @@ import 'package:cuc_app/services/backup_aware_api.dart';
 
 class ClientFilesDialog extends StatefulWidget {
   final Client client;
+  final bool isSelectionMode;
 
-  const ClientFilesDialog({super.key, required this.client});
+  const ClientFilesDialog({super.key, required this.client, this.isSelectionMode = false});
 
   @override
   State<ClientFilesDialog> createState() => _ClientFilesDialogState();
@@ -693,6 +694,15 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: ListTile(
+              onTap: widget.isSelectionMode 
+                ? () {
+                    final path = 'public/${widget.client.id}/$category/$itemName';
+                    final actualPath = category == 'work' && _currentWorkFolder != null
+                        ? 'public/${widget.client.id}/work/$_currentWorkFolder/$itemName'
+                        : path;
+                    Navigator.pop(context, actualPath);
+                  }
+                : null,
               leading: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
@@ -700,24 +710,40 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
               ),
               title: Text(itemName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
               subtitle: Text('${(f.size ?? 0) ~/ 1024} KB', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.download_rounded, color: Colors.blueGrey, size: 20),
-                    onPressed: () => _downloadFile(category, itemName),
-                    tooltip: "Download File",
-                    style: IconButton.styleFrom(backgroundColor: Colors.grey.shade100),
+              trailing: widget.isSelectionMode
+                ? ElevatedButton.icon(
+                    onPressed: () {
+                      final path = 'public/${widget.client.id}/$category/$itemName';
+                      final actualPath = category == 'work' && _currentWorkFolder != null
+                          ? 'public/${widget.client.id}/work/$_currentWorkFolder/$itemName'
+                          : path;
+                      Navigator.pop(context, actualPath);
+                    },
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Add'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.download_rounded, color: Colors.blueGrey, size: 20),
+                        onPressed: () => _downloadFile(category, itemName),
+                        tooltip: "Download File",
+                        style: IconButton.styleFrom(backgroundColor: Colors.grey.shade100),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        onPressed: () => _deleteFile(category, itemName),
+                        tooltip: "Delete File",
+                        style: IconButton.styleFrom(backgroundColor: Colors.red.shade50),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                    onPressed: () => _deleteFile(category, itemName),
-                    tooltip: "Delete File",
-                    style: IconButton.styleFrom(backgroundColor: Colors.red.shade50),
-                  ),
-                ],
-              ),
             ),
           ),
         ).animate().fadeIn(delay: (30 * index).ms).slideY(begin: 0.1);

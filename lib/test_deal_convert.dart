@@ -1,0 +1,1 @@
+import 'package:flutter/material.dart'; import 'models/ModelProvider.dart'; import 'models/deal.dart' as models; void main() { final d = Deals(id: '1'); final md = models.Deal.fromMap(d.toJson()); print(md.id); }

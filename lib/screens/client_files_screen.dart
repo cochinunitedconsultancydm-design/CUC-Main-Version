@@ -8,6 +8,10 @@ import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import '../widgets/premium_app_bar.dart';
 import 'create_work_file_dialog.dart';
+import '../models/deal.dart' as models;
+import 'deal_detail_screen.dart';
+import '../models/client.dart';
+import 'client_files_dialog.dart';
 
 class ClientFilesScreen extends StatefulWidget {
   const ClientFilesScreen({super.key});
@@ -88,7 +92,10 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
   void _viewWorkFile(amplify_models.Deals workFile) {
     showDialog(
       context: context,
-      builder: (context) => _WorkFileDetailDialog(workFile: workFile),
+      builder: (context) => WorkFileDetailDialog(
+        workFile: workFile,
+        onUpdate: _fetchWorkFiles,
+      ),
     );
   }
 
@@ -162,7 +169,7 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                             maxCrossAxisExtent: 400,
                             crossAxisSpacing: 16,
                             mainAxisSpacing: 16,
-                            childAspectRatio: 2.5,
+                            mainAxisExtent: 160,
                           ),
                           itemCount: _filtered.length,
                           itemBuilder: (context, index) {
@@ -196,18 +203,37 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                                           ),
                                         ],
                                       ),
-                                      if (workFile.register_no != null && workFile.register_no!.isNotEmpty) ...[
+                                      if ((workFile.register_no != null && workFile.register_no!.isNotEmpty) || (workFile.work_type != null && workFile.work_type!.isNotEmpty)) ...[
                                         const SizedBox(height: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.amber.shade100,
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            'File No: ${workFile.register_no}',
-                                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
-                                          ),
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 4,
+                                          children: [
+                                            if (workFile.register_no != null && workFile.register_no!.isNotEmpty)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.amber.shade100,
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  'File No: ${workFile.register_no}',
+                                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                                                ),
+                                              ),
+                                            if (workFile.work_type != null && workFile.work_type!.isNotEmpty)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.shade100,
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  '${workFile.work_type}',
+                                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                                                ),
+                                              ),
+                                          ],
                                         ),
                                       ],
                                       const Spacer(),
@@ -243,10 +269,25 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
   }
 }
 
-class _WorkFileDetailDialog extends StatelessWidget {
+class WorkFileDetailDialog extends StatefulWidget {
   final amplify_models.Deals workFile;
+  final VoidCallback onUpdate;
   
-  const _WorkFileDetailDialog({required this.workFile});
+  const WorkFileDetailDialog({super.key, required this.workFile, required this.onUpdate});
+
+  @override
+  State<WorkFileDetailDialog> createState() => _WorkFileDetailDialogState();
+}
+
+class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
+  late amplify_models.Deals _currentWorkFile;
+  bool _isUploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentWorkFile = widget.workFile;
+  }
 
   Future<void> _launchUrl(String urlString) async {
     final Uri url = Uri.parse(urlString);
@@ -266,14 +307,97 @@ class _WorkFileDetailDialog extends StatelessWidget {
     }
   }
 
+  Future<void> _selectFromVault() async {
+    final clientId = _currentWorkFile.company ?? '';
+    if (clientId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client ID not found on this Work File.')));
+      return;
+    }
+    
+    Client? client;
+    try {
+      final req = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.ID.eq(clientId));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data?.items.isNotEmpty == true) {
+        final dbClient = res.data!.items.first as amplify_models.Clients;
+        client = Client(
+          id: dbClient.id,
+          name: dbClient.name ?? 'Unknown',
+          email: dbClient.email,
+          phone: dbClient.phone,
+          address: dbClient.address,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching client: $e');
+    }
+
+    if (client == null) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not load Client details.')));
+      return;
+    }
+
+    if (!mounted) return;
+    
+    final selectedPath = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) => ClientFilesDialog(client: client!, isSelectionMode: true),
+    );
+
+    if (selectedPath != null && mounted) {
+      _attachFileToWork(selectedPath);
+    }
+  }
+
+  Future<void> _attachFileToWork(String path) async {
+    setState(() => _isUploading = true);
+    try {
+      List<String> files = [];
+      if (_currentWorkFile.files_received != null && _currentWorkFile.files_received!.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(_currentWorkFile.files_received!);
+          if (decoded is List) {
+            files = decoded.map((e) => e.toString()).toList();
+          }
+        } catch (e) {
+          debugPrint("Parse error in attach: $e");
+        }
+      }
+      
+      if (!files.contains(path)) {
+        files.add(path);
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File is already attached.')));
+        setState(() => _isUploading = false);
+        return;
+      }
+      
+      final updatedDeal = _currentWorkFile.copyWith(files_received: jsonEncode(files));
+      final req = ModelMutations.update(updatedDeal);
+      await Amplify.API.mutate(request: req).response;
+
+      if (mounted) {
+        setState(() {
+          _currentWorkFile = updatedDeal;
+        });
+        widget.onUpdate();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File attached successfully!')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     List<String> files = [];
-    if (workFile.files_received != null && workFile.files_received!.isNotEmpty) {
+    if (_currentWorkFile.files_received != null && _currentWorkFile.files_received!.isNotEmpty) {
       try {
-        final decoded = jsonDecode(workFile.files_received!);
+        final decoded = jsonDecode(_currentWorkFile.files_received!);
         if (decoded is List) {
-          files = decoded.cast<String>();
+          files = decoded.map((e) => e.toString()).toList();
         }
       } catch (e) {
         debugPrint("Error parsing files JSON: $e");
@@ -297,12 +421,16 @@ class _WorkFileDetailDialog extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        workFile.name ?? 'Work File Details', 
+                        _currentWorkFile.name ?? 'Work File Details', 
                         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       ),
-                      if (workFile.register_no != null && workFile.register_no!.isNotEmpty) ...[
+                      if (_currentWorkFile.register_no != null && _currentWorkFile.register_no!.isNotEmpty) ...[
                         const SizedBox(height: 4),
-                        Text('File No: ${workFile.register_no}', style: TextStyle(color: Colors.amber.shade700, fontWeight: FontWeight.bold, fontSize: 14)),
+                        Text('File No: ${_currentWorkFile.register_no}', style: TextStyle(color: Colors.amber.shade700, fontWeight: FontWeight.bold, fontSize: 14)),
+                      ],
+                      if (_currentWorkFile.work_type != null && _currentWorkFile.work_type!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text('Type: ${_currentWorkFile.work_type}', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
                       ],
                     ],
                   ),
@@ -311,24 +439,37 @@ class _WorkFileDetailDialog extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text('Client: ${workFile.client_name ?? "Unknown"}', style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+            Text('Client: ${_currentWorkFile.client_name ?? "Unknown"}', style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
             const Divider(height: 24),
             
-            if (workFile.drive_link != null && workFile.drive_link!.isNotEmpty) ...[
+            if (_currentWorkFile.drive_link != null && _currentWorkFile.drive_link!.isNotEmpty) ...[
               const Text('Google Docs', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
               ListTile(
                 leading: const Icon(Icons.description, color: Colors.blue),
                 title: const Text('Open connected Google Doc'),
-                subtitle: Text(workFile.drive_link!, maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: Text(_currentWorkFile.drive_link!, maxLines: 1, overflow: TextOverflow.ellipsis),
                 trailing: const Icon(Icons.open_in_new),
-                onTap: () => _launchUrl(workFile.drive_link!),
+                onTap: () => _launchUrl(_currentWorkFile.drive_link!),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade300)),
               ),
               const SizedBox(height: 24),
             ],
 
-            const Text('Connected Files', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Connected Files', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                if (_isUploading)
+                  const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                else
+                  TextButton.icon(
+                    onPressed: _selectFromVault,
+                    icon: const Icon(Icons.add_circle_outline, size: 18),
+                    label: const Text('Add File'),
+                  ),
+              ],
+            ),
             const SizedBox(height: 8),
             
             if (files.isEmpty)

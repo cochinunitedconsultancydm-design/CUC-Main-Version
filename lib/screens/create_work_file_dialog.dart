@@ -19,6 +19,7 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
   final _googleDocsController = TextEditingController();
   final _workNameController = TextEditingController();
   final _fileNoController = TextEditingController();
+  final _workTypeController = TextEditingController();
   
   bool _isLoading = false;
   List<Client> _clients = [];
@@ -111,6 +112,7 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
         company: _selectedClient!.id.toString(), // Using company field to store Client ID safely
         pipeline: 'Work File',
         stage: 'Active',
+        work_type: _workTypeController.text.trim(),
         drive_link: _googleDocsController.text.trim(),
         register_no: _fileNoController.text.trim(),
         files_received: filesJson,
@@ -167,6 +169,17 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
                 controller: _workNameController,
                 decoration: InputDecoration(
                   labelText: 'Work File Name (e.g. Annual Audit 2026)',
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _workTypeController,
+                decoration: InputDecoration(
+                  labelText: 'Type of Work (e.g. Tax Return, Audit)',
                   filled: true,
                   fillColor: Colors.grey.shade50,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),

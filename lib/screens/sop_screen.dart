@@ -1,4 +1,5 @@
 import 'package:amplify_api/amplify_api.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
@@ -262,6 +263,9 @@ class _SopScreenState extends State<SopScreen> {
     return TextField(
       controller: controller,
       maxLines: maxLines,
+      style: GoogleFonts.notoSansMalayalam(
+        textStyle: const TextStyle(),
+      ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -452,14 +456,14 @@ class _SopScreenState extends State<SopScreen> {
                                       ),
                                       title: Text(
                                         sop.title ?? 'Untitled',
-                                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textColor),
+                                        style: GoogleFonts.notoSansMalayalam(textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textColor)),
                                       ),
                                       subtitle: (sop.description != null && sop.description!.isNotEmpty)
                                           ? Padding(
                                               padding: const EdgeInsets.only(top: 8.0),
                                               child: Text(
                                                 sop.description!,
-                                                style: const TextStyle(color: AppTheme.mutedTextColor, fontSize: 14),
+                                                style: GoogleFonts.notoSansMalayalam(textStyle: const TextStyle(color: AppTheme.mutedTextColor, fontSize: 14)),
                                               ),
                                             )
                                           : null,
@@ -493,10 +497,12 @@ class _SopScreenState extends State<SopScreen> {
                                             ),
                                             child: Text(
                                               sop.details!,
-                                              style: const TextStyle(
-                                                fontSize: 15,
-                                                height: 1.6,
-                                                color: AppTheme.textColor,
+                                              style: GoogleFonts.notoSansMalayalam(
+                                                textStyle: const TextStyle(
+                                                  fontSize: 15,
+                                                  height: 1.6,
+                                                  color: Colors.black87,
+                                                ),
                                               ),
                                             ),
                                           ),

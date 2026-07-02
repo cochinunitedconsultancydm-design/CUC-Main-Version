@@ -62,7 +62,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
         _currentUserId = userId;
       }
       
-      final req = ModelQueries.list(amplify_models.Users.classType);
+      final req = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final usersList = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       usersList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
@@ -87,7 +87,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
       // Create maps for quick lookup since there are no joins
       final usersMap = { for (var u in _allUsers) u['id'].toString(): u['name'] };
 
-      final clientsReq = ModelQueries.list(amplify_models.Clients.classType);
+      final clientsReq = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final clientsRes = await Amplify.API.query(request: clientsReq).response;
       final clientsList = clientsRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
       final clientsMap = { for (var c in clientsList) c.id.toString(): c.name };

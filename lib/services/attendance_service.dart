@@ -1,7 +1,7 @@
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
-import 'location_tracking_service.dart';
+
 import 'package:cuc_app/services/backup_aware_api.dart';
 
 class AttendanceService {
@@ -61,7 +61,7 @@ class AttendanceService {
       attendance_date: DateTime.now().toIso8601String().split('T')[0],
     );
     await BackupAwareApi().create(att);
-    await LocationTrackingService().startTracking();
+
     return true;
   }
 
@@ -74,7 +74,7 @@ class AttendanceService {
       final updated = att.copyWith(check_out_time: DateTime.now().toUtc().toIso8601String());
       await BackupAwareApi().update(updated);
     }
-    await LocationTrackingService().stopTracking();
+
     return true;
   }
 }

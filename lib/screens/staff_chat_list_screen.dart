@@ -126,7 +126,7 @@ class _ChatListViewState extends State<_ChatListView> {
 
       final myIdStr = myId.toString();
 
-      final uReq = ModelQueries.list(amplify_models.Users.classType);
+      final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
       var usersRes = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       

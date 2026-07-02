@@ -169,11 +169,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final isCompleted = _task.status == 'Completed';
     final isInProgress = _task.status == 'In Progress';
     final isAdjourned = _task.status == 'Adjourned';
+    final isPickedUp = _task.status == 'Picked Up';
+    final requiresReturn = _task.title.contains('[Requires Return]');
     final statusColor = isCompleted 
         ? Colors.green 
-        : (isInProgress 
+        : (isPickedUp ? Colors.teal : (isInProgress 
             ? Colors.blue 
-            : (isAdjourned ? Colors.amber.shade700 : Colors.orange));
+            : (isAdjourned ? Colors.amber.shade700 : Colors.orange)));
     
     final createdAtDate = _task.createdAt != null ? DateTime.tryParse(_task.createdAt!)?.toLocal() : null;
     final dueDate = _task.dueDate != null ? DateTime.tryParse(_task.dueDate!)?.toLocal() : null;
@@ -422,17 +424,27 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             : Column(
                                 children: [
                                   _SlideAction(
-                                    key: ValueKey(_task.status),
+                                    key: ValueKey('${_task.status}_1'),
                                     label: isAdjourned 
                                         ? 'SLIDE TO RESUME WORK' 
-                                        : (isInProgress ? 'SLIDE TO COMPLETE' : 'SLIDE TO START WORK'),
+                                        : (isPickedUp
+                                            ? 'SLIDE TO RETURN'
+                                            : (isInProgress 
+                                                ? (requiresReturn ? 'SLIDE TO PICKUP' : 'SLIDE TO COMPLETE') 
+                                                : 'SLIDE TO START WORK')),
                                     baseColor: isAdjourned 
                                         ? Colors.amber.shade800 
-                                        : (isInProgress ? Colors.green : Colors.blue),
+                                        : (isPickedUp
+                                            ? Colors.teal
+                                            : (isInProgress ? Colors.green : Colors.blue)),
                                     onSlide: () => _updateStatus(
                                       isAdjourned 
                                           ? 'In Progress' 
-                                          : (isInProgress ? 'Completed' : 'In Progress'),
+                                          : (isPickedUp
+                                              ? 'Completed'
+                                              : (isInProgress 
+                                                  ? (requiresReturn ? 'Picked Up' : 'Completed') 
+                                                  : 'In Progress')),
                                     ),
                                   ),
                                   if (isInProgress) ...[

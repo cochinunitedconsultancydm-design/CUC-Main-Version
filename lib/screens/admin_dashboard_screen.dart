@@ -27,7 +27,7 @@ import 'reminder_calendar_screen.dart';
 import 'sop_screen.dart';
 import '../widgets/upcoming_reminders_widget.dart';
 import '../services/checklist_service.dart';
-import 'staff_location_screen.dart';
+
 import 'travel_log_screen.dart';
 import 'document_list_screen.dart';
 import 'verification_history_view.dart';
@@ -302,7 +302,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _sidebarItem(1, Icons.security_rounded, 'Security & Audit', isWide),
                 _sidebarItem(24, Icons.folder_shared_rounded, 'Work File', isWide),
                 _sidebarItem(2, Icons.people_outline_rounded, 'Staff Management', isWide),
-                _sidebarItem(6, Icons.location_on_outlined, 'Staff Locations', isWide),
+
                 _sidebarItem(8, Icons.directions_car_filled_outlined, 'Travel Logs', isWide),
                 _sidebarItem(3, Icons.layers_outlined, 'Service Checklist', isWide),
                 _sidebarItem(23, Icons.menu_book_rounded, 'SOP', isWide),
@@ -425,7 +425,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 3: return const ServiceManagementScreen();
       case 4: return _buildBackupView();
       case 5: return _buildHealthView(isWide);
-      case 6: return const StaffLocationScreen();
+
       case 8: return const TravelLogScreen();
       case 12: return const ChecklistScreen();
       case 17: return const ReminderCalendarScreen();

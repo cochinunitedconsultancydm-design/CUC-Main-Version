@@ -29,8 +29,7 @@ class SupabaseBackupService {
     'InwardPosts': 'inward_posts',
     'UserSessions': 'user_sessions',
     'Notifications': 'notifications',
-    'LocationHistory': 'location_history',
-    'StaffLocations': 'staff_locations',
+
     'ClientLicenses': 'client_licenses',
     'LicenseTypes': 'license_types',
     'LicenseBilling': 'license_billing',

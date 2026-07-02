@@ -188,7 +188,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
       final req = ModelQueries.list(amplify_models.ClientLicenses.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       
-      final clientReq = ModelQueries.list(amplify_models.Clients.classType);
+      final clientReq = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final clientRes = await Amplify.API.query(request: clientReq).response;
       final clientsList = clientRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
 

@@ -10,23 +10,50 @@ class AppTheme {
   static const textColor = Color(0xFF1A1A1A); // Deep Charcoal
   static const mutedTextColor = Color(0xFF71717A); // Zinc 400
 
+  static final fallbackFonts = [
+    'Nirmala UI',
+    'Malayalam MN',
+    'Kartika',
+    'AnjaliOldLipi',
+  ];
+
+  static TextTheme _applyFallback(TextTheme base) {
+    return base.copyWith(
+      displayLarge: base.displayLarge?.copyWith(fontFamilyFallback: fallbackFonts),
+      displayMedium: base.displayMedium?.copyWith(fontFamilyFallback: fallbackFonts),
+      displaySmall: base.displaySmall?.copyWith(fontFamilyFallback: fallbackFonts),
+      headlineLarge: base.headlineLarge?.copyWith(fontFamilyFallback: fallbackFonts),
+      headlineMedium: base.headlineMedium?.copyWith(fontFamilyFallback: fallbackFonts),
+      headlineSmall: base.headlineSmall?.copyWith(fontFamilyFallback: fallbackFonts),
+      titleLarge: base.titleLarge?.copyWith(fontFamilyFallback: fallbackFonts),
+      titleMedium: base.titleMedium?.copyWith(fontFamilyFallback: fallbackFonts),
+      titleSmall: base.titleSmall?.copyWith(fontFamilyFallback: fallbackFonts),
+      bodyLarge: base.bodyLarge?.copyWith(fontFamilyFallback: fallbackFonts),
+      bodyMedium: base.bodyMedium?.copyWith(fontFamilyFallback: fallbackFonts),
+      bodySmall: base.bodySmall?.copyWith(fontFamilyFallback: fallbackFonts),
+      labelLarge: base.labelLarge?.copyWith(fontFamilyFallback: fallbackFonts),
+      labelMedium: base.labelMedium?.copyWith(fontFamilyFallback: fallbackFonts),
+      labelSmall: base.labelSmall?.copyWith(fontFamilyFallback: fallbackFonts),
+    );
+  }
+
   static ThemeData lightTheme() {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: backgroundColor,
-      colorScheme: ColorScheme.light(
+      colorScheme: const ColorScheme.light(
         primary: primaryColor,
         secondary: accentColor,
         surface: surfaceColor,
         onSurface: textColor,
         onPrimary: Colors.white,
       ),
-      textTheme: GoogleFonts.interTextTheme(
-        ThemeData.light().textTheme,
-      ).apply(
-        bodyColor: textColor,
-        displayColor: textColor,
+      textTheme: _applyFallback(
+        GoogleFonts.interTextTheme(ThemeData.light().textTheme).apply(
+          bodyColor: textColor,
+          displayColor: textColor,
+        ),
       ),
       cardTheme: CardThemeData(
         color: Colors.white,

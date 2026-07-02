@@ -38,7 +38,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     try {
       final req = ModelQueries.list(amplify_models.CompanyBills.classType);
       final res = await Amplify.API.query(request: req).response;
-      final staffReq = ModelQueries.list(amplify_models.Users.classType);
+      final staffReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final staffRes = await Amplify.API.query(request: staffReq).response;
       
       final billsList = res.data?.items.whereType<amplify_models.CompanyBills>().toList() ?? [];

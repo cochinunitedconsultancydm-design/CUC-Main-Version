@@ -18,8 +18,8 @@ import 'screens/admin_dashboard_screen.dart';
 import 'screens/manager_dashboard_screen.dart';
 import 'screens/delivery_dashboard_screen.dart';
 import 'services/time_tracking_service.dart';
-import 'services/location_tracking_service.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
+
+
 
 final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 String? _amplifyStartupError;
@@ -82,8 +82,6 @@ Future<void> main() async {
   // Wire up desktop notification toast support
   NotificationService.scaffoldMessengerKey = _scaffoldMessengerKey;
 
-  // Initialize location tracking service
-  await LocationTrackingService().initialize();
 
   // Force login on every startup to track time accurately
   // This also gracefully logs out any session that was previously killed unexpectedly
@@ -123,11 +121,7 @@ class _MyAppState extends State<MyApp> with WindowListener, WidgetsBindingObserv
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
       // App is being swiped away / killed
-      try {
-        FlutterBackgroundService().invoke('app_killed');
-      } catch (e) {
-        debugPrint('Failed to send app_killed: $e');
-      }
+      // Location tracking features have been removed
     }
   }
 

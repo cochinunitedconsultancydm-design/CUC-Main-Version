@@ -39,7 +39,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
 
   Future<void> _fetchStaffList() async {
     try {
-      final req = ModelQueries.list(amplify_models.Users.classType);
+      final req = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final staff = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       staff.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
@@ -93,7 +93,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
       fetchedLogs.sort((a, b) => (b.created_at ?? '').compareTo(a.created_at ?? ''));
 
       // Fetch users to map user names
-      final usersReq = ModelQueries.list(amplify_models.Users.classType);
+      final usersReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final usersRes = await Amplify.API.query(request: usersReq).response;
       final usersList = usersRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       final userMap = { for (var u in usersList) u.id.toString(): u };
@@ -130,7 +130,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
       fetchedSessions.sort((a, b) => (b.login_time ?? '').compareTo(a.login_time ?? ''));
 
       // Fetch users
-      final usersReq = ModelQueries.list(amplify_models.Users.classType);
+      final usersReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final usersRes = await Amplify.API.query(request: usersReq).response;
       final usersList = usersRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       final userMap = { for (var u in usersList) u.id.toString(): u };

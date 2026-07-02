@@ -120,7 +120,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
 
   Future<void> _fetchClients() async {
     try {
-      final req = ModelQueries.list(amplify_models.Clients.classType);
+      final req = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final clients = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
       clients.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
@@ -130,7 +130,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
 
   Future<void> _fetchUsers() async {
     try {
-      final req = ModelQueries.list(amplify_models.Users.classType);
+      final req = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var items = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       final Map<String, amplify_models.Users> uniqueUsers = {};
@@ -173,7 +173,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
         return dateB.compareTo(dateA);
       });
       
-      final uReq = ModelQueries.list(amplify_models.Users.classType);
+      final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
       final usersList = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       final userMap = {for (var u in usersList) u.id.toString(): u};
@@ -297,7 +297,9 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                   BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10)),
                 ],
               ),
-              child: Column(
+              child: Material(
+                color: Colors.transparent,
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Header
@@ -602,6 +604,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                   ),
                 ],
               ),
+              ),
             ),
           );
         }
@@ -735,7 +738,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                   child: DropdownButton<String>(
                     value: _statusFilter,
                     style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w600),
-                    items: ['All', 'Pending', 'In Progress', 'Adjourned', 'Completed']
+                    items: ['All', 'Pending', 'In Progress', 'Picked Up', 'Adjourned', 'Completed']
                         .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                         .toList(),
                     onChanged: (v) {
@@ -860,11 +863,11 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                                   decoration: BoxDecoration(
                                     color: (isCompleted 
                                         ? Colors.green 
-                                        : (t.status == 'In Progress' 
+                                        : (t.status == 'Picked Up' ? Colors.teal : (t.status == 'In Progress' 
                                             ? Colors.blue 
                                             : (t.status == 'Adjourned' 
                                                 ? Colors.amber 
-                                                : Colors.grey))).withValues(alpha: 0.1),
+                                                : Colors.grey)))).withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
@@ -872,11 +875,11 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                                     style: TextStyle(
                                       color: isCompleted 
                                           ? Colors.green 
-                                          : (t.status == 'In Progress' 
+                                          : (t.status == 'Picked Up' ? Colors.teal : (t.status == 'In Progress' 
                                               ? Colors.blue 
                                               : (t.status == 'Adjourned' 
                                                   ? Colors.amber.shade900 
-                                                  : Colors.grey.shade700)), 
+                                                  : Colors.grey.shade700))), 
                                       fontSize: 12, 
                                       fontWeight: FontWeight.bold,
                                     ),

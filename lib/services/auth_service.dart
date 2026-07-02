@@ -6,7 +6,7 @@ import 'dart:async';
 import '../models/ModelProvider.dart';
 import 'time_tracking_service.dart';
 import 'logging_service.dart';
-import 'location_tracking_service.dart';
+
 import 'security_service.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import 'supabase_backup_service.dart';
@@ -171,7 +171,7 @@ class AuthService {
     if (sessionIdStr != null) {
       try {
         TimeTrackingService.instance.stopTracking();
-        LocationTrackingService().stopTracking();
+
         final request = ModelQueries.get(
           UserSessions.classType,
           UserSessionsModelIdentifier(id: sessionIdStr),

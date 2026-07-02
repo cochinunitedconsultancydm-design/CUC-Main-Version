@@ -38,7 +38,7 @@ import '../services/inward_post_service.dart';
 import 'client_files_screen.dart';
 import 'inward_post_screen.dart';
 import '../services/checklist_service.dart';
-import 'staff_location_screen.dart';
+
 import 'travel_log_screen.dart';
 import '../widgets/upcoming_reminders_widget.dart';
 import '../widgets/upcoming_deadlines_widget.dart';
@@ -519,7 +519,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 _sidebarItem(8, Icons.task_alt_rounded, 'Deliveries and Pickup', isWide),
                 _sidebarItem(17, Icons.calendar_month_rounded, 'Reminder Calendar', isWide),
                 _sidebarItem(10, Icons.chat_bubble_outline_rounded, 'Staff Chat', isWide),
-                _sidebarItem(15, Icons.location_on_outlined, 'Staff Locations', isWide),
+
                 _sidebarItem(16, Icons.directions_car_filled_outlined, 'Travel Logs', isWide),
                 _sidebarItem(14, Icons.table_view_rounded, 'Upload Table', isWide),
                 _sidebarItem(18, Icons.mark_email_unread_rounded, 'Post Register', isWide),
@@ -654,7 +654,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       case 6: return const WorkManagementScreen();
       case 8: return const TaskManagementScreen();
       case 10: return const StaffChatListScreen();
-      case 15: return const StaffLocationScreen();
+
       case 16: return const TravelLogScreen();
       case 12: return const ChecklistScreen();
       case 13: return const WorkManagementScreen(showOnlyVerification: true);
@@ -1121,7 +1121,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     final allLogs = res.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
     allLogs.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
     
-    final usersReq = ModelQueries.list(amplify_models.Users.classType);
+    final usersReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
     final usersRes = await Amplify.API.query(request: usersReq).response;
     final usersMap = {for (var u in usersRes.data?.items ?? []) if (u != null) u.id: u.name};
     
@@ -1472,7 +1472,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         return list.map((l) => l.toJson()).toList();
         
       case 'Clients':
-        final req = ModelQueries.list(amplify_models.Clients.classType);
+        final req = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final list = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
         list.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));

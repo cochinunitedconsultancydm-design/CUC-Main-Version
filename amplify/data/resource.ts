@@ -67,12 +67,7 @@ const schema = a.schema({
     created_at: a.string(),
     updated_at: a.string(),
   }).authorization((allow) => [allow.authenticated()]),
-  StaffLocations: a.model({
-    user_id: a.integer(),
-    latitude: a.float(),
-    longitude: a.float(),
-    updated_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+
   Clients: a.model({
     id: a.id().required(),
     name: a.string(),
@@ -283,13 +278,7 @@ const schema = a.schema({
     received_date: a.string(),
     created_at: a.string(),
   }).authorization((allow) => [allow.authenticated()]),
-  LocationHistory: a.model({
-    id: a.id().required(),
-    user_id: a.integer(),
-    latitude: a.float(),
-    longitude: a.float(),
-    recorded_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+
   UserSessions: a.model({
     id: a.id().required(),
     user_id: a.integer(),

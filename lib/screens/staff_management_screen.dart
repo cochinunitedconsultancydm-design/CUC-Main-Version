@@ -56,7 +56,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     if (!mounted) return;
     setState(() => _isLoadingDirectory = true);
     try {
-      final uReq = ModelQueries.list(amplify_models.Users.classType);
+      final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
       var usersResRaw = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       
@@ -625,7 +625,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _fetchStaffTimeStats() async {
-    final uReq = ModelQueries.list(amplify_models.Users.classType);
+    final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
     final uRes = await Amplify.API.query(request: uReq).response;
     var usersRes = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
     usersRes = usersRes.where((u) => u.role != 'admin').toList();

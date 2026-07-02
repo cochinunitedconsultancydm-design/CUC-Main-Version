@@ -25,7 +25,7 @@ class _TravelLogScreenState extends State<TravelLogScreen> {
   Future<void> _fetchLogs() async {
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(TravelLogs.classType);
+      final req = ModelQueries.list(TravelLogs.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var logs = res.data?.items.whereType<TravelLogs>().toList() ?? [];
       
@@ -36,7 +36,7 @@ class _TravelLogScreenState extends State<TravelLogScreen> {
       });
       
       // Also fetch users to join
-      final uReq = ModelQueries.list(Users.classType);
+      final uReq = ModelQueries.list(Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
       final users = uRes.data?.items.whereType<Users>().toList() ?? [];
       final userMap = {for (var u in users) u.id.toString(): u};

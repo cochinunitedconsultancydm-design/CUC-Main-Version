@@ -203,7 +203,7 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                                           ),
                                         ],
                                       ),
-                                      if ((workFile.register_no != null && workFile.register_no!.isNotEmpty) || (workFile.work_type != null && workFile.work_type!.isNotEmpty)) ...[
+                                      if (true) ...[
                                         const SizedBox(height: 8),
                                         Wrap(
                                           spacing: 8,
@@ -221,18 +221,17 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                                                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
                                                 ),
                                               ),
-                                            if (workFile.work_type != null && workFile.work_type!.isNotEmpty)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.blue.shade100,
-                                                  borderRadius: BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  '${workFile.work_type}',
-                                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                                                ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.shade100,
+                                                borderRadius: BorderRadius.circular(4),
                                               ),
+                                              child: Text(
+                                                (workFile.work_type != null && workFile.work_type!.trim().isNotEmpty) ? '${workFile.work_type}' : 'Type: N/A',
+                                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ],
@@ -428,10 +427,8 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
                         const SizedBox(height: 4),
                         Text('File No: ${_currentWorkFile.register_no}', style: TextStyle(color: Colors.amber.shade700, fontWeight: FontWeight.bold, fontSize: 14)),
                       ],
-                      if (_currentWorkFile.work_type != null && _currentWorkFile.work_type!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text('Type: ${_currentWorkFile.work_type}', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
-                      ],
+                      const SizedBox(height: 4),
+                      Text('Type: ${_currentWorkFile.work_type != null && _currentWorkFile.work_type!.trim().isNotEmpty ? _currentWorkFile.work_type : "N/A"}', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
                     ],
                   ),
                 ),

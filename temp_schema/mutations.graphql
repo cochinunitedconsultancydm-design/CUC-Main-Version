@@ -1,0 +1,1903 @@
+# this is an auto generated file. This will be overwritten
+
+mutation CreateActivityLogs(
+  $condition: ModelActivityLogsConditionInput
+  $input: CreateActivityLogsInput!
+) {
+  createActivityLogs(condition: $condition, input: $input) {
+    action
+    createdAt
+    created_at
+    details
+    id
+    target_id
+    target_type
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation CreateBillings(
+  $condition: ModelBillingsConditionInput
+  $input: CreateBillingsInput!
+) {
+  createBillings(condition: $condition, input: $input) {
+    amount
+    authorities
+    category
+    client_name
+    createdAt
+    created_at
+    data
+    date
+    id
+    invoice_no
+    status
+    type
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateChecklists(
+  $condition: ModelChecklistsConditionInput
+  $input: CreateChecklistsInput!
+) {
+  createChecklists(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    description
+    due_date
+    id
+    manager_id
+    reason
+    remarks
+    responsible_id
+    status
+    title
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation CreateClientDocuments(
+  $condition: ModelClientDocumentsConditionInput
+  $input: CreateClientDocumentsInput!
+) {
+  createClientDocuments(condition: $condition, input: $input) {
+    client_id
+    client_name
+    createdAt
+    created_at
+    document_name
+    id
+    og_copy
+    remarks
+    storage_path
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateClientLicenses(
+  $condition: ModelClientLicensesConditionInput
+  $input: CreateClientLicensesInput!
+) {
+  createClientLicenses(condition: $condition, input: $input) {
+    client_id
+    createdAt
+    created_at
+    expiry_date
+    file_no
+    id
+    license_type_id
+    manual_client_name
+    notes
+    service_date
+    status
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation CreateClients(
+  $condition: ModelClientsConditionInput
+  $input: CreateClientsInput!
+) {
+  createClients(condition: $condition, input: $input) {
+    address
+    balance_due
+    case_number
+    createdAt
+    created_at
+    dob
+    email
+    file_date
+    file_no
+    id
+    is_contacted
+    managed_by
+    name
+    phone
+    review_rating
+    type_of_work
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateCompanyBills(
+  $condition: ModelCompanyBillsConditionInput
+  $input: CreateCompanyBillsInput!
+) {
+  createCompanyBills(condition: $condition, input: $input) {
+    amount
+    bill_date
+    category
+    createdAt
+    created_at
+    description
+    id
+    spent_by
+    spent_by_name
+    status
+    title
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateContacts(
+  $condition: ModelContactsConditionInput
+  $input: CreateContactsInput!
+) {
+  createContacts(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    designation
+    email
+    id
+    name
+    native_place
+    office
+    official_number
+    personal_number
+    place
+    updatedAt
+    working_place
+    __typename
+  }
+}
+
+mutation CreateDealActivities(
+  $condition: ModelDealActivitiesConditionInput
+  $input: CreateDealActivitiesInput!
+) {
+  createDealActivities(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    created_by
+    deal_id
+    description
+    due_date
+    id
+    is_completed
+    title
+    type
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateDealAssignees(
+  $condition: ModelDealAssigneesConditionInput
+  $input: CreateDealAssigneesInput!
+) {
+  createDealAssignees(condition: $condition, input: $input) {
+    assigned_at
+    createdAt
+    deal_id
+    id
+    role
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation CreateDealHandoverHistory(
+  $condition: ModelDealHandoverHistoryConditionInput
+  $input: CreateDealHandoverHistoryInput!
+) {
+  createDealHandoverHistory(condition: $condition, input: $input) {
+    createdAt
+    deal_id
+    from_user_id
+    handed_over_at
+    id
+    note
+    to_user_id
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateDealStageHistory(
+  $condition: ModelDealStageHistoryConditionInput
+  $input: CreateDealStageHistoryInput!
+) {
+  createDealStageHistory(condition: $condition, input: $input) {
+    changed_at
+    changed_by
+    createdAt
+    deal_id
+    from_stage
+    id
+    to_stage
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateDeals(
+  $condition: ModelDealsConditionInput
+  $input: CreateDealsInput!
+) {
+  createDeals(condition: $condition, input: $input) {
+    amount
+    billing_id
+    client_id
+    client_name
+    closed_at
+    company
+    contact_info
+    contact_status
+    create_invoice_share
+    createdAt
+    created_at
+    currency
+    description
+    drive_link
+    est_amount_work
+    expense_spent
+    expenses_list
+    files_asked
+    files_received
+    id
+    invoice_amount
+    is_won
+    name
+    noc_obtained
+    part_payment_amount
+    payment_received
+    payment_type
+    pipeline
+    priority
+    quotation_id
+    referred_by
+    reg_fee_required
+    register_no
+    responsible_id
+    responsible_name
+    send_to_customer
+    stage
+    updatedAt
+    updated_at
+    upload_invoice_path
+    work_type
+    __typename
+  }
+}
+
+mutation CreateDscRecords(
+  $condition: ModelDscRecordsConditionInput
+  $input: CreateDscRecordsInput!
+) {
+  createDscRecords(condition: $condition, input: $input) {
+    client_name
+    createdAt
+    created_at
+    dsc_expiry_date
+    dsc_taken_date
+    email_id
+    id
+    password
+    phone_no
+    updatedAt
+    updated_at
+    username
+    __typename
+  }
+}
+
+mutation CreateInwardPosts(
+  $condition: ModelInwardPostsConditionInput
+  $input: CreateInwardPostsInput!
+) {
+  createInwardPosts(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    description
+    id
+    received_by
+    received_date
+    recipient_name
+    sender_name
+    status
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateLicenseBilling(
+  $condition: ModelLicenseBillingConditionInput
+  $input: CreateLicenseBillingInput!
+) {
+  createLicenseBilling(condition: $condition, input: $input) {
+    amount
+    client_license_id
+    createdAt
+    created_at
+    id
+    invoice_no
+    payment_date
+    payment_status
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateLicenseNotifications(
+  $condition: ModelLicenseNotificationsConditionInput
+  $input: CreateLicenseNotificationsInput!
+) {
+  createLicenseNotifications(condition: $condition, input: $input) {
+    client_license_id
+    createdAt
+    created_at
+    id
+    is_sent
+    message
+    notification_type
+    scheduled_date
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateLicenseServices(
+  $condition: ModelLicenseServicesConditionInput
+  $input: CreateLicenseServicesInput!
+) {
+  createLicenseServices(condition: $condition, input: $input) {
+    client_license_id
+    createdAt
+    created_at
+    id
+    service_cost
+    service_date
+    service_description
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateLicenseTypes(
+  $condition: ModelLicenseTypesConditionInput
+  $input: CreateLicenseTypesInput!
+) {
+  createLicenseTypes(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    description
+    id
+    name
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation CreateMessages(
+  $condition: ModelMessagesConditionInput
+  $input: CreateMessagesInput!
+) {
+  createMessages(condition: $condition, input: $input) {
+    attachment_id
+    attachment_type
+    content
+    createdAt
+    created_at
+    id
+    is_read
+    receiver_id
+    sender_id
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateNotifications(
+  $condition: ModelNotificationsConditionInput
+  $input: CreateNotificationsInput!
+) {
+  createNotifications(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    deal_id
+    id
+    is_read
+    message
+    task_id
+    title
+    type
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation CreateProperties(
+  $condition: ModelPropertiesConditionInput
+  $input: CreatePropertiesInput!
+) {
+  createProperties(condition: $condition, input: $input) {
+    advance_amount
+    area
+    balcony_count
+    broker_details
+    care_of
+    client_name
+    createdAt
+    created_at
+    expenses
+    floor
+    has_balcony
+    has_car_parking
+    has_legal_disputes
+    has_multiple_owners
+    id
+    is_furnished
+    is_negotiable
+    location
+    notes
+    owner_name
+    owner_phone_numbers
+    period
+    photos
+    price
+    property_name
+    property_type
+    status
+    transaction_type
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation CreateServiceContent(
+  $condition: ModelServiceContentConditionInput
+  $input: CreateServiceContentInput!
+) {
+  createServiceContent(condition: $condition, input: $input) {
+    createdAt
+    description
+    details
+    id
+    image_path
+    service_id
+    title
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateServiceNames(
+  $condition: ModelServiceNamesConditionInput
+  $input: CreateServiceNamesInput!
+) {
+  createServiceNames(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    id
+    name
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateSops(
+  $condition: ModelSopsConditionInput
+  $input: CreateSopsInput!
+) {
+  createSops(condition: $condition, input: $input) {
+    content
+    createdAt
+    created_at
+    description
+    id
+    title
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation CreateStaffAttendance(
+  $condition: ModelStaffAttendanceConditionInput
+  $input: CreateStaffAttendanceInput!
+) {
+  createStaffAttendance(condition: $condition, input: $input) {
+    attendance_date
+    check_in_time
+    check_out_time
+    createdAt
+    id
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation CreateSysCronLogs(
+  $condition: ModelSysCronLogsConditionInput
+  $input: CreateSysCronLogsInput!
+) {
+  createSysCronLogs(condition: $condition, input: $input) {
+    createdAt
+    id
+    job_name
+    last_run_date
+    updatedAt
+    __typename
+  }
+}
+
+mutation CreateTasks(
+  $condition: ModelTasksConditionInput
+  $input: CreateTasksInput!
+) {
+  createTasks(condition: $condition, input: $input) {
+    assigned_by
+    assigned_to
+    client_name
+    createdAt
+    created_at
+    description
+    due_date
+    id
+    location
+    phone_number
+    status
+    title
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation CreateTravelLogs(
+  $condition: ModelTravelLogsConditionInput
+  $input: CreateTravelLogsInput!
+) {
+  createTravelLogs(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    destination
+    id
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation CreateUserSessions(
+  $condition: ModelUserSessionsConditionInput
+  $input: CreateUserSessionsInput!
+) {
+  createUserSessions(condition: $condition, input: $input) {
+    active_seconds
+    createdAt
+    id
+    idle_seconds
+    ip_address
+    is_active
+    login_time
+    logout_time
+    status
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation CreateUsers(
+  $condition: ModelUsersConditionInput
+  $input: CreateUsersInput!
+) {
+  createUsers(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    email
+    id
+    last_seen
+    name
+    password
+    role
+    updatedAt
+    username
+    __typename
+  }
+}
+
+mutation DeleteActivityLogs(
+  $condition: ModelActivityLogsConditionInput
+  $input: DeleteActivityLogsInput!
+) {
+  deleteActivityLogs(condition: $condition, input: $input) {
+    action
+    createdAt
+    created_at
+    details
+    id
+    target_id
+    target_type
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation DeleteBillings(
+  $condition: ModelBillingsConditionInput
+  $input: DeleteBillingsInput!
+) {
+  deleteBillings(condition: $condition, input: $input) {
+    amount
+    authorities
+    category
+    client_name
+    createdAt
+    created_at
+    data
+    date
+    id
+    invoice_no
+    status
+    type
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteChecklists(
+  $condition: ModelChecklistsConditionInput
+  $input: DeleteChecklistsInput!
+) {
+  deleteChecklists(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    description
+    due_date
+    id
+    manager_id
+    reason
+    remarks
+    responsible_id
+    status
+    title
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation DeleteClientDocuments(
+  $condition: ModelClientDocumentsConditionInput
+  $input: DeleteClientDocumentsInput!
+) {
+  deleteClientDocuments(condition: $condition, input: $input) {
+    client_id
+    client_name
+    createdAt
+    created_at
+    document_name
+    id
+    og_copy
+    remarks
+    storage_path
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteClientLicenses(
+  $condition: ModelClientLicensesConditionInput
+  $input: DeleteClientLicensesInput!
+) {
+  deleteClientLicenses(condition: $condition, input: $input) {
+    client_id
+    createdAt
+    created_at
+    expiry_date
+    file_no
+    id
+    license_type_id
+    manual_client_name
+    notes
+    service_date
+    status
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation DeleteClients(
+  $condition: ModelClientsConditionInput
+  $input: DeleteClientsInput!
+) {
+  deleteClients(condition: $condition, input: $input) {
+    address
+    balance_due
+    case_number
+    createdAt
+    created_at
+    dob
+    email
+    file_date
+    file_no
+    id
+    is_contacted
+    managed_by
+    name
+    phone
+    review_rating
+    type_of_work
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteCompanyBills(
+  $condition: ModelCompanyBillsConditionInput
+  $input: DeleteCompanyBillsInput!
+) {
+  deleteCompanyBills(condition: $condition, input: $input) {
+    amount
+    bill_date
+    category
+    createdAt
+    created_at
+    description
+    id
+    spent_by
+    spent_by_name
+    status
+    title
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteContacts(
+  $condition: ModelContactsConditionInput
+  $input: DeleteContactsInput!
+) {
+  deleteContacts(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    designation
+    email
+    id
+    name
+    native_place
+    office
+    official_number
+    personal_number
+    place
+    updatedAt
+    working_place
+    __typename
+  }
+}
+
+mutation DeleteDealActivities(
+  $condition: ModelDealActivitiesConditionInput
+  $input: DeleteDealActivitiesInput!
+) {
+  deleteDealActivities(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    created_by
+    deal_id
+    description
+    due_date
+    id
+    is_completed
+    title
+    type
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteDealAssignees(
+  $condition: ModelDealAssigneesConditionInput
+  $input: DeleteDealAssigneesInput!
+) {
+  deleteDealAssignees(condition: $condition, input: $input) {
+    assigned_at
+    createdAt
+    deal_id
+    id
+    role
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation DeleteDealHandoverHistory(
+  $condition: ModelDealHandoverHistoryConditionInput
+  $input: DeleteDealHandoverHistoryInput!
+) {
+  deleteDealHandoverHistory(condition: $condition, input: $input) {
+    createdAt
+    deal_id
+    from_user_id
+    handed_over_at
+    id
+    note
+    to_user_id
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteDealStageHistory(
+  $condition: ModelDealStageHistoryConditionInput
+  $input: DeleteDealStageHistoryInput!
+) {
+  deleteDealStageHistory(condition: $condition, input: $input) {
+    changed_at
+    changed_by
+    createdAt
+    deal_id
+    from_stage
+    id
+    to_stage
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteDeals(
+  $condition: ModelDealsConditionInput
+  $input: DeleteDealsInput!
+) {
+  deleteDeals(condition: $condition, input: $input) {
+    amount
+    billing_id
+    client_id
+    client_name
+    closed_at
+    company
+    contact_info
+    contact_status
+    create_invoice_share
+    createdAt
+    created_at
+    currency
+    description
+    drive_link
+    est_amount_work
+    expense_spent
+    expenses_list
+    files_asked
+    files_received
+    id
+    invoice_amount
+    is_won
+    name
+    noc_obtained
+    part_payment_amount
+    payment_received
+    payment_type
+    pipeline
+    priority
+    quotation_id
+    referred_by
+    reg_fee_required
+    register_no
+    responsible_id
+    responsible_name
+    send_to_customer
+    stage
+    updatedAt
+    updated_at
+    upload_invoice_path
+    work_type
+    __typename
+  }
+}
+
+mutation DeleteDscRecords(
+  $condition: ModelDscRecordsConditionInput
+  $input: DeleteDscRecordsInput!
+) {
+  deleteDscRecords(condition: $condition, input: $input) {
+    client_name
+    createdAt
+    created_at
+    dsc_expiry_date
+    dsc_taken_date
+    email_id
+    id
+    password
+    phone_no
+    updatedAt
+    updated_at
+    username
+    __typename
+  }
+}
+
+mutation DeleteInwardPosts(
+  $condition: ModelInwardPostsConditionInput
+  $input: DeleteInwardPostsInput!
+) {
+  deleteInwardPosts(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    description
+    id
+    received_by
+    received_date
+    recipient_name
+    sender_name
+    status
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteLicenseBilling(
+  $condition: ModelLicenseBillingConditionInput
+  $input: DeleteLicenseBillingInput!
+) {
+  deleteLicenseBilling(condition: $condition, input: $input) {
+    amount
+    client_license_id
+    createdAt
+    created_at
+    id
+    invoice_no
+    payment_date
+    payment_status
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteLicenseNotifications(
+  $condition: ModelLicenseNotificationsConditionInput
+  $input: DeleteLicenseNotificationsInput!
+) {
+  deleteLicenseNotifications(condition: $condition, input: $input) {
+    client_license_id
+    createdAt
+    created_at
+    id
+    is_sent
+    message
+    notification_type
+    scheduled_date
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteLicenseServices(
+  $condition: ModelLicenseServicesConditionInput
+  $input: DeleteLicenseServicesInput!
+) {
+  deleteLicenseServices(condition: $condition, input: $input) {
+    client_license_id
+    createdAt
+    created_at
+    id
+    service_cost
+    service_date
+    service_description
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteLicenseTypes(
+  $condition: ModelLicenseTypesConditionInput
+  $input: DeleteLicenseTypesInput!
+) {
+  deleteLicenseTypes(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    description
+    id
+    name
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation DeleteMessages(
+  $condition: ModelMessagesConditionInput
+  $input: DeleteMessagesInput!
+) {
+  deleteMessages(condition: $condition, input: $input) {
+    attachment_id
+    attachment_type
+    content
+    createdAt
+    created_at
+    id
+    is_read
+    receiver_id
+    sender_id
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteNotifications(
+  $condition: ModelNotificationsConditionInput
+  $input: DeleteNotificationsInput!
+) {
+  deleteNotifications(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    deal_id
+    id
+    is_read
+    message
+    task_id
+    title
+    type
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation DeleteProperties(
+  $condition: ModelPropertiesConditionInput
+  $input: DeletePropertiesInput!
+) {
+  deleteProperties(condition: $condition, input: $input) {
+    advance_amount
+    area
+    balcony_count
+    broker_details
+    care_of
+    client_name
+    createdAt
+    created_at
+    expenses
+    floor
+    has_balcony
+    has_car_parking
+    has_legal_disputes
+    has_multiple_owners
+    id
+    is_furnished
+    is_negotiable
+    location
+    notes
+    owner_name
+    owner_phone_numbers
+    period
+    photos
+    price
+    property_name
+    property_type
+    status
+    transaction_type
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation DeleteServiceContent(
+  $condition: ModelServiceContentConditionInput
+  $input: DeleteServiceContentInput!
+) {
+  deleteServiceContent(condition: $condition, input: $input) {
+    createdAt
+    description
+    details
+    id
+    image_path
+    service_id
+    title
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteServiceNames(
+  $condition: ModelServiceNamesConditionInput
+  $input: DeleteServiceNamesInput!
+) {
+  deleteServiceNames(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    id
+    name
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteSops(
+  $condition: ModelSopsConditionInput
+  $input: DeleteSopsInput!
+) {
+  deleteSops(condition: $condition, input: $input) {
+    content
+    createdAt
+    created_at
+    description
+    id
+    title
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation DeleteStaffAttendance(
+  $condition: ModelStaffAttendanceConditionInput
+  $input: DeleteStaffAttendanceInput!
+) {
+  deleteStaffAttendance(condition: $condition, input: $input) {
+    attendance_date
+    check_in_time
+    check_out_time
+    createdAt
+    id
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation DeleteSysCronLogs(
+  $condition: ModelSysCronLogsConditionInput
+  $input: DeleteSysCronLogsInput!
+) {
+  deleteSysCronLogs(condition: $condition, input: $input) {
+    createdAt
+    id
+    job_name
+    last_run_date
+    updatedAt
+    __typename
+  }
+}
+
+mutation DeleteTasks(
+  $condition: ModelTasksConditionInput
+  $input: DeleteTasksInput!
+) {
+  deleteTasks(condition: $condition, input: $input) {
+    assigned_by
+    assigned_to
+    client_name
+    createdAt
+    created_at
+    description
+    due_date
+    id
+    location
+    phone_number
+    status
+    title
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation DeleteTravelLogs(
+  $condition: ModelTravelLogsConditionInput
+  $input: DeleteTravelLogsInput!
+) {
+  deleteTravelLogs(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    destination
+    id
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation DeleteUserSessions(
+  $condition: ModelUserSessionsConditionInput
+  $input: DeleteUserSessionsInput!
+) {
+  deleteUserSessions(condition: $condition, input: $input) {
+    active_seconds
+    createdAt
+    id
+    idle_seconds
+    ip_address
+    is_active
+    login_time
+    logout_time
+    status
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation DeleteUsers(
+  $condition: ModelUsersConditionInput
+  $input: DeleteUsersInput!
+) {
+  deleteUsers(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    email
+    id
+    last_seen
+    name
+    password
+    role
+    updatedAt
+    username
+    __typename
+  }
+}
+
+mutation UpdateActivityLogs(
+  $condition: ModelActivityLogsConditionInput
+  $input: UpdateActivityLogsInput!
+) {
+  updateActivityLogs(condition: $condition, input: $input) {
+    action
+    createdAt
+    created_at
+    details
+    id
+    target_id
+    target_type
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation UpdateBillings(
+  $condition: ModelBillingsConditionInput
+  $input: UpdateBillingsInput!
+) {
+  updateBillings(condition: $condition, input: $input) {
+    amount
+    authorities
+    category
+    client_name
+    createdAt
+    created_at
+    data
+    date
+    id
+    invoice_no
+    status
+    type
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateChecklists(
+  $condition: ModelChecklistsConditionInput
+  $input: UpdateChecklistsInput!
+) {
+  updateChecklists(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    description
+    due_date
+    id
+    manager_id
+    reason
+    remarks
+    responsible_id
+    status
+    title
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation UpdateClientDocuments(
+  $condition: ModelClientDocumentsConditionInput
+  $input: UpdateClientDocumentsInput!
+) {
+  updateClientDocuments(condition: $condition, input: $input) {
+    client_id
+    client_name
+    createdAt
+    created_at
+    document_name
+    id
+    og_copy
+    remarks
+    storage_path
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateClientLicenses(
+  $condition: ModelClientLicensesConditionInput
+  $input: UpdateClientLicensesInput!
+) {
+  updateClientLicenses(condition: $condition, input: $input) {
+    client_id
+    createdAt
+    created_at
+    expiry_date
+    file_no
+    id
+    license_type_id
+    manual_client_name
+    notes
+    service_date
+    status
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation UpdateClients(
+  $condition: ModelClientsConditionInput
+  $input: UpdateClientsInput!
+) {
+  updateClients(condition: $condition, input: $input) {
+    address
+    balance_due
+    case_number
+    createdAt
+    created_at
+    dob
+    email
+    file_date
+    file_no
+    id
+    is_contacted
+    managed_by
+    name
+    phone
+    review_rating
+    type_of_work
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateCompanyBills(
+  $condition: ModelCompanyBillsConditionInput
+  $input: UpdateCompanyBillsInput!
+) {
+  updateCompanyBills(condition: $condition, input: $input) {
+    amount
+    bill_date
+    category
+    createdAt
+    created_at
+    description
+    id
+    spent_by
+    spent_by_name
+    status
+    title
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateContacts(
+  $condition: ModelContactsConditionInput
+  $input: UpdateContactsInput!
+) {
+  updateContacts(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    designation
+    email
+    id
+    name
+    native_place
+    office
+    official_number
+    personal_number
+    place
+    updatedAt
+    working_place
+    __typename
+  }
+}
+
+mutation UpdateDealActivities(
+  $condition: ModelDealActivitiesConditionInput
+  $input: UpdateDealActivitiesInput!
+) {
+  updateDealActivities(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    created_by
+    deal_id
+    description
+    due_date
+    id
+    is_completed
+    title
+    type
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateDealAssignees(
+  $condition: ModelDealAssigneesConditionInput
+  $input: UpdateDealAssigneesInput!
+) {
+  updateDealAssignees(condition: $condition, input: $input) {
+    assigned_at
+    createdAt
+    deal_id
+    id
+    role
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation UpdateDealHandoverHistory(
+  $condition: ModelDealHandoverHistoryConditionInput
+  $input: UpdateDealHandoverHistoryInput!
+) {
+  updateDealHandoverHistory(condition: $condition, input: $input) {
+    createdAt
+    deal_id
+    from_user_id
+    handed_over_at
+    id
+    note
+    to_user_id
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateDealStageHistory(
+  $condition: ModelDealStageHistoryConditionInput
+  $input: UpdateDealStageHistoryInput!
+) {
+  updateDealStageHistory(condition: $condition, input: $input) {
+    changed_at
+    changed_by
+    createdAt
+    deal_id
+    from_stage
+    id
+    to_stage
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateDeals(
+  $condition: ModelDealsConditionInput
+  $input: UpdateDealsInput!
+) {
+  updateDeals(condition: $condition, input: $input) {
+    amount
+    billing_id
+    client_id
+    client_name
+    closed_at
+    company
+    contact_info
+    contact_status
+    create_invoice_share
+    createdAt
+    created_at
+    currency
+    description
+    drive_link
+    est_amount_work
+    expense_spent
+    expenses_list
+    files_asked
+    files_received
+    id
+    invoice_amount
+    is_won
+    name
+    noc_obtained
+    part_payment_amount
+    payment_received
+    payment_type
+    pipeline
+    priority
+    quotation_id
+    referred_by
+    reg_fee_required
+    register_no
+    responsible_id
+    responsible_name
+    send_to_customer
+    stage
+    updatedAt
+    updated_at
+    upload_invoice_path
+    work_type
+    __typename
+  }
+}
+
+mutation UpdateDscRecords(
+  $condition: ModelDscRecordsConditionInput
+  $input: UpdateDscRecordsInput!
+) {
+  updateDscRecords(condition: $condition, input: $input) {
+    client_name
+    createdAt
+    created_at
+    dsc_expiry_date
+    dsc_taken_date
+    email_id
+    id
+    password
+    phone_no
+    updatedAt
+    updated_at
+    username
+    __typename
+  }
+}
+
+mutation UpdateInwardPosts(
+  $condition: ModelInwardPostsConditionInput
+  $input: UpdateInwardPostsInput!
+) {
+  updateInwardPosts(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    description
+    id
+    received_by
+    received_date
+    recipient_name
+    sender_name
+    status
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateLicenseBilling(
+  $condition: ModelLicenseBillingConditionInput
+  $input: UpdateLicenseBillingInput!
+) {
+  updateLicenseBilling(condition: $condition, input: $input) {
+    amount
+    client_license_id
+    createdAt
+    created_at
+    id
+    invoice_no
+    payment_date
+    payment_status
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateLicenseNotifications(
+  $condition: ModelLicenseNotificationsConditionInput
+  $input: UpdateLicenseNotificationsInput!
+) {
+  updateLicenseNotifications(condition: $condition, input: $input) {
+    client_license_id
+    createdAt
+    created_at
+    id
+    is_sent
+    message
+    notification_type
+    scheduled_date
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateLicenseServices(
+  $condition: ModelLicenseServicesConditionInput
+  $input: UpdateLicenseServicesInput!
+) {
+  updateLicenseServices(condition: $condition, input: $input) {
+    client_license_id
+    createdAt
+    created_at
+    id
+    service_cost
+    service_date
+    service_description
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateLicenseTypes(
+  $condition: ModelLicenseTypesConditionInput
+  $input: UpdateLicenseTypesInput!
+) {
+  updateLicenseTypes(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    description
+    id
+    name
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation UpdateMessages(
+  $condition: ModelMessagesConditionInput
+  $input: UpdateMessagesInput!
+) {
+  updateMessages(condition: $condition, input: $input) {
+    attachment_id
+    attachment_type
+    content
+    createdAt
+    created_at
+    id
+    is_read
+    receiver_id
+    sender_id
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateNotifications(
+  $condition: ModelNotificationsConditionInput
+  $input: UpdateNotificationsInput!
+) {
+  updateNotifications(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    deal_id
+    id
+    is_read
+    message
+    task_id
+    title
+    type
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation UpdateProperties(
+  $condition: ModelPropertiesConditionInput
+  $input: UpdatePropertiesInput!
+) {
+  updateProperties(condition: $condition, input: $input) {
+    advance_amount
+    area
+    balcony_count
+    broker_details
+    care_of
+    client_name
+    createdAt
+    created_at
+    expenses
+    floor
+    has_balcony
+    has_car_parking
+    has_legal_disputes
+    has_multiple_owners
+    id
+    is_furnished
+    is_negotiable
+    location
+    notes
+    owner_name
+    owner_phone_numbers
+    period
+    photos
+    price
+    property_name
+    property_type
+    status
+    transaction_type
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation UpdateServiceContent(
+  $condition: ModelServiceContentConditionInput
+  $input: UpdateServiceContentInput!
+) {
+  updateServiceContent(condition: $condition, input: $input) {
+    createdAt
+    description
+    details
+    id
+    image_path
+    service_id
+    title
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateServiceNames(
+  $condition: ModelServiceNamesConditionInput
+  $input: UpdateServiceNamesInput!
+) {
+  updateServiceNames(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    id
+    name
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateSops(
+  $condition: ModelSopsConditionInput
+  $input: UpdateSopsInput!
+) {
+  updateSops(condition: $condition, input: $input) {
+    content
+    createdAt
+    created_at
+    description
+    id
+    title
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation UpdateStaffAttendance(
+  $condition: ModelStaffAttendanceConditionInput
+  $input: UpdateStaffAttendanceInput!
+) {
+  updateStaffAttendance(condition: $condition, input: $input) {
+    attendance_date
+    check_in_time
+    check_out_time
+    createdAt
+    id
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation UpdateSysCronLogs(
+  $condition: ModelSysCronLogsConditionInput
+  $input: UpdateSysCronLogsInput!
+) {
+  updateSysCronLogs(condition: $condition, input: $input) {
+    createdAt
+    id
+    job_name
+    last_run_date
+    updatedAt
+    __typename
+  }
+}
+
+mutation UpdateTasks(
+  $condition: ModelTasksConditionInput
+  $input: UpdateTasksInput!
+) {
+  updateTasks(condition: $condition, input: $input) {
+    assigned_by
+    assigned_to
+    client_name
+    createdAt
+    created_at
+    description
+    due_date
+    id
+    location
+    phone_number
+    status
+    title
+    updatedAt
+    updated_at
+    __typename
+  }
+}
+
+mutation UpdateTravelLogs(
+  $condition: ModelTravelLogsConditionInput
+  $input: UpdateTravelLogsInput!
+) {
+  updateTravelLogs(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    destination
+    id
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation UpdateUserSessions(
+  $condition: ModelUserSessionsConditionInput
+  $input: UpdateUserSessionsInput!
+) {
+  updateUserSessions(condition: $condition, input: $input) {
+    active_seconds
+    createdAt
+    id
+    idle_seconds
+    ip_address
+    is_active
+    login_time
+    logout_time
+    status
+    updatedAt
+    user_id
+    __typename
+  }
+}
+
+mutation UpdateUsers(
+  $condition: ModelUsersConditionInput
+  $input: UpdateUsersInput!
+) {
+  updateUsers(condition: $condition, input: $input) {
+    createdAt
+    created_at
+    email
+    id
+    last_seen
+    name
+    password
+    role
+    updatedAt
+    username
+    __typename
+  }
+}

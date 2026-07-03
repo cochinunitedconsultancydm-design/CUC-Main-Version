@@ -96,8 +96,12 @@ class _ContactBookScreenState extends State<ContactBookScreen> {
       debugPrint('Error fetching contacts: $e');
       if (mounted) {
         setState(() {
+          if (e.toString().contains('FieldUndefined')) {
+            _errorMessage = 'The Contacts database table is currently being deployed to the cloud. Please wait a few minutes and refresh.';
+          } else {
+            _errorMessage = 'Failed to load contacts: ${e.toString()}';
+          }
           _isLoading = false;
-          _errorMessage = e.toString();
         });
       }
     }

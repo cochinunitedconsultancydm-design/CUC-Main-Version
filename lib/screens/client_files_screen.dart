@@ -43,7 +43,7 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
   Future<void> _fetchWorkFiles() async {
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.PIPELINE.eq('Work File'));
+      final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.PIPELINE.eq('Work File'), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       
       if (res.data != null) {
@@ -61,6 +61,38 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
     } catch (e) {
       debugPrint('Error fetching work files: $e');
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _deleteWorkFile(amplify_models.Deals workFile) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Work File'),
+        content: Text('Are you sure you want to delete the work file "${workFile.name}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await BackupAwareApi().delete(workFile);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Work file deleted successfully', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+        }
+        _fetchWorkFiles();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+        }
+      }
     }
   }
 
@@ -205,6 +237,11 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                            tooltip: 'Delete Work File',
+                                            onPressed: () => _deleteWorkFile(workFile),
                                           ),
                                         ],
                                       ),

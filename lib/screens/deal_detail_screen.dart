@@ -1396,7 +1396,7 @@ final dLink = "";
       final res = await Amplify.API.query(request: req).response;
       final match = res.data?.items.firstWhere((e) => e != null);
 
-      final reqAll = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.PIPELINE.eq('Work File'));
+      final reqAll = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.PIPELINE.eq('Work File'), limit: 10000);
       final resAll = await Amplify.API.query(request: reqAll).response;
       final allWFs = resAll.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
 

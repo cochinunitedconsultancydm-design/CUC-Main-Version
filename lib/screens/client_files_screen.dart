@@ -43,7 +43,7 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
   Future<void> _fetchWorkFiles() async {
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.PIPELINE.eq('Work File'), limit: 10000);
+      final req = ModelQueries.list(amplify_models.Deals.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       
       if (res.data != null) {
@@ -209,7 +209,7 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                           itemCount: _filtered.length,
                           itemBuilder: (context, index) {
                             final workFile = _filtered[index];
-                            final bool isSubWork = workFile.contact_status != null && workFile.contact_status!.isNotEmpty;
+                            final bool isSubWork = workFile.pipeline == 'Sub Work';
                             return Card(
                               elevation: 2,
                               color: isSubWork ? Colors.deepPurple.shade50 : null,

@@ -25,6 +25,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'checklist_screen.dart';
 import 'reminder_calendar_screen.dart';
 import 'sop_screen.dart';
+import 'contact_book_screen.dart';
 import '../widgets/upcoming_reminders_widget.dart';
 import '../services/checklist_service.dart';
 
@@ -189,15 +190,145 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<void> _runBackup() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('System backup is now handled automatically via AWS DynamoDB Point-In-Time Recovery. Please check the AWS Console.'), backgroundColor: AppTheme.primaryColor),
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Downloading backup...'),
+          ],
+        ),
+      ),
     );
+
+    try {
+      final Map<String, List<Map<String, dynamic>>> backupData = {};
+
+      // Fetch all tables
+      final tables = <String, dynamic>{
+        'Users': Users.classType,
+        'Clients': Clients.classType,
+        'Deals': Deals.classType,
+        'Billings': Billings.classType,
+        'Tasks': Tasks.classType,
+        'ActivityLogs': ActivityLogs.classType,
+        'UserSessions': UserSessions.classType,
+        'Messages': Messages.classType,
+        'StaffAttendance': StaffAttendance.classType,
+        'ClientDocuments': ClientDocuments.classType,
+        'InwardPosts': InwardPosts.classType,
+        'Notifications': Notifications.classType,
+      };
+
+      for (var entry in tables.entries) {
+        try {
+          final req = ModelQueries.list(entry.value, limit: 10000);
+          final res = await Amplify.API.query(request: req).response;
+          final items = res.data?.items ?? [];
+          backupData[entry.key] = items
+              .where((item) => item != null)
+              .map((item) => item!.toJson())
+              .toList();
+        } catch (e) {
+          debugPrint('Backup error for ${entry.key}: $e');
+          backupData[entry.key] = [];
+        }
+      }
+
+      final jsonString = const JsonEncoder.withIndent('  ').convert({
+        'backup_date': DateTime.now().toIso8601String(),
+        'app_version': 'CUC Main Version',
+        'tables': backupData,
+      });
+
+      if (mounted) Navigator.pop(context);
+
+      // Save to app documents directory
+      final dir = await getApplicationDocumentsDirectory();
+      final fileName = 'CUC_Backup_${DateFormat('yyyy-MM-dd_HHmmss').format(DateTime.now())}.json';
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsString(jsonString);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Backup saved to: ${file.path}'), backgroundColor: Colors.green, duration: const Duration(seconds: 5)),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Backup failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _restoreBackup() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Database restore is managed via AWS DynamoDB.'), backgroundColor: Colors.orange),
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Restore from Backup'),
+        content: const Text('WARNING: This will overwrite existing data with the backup data. Are you sure you want to continue?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Restore', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
+
+    if (confirm != true) return;
+
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (result == null || result.files.single.path == null) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Restoring backup...'),
+            ],
+          ),
+        ),
+      );
+
+      final file = File(result.files.single.path!);
+      final jsonString = await file.readAsString();
+      final data = json.decode(jsonString);
+
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Backup file loaded: ${data['backup_date'] ?? 'Unknown date'}. Restore requires AWS Console for safety.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Restore failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   @override
@@ -301,6 +432,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _sidebarItem(11, Icons.account_balance_wallet_rounded, 'Accounting & Pay', isWide),
                 _sidebarItem(1, Icons.security_rounded, 'Security & Audit', isWide),
                 _sidebarItem(24, Icons.folder_shared_rounded, 'Work File', isWide),
+                _sidebarItem(25, Icons.contacts_rounded, 'Contact Book', isWide),
                 _sidebarItem(2, Icons.people_outline_rounded, 'Staff Management', isWide),
 
                 _sidebarItem(8, Icons.directions_car_filled_outlined, 'Travel Logs', isWide),
@@ -435,6 +567,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 21: return const PropertyManagementScreen();
       case 22: return const FileAcknowledgementScreen(currentUserRole: 'admin', currentUserName: 'Admin');
       case 24: return const ClientFilesScreen();
+      case 25: return const ContactBookScreen();
       case 23: return const SopScreen();
       default: return _buildPlaceholderView('Coming Soon');
     }

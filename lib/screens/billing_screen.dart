@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 import 'package:printing/printing.dart';
 import '../models/billing.dart';
 import '../services/billing_service.dart';
@@ -352,8 +353,7 @@ class _BillingScreenState extends State<BillingScreen> {
         spent_by_name: creatorName,
       );
       
-      final req = ModelMutations.create(bill);
-      await Amplify.API.mutate(request: req).response;
+      await BackupAwareApi().create(bill);
     } catch (e) {
       debugPrint('Failed to log accounting entry: $e');
     }
@@ -421,8 +421,7 @@ class _BillingScreenState extends State<BillingScreen> {
               spent_by_name: creatorName,
             );
             
-            final mutReq = ModelMutations.create(bill);
-            await Amplify.API.mutate(request: mutReq).response;
+            await BackupAwareApi().create(bill);
             added++;
           }
         }

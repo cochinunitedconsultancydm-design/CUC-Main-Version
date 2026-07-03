@@ -33,6 +33,7 @@ class SupabaseBackupService {
     'ClientLicenses': 'client_licenses',
     'LicenseTypes': 'license_types',
     'LicenseBilling': 'license_billing',
+    'Contacts': 'contacts',
   };
 
   Map<String, String> get _headers => {

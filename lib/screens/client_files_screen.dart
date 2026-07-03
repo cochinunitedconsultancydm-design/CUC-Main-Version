@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,6 +13,7 @@ import '../models/deal.dart' as models;
 import 'deal_detail_screen.dart';
 import '../models/client.dart';
 import 'client_files_dialog.dart';
+import '../services/logging_service.dart';
 
 class ClientFilesScreen extends StatefulWidget {
   const ClientFilesScreen({super.key});
@@ -94,6 +96,7 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
       context: context,
       builder: (context) => WorkFileDetailDialog(
         workFile: workFile,
+        allWorkFiles: _workFiles,
         onUpdate: _fetchWorkFiles,
       ),
     );
@@ -174,8 +177,10 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                           itemCount: _filtered.length,
                           itemBuilder: (context, index) {
                             final workFile = _filtered[index];
+                            final bool isSubWork = workFile.contact_status != null && workFile.contact_status!.isNotEmpty;
                             return Card(
                               elevation: 2,
+                              color: isSubWork ? Colors.deepPurple.shade50 : null,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(16),
@@ -209,6 +214,18 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                                           spacing: 8,
                                           runSpacing: 4,
                                           children: [
+                                            if (isSubWork)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.deepPurple.shade100,
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  'Sub Work',
+                                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.deepPurple.shade900),
+                                                ),
+                                              ),
                                             if (workFile.register_no != null && workFile.register_no!.isNotEmpty)
                                               Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -270,9 +287,10 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
 
 class WorkFileDetailDialog extends StatefulWidget {
   final amplify_models.Deals workFile;
+  final List<amplify_models.Deals> allWorkFiles;
   final VoidCallback onUpdate;
   
-  const WorkFileDetailDialog({super.key, required this.workFile, required this.onUpdate});
+  const WorkFileDetailDialog({super.key, required this.workFile, required this.allWorkFiles, required this.onUpdate});
 
   @override
   State<WorkFileDetailDialog> createState() => _WorkFileDetailDialogState();
@@ -281,11 +299,38 @@ class WorkFileDetailDialog extends StatefulWidget {
 class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
   late amplify_models.Deals _currentWorkFile;
   bool _isUploading = false;
+  List<amplify_models.ActivityLogs> _logs = [];
+  bool _isLoadingLogs = true;
+  List<amplify_models.Deals> _subWorks = [];
 
   @override
   void initState() {
     super.initState();
     _currentWorkFile = widget.workFile;
+    _subWorks = widget.allWorkFiles.where((w) => w.contact_status == _currentWorkFile.id).toList();
+    _fetchLogs();
+  }
+
+  Future<void> _fetchLogs() async {
+    setState(() => _isLoadingLogs = true);
+    try {
+      final req = ModelQueries.list(
+        amplify_models.ActivityLogs.classType,
+        where: amplify_models.ActivityLogs.TARGET_ID.eq(_currentWorkFile.name),
+        limit: 1000,
+      );
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data != null) {
+        final fetchedLogs = res.data!.items.whereType<amplify_models.ActivityLogs>().toList();
+        fetchedLogs.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now())
+            .compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
+        if (mounted) setState(() => _logs = fetchedLogs);
+      }
+    } catch (e) {
+      debugPrint('Error fetching logs: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingLogs = false);
+    }
   }
 
   Future<void> _launchUrl(String urlString) async {
@@ -373,7 +418,7 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
       
       final updatedDeal = _currentWorkFile.copyWith(files_received: jsonEncode(files));
       final req = ModelMutations.update(updatedDeal);
-      await Amplify.API.mutate(request: req).response;
+      await BackupAwareApi().update(updatedDeal);
 
       if (mounted) {
         setState(() {
@@ -387,6 +432,269 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
+  }
+
+  Future<void> _handoverWorkFile() async {
+    List<amplify_models.Users> staffList = [];
+    try {
+      final req = ModelQueries.list(amplify_models.Users.classType, limit: 1000);
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data != null) {
+        final List<amplify_models.Users> fetched = res.data!.items.whereType<amplify_models.Users>().toList();
+        final List<amplify_models.Users> deduplicated = [];
+        for (var staff in fetched) {
+          final name = (staff.name ?? staff.username ?? 'Unknown').trim();
+          if (name == 'Unknown' || name.isEmpty) continue;
+          
+          bool isDuplicate = false;
+          for (int i = 0; i < deduplicated.length; i++) {
+            final existingName = (deduplicated[i].name ?? deduplicated[i].username ?? '').trim();
+            final n1 = name.toLowerCase();
+            final n2 = existingName.toLowerCase();
+            
+            if (n1.startsWith(n2) || n2.startsWith(n1)) {
+              isDuplicate = true;
+              if (name.length > existingName.length) {
+                deduplicated[i] = staff;
+              }
+              break;
+            }
+          }
+          
+          if (!isDuplicate) {
+            deduplicated.add(staff);
+          }
+        }
+        staffList = deduplicated;
+        staffList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+      }
+    } catch (e) {
+      debugPrint('Error fetching staff: $e');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error loading staff.')));
+      return;
+    }
+
+    if (!mounted) return;
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Handover Work File'),
+          content: SizedBox(
+            width: 300,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: staffList.length,
+              itemBuilder: (context, index) {
+                final staff = staffList[index];
+                return ListTile(
+                  leading: const Icon(Icons.person, color: AppTheme.primaryColor),
+                  title: Text(staff.name ?? staff.username ?? 'Unknown'),
+                  onTap: () {
+                    showDialog<Map<String, String>>(
+                      context: context,
+                      builder: (ctx) {
+                        final reasonController = TextEditingController();
+                        final remarksController = TextEditingController();
+                        return AlertDialog(
+                          title: Text('Handover to ${staff.name}'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextField(
+                                controller: reasonController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Reason (Optional)',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: remarksController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Remarks (Optional)',
+                                  border: OutlineInputBorder(),
+                                ),
+                                maxLines: 3,
+                              ),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(ctx, {'reason': reasonController.text.trim(), 'remarks': remarksController.text.trim()}),
+                              child: const Text('Confirm'),
+                            ),
+                          ],
+                        );
+                      }
+                    ).then((data) {
+                      if (data != null) {
+                        Navigator.pop(context, {'staff': staff, 'reason': data['reason'], 'remarks': data['remarks']});
+                      }
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ],
+        );
+      },
+    );
+
+    if (result != null && mounted) {
+      final selectedStaff = result['staff'] as amplify_models.Users;
+      final reason = result['reason'] as String?;
+      final remarks = result['remarks'] as String?;
+
+      setState(() => _isUploading = true);
+      try {
+        final updatedDeal = _currentWorkFile.copyWith(
+          responsible_id: int.tryParse(selectedStaff.id),
+          responsible_name: selectedStaff.name,
+        );
+        final req = ModelMutations.update(updatedDeal);
+        await BackupAwareApi().update(updatedDeal);
+        
+        String detailsText = 'Handed over Work File to ${selectedStaff.name}';
+        if (reason != null && reason.isNotEmpty) detailsText += ' - Reason: $reason';
+        if (remarks != null && remarks.isNotEmpty) detailsText += ' - Remarks: $remarks';
+
+        await LoggingService().logAction(
+          action: 'WORK_FILE_HANDOVER',
+          targetType: 'WorkFile',
+          targetId: updatedDeal.name,
+          details: detailsText,
+        );
+
+        setState(() => _currentWorkFile = updatedDeal);
+        _fetchLogs();
+        widget.onUpdate();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Work File Handed Over successfully!')));
+      } catch (e) {
+        debugPrint('Error handing over: $e');
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error handing over: $e')));
+      } finally {
+        if (mounted) setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  void _showHistoryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Work File History'),
+          content: SizedBox(
+            width: 400,
+            height: 300,
+            child: _isLoadingLogs 
+              ? const Center(child: CircularProgressIndicator())
+              : _logs.isEmpty 
+                  ? const Center(child: Text('No history found.'))
+                  : ListView.builder(
+                      itemCount: _logs.length,
+                      itemBuilder: (context, index) {
+                        final log = _logs[index];
+                        return ListTile(
+                          leading: const Icon(Icons.history, color: Colors.blue),
+                          title: Text(log.details ?? log.action ?? 'Unknown Action'),
+                          subtitle: Text(log.createdAt?.getDateTimeInUtc().toLocal().toString().split('.')[0] ?? ''),
+                        );
+                      },
+                    ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          ],
+        );
+      },
+    );
+  }
+
+  void _addSubWork() {
+    List<amplify_models.Deals> availableForSub = widget.allWorkFiles.where((w) => 
+      w.id != _currentWorkFile.id && 
+      w.contact_status != _currentWorkFile.id
+    ).toList();
+    List<amplify_models.Deals> filteredForSearch = List.from(availableForSub);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Select Sub Work'),
+              content: SizedBox(
+                width: 400,
+                height: 400,
+                child: Column(
+                  children: [
+                    TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Search by name or client...',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (val) {
+                        final lower = val.toLowerCase();
+                        setDialogState(() {
+                          filteredForSearch = availableForSub.where((w) => 
+                            (w.name?.toLowerCase().contains(lower) ?? false) || 
+                            (w.client_name?.toLowerCase().contains(lower) ?? false)
+                          ).toList();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filteredForSearch.length,
+                        itemBuilder: (context, index) {
+                          final wf = filteredForSearch[index];
+                          return ListTile(
+                            leading: const Icon(Icons.folder, color: AppTheme.primaryColor),
+                            title: Text(wf.name ?? 'Untitled'),
+                            subtitle: Text('Client: ${wf.client_name ?? "Unknown"}'),
+                            onTap: () async {
+                              Navigator.pop(context);
+                              setState(() => _isUploading = true);
+                              try {
+                                final updatedWF = wf.copyWith(contact_status: _currentWorkFile.id);
+                                await BackupAwareApi().update(updatedWF);
+                                setState(() {
+                                  _subWorks.add(updatedWF);
+                                });
+                                widget.onUpdate();
+                                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sub work added successfully!')));
+                              } catch (e) {
+                                debugPrint('Error adding sub work: $e');
+                                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error adding sub work: $e')));
+                              } finally {
+                                if (mounted) setState(() => _isUploading = false);
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+              ],
+            );
+          }
+        );
+      }
+    );
   }
 
   @override
@@ -428,7 +736,13 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
                         Text('File No: ${_currentWorkFile.register_no}', style: TextStyle(color: Colors.amber.shade700, fontWeight: FontWeight.bold, fontSize: 14)),
                       ],
                       const SizedBox(height: 4),
-                      Text('Type: ${_currentWorkFile.work_type != null && _currentWorkFile.work_type!.trim().isNotEmpty ? _currentWorkFile.work_type : "N/A"}', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
+                      Row(
+                        children: [
+                          Text('Type: ${_currentWorkFile.work_type != null && _currentWorkFile.work_type!.trim().isNotEmpty ? _currentWorkFile.work_type : "N/A"}', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
+                          const SizedBox(width: 16),
+                          Text('Status: ${_currentWorkFile.stage ?? "Unknown"}', style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -437,8 +751,153 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
             ),
             const SizedBox(height: 8),
             Text('Client: ${_currentWorkFile.client_name ?? "Unknown"}', style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+            const SizedBox(height: 4),
+            Text('Created By: ${_currentWorkFile.referred_by ?? "Unknown"}', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+            
+            Builder(
+              builder: (context) {
+                amplify_models.Deals? parentWorkFile;
+                if (_currentWorkFile.contact_status != null && _currentWorkFile.contact_status!.isNotEmpty) {
+                  try {
+                    parentWorkFile = widget.allWorkFiles.firstWhere((w) => w.id == _currentWorkFile.contact_status);
+                  } catch (_) {}
+                }
+                
+                if (parentWorkFile != null) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      children: [
+                        Text('Main File: ', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                        InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                            showDialog(
+                              context: context,
+                              builder: (context) => WorkFileDetailDialog(
+                                workFile: parentWorkFile!,
+                                allWorkFiles: widget.allWorkFiles,
+                                onUpdate: widget.onUpdate,
+                              ),
+                            );
+                          },
+                          child: Text(
+                            parentWorkFile.name ?? 'Unknown',
+                            style: const TextStyle(color: Colors.blue, fontSize: 14, decoration: TextDecoration.underline),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+            
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Handled By: ${_currentWorkFile.responsible_name ?? "Unassigned"}', style: TextStyle(color: Colors.grey.shade800, fontSize: 15, fontWeight: FontWeight.w500)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton.icon(
+                      onPressed: _showHistoryDialog,
+                      icon: const Icon(Icons.history, size: 18),
+                      label: const Text('History'),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      onPressed: _handoverWorkFile,
+                      icon: const Icon(Icons.swap_horiz, size: 18),
+                      label: const Text('Handover'),
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.orange.shade50,
+                        foregroundColor: Colors.orange.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
             const Divider(height: 24),
             
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Sub Works', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                TextButton.icon(
+                  onPressed: _addSubWork,
+                  icon: const Icon(Icons.add_link, size: 18),
+                  label: const Text('Add Sub Work'),
+                ),
+              ],
+            ),
+            if (_subWorks.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(top: 8, bottom: 8),
+                constraints: const BoxConstraints(maxHeight: 150),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _subWorks.length,
+                  itemBuilder: (context, index) {
+                    final sw = _subWorks[index];
+                    return ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.subdirectory_arrow_right, color: Colors.blue),
+                      title: Text(sw.name ?? 'Untitled'),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                border: Border.all(color: Colors.green.shade200),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                sw.stage ?? 'Unknown',
+                                style: TextStyle(color: Colors.green.shade700, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text('Handled By: ${sw.responsible_name ?? "Unassigned"}', style: const TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
+                        onPressed: () async {
+                          setState(() => _isUploading = true);
+                          try {
+                            final updatedWF = sw.copyWith(contact_status: '');
+                            await BackupAwareApi().update(updatedWF);
+                            setState(() {
+                              _subWorks.removeWhere((w) => w.id == sw.id);
+                            });
+                            widget.onUpdate();
+                          } catch (e) {
+                            debugPrint('Error removing sub work: $e');
+                          } finally {
+                            if (mounted) setState(() => _isUploading = false);
+                          }
+                        },
+                        tooltip: 'Remove Sub Work',
+                      ),
+                    );
+                  },
+                ),
+              ),
+              
+            const Divider(height: 24),
+
             if (_currentWorkFile.drive_link != null && _currentWorkFile.drive_link!.isNotEmpty) ...[
               const Text('Google Docs', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),

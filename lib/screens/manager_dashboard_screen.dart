@@ -18,6 +18,8 @@ import 'license_dashboard_screen.dart';
 import 'dsc_management_screen.dart';
 import 'work_management_screen.dart';
 import 'company_bill_management_screen.dart';
+import 'file_acknowledgement_screen.dart';
+import 'contact_book_screen.dart';
 import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
 import 'package:intl/intl.dart';
@@ -510,6 +512,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 _sidebarItem(2, Icons.people_outline_rounded, 'Staff Management', isWide),
                 _sidebarItem(24, Icons.folder_shared_rounded, 'Work File', isWide),
                 _sidebarItem(3, Icons.people_alt_rounded, 'Client Data', isWide),
+                _sidebarItem(25, Icons.contacts_rounded, 'Contact Book', isWide),
                 _sidebarItem(4, Icons.receipt_long_rounded, 'Billing', isWide),
                 _sidebarItem(11, Icons.account_balance_wallet_rounded, 'Accounting & Pay', isWide),
                 _sidebarItem(5, Icons.verified_user_rounded, 'Licences', isWide),
@@ -647,6 +650,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       case 1: return const ServiceManagementScreen();
       case 2: return const StaffManagementScreen();
       case 3: return const ClientManagementScreen();
+      case 25: return const ContactBookScreen();
       case 4: return const BillingScreen();
       case 11: return CompanyBillManagementScreen();
       case 5: return const LicenseDashboardScreen();
@@ -899,7 +903,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                         ? const Center(child: Padding(padding: EdgeInsets.all(40), child: Text('No recent staff actions')))
                         : Column(
                             children: _staffLogs.map((log) {
-                              final date = log['created_at'] != null ? DateFormat('hh:mm a • dd MMM').format(DateTime.parse(log['created_at'].toString())) : '-';
+                              String ts = log['created_at']?.toString() ?? '';
+                              if (ts.isNotEmpty && !ts.endsWith('Z') && !ts.contains('+')) ts += 'Z';
+                              final dt = ts.isNotEmpty ? DateTime.parse(ts).toUtc().add(const Duration(hours: 5, minutes: 30)) : null;
+                              final date = dt != null ? DateFormat('hh:mm a • dd MMM').format(dt) : '-';
                               Color actionColor = Colors.blue;
                               if (log['action'].toString().contains('DELETE')) actionColor = Colors.red;
                               if (log['action'].toString().contains('CREATE')) actionColor = Colors.green;
@@ -956,7 +963,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                         ? const Center(child: Padding(padding: EdgeInsets.all(40), child: Text('No recent activity', style: TextStyle(color: AppTheme.mutedTextColor))))
                         : Column(
                             children: _recentActivity.map((act) {
-                              final date = act['created_at'] != null ? DateFormat('hh:mm a • dd MMM').format(DateTime.parse(act['created_at'].toString())) : '-';
+                              String ts = act['created_at']?.toString() ?? '';
+                              if (ts.isNotEmpty && !ts.endsWith('Z') && !ts.contains('+')) ts += 'Z';
+                              final dt = ts.isNotEmpty ? DateTime.parse(ts).toUtc().add(const Duration(hours: 5, minutes: 30)) : null;
+                              final date = dt != null ? DateFormat('hh:mm a • dd MMM').format(dt) : '-';
                               final isQuote = act['type'] == 'QUOTATION';
                               final accentColor = isQuote ? Colors.purple : AppTheme.primaryColor;
                               

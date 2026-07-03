@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
+import '../services/backup_aware_api.dart';
 import '../theme.dart';
 
 class SopScreen extends StatefulWidget {
@@ -87,8 +88,7 @@ class _SopScreenState extends State<SopScreen> {
 
   Future<void> _deleteSop(ServiceContent sop) async {
     try {
-      final req = ModelMutations.delete(sop);
-      await Amplify.API.mutate(request: req).response;
+      await BackupAwareApi().delete(sop);
       _fetchSops();
     } catch (e) {
       if (mounted) {
@@ -198,11 +198,12 @@ class _SopScreenState extends State<SopScreen> {
                                       details: contentController.text.trim(),
                                     );
 
-                                    final req = sop == null
-                                        ? ModelMutations.create(newSop)
-                                        : ModelMutations.update(newSop);
-
-                                    await Amplify.API.mutate(request: req).response;
+                                    if (sop == null) {
+                                      await BackupAwareApi().create(newSop);
+                                    } else {
+                                      await BackupAwareApi().update(newSop);
+                                    }
+                                    
                                     if (mounted) {
                                       Navigator.pop(context);
                                       _fetchSops();

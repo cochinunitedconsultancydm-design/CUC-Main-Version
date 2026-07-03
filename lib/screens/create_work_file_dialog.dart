@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:cuc_app/services/backup_aware_api.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../models/client.dart';
 import '../theme.dart';
 import '../widgets/google_docs_picker_dialog.dart';
+import '../services/logging_service.dart';
 
 class CreateWorkFileDialog extends StatefulWidget {
   final VoidCallback onSaved;
@@ -25,6 +28,9 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
   List<Client> _clients = [];
   Client? _selectedClient;
   
+  List<amplify_models.Users> _staffList = [];
+  amplify_models.Users? _selectedStaff;
+  
   List<StorageItem> _clientFiles = [];
   Set<String> _selectedFiles = {};
   bool _isLoadingFiles = false;
@@ -33,6 +39,45 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
   void initState() {
     super.initState();
     _fetchClients();
+    _fetchStaff();
+  }
+
+  Future<void> _fetchStaff() async {
+    try {
+      final req = ModelQueries.list(amplify_models.Users.classType, limit: 1000);
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data != null) {
+        final List<amplify_models.Users> fetched = res.data!.items.whereType<amplify_models.Users>().toList();
+        final List<amplify_models.Users> deduplicated = [];
+        for (var staff in fetched) {
+          final name = (staff.name ?? staff.username ?? 'Unknown').trim();
+          if (name == 'Unknown' || name.isEmpty) continue;
+          
+          bool isDuplicate = false;
+          for (int i = 0; i < deduplicated.length; i++) {
+            final existingName = (deduplicated[i].name ?? deduplicated[i].username ?? '').trim();
+            final n1 = name.toLowerCase();
+            final n2 = existingName.toLowerCase();
+            
+            if (n1.startsWith(n2) || n2.startsWith(n1)) {
+              isDuplicate = true;
+              if (name.length > existingName.length) {
+                deduplicated[i] = staff;
+              }
+              break;
+            }
+          }
+          
+          if (!isDuplicate) {
+            deduplicated.add(staff);
+          }
+        }
+        deduplicated.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+        if (mounted) setState(() => _staffList = deduplicated);
+      }
+    } catch (e) {
+      debugPrint('Error fetching staff: $e');
+    }
   }
 
   @override
@@ -106,6 +151,9 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
     try {
       final filesJson = jsonEncode(_selectedFiles.toList());
       
+      final prefs = await SharedPreferences.getInstance();
+      final currentUserName = prefs.getString('current_user_name') ?? 'Unknown';
+
       final newDeal = amplify_models.Deals(
         name: _workNameController.text.trim(),
         client_name: _selectedClient!.name,
@@ -116,12 +164,21 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
         drive_link: _googleDocsController.text.trim(),
         register_no: _fileNoController.text.trim(),
         files_received: filesJson,
+        responsible_id: _selectedStaff != null ? int.tryParse(_selectedStaff!.id) : null,
+        responsible_name: _selectedStaff?.name,
+        referred_by: currentUserName, // Using referred_by to store the creator
         created_at: DateTime.now().toIso8601String(),
         updated_at: DateTime.now().toIso8601String(),
       );
 
-      final req = ModelMutations.create(newDeal);
-      await Amplify.API.mutate(request: req).response;
+      await BackupAwareApi().create(newDeal);
+
+      await LoggingService().logAction(
+        action: 'WORK_FILE_CREATED',
+        targetType: 'WorkFile',
+        targetId: newDeal.name,
+        details: 'Created Work File for ${_selectedClient!.name}${_selectedStaff != null ? ' assigned to ${_selectedStaff!.name}' : ''}',
+      );
 
       if (mounted) {
         widget.onSaved();
@@ -247,7 +304,26 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
                   );
                 },
               ),
-                    const SizedBox(height: 16),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<amplify_models.Users>(
+                value: _selectedStaff,
+                decoration: InputDecoration(
+                  labelText: 'Assign To Staff (Optional)',
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                  prefixIcon: const Icon(Icons.person, color: Colors.grey),
+                ),
+                items: _staffList.map((staff) {
+                  return DropdownMenuItem(
+                    value: staff,
+                    child: Text(staff.name ?? staff.username ?? 'Unknown'),
+                  );
+                }).toList(),
+                onChanged: (val) => setState(() => _selectedStaff = val),
+              ),
+              const SizedBox(height: 16),
                     TextField(
                       controller: _fileNoController,
                       decoration: InputDecoration(

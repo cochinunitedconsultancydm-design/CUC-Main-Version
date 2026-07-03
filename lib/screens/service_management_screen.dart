@@ -661,11 +661,10 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
           ElevatedButton(
             onPressed: () async {
               try {
-                final req = ModelMutations.deleteById(
+                await BackupAwareApi().deleteById(
                   amplify_models.ServiceContent.classType,
                   amplify_models.ServiceContentModelIdentifier(id: service.id.toString())
                 );
-                await Amplify.API.mutate(request: req).response;
                 if (mounted) Navigator.pop(context);
                 _fetchServices();
                 _showSuccess('Service deleted');

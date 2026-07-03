@@ -1395,8 +1395,13 @@ final dLink = "";
       final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()));
       final res = await Amplify.API.query(request: req).response;
       final match = res.data?.items.firstWhere((e) => e != null);
+
+      final reqAll = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.PIPELINE.eq('Work File'));
+      final resAll = await Amplify.API.query(request: reqAll).response;
+      final allWFs = resAll.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
+
       if (match != null && mounted) {
-        showDialog(context: context, builder: (_) => WorkFileDetailDialog(workFile: match, onUpdate: _loadDetails));
+        showDialog(context: context, builder: (_) => WorkFileDetailDialog(workFile: match, allWorkFiles: allWFs, onUpdate: _loadDetails));
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Work file not found in database.')));
       }

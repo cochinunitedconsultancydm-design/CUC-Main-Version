@@ -1,6 +1,7 @@
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'package:cuc_app/services/backup_aware_api.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
@@ -447,7 +448,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                                 spent_by_name: newBill.spentByName,
                               );
                               final req = ModelMutations.create(model);
-                              await Amplify.API.mutate(request: req).response;
+                              await BackupAwareApi().create(model);
                             } else {
                               final model = amplify_models.CompanyBills(
                                 id: newBill.id,
@@ -461,7 +462,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                                 spent_by_name: newBill.spentByName,
                               );
                               final req = ModelMutations.update(model);
-                              await Amplify.API.mutate(request: req).response;
+                              await BackupAwareApi().update(model);
                             }
                             
                             // Link and update the Billing page if an invoice number was provided
@@ -498,7 +499,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                                   if (isPaid) oldData['payment_date'] = DateTime.now().toIso8601String();
                                   
                                   final updatedBill = b.copyWith(status: isPaid ? 'Received' : (totalReceived > 0 ? 'Part Payment' : 'Pending'), data: jsonEncode(oldData));
-                                  await Amplify.API.mutate(request: ModelMutations.update(updatedBill)).response;
+                                  await BackupAwareApi().update(updatedBill);
                                 }
                               } catch (e) {
                                 debugPrint('Error linking bill: $e');
@@ -551,7 +552,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     if (ok == true) {
       try {
         final req = ModelMutations.deleteById(amplify_models.CompanyBills.classType, amplify_models.CompanyBillsModelIdentifier(id: id));
-        await Amplify.API.mutate(request: req).response;
+        await BackupAwareApi().deleteById(amplify_models.CompanyBills.classType, amplify_models.CompanyBillsModelIdentifier(id: id));
         _fetchBills();
         _msg('Removed', true);
       } catch (e) { _msg('Error: $e', false); }
@@ -1040,6 +1041,15 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(bill.title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1E293B))),
+                    if (bill.description != null && bill.description!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        bill.description!.replaceAll('. Auto-logged from Billing.', ''),
+                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Row(
                       children: [

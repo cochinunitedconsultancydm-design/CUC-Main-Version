@@ -1,5 +1,6 @@
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
@@ -79,8 +80,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
 
     if (confirmed == true) {
       try {
-        final req = ModelMutations.deleteById(amplify_models.Clients.classType, amplify_models.ClientsModelIdentifier(id: id));
-        await Amplify.API.mutate(request: req).response;
+        await BackupAwareApi().deleteById(amplify_models.Clients.classType, amplify_models.ClientsModelIdentifier(id: id));
         _fetchClients();
       } catch (e) {
         _showError('Delete failed: $e');
@@ -302,8 +302,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               file_date: newClient.fileDate,
                               is_contacted: newClient.isContacted,
                             );
-                            final req = ModelMutations.create(model);
-                            await Amplify.API.mutate(request: req).response;
+                            await BackupAwareApi().create(model);
                           } else {
                             final model = amplify_models.Clients(
                               id: newClient.id,
@@ -317,8 +316,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               file_date: newClient.fileDate,
                               is_contacted: newClient.isContacted,
                             );
-                            final req = ModelMutations.update(model);
-                            await Amplify.API.mutate(request: req).response;
+                            await BackupAwareApi().update(model);
                           }
                           
                           if (context.mounted) Navigator.pop(context);

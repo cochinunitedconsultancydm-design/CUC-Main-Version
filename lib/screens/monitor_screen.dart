@@ -2,6 +2,8 @@ import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../theme.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
@@ -42,9 +44,33 @@ class _MonitorScreenState extends State<MonitorScreen> {
       final req = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final staff = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
-      staff.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+      
+      // Deduplicate by name (merge similar names like "Irshad" and "Irshad VP")
+      final List<amplify_models.Users> deduplicated = [];
+      for (var user in staff) {
+        final name = (user.name ?? user.username ?? '').trim();
+        if (name.isEmpty) continue;
+        bool isDuplicate = false;
+        for (int i = 0; i < deduplicated.length; i++) {
+          final existingName = (deduplicated[i].name ?? deduplicated[i].username ?? '').trim();
+          final n1 = name.toLowerCase();
+          final n2 = existingName.toLowerCase();
+          if (n1.startsWith(n2) || n2.startsWith(n1)) {
+            isDuplicate = true;
+            if (name.length > existingName.length) {
+              deduplicated[i] = user;
+            }
+            break;
+          }
+        }
+        if (!isDuplicate) {
+          deduplicated.add(user);
+        }
+      }
+      deduplicated.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+      
       setState(() {
-        _staffList = staff.map((u) => {'id': u.id, 'name': u.name}).toList();
+        _staffList = deduplicated.map((u) => {'id': u.id, 'name': u.name}).toList();
       });
     } catch (e) {
       debugPrint('Staff fetch error: $e');
@@ -89,30 +115,59 @@ class _MonitorScreenState extends State<MonitorScreen> {
       final res = await Amplify.API.query(request: req).response;
       final fetchedLogs = res.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
       
-      // Sort in Dart by created_at desc
-      fetchedLogs.sort((a, b) => (b.created_at ?? '').compareTo(a.created_at ?? ''));
+      // Sort by auto-generated createdAt (TemporalDateTime), falling back to custom created_at
+      fetchedLogs.sort((a, b) {
+        final aTime = a.createdAt?.getDateTimeInUtc() ?? (a.created_at != null ? DateTime.tryParse(a.created_at!) : null) ?? DateTime(2000);
+        final bTime = b.createdAt?.getDateTimeInUtc() ?? (b.created_at != null ? DateTime.tryParse(b.created_at!) : null) ?? DateTime(2000);
+        return bTime.compareTo(aTime);
+      });
 
-      // Fetch users to map user names
-      final usersReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
-      final usersRes = await Amplify.API.query(request: usersReq).response;
-      final usersList = usersRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
-      final userMap = { for (var u in usersList) u.id.toString(): u };
+      // Fetch user names from Supabase
+      final supabaseNameMap = await _fetchSupabaseUserNames();
 
       setState(() {
         _logs = fetchedLogs.map((r) {
-          final u = userMap[r.user_id.toString()];
+          final userName = supabaseNameMap[r.user_id] ?? 'System';
+          final displayTime = r.createdAt?.getDateTimeInUtc().toLocal().toIso8601String() ?? r.created_at;
           return {
             'action': r.action ?? '',
             'target_type': r.target_type ?? '',
             'details': r.details ?? '',
-            'created_at': r.created_at,
-            'user_name': u?.name ?? 'System'
+            'created_at': displayTime,
+            'user_name': userName
           };
         }).toList();
       });
     } catch (e) {
       debugPrint('Logs error: $e');
     }
+  }
+
+  Future<Map<int, String>> _fetchSupabaseUserNames() async {
+    const supabaseUrl = 'https://bzxtgiqjgfojblezdubd.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6eHRnaXFqZ2ZvamJsZXpkdWJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3OTMxMzIsImV4cCI6MjA4MTM2OTEzMn0.E8IKI5PvnW9WoEX4EcXvcSVk0b74LGrrQhNhFX99Dxo';
+    try {
+      final response = await http.get(
+        Uri.parse('$supabaseUrl/rest/v1/users?select=id,name,username'),
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': 'Bearer $supabaseKey',
+        },
+      ).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final Map<int, String> nameMap = {};
+        for (var u in data) {
+          final int? id = u['id'];
+          final String name = u['name'] ?? u['username'] ?? 'Unknown';
+          if (id != null) nameMap[id] = name;
+        }
+        return nameMap;
+      }
+    } catch (e) {
+      debugPrint('Supabase user names fetch error: $e');
+    }
+    return {};
   }
 
   Future<void> _fetchSessions() async {
@@ -129,21 +184,18 @@ class _MonitorScreenState extends State<MonitorScreen> {
       // Sort in Dart
       fetchedSessions.sort((a, b) => (b.login_time ?? '').compareTo(a.login_time ?? ''));
 
-      // Fetch users
-      final usersReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
-      final usersRes = await Amplify.API.query(request: usersReq).response;
-      final usersList = usersRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
-      final userMap = { for (var u in usersList) u.id.toString(): u };
+      // Fetch user names from Supabase (where integer user_id maps to)
+      final supabaseNameMap = await _fetchSupabaseUserNames();
 
       setState(() {
         _sessions = fetchedSessions.map((r) {
-          final u = userMap[r.user_id.toString()];
+          final userName = supabaseNameMap[r.user_id] ?? 'Unknown';
           return {
             'login_time': r.login_time,
             'logout_time': r.logout_time,
             'is_active': r.is_active,
-            'user_name': u?.name ?? 'Unknown',
-            'role': u?.role
+            'user_name': userName,
+            'role': null
           };
         }).toList();
       });
@@ -301,8 +353,16 @@ class _MonitorScreenState extends State<MonitorScreen> {
               itemCount: _sessions.length,
               itemBuilder: (context, index) {
                 final s = _sessions[index];
-                final loginTime = DateTime.parse(s['login_time'].toString()).toLocal();
-                final logoutTime = s['logout_time'] != null ? DateTime.parse(s['logout_time'].toString()).toLocal() : null;
+                
+                DateTime toIST(String? ts) {
+                  if (ts == null || ts.isEmpty) return DateTime.now();
+                  String iso = ts;
+                  if (!iso.endsWith('Z') && !iso.contains('+')) iso += 'Z';
+                  return DateTime.parse(iso).toUtc().add(const Duration(hours: 5, minutes: 30));
+                }
+
+                final loginTime = toIST(s['login_time']?.toString());
+                final logoutTime = s['logout_time'] != null ? toIST(s['logout_time']?.toString()) : null;
                 final isActive = s['is_active'] == true;
                 final duration = _formatDuration(loginTime, logoutTime);
 
@@ -404,7 +464,15 @@ class _MonitorScreenState extends State<MonitorScreen> {
               itemCount: _logs.length,
               itemBuilder: (context, index) {
                 final l = _logs[index];
-                final time = DateTime.parse(l['created_at'].toString()).toLocal();
+                
+                DateTime toIST(String? ts) {
+                  if (ts == null || ts.isEmpty) return DateTime.now();
+                  String iso = ts;
+                  if (!iso.endsWith('Z') && !iso.contains('+')) iso += 'Z';
+                  return DateTime.parse(iso).toUtc().add(const Duration(hours: 5, minutes: 30));
+                }
+                
+                final time = toIST(l['created_at']?.toString());
                 
                 Color actionColor = Colors.blue;
                 if (l['action'].toString().contains('DELETE')) actionColor = Colors.red;

@@ -1,9 +1,9 @@
-const amplifyConfig = '''{
+const amplifyConfig = r'''{
   "auth": {
-    "user_pool_id": "ap-south-2_7lQGNLJsx",
-    "aws_region": "ap-south-2",
-    "user_pool_client_id": "1rodvf4tco9rusi4afm7c68j88",
-    "identity_pool_id": "ap-south-2:11a398e0-7f1e-4ea6-8069-b2c97df8a2d2",
+    "user_pool_id": "ap-south-1_nPbNyXUnX",
+    "aws_region": "ap-south-1",
+    "user_pool_client_id": "15fjocunv8ej67qbv1cb7gsq02",
+    "identity_pool_id": "ap-south-1:a2b2af0d-d48b-4bf7-a7e0-33f5ac1a7541",
     "mfa_methods": [],
     "standard_required_attributes": [
       "email"
@@ -26,8 +26,8 @@ const amplifyConfig = '''{
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://wboqgyt4kvhhleihmtmwb6m42m.appsync-api.ap-south-2.amazonaws.com/graphql",
-    "aws_region": "ap-south-2",
+    "url": "https://qz4fcne5d5eszmucr5o4hhkizi.appsync-api.ap-south-1.amazonaws.com/graphql",
+    "aws_region": "ap-south-1",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": [
       "AWS_IAM"
@@ -663,8 +663,8 @@ const amplifyConfig = '''{
             "sortKeyFieldNames": []
           }
         },
-        "StaffLocations": {
-          "name": "StaffLocations",
+        "Sops": {
+          "name": "Sops",
           "fields": {
             "id": {
               "name": "id",
@@ -673,24 +673,31 @@ const amplifyConfig = '''{
               "isRequired": true,
               "attributes": []
             },
-            "user_id": {
-              "name": "user_id",
+            "title": {
+              "name": "title",
               "isArray": false,
-              "type": "Int",
+              "type": "String",
               "isRequired": false,
               "attributes": []
             },
-            "latitude": {
-              "name": "latitude",
+            "description": {
+              "name": "description",
               "isArray": false,
-              "type": "Float",
+              "type": "String",
               "isRequired": false,
               "attributes": []
             },
-            "longitude": {
-              "name": "longitude",
+            "content": {
+              "name": "content",
               "isArray": false,
-              "type": "Float",
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "created_at": {
+              "name": "created_at",
+              "isArray": false,
+              "type": "String",
               "isRequired": false,
               "attributes": []
             },
@@ -719,11 +726,19 @@ const amplifyConfig = '''{
             }
           },
           "syncable": true,
-          "pluralName": "StaffLocations",
+          "pluralName": "Sops",
           "attributes": [
             {
               "type": "model",
               "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "fields": [
+                  "id"
+                ]
+              }
             },
             {
               "type": "auth",
@@ -1017,6 +1032,141 @@ const amplifyConfig = '''{
           },
           "syncable": true,
           "pluralName": "Tasks",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "fields": [
+                  "id"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "Contacts": {
+          "name": "Contacts",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "name": {
+              "name": "name",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "designation": {
+              "name": "designation",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "office": {
+              "name": "office",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "personal_number": {
+              "name": "personal_number",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "official_number": {
+              "name": "official_number",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "email": {
+              "name": "email",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "place": {
+              "name": "place",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "native_place": {
+              "name": "native_place",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "working_place": {
+              "name": "working_place",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "created_at": {
+              "name": "created_at",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "Contacts",
           "attributes": [
             {
               "type": "model",
@@ -3010,99 +3160,6 @@ const amplifyConfig = '''{
             "sortKeyFieldNames": []
           }
         },
-        "LocationHistory": {
-          "name": "LocationHistory",
-          "fields": {
-            "id": {
-              "name": "id",
-              "isArray": false,
-              "type": "ID",
-              "isRequired": true,
-              "attributes": []
-            },
-            "user_id": {
-              "name": "user_id",
-              "isArray": false,
-              "type": "Int",
-              "isRequired": false,
-              "attributes": []
-            },
-            "latitude": {
-              "name": "latitude",
-              "isArray": false,
-              "type": "Float",
-              "isRequired": false,
-              "attributes": []
-            },
-            "longitude": {
-              "name": "longitude",
-              "isArray": false,
-              "type": "Float",
-              "isRequired": false,
-              "attributes": []
-            },
-            "recorded_at": {
-              "name": "recorded_at",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "createdAt": {
-              "name": "createdAt",
-              "isArray": false,
-              "type": "AWSDateTime",
-              "isRequired": false,
-              "attributes": [],
-              "isReadOnly": true
-            },
-            "updatedAt": {
-              "name": "updatedAt",
-              "isArray": false,
-              "type": "AWSDateTime",
-              "isRequired": false,
-              "attributes": [],
-              "isReadOnly": true
-            }
-          },
-          "syncable": true,
-          "pluralName": "LocationHistories",
-          "attributes": [
-            {
-              "type": "model",
-              "properties": {}
-            },
-            {
-              "type": "key",
-              "properties": {
-                "fields": [
-                  "id"
-                ]
-              }
-            },
-            {
-              "type": "auth",
-              "properties": {
-                "rules": [
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
-                  }
-                ]
-              }
-            }
-          ],
-          "primaryKeyInfo": {
-            "isCustomPrimaryKey": false,
-            "primaryKeyFieldName": "id",
-            "sortKeyFieldNames": []
-          }
-        },
         "UserSessions": {
           "name": "UserSessions",
           "fields": {
@@ -3835,13 +3892,13 @@ const amplifyConfig = '''{
     }
   },
   "storage": {
-    "aws_region": "ap-south-2",
-    "bucket_name": "amplify-legal-admin-sandb-clientfilesbucket5d3f5cb-curklvqcuizs",
+    "aws_region": "ap-south-1",
+    "bucket_name": "amplify-d2vemu3lyp451b-ma-clientfilesbucket5d3f5cb-jrikjkvthbom",
     "buckets": [
       {
         "name": "clientFiles",
-        "bucket_name": "amplify-legal-admin-sandb-clientfilesbucket5d3f5cb-curklvqcuizs",
-        "aws_region": "ap-south-2",
+        "bucket_name": "amplify-d2vemu3lyp451b-ma-clientfilesbucket5d3f5cb-jrikjkvthbom",
+        "aws_region": "ap-south-1",
         "paths": {
           "public/*": {
             "authenticated": [

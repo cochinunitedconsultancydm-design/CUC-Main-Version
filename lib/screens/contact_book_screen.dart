@@ -59,7 +59,12 @@ class _ContactBookScreenState extends State<ContactBookScreen> {
         if (mounted) {
           setState(() {
             _isLoading = false;
-            _errorMessage = 'GraphQL Error: ${res.errors.first.message}';
+            final errMsg = res.errors.first.message;
+            if (errMsg.contains('FieldUndefined')) {
+              _errorMessage = 'The Contacts database table is currently being deployed to the cloud. Please wait a few minutes and refresh.';
+            } else {
+              _errorMessage = 'GraphQL Error: $errMsg';
+            }
           });
         }
         return;

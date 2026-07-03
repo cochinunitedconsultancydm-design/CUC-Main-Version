@@ -1,6 +1,6 @@
 class ServiceItem {
-  final int id;
-  final int? serviceId;
+  final String id;
+  final String? serviceId;
   final String title;
   final String? description;
   final String? imagePath;
@@ -17,8 +17,8 @@ class ServiceItem {
 
   factory ServiceItem.fromMap(Map<String, dynamic> map) {
     return ServiceItem(
-      id: map['id'] ?? 0,
-      serviceId: map['service_id'],
+      id: map['id']?.toString() ?? '',
+      serviceId: map['service_id']?.toString(),
       title: map['title'] ?? 'Untitled Service',
       description: map['description'],
       imagePath: map['image_path'],

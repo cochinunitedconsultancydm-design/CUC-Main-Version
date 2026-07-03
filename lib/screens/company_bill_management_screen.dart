@@ -561,7 +561,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
 
   Future<String?> _getClientBalance(String clientName) async {
     try {
-      final req = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.NAME.eq(clientName));
+      final req = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.NAME.eq(clientName), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.data != null && res.data!.items.isNotEmpty) {
         return res.data!.items.first!.balance_due;
@@ -572,7 +572,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
 
   Future<String?> _getInvoiceBalance(String invoiceNo) async {
     try {
-      final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.INVOICE_NO.eq(invoiceNo));
+      final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.INVOICE_NO.eq(invoiceNo), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.data != null && res.data!.items.isNotEmpty) {
         final billingDataStr = res.data!.items.first!.data;

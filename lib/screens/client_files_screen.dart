@@ -315,10 +315,10 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
     
     Client? client;
     try {
-      final req = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.ID.eq(clientId));
+      final req = ModelQueries.get(amplify_models.Clients.classType, amplify_models.ClientsModelIdentifier(id: clientId));
       final res = await Amplify.API.query(request: req).response;
-      if (res.data?.items.isNotEmpty == true) {
-        final dbClient = res.data!.items.first as amplify_models.Clients;
+      if (res.data != null) {
+        final dbClient = res.data!;
         client = Client(
           id: dbClient.id,
           name: dbClient.name ?? 'Unknown',

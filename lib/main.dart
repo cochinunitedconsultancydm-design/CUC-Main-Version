@@ -17,6 +17,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
 import 'screens/manager_dashboard_screen.dart';
 import 'screens/delivery_dashboard_screen.dart';
+import 'screens/client_portal/client_portal_dashboard_screen.dart';
 import 'services/time_tracking_service.dart';
 
 
@@ -197,6 +198,7 @@ class AuthWrapper extends StatelessWidget {
               if (role == 'admin') return const AdminDashboardScreen();
               if (role == 'manager') return const ManagerDashboardScreen();
               if (role == 'delivery') return const DeliveryDashboardScreen();
+              if (role == 'client') return const ClientPortalDashboardScreen();
               // Default to DashboardScreen for accountant and others
               return const DashboardScreen();
             },

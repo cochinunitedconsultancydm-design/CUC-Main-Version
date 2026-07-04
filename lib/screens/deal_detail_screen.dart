@@ -1410,11 +1410,11 @@ final dLink = "";
     }
   }
 
-  Future<void> _openClientFilesVault() async {
+  Future<String?> _openClientFilesVault({bool selectMode = false}) async {
     final cName = _clientController.text.trim();
     if (cName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select or enter a client name first.'), backgroundColor: Colors.orange));
-      return;
+      return null;
     }
     setState(() => _isLoading = true);
     try {
@@ -1453,16 +1453,17 @@ final dLink = "";
           debugPrint('  - "${c.name}"');
         }
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client not found in database. Please ensure it is saved in Client Management.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.orange));
-        return;
+        return null;
       }
 
       final clientObj = Client.fromMap(matchingClients.first.toJson());
       if (mounted) {
-        showDialog(
+        return await showDialog<String>(
           context: context,
-          builder: (context) => ClientFilesDialog(client: clientObj),
+          builder: (context) => ClientFilesDialog(client: clientObj, isSelectionMode: selectMode),
         );
       }
+      return null;
     } catch (e) {
       debugPrint('Vault error: $e');
       if (mounted) {
@@ -1470,6 +1471,7 @@ final dLink = "";
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
       }
     }
+    return null;
   }
 
   Future<void> _showLinkQuotationDialog() async {
@@ -1727,6 +1729,49 @@ final dLink = "";
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         ),
                         child: const Text('Add'),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.folder_special_rounded, color: AppTheme.primaryColor),
+                          tooltip: 'Select from Client Vault',
+                          onPressed: () async {
+                            final selectedPath = await _openClientFilesVault(selectMode: true);
+                            if (selectedPath != null && mounted) {
+                              final fileName = selectedPath.split('/').last;
+                              if (!askedList.contains(fileName)) {
+                                askedList.add(fileName);
+                                _filesAskedController.text = askedList.join(', ');
+                                
+                                // Auto mark as received
+                                List<Map<String, dynamic>> receivedList = [];
+                                try {
+                                  final decoded = jsonDecode(_filesReceivedController.text);
+                                  if (decoded is List) {
+                                    if (decoded.isNotEmpty && decoded.first is String) {
+                                      receivedList = decoded.map((e) => <String, dynamic>{'name': e.toString(), 'status': 'Received', 'type': 'Copy'}).toList();
+                                    } else {
+                                      receivedList = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+                                    }
+                                  }
+                                } catch (_) {}
+                                
+                                if (!receivedList.any((e) => e['name'] == fileName)) {
+                                  receivedList.add({'name': fileName, 'status': 'Received', 'type': 'Vault Copy'});
+                                  _filesReceivedController.text = jsonEncode(receivedList);
+                                }
+                                
+                                setState(() {});
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added $fileName from Vault'), backgroundColor: Colors.green));
+                              }
+                            }
+                          },
+                        ),
                       ),
                     ],
                   ),
@@ -2116,7 +2161,7 @@ final dLink = "";
                                         isDense: true,
                                         icon: const Icon(Icons.arrow_drop_down, size: 16),
                                         style: const TextStyle(fontSize: 12, color: Colors.black87),
-                                        items: ['Original', 'Copy'].map((String value) {
+                                        items: ['Original', 'Copy', 'Vault Copy'].map((String value) {
                                           return DropdownMenuItem<String>(
                                             value: value,
                                             child: Text(value),
@@ -5148,6 +5193,13 @@ final dLink = "";
                         onTap: _openDriveLink,
                       ),
                       _quickActionBtn(
+                        Icons.update_rounded,
+                        'DAILY UPDATE',
+                        AppTheme.accentColor,
+                        width: itemWidth,
+                        onTap: _showDailyUpdateDialog,
+                      ),
+                      _quickActionBtn(
                         Icons.folder_shared_rounded,
                         'WORK FILE',
                         const Color(0xFF8B5CF6),
@@ -5243,6 +5295,24 @@ final dLink = "";
   }
 
   Widget _buildActivityFeedItem(DealActivity act) {
+    Color bgColor;
+    IconData iconData;
+    Color iconColor;
+
+    if (act.type == 'client_query') {
+      bgColor = AppTheme.accentColor.withValues(alpha: 0.1);
+      iconColor = AppTheme.accentColor;
+      iconData = Icons.person_rounded;
+    } else if (act.type == 'staff_reply') {
+      bgColor = Colors.green.withValues(alpha: 0.1);
+      iconColor = Colors.green;
+      iconData = Icons.support_agent_rounded;
+    } else {
+      bgColor = const Color(0xFF2563EB).withValues(alpha: 0.1);
+      iconColor = const Color(0xFF2563EB);
+      iconData = Icons.check_circle_rounded;
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       child: Row(
@@ -5251,13 +5321,13 @@ final dLink = "";
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+              color: bgColor,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.check_circle_rounded,
+            child: Icon(
+              iconData,
               size: 18,
-              color: Color(0xFF2563EB),
+              color: iconColor,
             ),
           ),
           const SizedBox(width: 20),
@@ -5361,6 +5431,18 @@ final dLink = "";
               _inputActionBtn(Icons.alternate_email_rounded, 'Mention'),
               const Spacer(),
               ElevatedButton(
+                onPressed: _postDailyUpdate,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Post Daily Update'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
                 onPressed: _postActivity,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2563EB),
@@ -5404,6 +5486,154 @@ final dLink = "";
         ),
       );
     }
+  }
+
+  Future<void> _postDailyUpdate() async {
+    if (_commentController.text.trim().isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final myId = prefs.getInt('current_user_id') ?? 1;
+
+    final description = _commentController.text;
+
+    // 1. Save to Postgres for staff activity feed
+    final activity = DealActivity(
+      dealId: widget.deal?.id ?? 0,
+      type: 'daily_update',
+      title: 'Daily Update',
+      description: description,
+      createdBy: myId,
+    );
+
+    if (widget.deal?.id != null) {
+      await _dealService.addActivity(activity);
+      
+      // 2. Save to Amplify for client portal
+      try {
+        final amplifyAct = amplify_models.DealActivities(
+          deal_id: widget.deal!.id!,
+          type: 'daily_update',
+          title: 'Daily Update',
+          description: description,
+          created_by: myId,
+          created_at: DateTime.now().toIso8601String(),
+        );
+        final req = ModelMutations.create(amplifyAct);
+        await Amplify.API.mutate(request: req).response;
+      } catch (e) {
+        debugPrint('Error saving to Amplify: $e');
+      }
+
+      _commentController.clear();
+      _loadDetails();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Daily Update posted to client.')),
+        );
+      }
+    } else {
+      // For new unsaved deals, we can't save activity yet
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please save the deal first to post updates.'),
+        ),
+      );
+    }
+  }
+
+  void _showDailyUpdateDialog() {
+    final updateController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: AppTheme.accentColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.update_rounded, color: AppTheme.accentColor),
+              ),
+              const SizedBox(width: 12),
+              const Text('Post Daily Update', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: SizedBox(
+            width: 400,
+            child: TextField(
+              controller: updateController,
+              decoration: InputDecoration(
+                hintText: 'What is the update on this workfile?',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+              maxLines: 4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (updateController.text.trim().isEmpty) return;
+                Navigator.pop(context);
+
+                final prefs = await SharedPreferences.getInstance();
+                final myId = prefs.getInt('current_user_id') ?? 1;
+
+                final description = updateController.text.trim();
+
+                final activity = DealActivity(
+                  dealId: widget.deal?.id ?? 0,
+                  type: 'daily_update',
+                  title: 'Daily Update',
+                  description: description,
+                  createdBy: myId,
+                );
+
+                if (widget.deal?.id != null) {
+                  await _dealService.addActivity(activity);
+                  
+                  try {
+                    final amplifyAct = amplify_models.DealActivities(
+                      deal_id: widget.deal!.id!,
+                      type: 'daily_update',
+                      title: 'Daily Update',
+                      description: description,
+                      created_by: myId,
+                      created_at: DateTime.now().toIso8601String(),
+                    );
+                    final req = ModelMutations.create(amplifyAct);
+                    await Amplify.API.mutate(request: req).response;
+                  } catch (e) {
+                    debugPrint('Error saving to Amplify: $e');
+                  }
+                  
+                  _loadDetails();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Daily Update posted to client.')),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accentColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Post to Client'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
    void _showScheduleDialog() {

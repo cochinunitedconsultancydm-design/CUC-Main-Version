@@ -238,13 +238,16 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: Colors.grey.shade200),
                             ),
-                            child: CheckboxListTile(
-                              title: const Text('Contacted?', style: TextStyle(fontWeight: FontWeight.w500)),
-                              value: isContacted,
-                              activeColor: AppTheme.primaryColor,
-                              onChanged: (val) => setModalState(() => isContacted = val ?? false),
-                              controlAffinity: ListTileControlAffinity.leading,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: CheckboxListTile(
+                                title: const Text('Contacted?', style: TextStyle(fontWeight: FontWeight.w500)),
+                                value: isContacted,
+                                activeColor: AppTheme.primaryColor,
+                                onChanged: (val) => setModalState(() => isContacted = val ?? false),
+                                controlAffinity: ListTileControlAffinity.leading,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                              ),
                             ),
                           ),
                         ),
@@ -259,13 +262,16 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.grey.shade200),
                           ),
-                          child: CheckboxListTile(
-                            title: const Text('Contacted?', style: TextStyle(fontWeight: FontWeight.w500)),
-                            value: isContacted,
-                            activeColor: AppTheme.primaryColor,
-                            onChanged: (val) => setModalState(() => isContacted = val ?? false),
-                            controlAffinity: ListTileControlAffinity.leading,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: CheckboxListTile(
+                              title: const Text('Contacted?', style: TextStyle(fontWeight: FontWeight.w500)),
+                              value: isContacted,
+                              activeColor: AppTheme.primaryColor,
+                              onChanged: (val) => setModalState(() => isContacted = val ?? false),
+                              controlAffinity: ListTileControlAffinity.leading,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
                           ),
                         ),
                       ],
@@ -287,6 +293,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                           fileDate: fileDateController.text,
                           fileNo: fileNoController.text,
                           isContacted: isContacted,
+                          dob: dobController.text,
                           balanceDue: client?.balanceDue,
                         );
                         try {
@@ -301,6 +308,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               file_no: newClient.fileNo,
                               file_date: newClient.fileDate,
                               is_contacted: newClient.isContacted,
+                              dob: newClient.dob,
                             );
                             await BackupAwareApi().create(model);
                           } else {
@@ -315,6 +323,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               file_no: newClient.fileNo,
                               file_date: newClient.fileDate,
                               is_contacted: newClient.isContacted,
+                              dob: newClient.dob,
                             );
                             await BackupAwareApi().update(model);
                           }

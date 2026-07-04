@@ -27,6 +27,7 @@ import 'ClientDocuments.dart';
 import 'ClientLicenses.dart';
 import 'Clients.dart';
 import 'CompanyBills.dart';
+import 'Contacts.dart';
 import 'DealActivities.dart';
 import 'DealAssignees.dart';
 import 'DealHandoverHistory.dart';
@@ -38,14 +39,13 @@ import 'LicenseBilling.dart';
 import 'LicenseNotifications.dart';
 import 'LicenseServices.dart';
 import 'LicenseTypes.dart';
-
 import 'Messages.dart';
 import 'Notifications.dart';
 import 'Properties.dart';
 import 'ServiceContent.dart';
 import 'ServiceNames.dart';
+import 'Sops.dart';
 import 'StaffAttendance.dart';
-
 import 'SysCronLogs.dart';
 import 'Tasks.dart';
 import 'TravelLogs.dart';
@@ -59,6 +59,7 @@ export 'ClientDocuments.dart';
 export 'ClientLicenses.dart';
 export 'Clients.dart';
 export 'CompanyBills.dart';
+export 'Contacts.dart';
 export 'DealActivities.dart';
 export 'DealAssignees.dart';
 export 'DealHandoverHistory.dart';
@@ -70,14 +71,13 @@ export 'LicenseBilling.dart';
 export 'LicenseNotifications.dart';
 export 'LicenseServices.dart';
 export 'LicenseTypes.dart';
-
 export 'Messages.dart';
 export 'Notifications.dart';
 export 'Properties.dart';
 export 'ServiceContent.dart';
 export 'ServiceNames.dart';
+export 'Sops.dart';
 export 'StaffAttendance.dart';
-
 export 'SysCronLogs.dart';
 export 'Tasks.dart';
 export 'TravelLogs.dart';
@@ -86,9 +86,9 @@ export 'Users.dart';
 
 class ModelProvider implements amplify_core.ModelProviderInterface {
   @override
-  String version = "d0cebf091a0ece1bd10122415af9caef";
+  String version = "08744a9632e53b8c2db797be587bc77b";
   @override
-  List<amplify_core.ModelSchema> modelSchemas = [ActivityLogs.schema, Billings.schema, Checklists.schema, ClientDocuments.schema, ClientLicenses.schema, Clients.schema, CompanyBills.schema, DealActivities.schema, DealAssignees.schema, DealHandoverHistory.schema, DealStageHistory.schema, Deals.schema, DscRecords.schema, InwardPosts.schema, LicenseBilling.schema, LicenseNotifications.schema, LicenseServices.schema, LicenseTypes.schema, Messages.schema, Notifications.schema, Properties.schema, ServiceContent.schema, ServiceNames.schema, StaffAttendance.schema, SysCronLogs.schema, Tasks.schema, TravelLogs.schema, UserSessions.schema, Users.schema];
+  List<amplify_core.ModelSchema> modelSchemas = [ActivityLogs.schema, Billings.schema, Checklists.schema, ClientDocuments.schema, ClientLicenses.schema, Clients.schema, CompanyBills.schema, Contacts.schema, DealActivities.schema, DealAssignees.schema, DealHandoverHistory.schema, DealStageHistory.schema, Deals.schema, DscRecords.schema, InwardPosts.schema, LicenseBilling.schema, LicenseNotifications.schema, LicenseServices.schema, LicenseTypes.schema, Messages.schema, Notifications.schema, Properties.schema, ServiceContent.schema, ServiceNames.schema, Sops.schema, StaffAttendance.schema, SysCronLogs.schema, Tasks.schema, TravelLogs.schema, UserSessions.schema, Users.schema];
   @override
   List<amplify_core.ModelSchema> customTypeSchemas = [];
   static final ModelProvider _instance = ModelProvider();
@@ -111,6 +111,8 @@ class ModelProvider implements amplify_core.ModelProviderInterface {
         return Clients.classType;
       case "CompanyBills":
         return CompanyBills.classType;
+      case "Contacts":
+        return Contacts.classType;
       case "DealActivities":
         return DealActivities.classType;
       case "DealAssignees":
@@ -133,7 +135,6 @@ class ModelProvider implements amplify_core.ModelProviderInterface {
         return LicenseServices.classType;
       case "LicenseTypes":
         return LicenseTypes.classType;
-
       case "Messages":
         return Messages.classType;
       case "Notifications":
@@ -144,9 +145,10 @@ class ModelProvider implements amplify_core.ModelProviderInterface {
         return ServiceContent.classType;
       case "ServiceNames":
         return ServiceNames.classType;
+      case "Sops":
+        return Sops.classType;
       case "StaffAttendance":
         return StaffAttendance.classType;
-
       case "SysCronLogs":
         return SysCronLogs.classType;
       case "Tasks":

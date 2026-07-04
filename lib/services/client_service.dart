@@ -8,13 +8,15 @@ class ClientService {
     try {
       final req = ModelQueries.list(
         Clients.classType,
-        where: Clients.NAME.contains(query),
         limit: 10000
       );
       final res = await Amplify.API.query(request: req).response;
-      var items = res.data?.items.where((e) => e != null).cast<Clients>().toList() ?? [];
+      var items = res.data?.items.whereType<Clients>().toList() ?? [];
       
-      return items.take(10).map((c) => {
+      final lowerQuery = query.toLowerCase();
+      var filtered = items.where((c) => (c.name ?? '').toLowerCase().contains(lowerQuery)).toList();
+      
+      return filtered.take(10).map((c) => {
         'name': c.name,
         'address': c.address,
         'phone': c.phone,

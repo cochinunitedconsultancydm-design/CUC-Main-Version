@@ -23,6 +23,7 @@ import 'reminder_calendar_screen.dart';
 import '../widgets/upcoming_reminders_widget.dart';
 import 'delivery_dashboard_screen.dart';
 import 'accountant_dashboard_screen.dart';
+import 'help_and_queries_management_screen.dart';
 import 'company_bill_management_screen.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
@@ -589,6 +590,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 19: return const TravelLogScreen();
       case 20: return FileAcknowledgementScreen(currentUserRole: _userRole, currentUserName: _userName);
       case 21: return const ClientFilesScreen();
+      case 22: return const HelpAndQueriesManagementScreen();
       default: return const Center(child: Text('Page not found'));
     }
   }
@@ -665,6 +667,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _sidebarItem(15, Icons.table_view_rounded, 'Upload Table'),
                   _sidebarItem(16, Icons.mark_email_unread_rounded, 'Post Register'),
                   _sidebarItem(20, Icons.handshake_rounded, 'File Acknowledgement'),
+                  _sidebarItem(22, Icons.help_center_rounded, 'Client Help & Queries'),
                   _sidebarItem(17, Icons.cloud_sync, 'Google Docs Vault'),
                   _sidebarItem(18, Icons.history_rounded, 'Verification History'),
                   _sidebarItem(19, Icons.directions_car_filled_outlined, 'Travel Logs'),

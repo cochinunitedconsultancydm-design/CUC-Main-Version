@@ -9,6 +9,7 @@ import 'manager_dashboard_screen.dart';
 import 'delivery_dashboard_screen.dart';
 import '../services/auth_service.dart';
 import 'forgot_password_screen.dart';
+import 'client_portal/client_portal_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,10 +22,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _userController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _dobController = TextEditingController();
   final _auth = AuthService();
   bool _rememberMe = false;
   bool _isPasswordVisible = false;
   bool _isLoading = false;
+  bool _isClientLogin = false;
 
   @override
   void initState() {
@@ -61,10 +65,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
       setState(() => _isLoading = true);
       
-      final success = await _auth.login(
-        _userController.text.trim(),
-        _passwordController.text,
-      );
+      bool success = false;
+      if (_isClientLogin) {
+        success = await _auth.clientLogin(
+          _phoneController.text.trim(),
+          _dobController.text.trim(),
+        );
+      } else {
+        success = await _auth.login(
+          _userController.text.trim(),
+          _passwordController.text,
+        );
+      }
       
       setState(() => _isLoading = false);
 
@@ -75,6 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) {
+                if (role == 'client') return const ClientPortalDashboardScreen();
                 if (role == 'admin') return const AdminDashboardScreen();
                 if (role == 'manager') return const ManagerDashboardScreen();
                 if (role == 'delivery') return const DeliveryDashboardScreen();
@@ -166,37 +179,121 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
                           ).animate().fadeIn(delay: 300.ms),
                           
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 24),
                           
-                          // Username Field
-                          _buildTextField(
-                            controller: _userController,
-                            label: 'Username',
-                            hint: 'Enter your username',
-                            icon: Icons.person_outline,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) return 'Please enter your username';
-                              return null;
-                            },
-                          ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
+                          // Toggle Staff / Client
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => _isClientLogin = false),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: !_isClientLogin ? AppTheme.primaryColor : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'Staff Login',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: !_isClientLogin ? FontWeight.bold : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => _isClientLogin = true),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: _isClientLogin ? AppTheme.primaryColor : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'Client Login',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: _isClientLogin ? FontWeight.bold : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ).animate().fadeIn(delay: 350.ms),
                           
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 24),
                           
-                          // Password Field
-                          _buildTextField(
-                            controller: _passwordController,
-                            label: 'Password',
-                            hint: '••••••••',
-                            icon: Icons.lock_outline,
-                            isPassword: true,
-                            isPasswordVisible: _isPasswordVisible,
-                            onToggleVisibility: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) return 'Please enter your password';
-                              if (value.length < 6) return 'Password must be at least 6 characters';
-                              return null;
-                            },
-                          ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
+                          if (!_isClientLogin) ...[
+                            // Username Field
+                            _buildTextField(
+                              controller: _userController,
+                              label: 'Username',
+                              hint: 'Enter your username',
+                              icon: Icons.person_outline,
+                              validator: (value) {
+                                if (!_isClientLogin && (value == null || value.isEmpty)) return 'Please enter your username';
+                                return null;
+                              },
+                            ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
+                            
+                            const SizedBox(height: 20),
+                            
+                            // Password Field
+                            _buildTextField(
+                              controller: _passwordController,
+                              label: 'Password',
+                              hint: '••••••••',
+                              icon: Icons.lock_outline,
+                              isPassword: true,
+                              isPasswordVisible: _isPasswordVisible,
+                              onToggleVisibility: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                              validator: (value) {
+                                if (!_isClientLogin && (value == null || value.isEmpty)) return 'Please enter your password';
+                                if (!_isClientLogin && value!.length < 6) return 'Password must be at least 6 characters';
+                                return null;
+                              },
+                            ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
+                          ] else ...[
+                            // Phone Field
+                            _buildTextField(
+                              controller: _phoneController,
+                              label: 'Phone Number',
+                              hint: 'Enter your phone number',
+                              icon: Icons.phone_outlined,
+                              validator: (value) {
+                                if (_isClientLogin && (value == null || value.isEmpty)) return 'Please enter your phone number';
+                                return null;
+                              },
+                            ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
+                            
+                            const SizedBox(height: 20),
+                            
+                            // DOB Field
+                            _buildTextField(
+                              controller: _dobController,
+                              label: 'Date of Birth',
+                              hint: 'DD/MM/YYYY or similar',
+                              icon: Icons.calendar_today_outlined,
+                              validator: (value) {
+                                if (_isClientLogin && (value == null || value.isEmpty)) return 'Please enter your date of birth';
+                                return null;
+                              },
+                            ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
+                          ],
                           
                           const SizedBox(height: 16),
                           Wrap(

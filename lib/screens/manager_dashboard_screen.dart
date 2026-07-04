@@ -33,6 +33,7 @@ import '../models/billing.dart';
 import '../utils/number_to_words.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'checklist_screen.dart';
+import 'help_and_queries_management_screen.dart';
 import 'uploaded_files_screen.dart';
 import 'reminder_calendar_screen.dart';
 import '../models/inward_post_model.dart';
@@ -527,6 +528,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 _sidebarItem(14, Icons.table_view_rounded, 'Upload Table', isWide),
                 _sidebarItem(18, Icons.mark_email_unread_rounded, 'Post Register', isWide),
                 _sidebarItem(22, Icons.handshake_rounded, 'File Acknowledgement', isWide),
+                _sidebarItem(26, Icons.help_center_rounded, 'Client Help & Queries', isWide),
                 _sidebarItem(19, Icons.cloud_sync, 'Google Docs Vault', isWide),
                 _sidebarItem(20, Icons.history_rounded, 'Verification History', isWide),
                 _sidebarItem(21, Icons.real_estate_agent_rounded, 'Property Management', isWide),
@@ -669,6 +671,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       case 20: return const VerificationHistoryView();
       case 21: return const PropertyManagementScreen();
       case 22: return const FileAcknowledgementScreen(currentUserRole: 'manager', currentUserName: 'Manager');
+      case 26: return const HelpAndQueriesManagementScreen();
       case 24: return const ClientFilesScreen();
       case 23: return const SopScreen();
       case 7: return _buildSettingsPage();

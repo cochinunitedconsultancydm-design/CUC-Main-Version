@@ -96,6 +96,69 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
     }
   }
 
+  Future<void> _editWorkFile(amplify_models.Deals workFile) async {
+    final nameController = TextEditingController(text: workFile.name);
+    final fileNoController = TextEditingController(text: workFile.register_no);
+    final typeController = TextEditingController(text: workFile.work_type);
+
+    final updated = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Work File'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: fileNoController,
+                decoration: const InputDecoration(labelText: 'File No', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: typeController,
+                decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (updated == true) {
+      setState(() => _isLoading = true);
+      try {
+        final newDeal = workFile.copyWith(
+          name: nameController.text.trim(),
+          register_no: fileNoController.text.trim(),
+          work_type: typeController.text.trim(),
+        );
+        await BackupAwareApi().update(newDeal);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Work file updated successfully', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+        }
+        _fetchWorkFiles();
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error updating: $e')));
+        }
+      }
+    }
+  }
+
   void _filterWorkFiles(String query) {
     if (query.isEmpty) {
       setState(() => _filtered = _workFiles);
@@ -237,6 +300,11 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 20),
+                                            tooltip: 'Edit Work File',
+                                            onPressed: () => _editWorkFile(workFile),
                                           ),
                                           IconButton(
                                             icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),

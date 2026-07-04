@@ -55,6 +55,8 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
             'storage_path': m.storage_path,
             'og_copy': m.og_copy,
             'remarks': m.remarks,
+            'verification_status': m.verification_status,
+            'rejection_reason': m.rejection_reason,
             'created_at': m.createdAt?.getDateTimeInUtc().toIso8601String(),
           })).toList();
           _isLoading = false;
@@ -81,6 +83,10 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
           updated = doc.copyWith(og_copy: value);
         } else if (field == 'remarks') {
           updated = doc.copyWith(remarks: value);
+        } else if (field == 'verification_status') {
+          updated = doc.copyWith(verification_status: value);
+        } else if (field == 'rejection_reason') {
+          updated = doc.copyWith(rejection_reason: value);
         }
         await BackupAwareApi().update(updated);
       }
@@ -150,6 +156,79 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red));
       }
+    }
+  }
+
+  Future<void> _approveDocument(ClientDocument doc) async {
+    setState(() {
+      final index = _documents.indexWhere((d) => d.id == doc.id);
+      if (index != -1) {
+        _documents[index] = ClientDocument(
+          id: doc.id, clientId: doc.clientId, clientName: doc.clientName,
+          documentName: doc.documentName, storagePath: doc.storagePath,
+          ogCopy: doc.ogCopy, remarks: doc.remarks, createdAt: doc.createdAt,
+          verificationStatus: 'File OK', rejectionReason: ''
+        );
+      }
+    });
+    await _updateField(doc.id, 'verification_status', 'File OK');
+    await _updateField(doc.id, 'rejection_reason', '');
+  }
+
+  Future<void> _rejectDocument(ClientDocument doc) async {
+    final reasonController = TextEditingController();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reject Document'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Please provide a reason for rejecting this document:'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                hintText: 'e.g. Blurry image, wrong document type...',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              if (reasonController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a reason')));
+                return;
+              }
+              Navigator.pop(context, true);
+            },
+            child: const Text('Reject', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      )
+    );
+
+    if (confirm == true) {
+      final reason = reasonController.text.trim();
+      setState(() {
+        final index = _documents.indexWhere((d) => d.id == doc.id);
+        if (index != -1) {
+          _documents[index] = ClientDocument(
+            id: doc.id, clientId: doc.clientId, clientName: doc.clientName,
+            documentName: doc.documentName, storagePath: doc.storagePath,
+            ogCopy: doc.ogCopy, remarks: doc.remarks, createdAt: doc.createdAt,
+            verificationStatus: 'Rejected', rejectionReason: reason
+          );
+        }
+      });
+      await _updateField(doc.id, 'verification_status', 'Rejected');
+      await _updateField(doc.id, 'rejection_reason', reason);
     }
   }
 
@@ -283,12 +362,265 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
                         ? _buildErrorState()
                         : _documents.isEmpty
                             ? _buildEmptyState()
-                            : _buildDataTable(),
+                            : _buildResponsiveContent(),
               ),
             ).animate().fadeIn(delay: 100.ms),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildResponsiveContent() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 850) {
+          return _buildMobileListView();
+        }
+        return _buildDataTable();
+      },
+    );
+  }
+
+  Widget _buildMobileListView() {
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _documents.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        final doc = _documents[index];
+        final isNotOk = doc.remarks.toLowerCase().contains('not ok');
+        
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: Client Info and Date
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                          child: Text(doc.clientName[0].toUpperCase(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(doc.clientName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            Text(DateFormat('dd MMM yyyy, hh:mm a').format(doc.createdAt), style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: doc.verificationStatus == 'File OK' ? Colors.green.shade50 : (doc.verificationStatus == 'Rejected' ? Colors.red.shade50 : Colors.amber.shade50),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: doc.verificationStatus == 'File OK' ? Colors.green.shade200 : (doc.verificationStatus == 'Rejected' ? Colors.red.shade200 : Colors.amber.shade200)),
+                      ),
+                      child: Text(
+                        doc.verificationStatus,
+                        style: TextStyle(
+                          fontSize: 12, 
+                          fontWeight: FontWeight.w700, 
+                          color: doc.verificationStatus == 'File OK' ? Colors.green.shade700 : (doc.verificationStatus == 'Rejected' ? Colors.red.shade700 : Colors.amber.shade700),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Body: File info and inputs
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () => _downloadFile(doc),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade100),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              doc.documentName.toLowerCase().endsWith('.pdf') ? Icons.picture_as_pdf_rounded : Icons.image_rounded,
+                              size: 24,
+                              color: doc.documentName.toLowerCase().endsWith('.pdf') ? Colors.redAccent : Colors.purpleAccent,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                doc.documentName,
+                                style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 15),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Icon(Icons.download_rounded, color: Colors.blue, size: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    Row(
+                      children: [
+                        const Text('Type:', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey)),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: doc.ogCopy == 'Original' ? Colors.purple.shade50 : Colors.blueGrey.shade50,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: doc.ogCopy == 'Original' ? Colors.purple.shade200 : Colors.blueGrey.shade200),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: ['Original', 'Copy', 'NA'].contains(doc.ogCopy) ? doc.ogCopy : 'Copy',
+                              icon: Icon(Icons.expand_more_rounded, size: 16, color: doc.ogCopy == 'Original' ? Colors.purple.shade700 : Colors.blueGrey.shade700),
+                              isDense: true,
+                              style: TextStyle(
+                                fontSize: 13, 
+                                fontWeight: FontWeight.w700, 
+                                color: doc.ogCopy == 'Original' ? Colors.purple.shade700 : Colors.blueGrey.shade700,
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'Original', child: Text('Original')),
+                                DropdownMenuItem(value: 'Copy', child: Text('Copy')),
+                                DropdownMenuItem(value: 'NA', child: Text('NA')),
+                              ],
+                              onChanged: (val) {
+                                if (val != null && val != doc.ogCopy) {
+                                  setState(() {
+                                    _documents[index] = ClientDocument(
+                                      id: doc.id, clientId: doc.clientId, clientName: doc.clientName,
+                                      documentName: doc.documentName, storagePath: doc.storagePath,
+                                      ogCopy: val, remarks: doc.remarks, createdAt: doc.createdAt,
+                                      verificationStatus: doc.verificationStatus, rejectionReason: doc.rejectionReason
+                                    );
+                                  });
+                                  _updateField(doc.id, 'og_copy', val);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    const Text('Remarks:', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey)),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isNotOk ? Colors.red.shade50 : Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: isNotOk ? Colors.red.shade200 : Colors.blue.shade200),
+                      ),
+                      child: TextFormField(
+                        initialValue: doc.remarks,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isNotOk ? Colors.red.shade900 : Colors.blue.shade900,
+                        ),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          hintText: 'Add remarks...',
+                          hintStyle: TextStyle(color: isNotOk ? Colors.red.shade300 : Colors.blue.shade300),
+                        ),
+                        onFieldSubmitted: (val) {
+                          if (val != doc.remarks) {
+                            _updateField(doc.id, 'remarks', val);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Footer: Actions
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: Colors.grey.shade100)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (doc.verificationStatus == 'Under Verification') ...[
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _approveDocument(doc),
+                          icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                          label: const Text('Approve'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.shade50,
+                            foregroundColor: Colors.green.shade700,
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _rejectDocument(doc),
+                          icon: const Icon(Icons.cancel_outlined, size: 18),
+                          label: const Text('Reject'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade50,
+                            foregroundColor: Colors.red.shade700,
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _deleteDocument(doc),
+                          icon: const Icon(Icons.delete_sweep_rounded, size: 18, color: Colors.redAccent),
+                          label: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.red.shade200),
+                          ),
+                        ),
+                      ),
+                    ]
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -311,7 +643,8 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
               DataColumn(label: Text('Client Info', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
               DataColumn(label: Text('Document', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
               DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
-              DataColumn(label: Text('Verification Remarks', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
+              DataColumn(label: Text('Verification Status', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
+              DataColumn(label: Text('Remarks', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
               DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
             ],
             rows: List.generate(_documents.length, (index) {
@@ -404,7 +737,8 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
                                 _documents[index] = ClientDocument(
                                   id: doc.id, clientId: doc.clientId, clientName: doc.clientName,
                                   documentName: doc.documentName, storagePath: doc.storagePath,
-                                  ogCopy: val, remarks: doc.remarks, createdAt: doc.createdAt
+                                  ogCopy: val, remarks: doc.remarks, createdAt: doc.createdAt,
+                                  verificationStatus: doc.verificationStatus, rejectionReason: doc.rejectionReason
                                 );
                               });
                               _updateField(doc.id, 'og_copy', val);
@@ -416,24 +750,42 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
                   ),
                   DataCell(
                     Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: doc.verificationStatus == 'File OK' ? Colors.green.shade50 : (doc.verificationStatus == 'Rejected' ? Colors.red.shade50 : Colors.amber.shade50),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: doc.verificationStatus == 'File OK' ? Colors.green.shade200 : (doc.verificationStatus == 'Rejected' ? Colors.red.shade200 : Colors.amber.shade200)),
+                      ),
+                      child: Text(
+                        doc.verificationStatus,
+                        style: TextStyle(
+                          fontSize: 12, 
+                          fontWeight: FontWeight.w700, 
+                          color: doc.verificationStatus == 'File OK' ? Colors.green.shade700 : (doc.verificationStatus == 'Rejected' ? Colors.red.shade700 : Colors.amber.shade700),
+                        ),
+                      ),
+                    )
+                  ),
+                  DataCell(
+                    Container(
                       width: 200,
                       decoration: BoxDecoration(
-                        color: isNotOk ? Colors.red.shade50 : Colors.green.shade50,
+                        color: isNotOk ? Colors.red.shade50 : Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: isNotOk ? Colors.red.shade200 : Colors.green.shade200),
+                        border: Border.all(color: isNotOk ? Colors.red.shade200 : Colors.blue.shade200),
                       ),
                       child: TextFormField(
                         initialValue: doc.remarks,
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: isNotOk ? Colors.red.shade900 : Colors.green.shade900,
+                          color: isNotOk ? Colors.red.shade900 : Colors.blue.shade900,
                         ),
                         decoration: InputDecoration(
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                           hintText: 'Add remarks...',
-                          hintStyle: TextStyle(color: isNotOk ? Colors.red.shade300 : Colors.green.shade300),
+                          hintStyle: TextStyle(color: isNotOk ? Colors.red.shade300 : Colors.blue.shade300),
                           isDense: true,
                         ),
                         onFieldSubmitted: (val) {
@@ -448,6 +800,28 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (doc.verificationStatus == 'Under Verification') ...[
+                          IconButton(
+                            icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 20),
+                            onPressed: () => _approveDocument(doc),
+                            tooltip: 'Approve Document',
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.green.shade50,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            icon: const Icon(Icons.cancel_outlined, color: Colors.red, size: 20),
+                            onPressed: () => _rejectDocument(doc),
+                            tooltip: 'Reject Document',
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.red.shade50,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         IconButton(
                           icon: const Icon(Icons.cloud_download_rounded, color: AppTheme.primaryColor, size: 20),
                           onPressed: () => _downloadFile(doc),

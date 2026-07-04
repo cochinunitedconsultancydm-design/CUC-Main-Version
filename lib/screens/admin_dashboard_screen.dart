@@ -23,6 +23,7 @@ import '../models/billing.dart';
 import '../services/excel_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'checklist_screen.dart';
+import 'help_and_queries_management_screen.dart';
 import 'reminder_calendar_screen.dart';
 import 'sop_screen.dart';
 import 'contact_book_screen.dart';
@@ -440,6 +441,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _sidebarItem(23, Icons.menu_book_rounded, 'SOP', isWide),
                 _sidebarItem(4, Icons.storage_rounded, 'System Maintenance', isWide),
                 _sidebarItem(5, Icons.health_and_safety_outlined, 'System Health', isWide),
+                _sidebarItem(26, Icons.help_center_rounded, 'Client Help & Queries', isWide),
                 _sidebarItem(19, Icons.cloud_sync, 'Google Docs Vault', isWide),
                 _sidebarItem(22, Icons.handshake_rounded, 'File Acknowledgement', isWide),
                 _sidebarItem(20, Icons.history_rounded, 'Verification History', isWide),
@@ -568,6 +570,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 22: return const FileAcknowledgementScreen(currentUserRole: 'admin', currentUserName: 'Admin');
       case 24: return const ClientFilesScreen();
       case 25: return const ContactBookScreen();
+      case 26: return const HelpAndQueriesManagementScreen();
       case 23: return const SopScreen();
       default: return _buildPlaceholderView('Coming Soon');
     }

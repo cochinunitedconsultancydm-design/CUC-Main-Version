@@ -164,6 +164,125 @@ class AuthService {
     return false;
   }
 
+  Future<bool> clientLogin(String phone, String dob) async {
+    try {
+      final lockMessage = _security.checkRateLimit(phone);
+      if (lockMessage != null) {
+        debugPrint('Login blocked: $lockMessage');
+        return false;
+      }
+
+      debugPrint('Attempting Client login for: $phone');
+
+      try {
+        await Amplify.Auth.signOut();
+      } catch (e) {}
+
+      final portalEmail = 'portal@cuc.local';
+      final portalPassword = 'CucPortalUser@2024';
+
+      bool isPortalSignedIn = false;
+      
+      try {
+        final authSession = await Amplify.Auth.fetchAuthSession();
+        isPortalSignedIn = authSession.isSignedIn;
+      } catch (e) {}
+
+      if (!isPortalSignedIn) {
+        try {
+          var signInResult = await Amplify.Auth.signIn(
+            username: portalEmail,
+            password: portalPassword,
+          );
+          isPortalSignedIn = signInResult.isSignedIn;
+        } on AuthException catch (e) {
+          if (e.message.contains('User does not exist') || e.message.contains('Incorrect username')) {
+            try {
+              await Amplify.Auth.signUp(
+                username: portalEmail,
+                password: portalPassword,
+                options: SignUpOptions(userAttributes: {
+                  CognitoUserAttributeKey.email: 'portal@cuc.local',
+                }),
+              );
+              // Retry login after signup
+              var signInResult = await Amplify.Auth.signIn(
+                username: portalEmail,
+                password: portalPassword,
+              );
+              isPortalSignedIn = signInResult.isSignedIn;
+            } catch (signupErr) {
+              debugPrint('Portal auto-signup failed: $signupErr');
+              return false;
+            }
+          } else {
+            debugPrint('Portal login failed: $e');
+            return false;
+          }
+        }
+      }
+
+      if (!isPortalSignedIn) {
+        debugPrint('Portal sign in failed.');
+        return false;
+      }
+
+      final request = ModelQueries.list(
+        Clients.classType,
+        limit: 10000,
+      );
+      final response = await Amplify.API.query(request: request).response;
+      if (response.hasErrors) {
+        debugPrint('DEBUG: GraphQL Errors: ${response.errors}');
+      }
+      final allClients = response.data?.items.whereType<Clients>().toList() ?? [];
+      debugPrint('DEBUG: Fetched ${allClients.length} clients to filter');
+
+      final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
+      final clients = allClients.where((c) {
+        if (c.dob != dob) return false;
+        final dbPhone = (c.phone ?? '').replaceAll(RegExp(r'\s+'), '');
+        return dbPhone == cleanPhone;
+      }).toList();
+
+      if (clients.isEmpty) {
+        debugPrint('Client not found with phone $phone and dob $dob');
+        await Amplify.Auth.signOut();
+        _security.recordFailedAttempt(phone);
+        return false;
+      }
+
+      final client = clients.first;
+
+      _security.clearFailedAttempts(phone);
+      debugPrint('Client authenticated: ${client.id}, Name: ${client.name}');
+
+      final prefs = await SharedPreferences.getInstance();
+
+      final authSession = await Amplify.Auth.fetchAuthSession();
+      await prefs.setString(_tokenKey, authSession.isSignedIn ? 'cognito_active' : _security.generateSecureToken());
+      await prefs.setString(_userKey, client.name ?? 'Client');
+      await prefs.setString(_roleKey, 'client');
+      await prefs.setInt(SecurityService.lastActivityKey, DateTime.now().millisecondsSinceEpoch);
+
+      // Store client ID in the user ID key so that isLoggedIn logic can find it
+      await prefs.setString('${_userIdKey}_str', client.id);
+
+      await LoggingService().logAction(
+        action: 'CLIENT_LOGIN',
+        targetType: 'System',
+        targetId: client.phone ?? '',
+        details: 'Client logged in via portal',
+      );
+
+      return true;
+    } catch (e) {
+      debugPrint('Client login error: $e');
+      _security.recordFailedAttempt(phone);
+    }
+    return false;
+  }
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     final sessionIdStr = prefs.getString('${_sessionIdKey}_str');
@@ -237,20 +356,39 @@ class AuthService {
 
     try {
       final userIdStr = prefs.getString('${_userIdKey}_str');
+      final currentRole = prefs.getString(_roleKey);
+      
       if (userIdStr != null) {
-        final request = ModelQueries.get(
-          Users.classType, 
-          UsersModelIdentifier(id: userIdStr)
-        );
-        final response = await Amplify.API.query(request: request).response;
-        final user = response.data;
-        
-        if (user != null) {
-          await prefs.setString(_roleKey, user.role ?? 'staff');
+        if (currentRole == 'client') {
+          final request = ModelQueries.get(
+            Clients.classType, 
+            ClientsModelIdentifier(id: userIdStr)
+          );
+          final response = await Amplify.API.query(request: request).response;
+          final client = response.data;
+          
+          if (client != null) {
+            await prefs.setString(_roleKey, 'client');
+          } else {
+            debugPrint('Security: Client not found in database. Forcing logout.');
+            await logout();
+            return false;
+          }
         } else {
-          debugPrint('Security: User not found in database. Forcing logout.');
-          await logout();
-          return false;
+          final request = ModelQueries.get(
+            Users.classType, 
+            UsersModelIdentifier(id: userIdStr)
+          );
+          final response = await Amplify.API.query(request: request).response;
+          final user = response.data;
+          
+          if (user != null) {
+            await prefs.setString(_roleKey, user.role ?? 'staff');
+          } else {
+            debugPrint('Security: User not found in database. Forcing logout.');
+            await logout();
+            return false;
+          }
         }
       }
     } catch (e) {
@@ -295,6 +433,11 @@ class AuthService {
       final strId = prefs.getString('${_userIdKey}_str') ?? prefs.getString(_userIdKey);
       return strId != null ? int.tryParse(strId) : null;
     }
+  }
+
+  Future<String?> getUserIdStr() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('${_userIdKey}_str');
   }
 
   Future<void> saveRememberMe(String username, bool remember) async {

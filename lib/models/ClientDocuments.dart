@@ -33,6 +33,8 @@ class ClientDocuments extends amplify_core.Model {
   final String? _storage_path;
   final String? _og_copy;
   final String? _remarks;
+  final String? _verification_status;
+  final String? _rejection_reason;
   final String? _created_at;
   final amplify_core.TemporalDateTime? _createdAt;
   final amplify_core.TemporalDateTime? _updatedAt;
@@ -74,6 +76,14 @@ class ClientDocuments extends amplify_core.Model {
     return _remarks;
   }
   
+  String? get verification_status {
+    return _verification_status;
+  }
+  
+  String? get rejection_reason {
+    return _rejection_reason;
+  }
+  
   String? get created_at {
     return _created_at;
   }
@@ -86,9 +96,9 @@ class ClientDocuments extends amplify_core.Model {
     return _updatedAt;
   }
   
-  const ClientDocuments._internal({required this.id, client_id, client_name, document_name, storage_path, og_copy, remarks, created_at, createdAt, updatedAt}): _client_id = client_id, _client_name = client_name, _document_name = document_name, _storage_path = storage_path, _og_copy = og_copy, _remarks = remarks, _created_at = created_at, _createdAt = createdAt, _updatedAt = updatedAt;
+  const ClientDocuments._internal({required this.id, client_id, client_name, document_name, storage_path, og_copy, remarks, verification_status, rejection_reason, created_at, createdAt, updatedAt}): _client_id = client_id, _client_name = client_name, _document_name = document_name, _storage_path = storage_path, _og_copy = og_copy, _remarks = remarks, _verification_status = verification_status, _rejection_reason = rejection_reason, _created_at = created_at, _createdAt = createdAt, _updatedAt = updatedAt;
   
-  factory ClientDocuments({String? id, String? client_id, String? client_name, String? document_name, String? storage_path, String? og_copy, String? remarks, String? created_at}) {
+  factory ClientDocuments({String? id, String? client_id, String? client_name, String? document_name, String? storage_path, String? og_copy, String? remarks, String? verification_status, String? rejection_reason, String? created_at}) {
     return ClientDocuments._internal(
       id: id == null ? amplify_core.UUID.getUUID() : id,
       client_id: client_id,
@@ -97,6 +107,8 @@ class ClientDocuments extends amplify_core.Model {
       storage_path: storage_path,
       og_copy: og_copy,
       remarks: remarks,
+      verification_status: verification_status,
+      rejection_reason: rejection_reason,
       created_at: created_at);
   }
   
@@ -115,6 +127,8 @@ class ClientDocuments extends amplify_core.Model {
       _storage_path == other._storage_path &&
       _og_copy == other._og_copy &&
       _remarks == other._remarks &&
+      _verification_status == other._verification_status &&
+      _rejection_reason == other._rejection_reason &&
       _created_at == other._created_at;
   }
   
@@ -133,6 +147,8 @@ class ClientDocuments extends amplify_core.Model {
     buffer.write("storage_path=" + "$_storage_path" + ", ");
     buffer.write("og_copy=" + "$_og_copy" + ", ");
     buffer.write("remarks=" + "$_remarks" + ", ");
+    buffer.write("verification_status=" + "$_verification_status" + ", ");
+    buffer.write("rejection_reason=" + "$_rejection_reason" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
     buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
     buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
@@ -141,7 +157,7 @@ class ClientDocuments extends amplify_core.Model {
     return buffer.toString();
   }
   
-  ClientDocuments copyWith({String? client_id, String? client_name, String? document_name, String? storage_path, String? og_copy, String? remarks, String? created_at}) {
+  ClientDocuments copyWith({String? client_id, String? client_name, String? document_name, String? storage_path, String? og_copy, String? remarks, String? verification_status, String? rejection_reason, String? created_at}) {
     return ClientDocuments._internal(
       id: id,
       client_id: client_id ?? this.client_id,
@@ -150,6 +166,8 @@ class ClientDocuments extends amplify_core.Model {
       storage_path: storage_path ?? this.storage_path,
       og_copy: og_copy ?? this.og_copy,
       remarks: remarks ?? this.remarks,
+      verification_status: verification_status ?? this.verification_status,
+      rejection_reason: rejection_reason ?? this.rejection_reason,
       created_at: created_at ?? this.created_at);
   }
   
@@ -160,6 +178,8 @@ class ClientDocuments extends amplify_core.Model {
     ModelFieldValue<String?>? storage_path,
     ModelFieldValue<String?>? og_copy,
     ModelFieldValue<String?>? remarks,
+    ModelFieldValue<String?>? verification_status,
+    ModelFieldValue<String?>? rejection_reason,
     ModelFieldValue<String?>? created_at
   }) {
     return ClientDocuments._internal(
@@ -170,6 +190,8 @@ class ClientDocuments extends amplify_core.Model {
       storage_path: storage_path == null ? this.storage_path : storage_path.value,
       og_copy: og_copy == null ? this.og_copy : og_copy.value,
       remarks: remarks == null ? this.remarks : remarks.value,
+      verification_status: verification_status == null ? this.verification_status : verification_status.value,
+      rejection_reason: rejection_reason == null ? this.rejection_reason : rejection_reason.value,
       created_at: created_at == null ? this.created_at : created_at.value
     );
   }
@@ -182,12 +204,14 @@ class ClientDocuments extends amplify_core.Model {
       _storage_path = json['storage_path'],
       _og_copy = json['og_copy'],
       _remarks = json['remarks'],
+      _verification_status = json['verification_status'],
+      _rejection_reason = json['rejection_reason'],
       _created_at = json['created_at'],
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
       _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
   
   Map<String, dynamic> toJson() => {
-    'id': id, 'client_id': _client_id, 'client_name': _client_name, 'document_name': _document_name, 'storage_path': _storage_path, 'og_copy': _og_copy, 'remarks': _remarks, 'created_at': _created_at, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
+    'id': id, 'client_id': _client_id, 'client_name': _client_name, 'document_name': _document_name, 'storage_path': _storage_path, 'og_copy': _og_copy, 'remarks': _remarks, 'verification_status': _verification_status, 'rejection_reason': _rejection_reason, 'created_at': _created_at, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
   };
   
   Map<String, Object?> toMap() => {
@@ -198,6 +222,8 @@ class ClientDocuments extends amplify_core.Model {
     'storage_path': _storage_path,
     'og_copy': _og_copy,
     'remarks': _remarks,
+    'verification_status': _verification_status,
+    'rejection_reason': _rejection_reason,
     'created_at': _created_at,
     'createdAt': _createdAt,
     'updatedAt': _updatedAt
@@ -210,8 +236,10 @@ class ClientDocuments extends amplify_core.Model {
   static final DOCUMENT_NAME = amplify_core.QueryField(fieldName: "document_name");
   static final STORAGE_PATH = amplify_core.QueryField(fieldName: "storage_path");
   static final OG_COPY = amplify_core.QueryField(fieldName: "og_copy");
-  static final REMARKS = amplify_core.QueryField(fieldName: "remarks");
-  static final CREATED_AT = amplify_core.QueryField(fieldName: "created_at");
+  static const REMARKS = amplify_core.QueryField(fieldName: "remarks");
+  static const VERIFICATION_STATUS = amplify_core.QueryField(fieldName: "verification_status");
+  static const REJECTION_REASON = amplify_core.QueryField(fieldName: "rejection_reason");
+  static const CREATED_AT = amplify_core.QueryField(fieldName: "created_at");
   static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
     modelSchemaDefinition.name = "ClientDocuments";
     modelSchemaDefinition.pluralName = "ClientDocuments";
@@ -265,6 +293,18 @@ class ClientDocuments extends amplify_core.Model {
     
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: ClientDocuments.REMARKS,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ClientDocuments.VERIFICATION_STATUS,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ClientDocuments.REJECTION_REASON,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
     ));

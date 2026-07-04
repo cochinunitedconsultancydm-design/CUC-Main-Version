@@ -6,6 +6,8 @@ class ClientDocument {
   final String storagePath;
   final String ogCopy;
   final String remarks;
+  final String verificationStatus;
+  final String rejectionReason;
   final DateTime createdAt;
 
   ClientDocument({
@@ -16,6 +18,8 @@ class ClientDocument {
     required this.storagePath,
     required this.ogCopy,
     required this.remarks,
+    required this.verificationStatus,
+    required this.rejectionReason,
     required this.createdAt,
   });
 
@@ -28,6 +32,8 @@ class ClientDocument {
       storagePath: map['storage_path'] ?? '',
       ogCopy: map['og_copy'] ?? 'Copy',
       remarks: map['remarks'] ?? 'File OK',
+      verificationStatus: map['verification_status'] ?? 'Under Verification',
+      rejectionReason: map['rejection_reason'] ?? '',
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at']).toLocal()
           : DateTime.now(),
@@ -42,6 +48,9 @@ class ClientDocument {
       'storage_path': storagePath,
       'og_copy': ogCopy,
       'remarks': remarks,
+      'verification_status': verificationStatus,
+      'rejection_reason': rejectionReason,
+      'created_at': createdAt.toIso8601String(),
     };
   }
 }

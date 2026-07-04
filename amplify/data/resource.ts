@@ -50,6 +50,8 @@ const schema = a.schema({
     og_copy: a.string(),
     remarks: a.string(),
     created_at: a.string(),
+    verification_status: a.string(),
+    rejection_reason: a.string(),
   }).authorization((allow) => [allow.authenticated()]),
   ServiceContent: a.model({
     id: a.id().required(),

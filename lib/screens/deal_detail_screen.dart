@@ -1246,11 +1246,11 @@ final dLink = "";
 
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.TYPE.eq('INVOICE'));
+      final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.TYPE.eq('INVOICE'), limit: 10000);
       final resList = await Amplify.API.query(request: req).response;
       final resultList = resList.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
       resultList.sort((a, b) => (b.id).compareTo(a.id));
-      final result = resultList.take(50).map((e) => e.toJson()).toList();
+      final result = resultList.map((e) => e.toJson()).toList();
 
       final bills = result.map((row) => {
         'id': row['id'],
@@ -1272,7 +1272,7 @@ final dLink = "";
                   final s = searchQuery.toLowerCase();
                   return b['invoice_no'].toString().toLowerCase().contains(s) ||
                       b['client_name'].toString().toLowerCase().contains(s);
-                }).toList();
+                }).take(50).toList();
 
                 return AlertDialog(
                   title: const Text(
@@ -1486,11 +1486,11 @@ final dLink = "";
 
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.TYPE.eq('QUOTATION'));
+      final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.TYPE.eq('QUOTATION'), limit: 10000);
       final resList = await Amplify.API.query(request: req).response;
       final resultList = resList.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
       resultList.sort((a, b) => (b.id).compareTo(a.id));
-      final result = resultList.take(50).map((e) => e.toJson()).toList();
+      final result = resultList.map((e) => e.toJson()).toList();
 
       final bills = result.map((row) => {
         'id': row['id'],
@@ -1512,7 +1512,7 @@ final dLink = "";
                   final s = searchQuery.toLowerCase();
                   return b['invoice_no'].toString().toLowerCase().contains(s) ||
                       b['client_name'].toString().toLowerCase().contains(s);
-                }).toList();
+                }).take(50).toList();
 
                 return AlertDialog(
                   title: const Text(
@@ -5420,38 +5420,51 @@ final dLink = "";
             ),
           ),
           const SizedBox(height: 16),
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              _inputActionBtn(
-                Icons.calendar_month_rounded,
-                'Schedule',
-                onTap: _showScheduleDialog,
-              ),
-              _inputActionBtn(Icons.attach_file_rounded, 'Attach'),
-              _inputActionBtn(Icons.alternate_email_rounded, 'Mention'),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: _postDailyUpdate,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accentColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _inputActionBtn(
+                    Icons.calendar_month_rounded,
+                    'Schedule',
+                    onTap: _showScheduleDialog,
                   ),
-                ),
-                child: const Text('Post Daily Update'),
+                  _inputActionBtn(Icons.attach_file_rounded, 'Attach'),
+                  _inputActionBtn(Icons.alternate_email_rounded, 'Mention'),
+                ],
               ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: _postActivity,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ElevatedButton(
+                    onPressed: _postDailyUpdate,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.accentColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Post Daily Update'),
                   ),
-                ),
-                child: const Text('Post Activity'),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _postActivity,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Post Activity'),
+                  ),
+                ],
               ),
             ],
           ),

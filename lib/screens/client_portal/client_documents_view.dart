@@ -32,55 +32,70 @@ class _ClientDocumentsViewState extends State<ClientDocumentsView> {
       final clientName = await AuthService().getUserName();
       final clientUuid = await AuthService().getUserIdStr();
       
-      if (clientName != null) {
-        // Fetch explicit ClientDocuments records
-        final request = ModelQueries.list(ClientDocuments.classType);
-        final response = await Amplify.API.query(request: request).response;
+      if (clientUuid != null || clientName != null) {
+        // Fetch explicit ClientDocuments records (handling pagination to get all records)
+        List<ClientDocuments> allDocs = [];
+        GraphQLRequest<PaginatedResult<ClientDocuments>> request = ModelQueries.list(
+          ClientDocuments.classType,
+          limit: 1000,
+        );
         
-        final allDocs = response.data?.items.whereType<ClientDocuments>().toList() ?? [];
-        final filteredDocs = allDocs.where((d) => 
-            d.client_name?.trim().toLowerCase() == clientName.trim().toLowerCase()).toList();
-
-        // Fetch direct Vault storage files using the UUID from auth state
-        List<ClientDocuments> storageDocs = [];
-        if (clientUuid != null && clientUuid.isNotEmpty) {
-          debugPrint('MyDocs: Using Client UUID from Auth: $clientUuid');
-          try {
-            final storageItems = await Amplify.Storage.list(
-              path: StoragePath.fromString('public/$clientUuid/'),
-            ).result;
-            
-            storageDocs = storageItems.items
-                .where((f) => !f.path.contains('.emptyPlaceholder') && (f.size ?? 0) > 0)
-                .map((f) => ClientDocuments(
-                      client_name: clientName,
-                      document_name: Uri.decodeFull(f.path).split('/').last,
-                      storage_path: Uri.decodeFull(f.path),
-                      remarks: 'Vault Document',
-                      verification_status: 'Verified',
-                      og_copy: 'Copy',
-                    ))
-                .toList();
-          } catch (e) {
-            debugPrint('Error fetching vault storage: $e');
+        while (true) {
+          final response = await Amplify.API.query(request: request).response;
+          if (response.data?.items != null) {
+            allDocs.addAll(response.data!.items.whereType<ClientDocuments>());
+          }
+          if (response.data?.hasNextResult == true) {
+            request = response.data!.requestForNextResult!;
+          } else {
+            break;
           }
         }
+        
+        // Only show documents that belong to this client AND are either explicitly shared by staff
+        // OR were uploaded by the client themselves (via portal).
+        final filteredDocs = allDocs.where((d) {
+          bool belongsToClient = false;
+          if (clientUuid != null && d.client_id == clientUuid) {
+            belongsToClient = true;
+          } else if (clientName != null && d.client_name?.trim().toLowerCase() == clientName.trim().toLowerCase()) {
+            belongsToClient = true;
+          }
+          
+          if (!belongsToClient) return false;
+          
+          final remarks = d.remarks ?? '';
+          final storagePath = d.storage_path ?? '';
+          
+          final isSharedByStaff = remarks.contains('[SHARED]');
+          final isUploadedByClient = remarks.contains('Uploaded by Client') || storagePath.contains('/portal_uploads/');
+          
+          return isSharedByStaff || isUploadedByClient;
+        }).toList();
 
-        // Deduplicate by storage_path
+        // Deduplicate records that point to the exact same storage_path
+        // (Solves ghost duplicate records created during network delays)
         final Map<String, ClientDocuments> uniqueDocs = {};
         for (var doc in filteredDocs) {
-          if (doc.storage_path != null) uniqueDocs[doc.storage_path!] = doc;
-        }
-        for (var doc in storageDocs) {
-          if (doc.storage_path != null && !uniqueDocs.containsKey(doc.storage_path!)) {
-            uniqueDocs[doc.storage_path!] = doc;
+          final path = doc.storage_path ?? doc.id;
+          // Prioritize keeping the one that is explicitly shared or just keep the latest
+          if (!uniqueDocs.containsKey(path) || (doc.remarks?.contains('[SHARED]') == true && !(uniqueDocs[path]?.remarks?.contains('[SHARED]') ?? false))) {
+            uniqueDocs[path] = doc;
           }
         }
+        
+        final finalDocs = uniqueDocs.values.toList();
+
+        // Sort by date descending
+        finalDocs.sort((a, b) {
+          final dateA = a.createdAt?.getDateTimeInUtc() ?? DateTime(2000);
+          final dateB = b.createdAt?.getDateTimeInUtc() ?? DateTime(2000);
+          return dateB.compareTo(dateA);
+        });
 
         setState(() {
-          _documents = uniqueDocs.values.toList();
-          _documents.addAll(filteredDocs.where((d) => d.storage_path == null));
-          debugPrint('MyDocs: Set state with ${_documents.length} total docs');
+          _documents = finalDocs;
+          debugPrint('MyDocs: Set state with \${_documents.length} allowed docs');
         });
       }
     } catch (e) {

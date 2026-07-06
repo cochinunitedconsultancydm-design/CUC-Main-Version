@@ -297,6 +297,8 @@ class ClientDocuments extends amplify_core.Model {
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
     ));
     
+    // Temporarily removed to match backend schema and prevent GraphQL validation errors
+    /*
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: ClientDocuments.VERIFICATION_STATUS,
       isRequired: false,
@@ -308,6 +310,7 @@ class ClientDocuments extends amplify_core.Model {
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
     ));
+    */
     
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: ClientDocuments.CREATED_AT,

@@ -31,6 +31,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
   List<String> _workFolders = [];
   String? _currentWorkFolder;
   String _currentTab = 'personal'; // 'personal' or 'work'
+  Map<String, amplify_models.ClientDocuments> _dbDocs = {};
 
   @override
   void initState() {
@@ -48,6 +49,33 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
     setState(() => _isLoading = true);
     
     try {
+      try {
+        final clientIdStr = widget.client.id.toString();
+        List<amplify_models.ClientDocuments> filteredDocs = [];
+        
+        GraphQLRequest<PaginatedResult<amplify_models.ClientDocuments>> dbReq = ModelQueries.list(
+          amplify_models.ClientDocuments.classType,
+          limit: 1000,
+          where: amplify_models.ClientDocuments.CLIENT_ID.eq(clientIdStr),
+        );
+        
+        while (true) {
+          final dbRes = await Amplify.API.query(request: dbReq).response;
+          if (dbRes.data?.items != null) {
+            filteredDocs.addAll(dbRes.data!.items.whereType<amplify_models.ClientDocuments>());
+          }
+          if (dbRes.data?.hasNextResult == true) {
+            dbReq = dbRes.data!.requestForNextResult!;
+          } else {
+            break;
+          }
+        }
+        
+        _dbDocs = { for (var d in filteredDocs) if (d.storage_path != null) d.storage_path!: d };
+      } catch (dbErr) {
+        debugPrint('Error fetching ClientDocuments: $dbErr');
+      }
+
       final pFilesRes = await Amplify.Storage.list(
         path: StoragePath.fromString('public/${widget.client.id}/personal/'),
       ).result;
@@ -136,6 +164,96 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
       debugPrint('Create folder error: $e');
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to create folder: $e'), backgroundColor: Colors.redAccent));
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _toggleVisibility(String path, String fileName, bool makeVisible) async {
+    try {
+      final existingDoc = _dbDocs[path];
+      if (existingDoc != null) {
+        String newRemarks = (existingDoc.remarks ?? '').replaceAll('[SHARED]', '').trim();
+        if (makeVisible) newRemarks += (newRemarks.isEmpty ? '' : ' ') + '[SHARED]';
+        
+        final updatedDoc = existingDoc.copyWith(remarks: newRemarks);
+        
+        setState(() {
+          _dbDocs[path] = updatedDoc;
+        });
+        
+        // Use raw GraphQL to bypass Hot-Reload static schema cache
+        final req = GraphQLRequest<String>(
+          document: '''
+            mutation UpdateClientDocuments(\$input: UpdateClientDocumentsInput!) {
+              updateClientDocuments(input: \$input) {
+                id
+                remarks
+              }
+            }
+          ''',
+          variables: {
+            'input': {
+              'id': updatedDoc.id,
+              'remarks': newRemarks,
+            }
+          },
+        );
+        final res = await Amplify.API.mutate(request: req).response;
+        if (res.hasErrors) throw Exception(res.errors.first.message);
+        
+        // Attempt to sync backup if needed, though BackupAwareApi usually handles this
+        try {
+          BackupAwareApi().update(updatedDoc); // Fire and forget, may fail locally but DB is already updated
+        } catch (_) {}
+      } else {
+        // Create new record
+        final newRemarks = makeVisible ? 'File OK [SHARED]' : 'File OK';
+        final newId = UUID.getUUID();
+        final newDoc = amplify_models.ClientDocuments(
+          id: newId,
+          client_id: widget.client.id.toString(),
+          client_name: widget.client.name,
+          document_name: fileName,
+          storage_path: path,
+          og_copy: 'Copy',
+          remarks: newRemarks,
+        );
+        
+        setState(() {
+          _dbDocs[path] = newDoc;
+        });
+        
+        // Use raw GraphQL
+        final req = GraphQLRequest<String>(
+          document: '''
+            mutation CreateClientDocuments(\$input: CreateClientDocumentsInput!) {
+              createClientDocuments(input: \$input) {
+                id
+              }
+            }
+          ''',
+          variables: {
+            'input': {
+              'id': newId,
+              'client_id': widget.client.id.toString(),
+              'client_name': widget.client.name,
+              'document_name': fileName,
+              'storage_path': path,
+              'og_copy': 'Copy',
+              'remarks': newRemarks,
+            }
+          },
+        );
+        final res = await Amplify.API.mutate(request: req).response;
+        if (res.hasErrors) throw Exception(res.errors.first.message);
+        
+        try {
+          BackupAwareApi().create(newDoc); // Fire and forget
+        } catch (_) {}
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update visibility: $e'), backgroundColor: Colors.redAccent));
+      // On failure, reload to revert optimistic UI
+      _loadFiles();
     }
   }
 
@@ -242,6 +360,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
 
   Future<Map<String, String>?> _showUploadDetailsDialog(String fileName) async {
     String selectedOgCopy = 'Copy';
+    bool shareWithClient = false;
     final remarksController = TextEditingController();
     
     return await showDialog<Map<String, String>>(
@@ -279,6 +398,18 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                       isDense: true,
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: shareWithClient,
+                        onChanged: (val) {
+                          if (val != null) setDialogState(() => shareWithClient = val);
+                        },
+                      ),
+                      const Expanded(child: Text('Visible to Client in Portal')),
+                    ],
+                  ),
                 ],
               ),
               actions: [
@@ -286,9 +417,13 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
                   onPressed: () {
+                    String finalRemarks = remarksController.text.trim().isEmpty ? 'File OK' : remarksController.text.trim();
+                    if (shareWithClient) {
+                      finalRemarks += ' [SHARED]';
+                    }
                     Navigator.pop(context, {
                       'og_copy': selectedOgCopy,
-                      'remarks': remarksController.text.trim().isEmpty ? 'File OK' : remarksController.text.trim(),
+                      'remarks': finalRemarks.trim(),
                     });
                   },
                   child: const Text('Upload'),
@@ -676,7 +811,16 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
 
         // File Item
         final f = files[index];
-        final itemName = f.path.split('/').last;
+        final decodedPath = Uri.decodeFull(f.path);
+        final itemName = decodedPath.split('/').last;
+        
+        final basePath = 'public/${widget.client.id}/$category/$itemName';
+        final actualPath = category == 'work' && _currentWorkFolder != null
+            ? 'public/${widget.client.id}/work/$_currentWorkFolder/$itemName'
+            : basePath;
+            
+        final isShared = _dbDocs[actualPath]?.remarks?.contains('[SHARED]') ?? false;
+
         IconData icon = Icons.insert_drive_file;
         Color iconColor = Colors.blueGrey;
         if (itemName.toLowerCase().endsWith('.pdf')) {
@@ -696,10 +840,6 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
             child: ListTile(
               onTap: widget.isSelectionMode 
                 ? () {
-                    final path = 'public/${widget.client.id}/$category/$itemName';
-                    final actualPath = category == 'work' && _currentWorkFolder != null
-                        ? 'public/${widget.client.id}/work/$_currentWorkFolder/$itemName'
-                        : path;
                     Navigator.pop(context, actualPath);
                   }
                 : null,
@@ -713,10 +853,6 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
               trailing: widget.isSelectionMode
                 ? ElevatedButton.icon(
                     onPressed: () {
-                      final path = 'public/${widget.client.id}/$category/$itemName';
-                      final actualPath = category == 'work' && _currentWorkFolder != null
-                          ? 'public/${widget.client.id}/work/$_currentWorkFolder/$itemName'
-                          : path;
                       Navigator.pop(context, actualPath);
                     },
                     icon: const Icon(Icons.add, size: 16),
@@ -729,6 +865,15 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      Tooltip(
+                        message: 'Visible to Client in Portal',
+                        child: Switch(
+                          value: isShared,
+                          onChanged: (val) => _toggleVisibility(actualPath, itemName, val),
+                          activeColor: AppTheme.primaryColor,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       IconButton(
                         icon: const Icon(Icons.download_rounded, color: Colors.blueGrey, size: 20),
                         onPressed: () => _downloadFile(category, itemName),

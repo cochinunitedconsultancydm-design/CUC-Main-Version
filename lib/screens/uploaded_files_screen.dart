@@ -563,6 +563,31 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
                         },
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Visible to Client:', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey)),
+                        Switch(
+                          value: doc.remarks.contains('[SHARED]'),
+                          onChanged: (val) {
+                            String newRemarks = doc.remarks.replaceAll('[SHARED]', '').trim();
+                            if (val) newRemarks += (newRemarks.isEmpty ? '' : ' ') + '[SHARED]';
+                            
+                            setState(() {
+                              _documents[index] = ClientDocument(
+                                id: doc.id, clientId: doc.clientId, clientName: doc.clientName,
+                                documentName: doc.documentName, storagePath: doc.storagePath,
+                                ogCopy: doc.ogCopy, remarks: newRemarks, createdAt: doc.createdAt,
+                                verificationStatus: doc.verificationStatus, rejectionReason: doc.rejectionReason
+                              );
+                            });
+                            _updateField(doc.id, 'remarks', newRemarks);
+                          },
+                          activeColor: AppTheme.primaryColor,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -645,6 +670,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
               DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
               DataColumn(label: Text('Verification Status', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
               DataColumn(label: Text('Remarks', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
+              DataColumn(label: Text('Client Visible', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
               DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
             ],
             rows: List.generate(_documents.length, (index) {
@@ -795,6 +821,26 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
                         },
                       ),
                     )
+                  ),
+                  DataCell(
+                    Switch(
+                      value: doc.remarks.contains('[SHARED]'),
+                      onChanged: (val) {
+                        String newRemarks = doc.remarks.replaceAll('[SHARED]', '').trim();
+                        if (val) newRemarks += (newRemarks.isEmpty ? '' : ' ') + '[SHARED]';
+                        
+                        setState(() {
+                          _documents[index] = ClientDocument(
+                            id: doc.id, clientId: doc.clientId, clientName: doc.clientName,
+                            documentName: doc.documentName, storagePath: doc.storagePath,
+                            ogCopy: doc.ogCopy, remarks: newRemarks, createdAt: doc.createdAt,
+                            verificationStatus: doc.verificationStatus, rejectionReason: doc.rejectionReason
+                          );
+                        });
+                        _updateField(doc.id, 'remarks', newRemarks);
+                      },
+                      activeColor: AppTheme.primaryColor,
+                    ),
                   ),
                   DataCell(
                     Row(

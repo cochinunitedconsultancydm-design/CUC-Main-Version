@@ -1,9 +1,9 @@
 {
   "auth": {
-    "user_pool_id": "ap-south-1_nPbNyXUnX",
-    "aws_region": "ap-south-1",
-    "user_pool_client_id": "15fjocunv8ej67qbv1cb7gsq02",
-    "identity_pool_id": "ap-south-1:a2b2af0d-d48b-4bf7-a7e0-33f5ac1a7541",
+    "user_pool_id": "ap-south-2_bXrQoOs7X",
+    "aws_region": "ap-south-2",
+    "user_pool_client_id": "6k35o01b0df4nslk964ge4chpr",
+    "identity_pool_id": "ap-south-2:a45380da-446d-4aa7-9ea4-afddff902464",
     "mfa_methods": [],
     "standard_required_attributes": [
       "email"
@@ -26,8 +26,8 @@
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://qz4fcne5d5eszmucr5o4hhkizi.appsync-api.ap-south-1.amazonaws.com/graphql",
-    "aws_region": "ap-south-1",
+    "url": "https://3xeyklniwzfrrotebcdjtxqura.appsync-api.ap-south-2.amazonaws.com/graphql",
+    "aws_region": "ap-south-2",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": [
       "AWS_IAM"
@@ -503,6 +503,20 @@
             },
             "created_at": {
               "name": "created_at",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "verification_status": {
+              "name": "verification_status",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "rejection_reason": {
+              "name": "rejection_reason",
               "isArray": false,
               "type": "String",
               "isRequired": false,
@@ -2991,6 +3005,104 @@
               "isRequired": false,
               "attributes": []
             },
+            "designation": {
+              "name": "designation",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "personal_phone": {
+              "name": "personal_phone",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "aadhar_card": {
+              "name": "aadhar_card",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "driving_license": {
+              "name": "driving_license",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "insurance": {
+              "name": "insurance",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "emergency_contact": {
+              "name": "emergency_contact",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "offer_letter": {
+              "name": "offer_letter",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "dob": {
+              "name": "dob",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "salary": {
+              "name": "salary",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "work_time": {
+              "name": "work_time",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "blood_group": {
+              "name": "blood_group",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "personal_email": {
+              "name": "personal_email",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "company_email": {
+              "name": "company_email",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "company_phone": {
+              "name": "company_phone",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
             "createdAt": {
               "name": "createdAt",
               "isArray": false,
@@ -3892,13 +4004,13 @@
     }
   },
   "storage": {
-    "aws_region": "ap-south-1",
-    "bucket_name": "amplify-d2vemu3lyp451b-ma-clientfilesbucket5d3f5cb-jrikjkvthbom",
+    "aws_region": "ap-south-2",
+    "bucket_name": "amplify-legal-admin-sandb-clientfilesbucket5d3f5cb-isqb3srlrixr",
     "buckets": [
       {
         "name": "clientFiles",
-        "bucket_name": "amplify-d2vemu3lyp451b-ma-clientfilesbucket5d3f5cb-jrikjkvthbom",
-        "aws_region": "ap-south-1",
+        "bucket_name": "amplify-legal-admin-sandb-clientfilesbucket5d3f5cb-isqb3srlrixr",
+        "aws_region": "ap-south-2",
         "paths": {
           "public/*": {
             "authenticated": [

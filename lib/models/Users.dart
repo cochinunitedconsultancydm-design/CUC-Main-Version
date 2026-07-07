@@ -262,7 +262,7 @@ class Users extends amplify_core.Model {
     return buffer.toString();
   }
   
-  Users copyWith({String? username, String? password, String? role, String? name, String? created_at, String? last_seen, String? email, String? designation, String? personal_phone, String? aadhar_card, String? driving_license, String? insurance, String? emergency_contact, String? offer_letter, String? dob, String? salary, String? work_time, String? blood_group, String? personal_email, String? company_email, String? company_phone}) {
+  Users copyWith({String? username, String? password, String? role, String? name, String? created_at, String? last_seen, String? email, String? designation, String? personal_phone, String? aadhar_card, String? driving_license, String? insurance, String? emergency_contact, String? offer_letter, String? dob, String? salary, String? work_time, String? blood_group, String? wedding_anniversary, String? personal_email, String? company_email, String? company_phone}) {
     return Users._internal(
       id: id,
       username: username ?? this.username,

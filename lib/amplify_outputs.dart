@@ -1,4 +1,4 @@
-const amplifyConfig = r'''{
+const amplifyConfig = '''{
   "auth": {
     "user_pool_id": "ap-south-1_nPbNyXUnX",
     "aws_region": "ap-south-1",
@@ -503,6 +503,20 @@ const amplifyConfig = r'''{
             },
             "created_at": {
               "name": "created_at",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "verification_status": {
+              "name": "verification_status",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "rejection_reason": {
+              "name": "rejection_reason",
               "isArray": false,
               "type": "String",
               "isRequired": false,
@@ -2986,6 +3000,104 @@ const amplifyConfig = r'''{
             },
             "email": {
               "name": "email",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "designation": {
+              "name": "designation",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "personal_phone": {
+              "name": "personal_phone",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "aadhar_card": {
+              "name": "aadhar_card",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "driving_license": {
+              "name": "driving_license",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "insurance": {
+              "name": "insurance",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "emergency_contact": {
+              "name": "emergency_contact",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "offer_letter": {
+              "name": "offer_letter",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "dob": {
+              "name": "dob",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "salary": {
+              "name": "salary",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "work_time": {
+              "name": "work_time",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "blood_group": {
+              "name": "blood_group",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "personal_email": {
+              "name": "personal_email",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "company_email": {
+              "name": "company_email",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "company_phone": {
+              "name": "company_phone",
               "isArray": false,
               "type": "String",
               "isRequired": false,

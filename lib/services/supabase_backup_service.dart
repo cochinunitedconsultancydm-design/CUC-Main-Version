@@ -36,12 +36,50 @@ class SupabaseBackupService {
     'Contacts': 'contacts',
   };
 
+  /// Cached column names per table, discovered from Supabase at runtime.
+  final Map<String, Set<String>> _columnCache = {};
+
   Map<String, String> get _headers => {
         'apikey': _supabaseKey,
         'Authorization': 'Bearer $_supabaseKey',
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates',
       };
+
+  /// Discover valid column names for a table by fetching one row.
+  Future<Set<String>> _getColumns(String table) async {
+    if (_columnCache.containsKey(table)) return _columnCache[table]!;
+    try {
+      final response = await http.get(
+        Uri.parse('$_supabaseUrl/rest/v1/$table?select=*&limit=1'),
+        headers: {'apikey': _supabaseKey, 'Authorization': 'Bearer $_supabaseKey'},
+      ).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final List<dynamic> rows = json.decode(response.body);
+        if (rows.isNotEmpty && rows.first is Map) {
+          final cols = (rows.first as Map<String, dynamic>).keys.toSet();
+          _columnCache[table] = cols;
+          return cols;
+        }
+      }
+    } catch (e) {
+      debugPrint('Supabase column discovery error for $table: $e');
+    }
+    // Fallback: return empty set (will skip filtering)
+    return {};
+  }
+
+  /// Filter data to only include columns that exist in the Supabase table.
+  Map<String, dynamic> _filterColumns(Map<String, dynamic> data, Set<String> validColumns) {
+    if (validColumns.isEmpty) return data; // No schema info, send as-is
+    final filtered = <String, dynamic>{};
+    for (final entry in data.entries) {
+      if (validColumns.contains(entry.key)) {
+        filtered[entry.key] = entry.value;
+      }
+    }
+    return filtered;
+  }
 
   /// Backup a single record to Supabase (upsert).
   /// [modelName] is the DynamoDB model name (e.g. 'Clients').
@@ -75,6 +113,10 @@ class SupabaseBackupService {
         }
       }
 
+      // Filter to only include columns that exist in the Supabase table
+      final validCols = await _getColumns(table);
+      final filteredData = _filterColumns(cleanData, validCols);
+
       String url = '$_supabaseUrl/rest/v1/$table';
       if (modelName == 'Users') {
         url += '?on_conflict=username';
@@ -83,7 +125,7 @@ class SupabaseBackupService {
       final response = await http.post(
         Uri.parse(url),
         headers: _headers,
-        body: jsonEncode(cleanData),
+        body: jsonEncode(filteredData),
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -125,6 +167,10 @@ class SupabaseBackupService {
         return clean;
       }).toList();
 
+      // Filter to only include columns that exist in the Supabase table
+      final validCols = await _getColumns(table);
+      final filteredRecords = cleanRecords.map((r) => _filterColumns(r, validCols)).toList();
+
       String url = '$_supabaseUrl/rest/v1/$table';
       if (modelName == 'Users') {
         url += '?on_conflict=username';
@@ -133,7 +179,7 @@ class SupabaseBackupService {
       final response = await http.post(
         Uri.parse(url),
         headers: _headers,
-        body: jsonEncode(cleanRecords),
+        body: jsonEncode(filteredRecords),
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {

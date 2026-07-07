@@ -7,6 +7,7 @@ import '../models/ModelProvider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
+import 'dart:convert';
 import '../services/backup_aware_api.dart';
 import '../theme.dart';
 
@@ -21,6 +22,7 @@ class _SopScreenState extends State<SopScreen> {
   bool _isLoading = true;
   List<ServiceContent> _sops = [];
   List<ServiceContent> _filteredSops = [];
+  List<Deals> _deals = [];
   String? _error;
   final TextEditingController _searchController = TextEditingController();
 
@@ -71,10 +73,16 @@ class _SopScreenState extends State<SopScreen> {
       }
       final sopsList = (res.data?.items ?? []).whereType<ServiceContent>().toList();
       sopsList.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
+      
+      final dealsReq = ModelQueries.list(Deals.classType, limit: 10000);
+      final dealsRes = await Amplify.API.query(request: dealsReq).response;
+      final dealsList = (dealsRes.data?.items ?? []).whereType<Deals>().toList();
+      
       if (mounted) {
         setState(() {
           _sops = sopsList;
           _filteredSops = List.from(sopsList);
+          _deals = dealsList;
           _isLoading = false;
         });
         _filterSops();
@@ -103,14 +111,27 @@ class _SopScreenState extends State<SopScreen> {
     }
   }
 
+  List<String> _parseJsonStringArray(String? jsonString) {
+    if (jsonString == null || jsonString.trim().isEmpty) return [];
+    if (jsonString.trim().startsWith('[')) {
+      try {
+        final decoded = jsonDecode(jsonString);
+        if (decoded is List) {
+          return decoded.map((e) => e.toString()).toList();
+        }
+      } catch (_) {}
+    }
+    return [jsonString];
+  }
+
   void _showAddEditSopDialog([ServiceContent? sop]) {
     final titleController = TextEditingController(text: sop?.title);
     final descController = TextEditingController(text: sop?.description);
     final contentController = TextEditingController(text: sop?.details);
-    final previousCaseController = TextEditingController(text: sop?.previous_case_id);
     bool isSaving = false;
-    String? pdfUrl = sop?.pdf_url;
-    File? selectedPdf;
+    List<String> uploadedPdfUrls = _parseJsonStringArray(sop?.pdf_url);
+    List<File> newPdfs = [];
+    List<String> selectedCaseIds = _parseJsonStringArray(sop?.previous_case_id);
 
     showDialog(
       context: context,
@@ -177,57 +198,102 @@ class _SopScreenState extends State<SopScreen> {
                       maxLines: 10,
                     ),
                     const SizedBox(height: 20),
-                    _buildTextField(
-                      controller: previousCaseController,
-                      label: 'Previous Case / Deal ID (Optional)',
-                      hint: 'e.g. DEAL-1234',
-                      icon: Icons.cases_rounded,
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            final result = await FilePicker.pickFiles(
-                              type: FileType.custom,
-                              allowedExtensions: ['pdf'],
-                            );
-                            if (result != null && result.files.single.path != null) {
-                              setDialogState(() {
-                                selectedPdf = File(result.files.single.path!);
-                              });
+                    const Text('Related Work Files / Cases', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          hint: const Text('Select Work File'),
+                          value: null,
+                          onChanged: (val) {
+                            if (val != null && !selectedCaseIds.contains(val)) {
+                              setDialogState(() => selectedCaseIds.add(val));
                             }
                           },
-                          icon: const Icon(Icons.picture_as_pdf_rounded),
-                          label: Text(selectedPdf != null ? 'PDF Selected' : (pdfUrl != null ? 'Change PDF' : 'Attach PDF')),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: selectedPdf != null ? Colors.green.shade600 : Colors.blue.shade600,
-                            foregroundColor: Colors.white,
-                          ),
+                          items: _deals.map((deal) {
+                            return DropdownMenuItem<String>(
+                              value: deal.id,
+                              child: Text(deal.name ?? deal.id),
+                            );
+                          }).toList(),
                         ),
-                        if (selectedPdf != null) ...[
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              selectedPdf!.path.split(Platform.pathSeparator).last,
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: selectedCaseIds.map((caseId) {
+                        final deal = _deals.where((d) => d.id == caseId).firstOrNull;
+                        return Chip(
+                          label: Text(deal?.name ?? caseId, style: const TextStyle(fontSize: 12)),
+                          deleteIcon: const Icon(Icons.close, size: 16),
+                          onDeleted: () {
+                            setDialogState(() => selectedCaseIds.remove(caseId));
+                          },
+                          backgroundColor: Colors.blue.withValues(alpha: 0.1),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Attached PDFs', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final result = await FilePicker.pickFiles(
+                          type: FileType.custom,
+                          allowedExtensions: ['pdf'],
+                          allowMultiple: true,
+                        );
+                        if (result != null) {
+                          setDialogState(() {
+                            for (var file in result.files) {
+                              if (file.path != null) {
+                                newPdfs.add(File(file.path!));
+                              }
+                            }
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.picture_as_pdf_rounded),
+                      label: const Text('Add PDFs'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade600,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Column(
+                      children: [
+                        ...uploadedPdfUrls.asMap().entries.map((entry) {
+                          return ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                            title: Text('Attached Document ${entry.key + 1}', style: const TextStyle(fontSize: 12)),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                              onPressed: () => setDialogState(() => uploadedPdfUrls.removeAt(entry.key)),
                             ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.clear, color: Colors.red),
-                            onPressed: () => setDialogState(() => selectedPdf = null),
-                          )
-                        ] else if (pdfUrl != null) ...[
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Existing PDF attached',
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                          );
+                        }),
+                        ...newPdfs.asMap().entries.map((entry) {
+                          return ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.upload_file, color: Colors.green),
+                            title: Text(entry.value.path.split(Platform.pathSeparator).last, style: const TextStyle(fontSize: 12)),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                              onPressed: () => setDialogState(() => newPdfs.removeAt(entry.key)),
                             ),
-                          ),
-                        ]
+                          );
+                        }),
                       ],
                     ),
                     const SizedBox(height: 32),
@@ -250,18 +316,18 @@ class _SopScreenState extends State<SopScreen> {
                                   if (titleController.text.trim().isEmpty) return;
                                   setDialogState(() => isSaving = true);
                                   try {
-                                    if (selectedPdf != null) {
+                                    for (var file in newPdfs) {
                                       try {
                                         final s3Key = 'sops/${UUID.getUUID()}.pdf';
                                         await Amplify.Storage.uploadFile(
-                                          localFile: AWSFile.fromPath(selectedPdf!.path),
+                                          localFile: AWSFile.fromPath(file.path),
                                           path: StoragePath.fromString('public/$s3Key'),
                                         ).result;
                                         
                                         final urlResult = await Amplify.Storage.getUrl(
                                           path: StoragePath.fromString('public/$s3Key'),
                                         ).result;
-                                        pdfUrl = urlResult.url.toString();
+                                        uploadedPdfUrls.add(urlResult.url.toString());
                                       } catch (e) {
                                         if (mounted) {
                                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -278,8 +344,8 @@ class _SopScreenState extends State<SopScreen> {
                                       title: titleController.text.trim(),
                                       description: descController.text.trim(),
                                       details: contentController.text.trim(),
-                                      pdf_url: pdfUrl,
-                                      previous_case_id: previousCaseController.text.trim().isEmpty ? null : previousCaseController.text.trim(),
+                                      pdf_url: uploadedPdfUrls.isEmpty ? null : jsonEncode(uploadedPdfUrls),
+                                      previous_case_id: selectedCaseIds.isEmpty ? null : jsonEncode(selectedCaseIds),
                                     );
 
                                     if (sop == null) {
@@ -592,53 +658,62 @@ class _SopScreenState extends State<SopScreen> {
                                             ),
                                           ),
                                           if (sop.previous_case_id != null && sop.previous_case_id!.isNotEmpty)
-                                            Container(
-                                              width: double.infinity,
-                                              margin: const EdgeInsets.only(left: 24, right: 24, bottom: 8),
-                                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                              decoration: BoxDecoration(
-                                                color: Colors.blue.withValues(alpha: 0.05),
-                                                borderRadius: BorderRadius.circular(8),
-                                                border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons.cases_rounded, color: Colors.blue.shade700, size: 20),
-                                                  const SizedBox(width: 12),
-                                                  Text(
-                                                    'Related Case: ',
-                                                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                                                  ),
-                                                  Text(
-                                                    sop.previous_case_id!,
-                                                    style: TextStyle(color: Colors.blue.shade800),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
+                                            ..._parseJsonStringArray(sop.previous_case_id).map((caseId) {
+                                              final deal = _deals.where((d) => d.id == caseId).firstOrNull;
+                                              return Container(
+                                                width: double.infinity,
+                                                margin: const EdgeInsets.only(left: 24, right: 24, bottom: 8),
+                                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.withValues(alpha: 0.05),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(Icons.cases_rounded, color: Colors.blue.shade700, size: 20),
+                                                    const SizedBox(width: 12),
+                                                    Text(
+                                                      'Related Work File: ',
+                                                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                                                    ),
+                                                    Expanded(
+                                                      child: Text(
+                                                        deal?.name ?? caseId,
+                                                        style: TextStyle(color: Colors.blue.shade800),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }),
                                           if (sop.pdf_url != null && sop.pdf_url!.isNotEmpty)
-                                            Container(
-                                              margin: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
-                                              child: ElevatedButton.icon(
-                                                onPressed: () async {
-                                                  final url = Uri.parse(sop.pdf_url!);
-                                                  if (await canLaunchUrl(url)) {
-                                                    await launchUrl(url);
-                                                  }
-                                                },
-                                                icon: const Icon(Icons.picture_as_pdf_rounded),
-                                                label: const Text('View Attached PDF'),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.red.shade50,
-                                                  foregroundColor: Colors.red.shade700,
-                                                  elevation: 0,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius: BorderRadius.circular(8),
-                                                    side: BorderSide(color: Colors.red.shade200),
+                                            ..._parseJsonStringArray(sop.pdf_url).asMap().entries.map((entry) {
+                                              return Container(
+                                                margin: const EdgeInsets.only(left: 24, right: 24, bottom: 8),
+                                                child: ElevatedButton.icon(
+                                                  onPressed: () async {
+                                                    final url = Uri.parse(entry.value);
+                                                    if (await canLaunchUrl(url)) {
+                                                      await launchUrl(url);
+                                                    }
+                                                  },
+                                                  icon: const Icon(Icons.picture_as_pdf_rounded),
+                                                  label: Text('View Attached PDF ${entry.key + 1}'),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: Colors.red.shade50,
+                                                    foregroundColor: Colors.red.shade700,
+                                                    elevation: 0,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      side: BorderSide(color: Colors.red.shade200),
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                            ),
+                                              );
+                                            }),
+                                          const SizedBox(height: 16),
                                       ],
                                     ),
                                   ),

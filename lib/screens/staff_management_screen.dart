@@ -2,6 +2,8 @@ import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
@@ -248,6 +250,78 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       );
     }
 
+    Widget uploadField(String label, IconData icon, TextEditingController controller) {
+      bool isUploading = false;
+      bool isFetchingUrl = false;
+      return StatefulBuilder(
+        builder: (context, setUploadState) {
+          return TextFormField(
+            controller: controller,
+            readOnly: true,
+            decoration: inputDec(label, icon).copyWith(
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (controller.text.isNotEmpty)
+                    isFetchingUrl 
+                      ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)))
+                      : IconButton(
+                          icon: const Icon(Icons.remove_red_eye, color: AppTheme.primaryColor),
+                          tooltip: 'View Document',
+                          onPressed: () async {
+                            try {
+                              setUploadState(() => isFetchingUrl = true);
+                              final result = await Amplify.Storage.getUrl(
+                                path: StoragePath.fromString(controller.text),
+                              ).result;
+                              final Uri url = Uri.parse(result.url.toString());
+                              if (!await launchUrl(url)) {
+                                _msg('Could not open document', false);
+                              }
+                            } catch (e) {
+                              _msg('Failed to view document: $e', false);
+                            } finally {
+                              if (mounted) setUploadState(() => isFetchingUrl = false);
+                            }
+                          },
+                        ),
+                  isUploading 
+                    ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)))
+                    : IconButton(
+                        icon: const Icon(Icons.upload_file, color: AppTheme.primaryColor),
+                        tooltip: 'Upload New',
+                        onPressed: () async {
+                          try {
+                            final result = await FilePicker.pickFiles(type: FileType.any);
+                            if (result != null && result.files.single.path != null) {
+                              setUploadState(() => isUploading = true);
+                              final fileName = result.files.single.name;
+                              final userId = user?['id'] ?? 'new_user_${DateTime.now().millisecondsSinceEpoch}';
+                              final path = 'public/staff/$userId/docs/$fileName';
+                              
+                              await Amplify.Storage.uploadFile(
+                                localFile: AWSFile.fromPath(result.files.single.path!),
+                                path: StoragePath.fromString(path),
+                              ).result;
+                              
+                              setUploadState(() { controller.text = path; });
+                            }
+                          } catch (e) {
+                            _msg('Upload failed: $e', false);
+                          } finally {
+                            if (mounted) setUploadState(() => isUploading = false);
+                          }
+                        },
+                      ),
+                  const SizedBox(width: 4),
+                ],
+              )
+            ),
+          );
+        }
+      );
+    }
+
     Widget buildRow(List<Widget> children) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
@@ -350,12 +424,12 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                         
                         sectionHeader('Documents & IDs', Icons.folder_shared),
                         buildRow([
-                          TextField(controller: aadharCard, decoration: inputDec('Aadhar Card', Icons.credit_card), maxLength: 100),
-                          TextField(controller: drivingLicense, decoration: inputDec('Driving License', Icons.card_membership), maxLength: 100),
+                          uploadField('Aadhar Card', Icons.credit_card, aadharCard),
+                          uploadField('Driving License', Icons.card_membership, drivingLicense),
                         ]),
                         buildRow([
-                          TextField(controller: insurance, decoration: inputDec('Insurance Upload (Link/Text)', Icons.security), maxLength: 255),
-                          TextField(controller: offerLetter, decoration: inputDec('Offer Letter (Link/Text)', Icons.document_scanner), maxLength: 255),
+                          uploadField('Insurance Upload', Icons.security, insurance),
+                          uploadField('Offer Letter', Icons.document_scanner, offerLetter),
                         ]),
 
                         sectionHeader('Authentication & Access', Icons.security),

@@ -637,6 +637,20 @@ const amplifyConfig = '''{
               "isRequired": false,
               "attributes": [],
               "isReadOnly": true
+            },
+            "pdf_url": {
+              "name": "pdf_url",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "previous_case_id": {
+              "name": "previous_case_id",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
             }
           },
           "syncable": true,

@@ -622,6 +622,20 @@ const amplifyConfig = '''{
               "isRequired": false,
               "attributes": []
             },
+            "pdf_url": {
+              "name": "pdf_url",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "previous_case_id": {
+              "name": "previous_case_id",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
             "createdAt": {
               "name": "createdAt",
               "isArray": false,
@@ -637,20 +651,6 @@ const amplifyConfig = '''{
               "isRequired": false,
               "attributes": [],
               "isReadOnly": true
-            },
-            "pdf_url": {
-              "name": "pdf_url",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "previous_case_id": {
-              "name": "previous_case_id",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
             }
           },
           "syncable": true,
@@ -3091,6 +3091,13 @@ const amplifyConfig = '''{
             },
             "blood_group": {
               "name": "blood_group",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "wedding_anniversary": {
+              "name": "wedding_anniversary",
               "isArray": false,
               "type": "String",
               "isRequired": false,

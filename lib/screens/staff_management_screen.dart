@@ -169,6 +169,166 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     }
   }
 
+  void _showDetails(Map<String, dynamic> user) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final role = user['role']?.toString() ?? 'staff';
+        final color = _getRoleColor(role);
+        
+        Widget detailRow(IconData icon, String label, String? value, {bool isLink = false}) {
+          final bool isEmpty = value == null || value.toString().trim().isEmpty;
+          final String displayValue = isEmpty ? 'Not Provided' : value.toString();
+          
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, color: Colors.grey.shade400, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      (isLink && !isEmpty)
+                        ? InkWell(
+                            onTap: () async {
+                              try {
+                                final result = await Amplify.Storage.getUrl(path: StoragePath.fromString(value)).result;
+                                final Uri url = Uri.parse(result.url.toString());
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(url);
+                                }
+                              } catch (e) {
+                                debugPrint('Error launching url: $e');
+                              }
+                            },
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.remove_red_eye, color: AppTheme.primaryColor, size: 16),
+                                SizedBox(width: 6),
+                                Text('View Document', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                              ],
+                            ),
+                          )
+                        : Text(
+                            isLink && isEmpty ? 'No document uploaded' : displayValue, 
+                            style: TextStyle(
+                              fontSize: 15, 
+                              color: isEmpty ? Colors.grey.shade400 : Colors.black87, 
+                              fontStyle: isEmpty ? FontStyle.italic : FontStyle.normal,
+                              fontWeight: FontWeight.w500
+                            )
+                          ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(20),
+          child: Container(
+            width: 600,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withAlpha(50), blurRadius: 20, offset: const Offset(0, 10)),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: color.withAlpha(20),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: color.withAlpha(40),
+                        child: Text(user['name']?[0] ?? '?', style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(user['name'] ?? 'Unknown', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
+                              child: Text(role.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Colors.black54),
+                        style: IconButton.styleFrom(backgroundColor: Colors.white, padding: const EdgeInsets.all(8)),
+                      ),
+                    ],
+                  ),
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Personal Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                        const SizedBox(height: 16),
+                        detailRow(Icons.cake, 'Date of Birth', user['dob']),
+                        detailRow(Icons.bloodtype, 'Blood Group', user['blood_group']),
+                        detailRow(Icons.phone_android, 'Personal Phone', user['personal_phone']),
+                        detailRow(Icons.mail_outline, 'Personal Email', user['personal_email']),
+                        detailRow(Icons.contact_emergency, 'Emergency Contact', user['emergency_contact']),
+                        
+                        const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider()),
+                        
+                        const Text('Employment Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                        const SizedBox(height: 16),
+                        detailRow(Icons.alternate_email, 'Username', user['username']),
+                        detailRow(Icons.business, 'Company Email', user['email']),
+                        detailRow(Icons.alternate_email, 'Secondary Company Email', user['company_email']),
+                        detailRow(Icons.phone, 'Company Phone', user['company_phone']),
+                        detailRow(Icons.work_outline, 'Designation', user['designation']),
+                        detailRow(Icons.monetization_on, 'Salary', user['salary']),
+                        detailRow(Icons.access_time, 'Work Time', user['work_time']),
+                        
+                        const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider()),
+                        
+                        const Text('Documents & IDs', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                        const SizedBox(height: 16),
+                        detailRow(Icons.credit_card, 'Aadhar Card', user['aadhar_card'], isLink: true),
+                        detailRow(Icons.card_membership, 'Driving License', user['driving_license'], isLink: true),
+                        detailRow(Icons.security, 'Insurance Upload', user['insurance'], isLink: true),
+                        detailRow(Icons.document_scanner, 'Offer Letter', user['offer_letter'], isLink: true),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    );
+  }
+
   void _showForm([Map<String, dynamic>? user]) {
     final name = TextEditingController(text: user?['name']);
     final username = TextEditingController(text: user?['username']);
@@ -438,7 +598,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                           if (user == null)
                             TextField(controller: password, decoration: inputDec('Initial Password', Icons.lock_outline_rounded), obscureText: true, maxLength: 128)
                           else
-                            const Spacer(),
+                            const SizedBox(),
                         ]),
                         
                         const Padding(
@@ -720,9 +880,14 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                     ],
                     border: Border.all(color: Colors.grey.shade100, width: 1.5),
                   ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: isWide ? 24 : 16, vertical: 16),
-                    child: Row(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => _showDetails(s),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: isWide ? 24 : 16, vertical: 16),
+                        child: Row(
                       children: [
                         Stack(
                           children: [
@@ -807,6 +972,8 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  ),
                   ),
                 ).animate().fadeIn(delay: (index * 40).ms).slideX(begin: 0.05, end: 0);
               },

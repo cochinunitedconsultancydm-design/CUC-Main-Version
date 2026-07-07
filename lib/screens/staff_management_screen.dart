@@ -708,11 +708,15 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                                   company_email: companyEmail.text,
                                   company_phone: companyPhone.text,
                                 );
-                                await BackupAwareApi().update(updated);
+                                final updateRes = await BackupAwareApi().update(updated);
+                                if (updateRes.hasErrors) {
+                                  throw Exception(updateRes.errors.map((e) => e.message).join(', '));
+                                }
                                 await LoggingService().logAction(action: 'UPDATE_STAFF', targetType: 'Staff', targetId: username.text, details: 'Updated staff member: ${name.text}');
                               }
                             }
                             if (mounted) Navigator.pop(context);
+                            await Future.delayed(const Duration(milliseconds: 1200));
                             _fetchStaff();
                             _msg('Saved successfully', true);
                           } catch (e) {

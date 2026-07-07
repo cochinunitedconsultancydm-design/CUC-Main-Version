@@ -1608,7 +1608,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              Row(
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1629,12 +1632,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   if (!_isAdmin && !kIsWeb && (Platform.isAndroid || Platform.isIOS)) ...[
-                    const SizedBox(width: 16),
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             ElevatedButton.icon(
                               onPressed: _isAttendanceLoading ? null : _toggleAttendance,
@@ -1651,7 +1656,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 shadowColor: (_isCheckedIn ? Colors.redAccent : Colors.green).withValues(alpha: 0.5),
                               ),
                             ),
-                            const SizedBox(width: 12),
                             ElevatedButton.icon(
                               onPressed: _showTravelLogDialog,
                               icon: const Icon(Icons.directions_car_rounded, color: Colors.white, size: 20),

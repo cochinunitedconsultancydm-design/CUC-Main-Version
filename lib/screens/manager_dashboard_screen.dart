@@ -165,15 +165,19 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       final clientsCount = (clientsRes.data?.items ?? []).length;
       
       final licensesRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ClientLicenses.classType, limit: 10000, where: amplify_models.ClientLicenses.STATUS.eq('Active'), authorizationMode: APIAuthorizationType.userPools)).response;
+      debugPrint('DEBUG: licensesRes fetched');
       final licensesCount = (licensesRes.data?.items ?? []).length;
       
       final tasksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, limit: 10000, where: amplify_models.Tasks.STATUS.ne('Completed'), authorizationMode: APIAuthorizationType.userPools)).response;
+      debugPrint('DEBUG: tasksRes fetched');
       final pendingTasksCount = (tasksRes.data?.items ?? []).length;
       
       final worksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Deals.classType, limit: 10000, where: amplify_models.Deals.STAGE.ne('Completed'), authorizationMode: APIAuthorizationType.userPools)).response;
+      debugPrint('DEBUG: worksRes fetched');
       final pendingWorksCount = (worksRes.data?.items ?? []).length;
       
       final companyBillsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.CompanyBills.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools)).response;
+      debugPrint('DEBUG: companyBillsRes fetched');
 
       final now = DateTime.now();
 

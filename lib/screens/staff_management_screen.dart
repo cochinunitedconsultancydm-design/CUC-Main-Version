@@ -1419,14 +1419,17 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Staff Hub', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: -1)),
-                      const SizedBox(height: 6),
-                      Text('Manage directory and monitor live tracking', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Staff Hub', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: -1)),
+                        const SizedBox(height: 6),
+                        Text('Manage directory and monitor live tracking', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 16),
                   Container(
                     width: 320,
                     height: 48,

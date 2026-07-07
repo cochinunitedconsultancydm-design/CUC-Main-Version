@@ -357,20 +357,20 @@ class Users extends amplify_core.Model {
   
   Map<String, dynamic> toJson() => {
     'id': id, 'username': _username, 'password': _password, 'role': _role, 'name': _name, 'created_at': _created_at, 'last_seen': _last_seen, 'email': _email,
-    'designation': _designation,
-    'personal_phone': _personal_phone,
-    'aadhar_card': _aadhar_card,
-    'driving_license': _driving_license,
-    'insurance': _insurance,
-    'emergency_contact': _emergency_contact,
-    'offer_letter': _offer_letter,
-    'dob': _dob,
-    'salary': _salary,
-    'work_time': _work_time,
-    'blood_group': _blood_group,
-    'personal_email': _personal_email,
-    'company_email': _company_email,
-    'company_phone': _company_phone, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
+//     'designation': _designation,
+//     'personal_phone': _personal_phone,
+//     'aadhar_card': _aadhar_card,
+//     'driving_license': _driving_license,
+//     'insurance': _insurance,
+//     'emergency_contact': _emergency_contact,
+//     'offer_letter': _offer_letter,
+//     'dob': _dob,
+//     'salary': _salary,
+//     'work_time': _work_time,
+//     'blood_group': _blood_group,
+//     'personal_email': _personal_email,
+//     'company_email': _company_email,
+     'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
   };
   
   Map<String, Object?> toMap() => {
@@ -382,20 +382,20 @@ class Users extends amplify_core.Model {
     'created_at': _created_at,
     'last_seen': _last_seen,
     'email': _email,
-    'designation': _designation,
-    'personal_phone': _personal_phone,
-    'aadhar_card': _aadhar_card,
-    'driving_license': _driving_license,
-    'insurance': _insurance,
-    'emergency_contact': _emergency_contact,
-    'offer_letter': _offer_letter,
-    'dob': _dob,
-    'salary': _salary,
-    'work_time': _work_time,
-    'blood_group': _blood_group,
-    'personal_email': _personal_email,
-    'company_email': _company_email,
-    'company_phone': _company_phone,
+//     'designation': _designation,
+//     'personal_phone': _personal_phone,
+//     'aadhar_card': _aadhar_card,
+//     'driving_license': _driving_license,
+//     'insurance': _insurance,
+//     'emergency_contact': _emergency_contact,
+//     'offer_letter': _offer_letter,
+//     'dob': _dob,
+//     'salary': _salary,
+//     'work_time': _work_time,
+//     'blood_group': _blood_group,
+//     'personal_email': _personal_email,
+//     'company_email': _company_email,
+//     
     'createdAt': _createdAt,
     'updatedAt': _updatedAt
   };
@@ -409,20 +409,20 @@ class Users extends amplify_core.Model {
   static final CREATED_AT = amplify_core.QueryField(fieldName: "created_at");
   static final LAST_SEEN = amplify_core.QueryField(fieldName: "last_seen");
   static final EMAIL = amplify_core.QueryField(fieldName: "email");
-//   static final DESIGNATION = amplify_core.QueryField(fieldName: "designation");
-//   static final PERSONAL_PHONE = amplify_core.QueryField(fieldName: "personal_phone");
-//   static final AADHAR_CARD = amplify_core.QueryField(fieldName: "aadhar_card");
-//   static final DRIVING_LICENSE = amplify_core.QueryField(fieldName: "driving_license");
-//   static final INSURANCE = amplify_core.QueryField(fieldName: "insurance");
-//   static final EMERGENCY_CONTACT = amplify_core.QueryField(fieldName: "emergency_contact");
-//   static final OFFER_LETTER = amplify_core.QueryField(fieldName: "offer_letter");
-//   static final DOB = amplify_core.QueryField(fieldName: "dob");
-//   static final SALARY = amplify_core.QueryField(fieldName: "salary");
-//   static final WORK_TIME = amplify_core.QueryField(fieldName: "work_time");
-//   static final BLOOD_GROUP = amplify_core.QueryField(fieldName: "blood_group");
-//   static final PERSONAL_EMAIL = amplify_core.QueryField(fieldName: "personal_email");
-//   static final COMPANY_EMAIL = amplify_core.QueryField(fieldName: "company_email");
-//   static final COMPANY_PHONE = amplify_core.QueryField(fieldName: "company_phone");
+// //   static final DESIGNATION = amplify_core.QueryField(fieldName: "designation");
+// //   static final PERSONAL_PHONE = amplify_core.QueryField(fieldName: "personal_phone");
+// //   static final AADHAR_CARD = amplify_core.QueryField(fieldName: "aadhar_card");
+// //   static final DRIVING_LICENSE = amplify_core.QueryField(fieldName: "driving_license");
+// //   static final INSURANCE = amplify_core.QueryField(fieldName: "insurance");
+// //   static final EMERGENCY_CONTACT = amplify_core.QueryField(fieldName: "emergency_contact");
+// //   static final OFFER_LETTER = amplify_core.QueryField(fieldName: "offer_letter");
+// //   static final DOB = amplify_core.QueryField(fieldName: "dob");
+// //   static final SALARY = amplify_core.QueryField(fieldName: "salary");
+// //   static final WORK_TIME = amplify_core.QueryField(fieldName: "work_time");
+// //   static final BLOOD_GROUP = amplify_core.QueryField(fieldName: "blood_group");
+// //   static final PERSONAL_EMAIL = amplify_core.QueryField(fieldName: "personal_email");
+// //   static final COMPANY_EMAIL = amplify_core.QueryField(fieldName: "company_email");
+// //   static final COMPANY_PHONE = amplify_core.QueryField(fieldName: "company_phone");
   static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
     modelSchemaDefinition.name = "Users";
     modelSchemaDefinition.pluralName = "Users";
@@ -485,77 +485,77 @@ class Users extends amplify_core.Model {
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
     ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.DESIGNATION,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.PERSONAL_PHONE,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.AADHAR_CARD,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.DRIVING_LICENSE,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.INSURANCE,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.EMERGENCY_CONTACT,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.OFFER_LETTER,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.DOB,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.SALARY,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.WORK_TIME,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.BLOOD_GROUP,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.PERSONAL_EMAIL,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.COMPANY_EMAIL,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-//       key: Users.COMPANY_PHONE,
-//       isRequired: false,
-//       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-//       ));
-//     
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.DESIGNATION,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.PERSONAL_PHONE,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.AADHAR_CARD,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.DRIVING_LICENSE,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.INSURANCE,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.EMERGENCY_CONTACT,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.OFFER_LETTER,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.DOB,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.SALARY,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.WORK_TIME,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.BLOOD_GROUP,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.PERSONAL_EMAIL,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.COMPANY_EMAIL,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+// //       key: Users.COMPANY_PHONE,
+// //       isRequired: false,
+// //       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+// //       ));
+// //     
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
       fieldName: 'createdAt',
       isRequired: false,

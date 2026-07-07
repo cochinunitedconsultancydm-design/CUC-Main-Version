@@ -60,6 +60,10 @@ class SupabaseBackupService {
         ..remove('createdAt')
         ..remove('updatedAt');
 
+      if (modelName == 'Users' && cleanData['password'] == null) {
+        cleanData['password'] = 'managed_by_cognito';
+      }
+
       // Convert ID to int if it's a numeric string (Supabase uses int IDs)
       if (cleanData['id'] != null) {
         final idVal = int.tryParse(cleanData['id'].toString());
@@ -71,8 +75,13 @@ class SupabaseBackupService {
         }
       }
 
+      String url = '$_supabaseUrl/rest/v1/$table';
+      if (modelName == 'Users') {
+        url += '?on_conflict=username';
+      }
+
       final response = await http.post(
-        Uri.parse('$_supabaseUrl/rest/v1/$table'),
+        Uri.parse(url),
         headers: _headers,
         body: jsonEncode(cleanData),
       );
@@ -100,6 +109,11 @@ class SupabaseBackupService {
           ..remove('__typename')
           ..remove('createdAt')
           ..remove('updatedAt');
+        
+        if (modelName == 'Users' && clean['password'] == null) {
+          clean['password'] = 'managed_by_cognito';
+        }
+
         if (clean['id'] != null) {
           final idVal = int.tryParse(clean['id'].toString());
           if (idVal != null) {
@@ -111,8 +125,13 @@ class SupabaseBackupService {
         return clean;
       }).toList();
 
+      String url = '$_supabaseUrl/rest/v1/$table';
+      if (modelName == 'Users') {
+        url += '?on_conflict=username';
+      }
+
       final response = await http.post(
-        Uri.parse('$_supabaseUrl/rest/v1/$table'),
+        Uri.parse(url),
         headers: _headers,
         body: jsonEncode(cleanRecords),
       );

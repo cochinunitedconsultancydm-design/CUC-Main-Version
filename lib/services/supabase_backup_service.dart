@@ -51,7 +51,7 @@ class SupabaseBackupService {
     'activity_logs': ['id', 'username', 'action', 'details', 'timestamp', 'data'],
     'inward_posts': ['id', 'date', 'from_whom', 'to_whom', 'subject', 'reference_no', 'data'],
     'user_sessions': ['id', 'username', 'session_start', 'session_end', 'duration', 'data'],
-    'notifications': ['id', 'title', 'message', 'recipient', 'read', 'created_at', 'data'],
+    'notifications': ['id', 'user_id', 'title', 'message', 'type', 'is_read', 'created_at', 'deal_id', 'task_id', 'data'],
     'client_licenses': ['id', 'client_name', 'license_type', 'license_number', 'issue_date', 'expiry_date', 'status', 'data'],
     'license_types': ['id', 'name', 'description', 'data'],
     'license_billing': ['id', 'client_name', 'license_type', 'amount', 'date', 'status', 'data'],

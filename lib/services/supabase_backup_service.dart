@@ -36,8 +36,27 @@ class SupabaseBackupService {
     'Contacts': 'contacts',
   };
 
-  /// Cached column names per table, discovered from Supabase at runtime.
-  final Map<String, Set<String>> _columnCache = {};
+
+  /// Known columns per Supabase table — only these fields will be sent.
+  /// This prevents 400 errors when DynamoDB has fields that Supabase doesn't.
+  static const Map<String, List<String>> _knownColumns = {
+    'users': ['id', 'username', 'password', 'role', 'name', 'created_at', 'last_seen', 'email'],
+    'clients': ['id', 'name', 'email', 'phone', 'address', 'city', 'state', 'pincode', 'gst', 'pan', 'category', 'status', 'created_at', 'assigned_to', 'company_name', 'data'],
+    'billings': ['id', 'client_name', 'invoice_no', 'date', 'amount', 'type', 'category', 'authorities', 'status', 'created_at', 'data'],
+    'tasks': ['id', 'title', 'description', 'assigned_to', 'assigned_by', 'status', 'priority', 'due_date', 'created_at', 'client_name', 'data'],
+    'deals': ['id', 'title', 'client_name', 'stage', 'value', 'assigned_to', 'created_at', 'expected_close_date', 'data', 'status'],
+    'messages': ['id', 'sender', 'receiver', 'content', 'timestamp', 'read', 'data'],
+    'staff_attendance': ['id', 'username', 'date', 'check_in', 'check_out', 'status', 'data'],
+    'client_documents': ['id', 'client_name', 'document_name', 'file_url', 'uploaded_by', 'uploaded_at', 'data'],
+    'activity_logs': ['id', 'username', 'action', 'details', 'timestamp', 'data'],
+    'inward_posts': ['id', 'date', 'from_whom', 'to_whom', 'subject', 'reference_no', 'data'],
+    'user_sessions': ['id', 'username', 'session_start', 'session_end', 'duration', 'data'],
+    'notifications': ['id', 'title', 'message', 'recipient', 'read', 'created_at', 'data'],
+    'client_licenses': ['id', 'client_name', 'license_type', 'license_number', 'issue_date', 'expiry_date', 'status', 'data'],
+    'license_types': ['id', 'name', 'description', 'data'],
+    'license_billing': ['id', 'client_name', 'license_type', 'amount', 'date', 'status', 'data'],
+    'contacts': ['id', 'name', 'email', 'phone', 'company', 'designation', 'data'],
+  };
 
   Map<String, String> get _headers => {
         'apikey': _supabaseKey,
@@ -46,36 +65,14 @@ class SupabaseBackupService {
         'Prefer': 'resolution=merge-duplicates',
       };
 
-  /// Discover valid column names for a table by fetching one row.
-  Future<Set<String>> _getColumns(String table) async {
-    if (_columnCache.containsKey(table)) return _columnCache[table]!;
-    try {
-      final response = await http.get(
-        Uri.parse('$_supabaseUrl/rest/v1/$table?select=*&limit=1'),
-        headers: {'apikey': _supabaseKey, 'Authorization': 'Bearer $_supabaseKey'},
-      ).timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200) {
-        final List<dynamic> rows = json.decode(response.body);
-        if (rows.isNotEmpty && rows.first is Map) {
-          final cols = (rows.first as Map<String, dynamic>).keys.toSet();
-          _columnCache[table] = cols;
-          return cols;
-        }
-      }
-    } catch (e) {
-      debugPrint('Supabase column discovery error for $table: $e');
-    }
-    // Fallback: return empty set (will skip filtering)
-    return {};
-  }
-
   /// Filter data to only include columns that exist in the Supabase table.
-  Map<String, dynamic> _filterColumns(Map<String, dynamic> data, Set<String> validColumns) {
-    if (validColumns.isEmpty) return data; // No schema info, send as-is
+  Map<String, dynamic> _filterToKnownColumns(String table, Map<String, dynamic> data) {
+    final known = _knownColumns[table];
+    if (known == null) return data; // No whitelist, send as-is
     final filtered = <String, dynamic>{};
-    for (final entry in data.entries) {
-      if (validColumns.contains(entry.key)) {
-        filtered[entry.key] = entry.value;
+    for (final key in known) {
+      if (data.containsKey(key)) {
+        filtered[key] = data[key];
       }
     }
     return filtered;
@@ -114,8 +111,7 @@ class SupabaseBackupService {
       }
 
       // Filter to only include columns that exist in the Supabase table
-      final validCols = await _getColumns(table);
-      final filteredData = _filterColumns(cleanData, validCols);
+      final filteredData = _filterToKnownColumns(table, cleanData);
 
       String url = '$_supabaseUrl/rest/v1/$table';
       if (modelName == 'Users') {
@@ -168,8 +164,7 @@ class SupabaseBackupService {
       }).toList();
 
       // Filter to only include columns that exist in the Supabase table
-      final validCols = await _getColumns(table);
-      final filteredRecords = cleanRecords.map((r) => _filterColumns(r, validCols)).toList();
+      final filteredRecords = cleanRecords.map((r) => _filterToKnownColumns(table, r)).toList();
 
       String url = '$_supabaseUrl/rest/v1/$table';
       if (modelName == 'Users') {

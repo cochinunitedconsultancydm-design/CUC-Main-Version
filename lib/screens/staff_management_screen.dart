@@ -58,8 +58,8 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     try {
       final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
-      if (uRes.hasErrors || (uRes.data?.items.isEmpty ?? true)) {
-        throw Exception('Schema mismatch or empty database. Forcing local test data fallback.');
+      if (uRes.hasErrors) {
+        _msg('GraphQL Errors: ${uRes.errors.map((e) => e.message).join(", ")}', false);
       }
       var usersResRaw = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
       

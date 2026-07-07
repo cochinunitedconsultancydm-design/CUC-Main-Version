@@ -32,6 +32,8 @@ class ServiceContent extends amplify_core.Model {
   final String? _description;
   final String? _image_path;
   final String? _details;
+  final String? _pdf_url;
+  final String? _previous_case_id;
   final amplify_core.TemporalDateTime? _createdAt;
   final amplify_core.TemporalDateTime? _updatedAt;
 
@@ -68,6 +70,14 @@ class ServiceContent extends amplify_core.Model {
     return _details;
   }
   
+  String? get pdf_url {
+    return _pdf_url;
+  }
+  
+  String? get previous_case_id {
+    return _previous_case_id;
+  }
+  
   amplify_core.TemporalDateTime? get createdAt {
     return _createdAt;
   }
@@ -76,16 +86,18 @@ class ServiceContent extends amplify_core.Model {
     return _updatedAt;
   }
   
-  const ServiceContent._internal({required this.id, service_id, title, description, image_path, details, createdAt, updatedAt}): _service_id = service_id, _title = title, _description = description, _image_path = image_path, _details = details, _createdAt = createdAt, _updatedAt = updatedAt;
+  const ServiceContent._internal({required this.id, service_id, title, description, image_path, details, pdf_url, previous_case_id, createdAt, updatedAt}): _service_id = service_id, _title = title, _description = description, _image_path = image_path, _details = details, _pdf_url = pdf_url, _previous_case_id = previous_case_id, _createdAt = createdAt, _updatedAt = updatedAt;
   
-  factory ServiceContent({String? id, int? service_id, String? title, String? description, String? image_path, String? details}) {
+  factory ServiceContent({String? id, int? service_id, String? title, String? description, String? image_path, String? details, String? pdf_url, String? previous_case_id}) {
     return ServiceContent._internal(
       id: id == null ? amplify_core.UUID.getUUID() : id,
       service_id: service_id,
       title: title,
       description: description,
       image_path: image_path,
-      details: details);
+      details: details,
+      pdf_url: pdf_url,
+      previous_case_id: previous_case_id);
   }
   
   bool equals(Object other) {
@@ -101,7 +113,9 @@ class ServiceContent extends amplify_core.Model {
       _title == other._title &&
       _description == other._description &&
       _image_path == other._image_path &&
-      _details == other._details;
+      _details == other._details &&
+      _pdf_url == other._pdf_url &&
+      _previous_case_id == other._previous_case_id;
   }
   
   @override
@@ -118,6 +132,8 @@ class ServiceContent extends amplify_core.Model {
     buffer.write("description=" + "$_description" + ", ");
     buffer.write("image_path=" + "$_image_path" + ", ");
     buffer.write("details=" + "$_details" + ", ");
+    buffer.write("pdf_url=" + "$_pdf_url" + ", ");
+    buffer.write("previous_case_id=" + "$_previous_case_id" + ", ");
     buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
     buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
     buffer.write("}");
@@ -125,14 +141,16 @@ class ServiceContent extends amplify_core.Model {
     return buffer.toString();
   }
   
-  ServiceContent copyWith({int? service_id, String? title, String? description, String? image_path, String? details}) {
+  ServiceContent copyWith({int? service_id, String? title, String? description, String? image_path, String? details, String? pdf_url, String? previous_case_id}) {
     return ServiceContent._internal(
       id: id,
       service_id: service_id ?? this.service_id,
       title: title ?? this.title,
       description: description ?? this.description,
       image_path: image_path ?? this.image_path,
-      details: details ?? this.details);
+      details: details ?? this.details,
+      pdf_url: pdf_url ?? this.pdf_url,
+      previous_case_id: previous_case_id ?? this.previous_case_id);
   }
   
   ServiceContent copyWithModelFieldValues({
@@ -140,7 +158,9 @@ class ServiceContent extends amplify_core.Model {
     ModelFieldValue<String?>? title,
     ModelFieldValue<String?>? description,
     ModelFieldValue<String?>? image_path,
-    ModelFieldValue<String?>? details
+    ModelFieldValue<String?>? details,
+    ModelFieldValue<String?>? pdf_url,
+    ModelFieldValue<String?>? previous_case_id
   }) {
     return ServiceContent._internal(
       id: id,
@@ -148,7 +168,9 @@ class ServiceContent extends amplify_core.Model {
       title: title == null ? this.title : title.value,
       description: description == null ? this.description : description.value,
       image_path: image_path == null ? this.image_path : image_path.value,
-      details: details == null ? this.details : details.value
+      details: details == null ? this.details : details.value,
+      pdf_url: pdf_url == null ? this.pdf_url : pdf_url.value,
+      previous_case_id: previous_case_id == null ? this.previous_case_id : previous_case_id.value
     );
   }
   
@@ -159,6 +181,8 @@ class ServiceContent extends amplify_core.Model {
       _description = json['description'],
       _image_path = json['image_path'],
       _details = json['details'],
+      _pdf_url = json['pdf_url'],
+      _previous_case_id = json['previous_case_id'],
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
       _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
   
@@ -173,7 +197,9 @@ class ServiceContent extends amplify_core.Model {
     'description': _description,
     'image_path': _image_path,
     'details': _details,
-    'createdAt': _createdAt,
+    'pdf_url': _pdf_url,
+    'previous_case_id': _previous_case_id,
+    'createdAt': _createdAt?.format(),
     'updatedAt': _updatedAt
   };
 
@@ -184,6 +210,8 @@ class ServiceContent extends amplify_core.Model {
   static final DESCRIPTION = amplify_core.QueryField(fieldName: "description");
   static final IMAGE_PATH = amplify_core.QueryField(fieldName: "image_path");
   static final DETAILS = amplify_core.QueryField(fieldName: "details");
+  static final PDF_URL = amplify_core.QueryField(fieldName: "pdf_url");
+  static final PREVIOUS_CASE_ID = amplify_core.QueryField(fieldName: "previous_case_id");
   static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
     modelSchemaDefinition.name = "ServiceContent";
     modelSchemaDefinition.pluralName = "ServiceContents";
@@ -231,6 +259,18 @@ class ServiceContent extends amplify_core.Model {
     
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: ServiceContent.DETAILS,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ServiceContent.PDF_URL,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: ServiceContent.PREVIOUS_CASE_ID,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
     ));

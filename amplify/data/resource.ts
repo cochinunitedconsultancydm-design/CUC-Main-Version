@@ -60,6 +60,8 @@ const schema = a.schema({
     description: a.string(),
     image_path: a.string(),
     details: a.string(),
+    pdf_url: a.string(),
+    previous_case_id: a.string(),
   }).authorization((allow) => [allow.authenticated()]),
   Sops: a.model({
     id: a.id().required(),

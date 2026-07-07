@@ -95,59 +95,58 @@ class Users extends amplify_core.Model {
   String? get designation {
     return _designation;
   }
-
+  
   String? get personal_phone {
     return _personal_phone;
   }
-
+  
   String? get aadhar_card {
     return _aadhar_card;
   }
-
+  
   String? get driving_license {
     return _driving_license;
   }
-
+  
   String? get insurance {
     return _insurance;
   }
-
+  
   String? get emergency_contact {
     return _emergency_contact;
   }
-
+  
   String? get offer_letter {
     return _offer_letter;
   }
-
+  
   String? get dob {
     return _dob;
   }
-
+  
   String? get salary {
     return _salary;
   }
-
+  
   String? get work_time {
     return _work_time;
   }
-
+  
   String? get blood_group {
     return _blood_group;
   }
-
+  
   String? get personal_email {
     return _personal_email;
   }
-
+  
   String? get company_email {
     return _company_email;
   }
-
+  
   String? get company_phone {
     return _company_phone;
   }
-
   
   amplify_core.TemporalDateTime? get createdAt {
     return _createdAt;
@@ -200,21 +199,21 @@ class Users extends amplify_core.Model {
       _name == other._name &&
       _created_at == other._created_at &&
       _last_seen == other._last_seen &&
-      _email == other._email
-      && _designation == other._designation
-      && _personal_phone == other._personal_phone
-      && _aadhar_card == other._aadhar_card
-      && _driving_license == other._driving_license
-      && _insurance == other._insurance
-      && _emergency_contact == other._emergency_contact
-      && _offer_letter == other._offer_letter
-      && _dob == other._dob
-      && _salary == other._salary
-      && _work_time == other._work_time
-      && _blood_group == other._blood_group
-      && _personal_email == other._personal_email
-      && _company_email == other._company_email
-      && _company_phone == other._company_phone;
+      _email == other._email &&
+      _designation == other._designation &&
+      _personal_phone == other._personal_phone &&
+      _aadhar_card == other._aadhar_card &&
+      _driving_license == other._driving_license &&
+      _insurance == other._insurance &&
+      _emergency_contact == other._emergency_contact &&
+      _offer_letter == other._offer_letter &&
+      _dob == other._dob &&
+      _salary == other._salary &&
+      _work_time == other._work_time &&
+      _blood_group == other._blood_group &&
+      _personal_email == other._personal_email &&
+      _company_email == other._company_email &&
+      _company_phone == other._company_phone;
   }
   
   @override
@@ -356,21 +355,7 @@ class Users extends amplify_core.Model {
       _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
   
   Map<String, dynamic> toJson() => {
-    'id': id, 'username': _username, 'password': _password, 'role': _role, 'name': _name, 'created_at': _created_at, 'last_seen': _last_seen, 'email': _email,
-    'designation': _designation,
-    'personal_phone': _personal_phone,
-    'aadhar_card': _aadhar_card,
-    'driving_license': _driving_license,
-    'insurance': _insurance,
-    'emergency_contact': _emergency_contact,
-    'offer_letter': _offer_letter,
-    'dob': _dob,
-    'salary': _salary,
-    'work_time': _work_time,
-    'blood_group': _blood_group,
-    'personal_email': _personal_email,
-    'company_email': _company_email,
-    'company_phone': _company_phone, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
+    'id': id, 'username': _username, 'password': _password, 'role': _role, 'name': _name, 'created_at': _created_at, 'last_seen': _last_seen, 'email': _email, 'designation': _designation, 'personal_phone': _personal_phone, 'aadhar_card': _aadhar_card, 'driving_license': _driving_license, 'insurance': _insurance, 'emergency_contact': _emergency_contact, 'offer_letter': _offer_letter, 'dob': _dob, 'salary': _salary, 'work_time': _work_time, 'blood_group': _blood_group, 'personal_email': _personal_email, 'company_email': _company_email, 'company_phone': _company_phone, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
   };
   
   Map<String, Object?> toMap() => {
@@ -485,76 +470,90 @@ class Users extends amplify_core.Model {
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
     ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.DESIGNATION,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.PERSONAL_PHONE,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.AADHAR_CARD,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.DRIVING_LICENSE,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.INSURANCE,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.EMERGENCY_CONTACT,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.OFFER_LETTER,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.DOB,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.SALARY,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.WORK_TIME,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.BLOOD_GROUP,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.PERSONAL_EMAIL,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.COMPANY_EMAIL,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
+    
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.COMPANY_PHONE,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
+    ));
     
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
       fieldName: 'createdAt',

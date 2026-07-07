@@ -40,7 +40,7 @@ class SupabaseBackupService {
   /// Known columns per Supabase table — only these fields will be sent.
   /// This prevents 400 errors when DynamoDB has fields that Supabase doesn't.
   static const Map<String, List<String>> _knownColumns = {
-    'users': ['id', 'username', 'password', 'role', 'name', 'created_at', 'last_seen', 'email'],
+    'users': ['id', 'username', 'password', 'role', 'name', 'created_at', 'last_seen', 'email', 'wedding_anniversary'],
     'clients': ['id', 'name', 'email', 'phone', 'address', 'city', 'state', 'pincode', 'gst', 'pan', 'category', 'status', 'created_at', 'assigned_to', 'company_name', 'data'],
     'billings': ['id', 'client_name', 'invoice_no', 'date', 'amount', 'type', 'category', 'authorities', 'status', 'created_at', 'data'],
     'tasks': ['id', 'title', 'description', 'assigned_to', 'assigned_by', 'status', 'priority', 'due_date', 'created_at', 'client_name', 'data'],

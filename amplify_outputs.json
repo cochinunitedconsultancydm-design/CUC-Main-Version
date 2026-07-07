@@ -1,9 +1,9 @@
 {
   "auth": {
-    "user_pool_id": "ap-south-1_nPbNyXUnX",
-    "aws_region": "ap-south-1",
-    "user_pool_client_id": "15fjocunv8ej67qbv1cb7gsq02",
-    "identity_pool_id": "ap-south-1:a2b2af0d-d48b-4bf7-a7e0-33f5ac1a7541",
+    "user_pool_id": "ap-south-2_bXrQoOs7X",
+    "aws_region": "ap-south-2",
+    "user_pool_client_id": "6k35o01b0df4nslk964ge4chpr",
+    "identity_pool_id": "ap-south-2:a45380da-446d-4aa7-9ea4-afddff902464",
     "mfa_methods": [],
     "standard_required_attributes": [
       "email"
@@ -26,8 +26,8 @@
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://qz4fcne5d5eszmucr5o4hhkizi.appsync-api.ap-south-1.amazonaws.com/graphql",
-    "aws_region": "ap-south-1",
+    "url": "https://3xeyklniwzfrrotebcdjtxqura.appsync-api.ap-south-2.amazonaws.com/graphql",
+    "aws_region": "ap-south-2",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": [
       "AWS_IAM"
@@ -3082,6 +3082,13 @@
               "isRequired": false,
               "attributes": []
             },
+            "wedding_anniversary": {
+              "name": "wedding_anniversary",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
             "personal_email": {
               "name": "personal_email",
               "isArray": false,
@@ -4004,13 +4011,13 @@
     }
   },
   "storage": {
-    "aws_region": "ap-south-1",
-    "bucket_name": "amplify-d2vemu3lyp451b-ma-clientfilesbucket5d3f5cb-jrikjkvthbom",
+    "aws_region": "ap-south-2",
+    "bucket_name": "amplify-legal-admin-sandb-clientfilesbucket5d3f5cb-isqb3srlrixr",
     "buckets": [
       {
         "name": "clientFiles",
-        "bucket_name": "amplify-d2vemu3lyp451b-ma-clientfilesbucket5d3f5cb-jrikjkvthbom",
-        "aws_region": "ap-south-1",
+        "bucket_name": "amplify-legal-admin-sandb-clientfilesbucket5d3f5cb-isqb3srlrixr",
+        "aws_region": "ap-south-2",
         "paths": {
           "public/*": {
             "authenticated": [

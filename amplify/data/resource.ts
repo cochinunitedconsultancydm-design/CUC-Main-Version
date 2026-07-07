@@ -293,6 +293,7 @@ const schema = a.schema({
     salary: a.string(),
     work_time: a.string(),
     blood_group: a.string(),
+    wedding_anniversary: a.string(),
     personal_email: a.string(),
     company_email: a.string(),
     company_phone: a.string(),

@@ -126,6 +126,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           'salary': u.salary,
           'work_time': u.work_time,
           'blood_group': u.blood_group,
+          'wedding_anniversary': u.wedding_anniversary,
           'personal_email': u.personal_email,
           'company_email': u.company_email,
           'company_phone': u.company_phone,
@@ -161,6 +162,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
             'designation': 'Support Staff',
             'company_phone': 'Ext 102',
             'blood_group': 'O+',
+            'wedding_anniversary': '2015-05-20',
           }
         ];
       });
@@ -292,6 +294,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                         const Text('Personal Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                         const SizedBox(height: 16),
                         detailRow(Icons.cake, 'Date of Birth', user['dob']),
+                        detailRow(Icons.favorite, 'Wedding Anniversary', user['wedding_anniversary']),
                         detailRow(Icons.bloodtype, 'Blood Group', user['blood_group']),
                         detailRow(Icons.phone_android, 'Personal Phone', user['personal_phone']),
                         detailRow(Icons.mail_outline, 'Personal Email', user['personal_email']),
@@ -343,6 +346,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     final emergencyContact = TextEditingController(text: user?['emergency_contact']);
     final offerLetter = TextEditingController(text: user?['offer_letter']);
     final dob = TextEditingController(text: user?['dob']);
+    final weddingAnniversary = TextEditingController(text: user?['wedding_anniversary']);
     final salary = TextEditingController(text: user?['salary']);
     final workTime = TextEditingController(text: user?['work_time']);
     final bloodGroup = TextEditingController(text: user?['blood_group']);
@@ -560,12 +564,16 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                           TextField(controller: dob, decoration: inputDec('Date of Birth', Icons.cake), maxLength: 50),
                         ]),
                         buildRow([
+                          TextField(controller: weddingAnniversary, decoration: inputDec('Wedding Anniversary', Icons.favorite), maxLength: 50),
                           TextField(controller: bloodGroup, decoration: inputDec('Blood Group', Icons.bloodtype), maxLength: 20),
-                          TextField(controller: personalPhone, decoration: inputDec('Personal Phone', Icons.phone_android), maxLength: 50),
                         ]),
                         buildRow([
+                          TextField(controller: personalPhone, decoration: inputDec('Personal Phone', Icons.phone_android), maxLength: 50),
                           TextField(controller: personalEmail, decoration: inputDec('Personal Email', Icons.mail_outline), maxLength: 100),
+                        ]),
+                        buildRow([
                           TextField(controller: emergencyContact, decoration: inputDec('Emergency Contact', Icons.contact_emergency), maxLength: 100),
+                          const SizedBox(),
                         ]),
 
                         sectionHeader('Employment Details', Icons.work),
@@ -677,6 +685,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                                 salary: salary.text.isNotEmpty ? salary.text : null,
                                 work_time: workTime.text.isNotEmpty ? workTime.text : null,
                                 blood_group: bloodGroup.text.isNotEmpty ? bloodGroup.text : null,
+                                wedding_anniversary: weddingAnniversary.text.isNotEmpty ? weddingAnniversary.text : null,
                                 personal_email: personalEmail.text.isNotEmpty ? personalEmail.text : null,
                                 company_email: companyEmail.text.isNotEmpty ? companyEmail.text : null,
                                 company_phone: companyPhone.text.isNotEmpty ? companyPhone.text : null,
@@ -704,6 +713,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                                   salary: salary.text,
                                   work_time: workTime.text,
                                   blood_group: bloodGroup.text,
+                                  wedding_anniversary: weddingAnniversary.text,
                                   personal_email: personalEmail.text,
                                   company_email: companyEmail.text,
                                   company_phone: companyPhone.text,

@@ -41,6 +41,7 @@ import '../services/inward_post_service.dart';
 import 'client_files_screen.dart';
 import 'inward_post_screen.dart';
 import '../services/checklist_service.dart';
+import 'office_details_screen.dart';
 
 import 'travel_log_screen.dart';
 import '../widgets/upcoming_reminders_widget.dart';
@@ -536,6 +537,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 _sidebarItem(19, Icons.cloud_sync, 'Google Docs Vault', isWide),
                 _sidebarItem(20, Icons.history_rounded, 'Verification History', isWide),
                 _sidebarItem(21, Icons.real_estate_agent_rounded, 'Property Management', isWide),
+                _sidebarItem(27, Icons.business_rounded, 'Office Details', isWide),
                 _sidebarItem(7, Icons.settings_rounded, 'Settings', isWide),
               ],
             ),
@@ -678,6 +680,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       case 26: return const HelpAndQueriesManagementScreen();
       case 24: return const ClientFilesScreen();
       case 23: return const SopScreen();
+      case 27: return const OfficeDetailsScreen();
       case 7: return _buildSettingsPage();
       default: return _buildPlaceholderView('Coming Soon');
     }

@@ -41,6 +41,7 @@ import 'LicenseServices.dart';
 import 'LicenseTypes.dart';
 import 'Messages.dart';
 import 'Notifications.dart';
+import 'OfficeLocations.dart';
 import 'Properties.dart';
 import 'ServiceContent.dart';
 import 'ServiceNames.dart';
@@ -73,6 +74,7 @@ export 'LicenseServices.dart';
 export 'LicenseTypes.dart';
 export 'Messages.dart';
 export 'Notifications.dart';
+export 'OfficeLocations.dart';
 export 'Properties.dart';
 export 'ServiceContent.dart';
 export 'ServiceNames.dart';
@@ -88,7 +90,7 @@ class ModelProvider implements amplify_core.ModelProviderInterface {
   @override
   String version = "08744a9632e53b8c2db797be587bc77b";
   @override
-  List<amplify_core.ModelSchema> modelSchemas = [ActivityLogs.schema, Billings.schema, Checklists.schema, ClientDocuments.schema, ClientLicenses.schema, Clients.schema, CompanyBills.schema, Contacts.schema, DealActivities.schema, DealAssignees.schema, DealHandoverHistory.schema, DealStageHistory.schema, Deals.schema, DscRecords.schema, InwardPosts.schema, LicenseBilling.schema, LicenseNotifications.schema, LicenseServices.schema, LicenseTypes.schema, Messages.schema, Notifications.schema, Properties.schema, ServiceContent.schema, ServiceNames.schema, Sops.schema, StaffAttendance.schema, SysCronLogs.schema, Tasks.schema, TravelLogs.schema, UserSessions.schema, Users.schema];
+  List<amplify_core.ModelSchema> modelSchemas = [ActivityLogs.schema, Billings.schema, Checklists.schema, ClientDocuments.schema, ClientLicenses.schema, Clients.schema, CompanyBills.schema, Contacts.schema, DealActivities.schema, DealAssignees.schema, DealHandoverHistory.schema, DealStageHistory.schema, Deals.schema, DscRecords.schema, InwardPosts.schema, LicenseBilling.schema, LicenseNotifications.schema, LicenseServices.schema, LicenseTypes.schema, Messages.schema, Notifications.schema, OfficeLocations.schema, Properties.schema, ServiceContent.schema, ServiceNames.schema, Sops.schema, StaffAttendance.schema, SysCronLogs.schema, Tasks.schema, TravelLogs.schema, UserSessions.schema, Users.schema];
   @override
   List<amplify_core.ModelSchema> customTypeSchemas = [];
   static final ModelProvider _instance = ModelProvider();
@@ -139,6 +141,8 @@ class ModelProvider implements amplify_core.ModelProviderInterface {
         return Messages.classType;
       case "Notifications":
         return Notifications.classType;
+      case "OfficeLocations":
+        return OfficeLocations.classType;
       case "Properties":
         return Properties.classType;
       case "ServiceContent":

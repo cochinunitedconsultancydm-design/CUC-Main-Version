@@ -36,6 +36,7 @@ import 'verification_history_view.dart';
 import 'property_management_screen.dart';
 import '../widgets/add_license_dialog.dart';
 import 'company_bill_management_screen.dart';
+import 'office_details_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -446,6 +447,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _sidebarItem(22, Icons.handshake_rounded, 'File Acknowledgement', isWide),
                 _sidebarItem(20, Icons.history_rounded, 'Verification History', isWide),
                 _sidebarItem(21, Icons.real_estate_agent_rounded, 'Property Management', isWide),
+                _sidebarItem(27, Icons.business_rounded, 'Office Details', isWide),
               ],
             ),
           ),
@@ -572,6 +574,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 25: return const ContactBookScreen();
       case 26: return const HelpAndQueriesManagementScreen();
       case 23: return const SopScreen();
+      case 27: return const OfficeDetailsScreen();
       default: return _buildPlaceholderView('Coming Soon');
     }
   }

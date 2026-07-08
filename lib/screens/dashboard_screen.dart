@@ -43,6 +43,7 @@ import '../models/billing.dart';
 import '../utils/number_to_words.dart';
 import 'checklist_screen.dart';
 import '../services/checklist_service.dart';
+import 'office_details_screen.dart';
 import '../widgets/upcoming_deadlines_widget.dart';
 import '../widgets/premium_stat_card.dart';
 import '../services/attendance_service.dart';
@@ -591,6 +592,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 20: return FileAcknowledgementScreen(currentUserRole: _userRole, currentUserName: _userName);
       case 21: return const ClientFilesScreen();
       case 22: return const HelpAndQueriesManagementScreen();
+      case 23: return const OfficeDetailsScreen();
       default: return const Center(child: Text('Page not found'));
     }
   }
@@ -671,6 +673,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _sidebarItem(17, Icons.cloud_sync, 'Google Docs Vault'),
                   _sidebarItem(18, Icons.history_rounded, 'Verification History'),
                   _sidebarItem(19, Icons.directions_car_filled_outlined, 'Travel Logs'),
+                  _sidebarItem(23, Icons.business_rounded, 'Office Details'),
                   _sidebarItem(7, Icons.settings_rounded, 'Settings'),
                 ],
               ),

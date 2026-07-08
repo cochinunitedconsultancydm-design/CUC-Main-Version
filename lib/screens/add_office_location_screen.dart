@@ -7,7 +7,8 @@ import '../models/OfficeLocations.dart';
 import '../services/office_location_service.dart';
 
 class AddOfficeLocationScreen extends StatefulWidget {
-  const AddOfficeLocationScreen({super.key});
+  final OfficeLocations? existingLocation;
+  const AddOfficeLocationScreen({super.key, this.existingLocation});
 
   @override
   State<AddOfficeLocationScreen> createState() => _AddOfficeLocationScreenState();
@@ -35,7 +36,41 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
   bool _isLoading = false;
   final OfficeLocationService _service = OfficeLocationService();
 
+  // For retaining old photos
+  String? _existingFrontViews;
+  String? _existingDesignations;
+  String? _existingNotices;
+  String? _existingOthers;
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingLocation != null) {
+      final loc = widget.existingLocation!;
+      _nameController.text = loc.name ?? '';
+      _placeController.text = loc.place ?? '';
+      _linkController.text = loc.location_link ?? '';
+      
+      if (loc.office_phone_numbers != null && loc.office_phone_numbers!.isNotEmpty) {
+        try {
+          final List list = jsonDecode(loc.office_phone_numbers!);
+          _officePhones = list.map((e) => Map<String, String>.from(e)).toList();
+        } catch (_) {}
+      }
+      
+      if (loc.officers_contacts != null && loc.officers_contacts!.isNotEmpty) {
+        try {
+          final List list = jsonDecode(loc.officers_contacts!);
+          _officers = list.map((e) => Map<String, String>.from(e)).toList();
+        } catch (_) {}
+      }
+
+      _existingFrontViews = loc.front_view_photo;
+      _existingDesignations = loc.designation_boards_photos;
+      _existingNotices = loc.notice_boards_photos;
+      _existingOthers = loc.other_photos;
+    }
+  }
 
   Future<void> _pickMultipleImages(List<File> targetList) async {
     final result = await FilePicker.pickFiles(type: FileType.image, allowMultiple: true);
@@ -74,6 +109,20 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
     }
   }
 
+  List<String> _combinePhotos(String? existingJson, List<String> newPaths) {
+    List<String> combined = [];
+    if (existingJson != null && existingJson.isNotEmpty) {
+       try {
+         final List list = jsonDecode(existingJson);
+         // Filter out corrupted paths that were uploaded from Windows with C:/ before the fix
+         final validPaths = list.cast<String>().where((p) => !p.contains('C:/') && !p.contains('C:\\')).toList();
+         combined.addAll(validPaths);
+       } catch (_) {}
+    }
+    combined.addAll(newPaths);
+    return combined;
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     
@@ -81,44 +130,46 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
     try {
       List<String> frontViewPaths = [];
       for (var file in _frontViewPhotos) {
-        final p = await _service.uploadImage(file, 'office_locations/front_views');
+        final p = await _service.uploadImage(file, 'public/office_locations/front_views');
         if (p != null) frontViewPaths.add(p);
       }
 
       List<String> designationPaths = [];
       for (var file in _designationBoards) {
-        final p = await _service.uploadImage(file, 'office_locations/designation_boards');
+        final p = await _service.uploadImage(file, 'public/office_locations/designation_boards');
         if (p != null) designationPaths.add(p);
       }
 
       List<String> noticePaths = [];
       for (var file in _noticeBoards) {
-        final p = await _service.uploadImage(file, 'office_locations/notice_boards');
+        final p = await _service.uploadImage(file, 'public/office_locations/notice_boards');
         if (p != null) noticePaths.add(p);
       }
 
       List<String> otherPaths = [];
       for (var file in _otherPhotos) {
-        final p = await _service.uploadImage(file, 'office_locations/other_photos');
+        final p = await _service.uploadImage(file, 'public/office_locations/other_photos');
         if (p != null) otherPaths.add(p);
       }
 
+      final isEditing = widget.existingLocation != null;
       final location = OfficeLocations(
+        id: isEditing ? widget.existingLocation!.id : null,
         name: _nameController.text.trim(),
         place: _placeController.text.trim(),
         location_link: _linkController.text.trim(),
         office_phone_numbers: jsonEncode(_officePhones),
-        front_view_photo: jsonEncode(frontViewPaths),
-        designation_boards_photos: jsonEncode(designationPaths),
-        notice_boards_photos: jsonEncode(noticePaths),
+        front_view_photo: jsonEncode(_combinePhotos(_existingFrontViews, frontViewPaths)),
+        designation_boards_photos: jsonEncode(_combinePhotos(_existingDesignations, designationPaths)),
+        notice_boards_photos: jsonEncode(_combinePhotos(_existingNotices, noticePaths)),
         officers_contacts: jsonEncode(_officers),
-        other_photos: jsonEncode(otherPaths),
+        other_photos: jsonEncode(_combinePhotos(_existingOthers, otherPaths)),
       );
 
-      final success = await _service.createLocation(location);
+      final success = isEditing ? await _service.updateLocation(location) : await _service.createLocation(location);
       if (success && mounted) {
         Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Office Location saved successfully!')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEditing ? 'Office Location updated successfully!' : 'Office Location saved successfully!')));
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to save office location.')));
       }
@@ -354,21 +405,46 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.15), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withValues(alpha: 0.08), 
+            blurRadius: 24, 
+            spreadRadius: 0,
+            offset: const Offset(0, 12)
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4)
+          )
+        ],
       ),
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: AppTheme.primaryColor, size: 28),
-              const SizedBox(width: 12),
-              Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppTheme.primaryColor.withValues(alpha: 0.2), AppTheme.primaryColor.withValues(alpha: 0.05)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                ),
+                child: Icon(icon, color: AppTheme.primaryColor, size: 26),
+              ),
+              const SizedBox(width: 16),
+              Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textColor, letterSpacing: -0.5)),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           child,
         ],
       ),
@@ -379,13 +455,30 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
     return TextFormField(
       controller: controller,
       validator: isRequired ? (val) => (val == null || val.isEmpty) ? 'Required' : null : null,
+      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: Colors.grey.shade400),
+        labelStyle: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+        prefixIcon: Icon(icon, color: Colors.grey.shade500, size: 22),
         filled: true,
-        fillColor: Colors.grey.shade50,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.primaryColor)),
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14), 
+          borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5)
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14), 
+          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14), 
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14), 
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2)
+        ),
       ),
     );
   }

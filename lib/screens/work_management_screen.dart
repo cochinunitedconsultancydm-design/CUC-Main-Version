@@ -241,7 +241,14 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                           list = list.where((d) => d.stage.toLowerCase() == 'verification').toList();
                         }
                         if (_showOnlyMyWorks && _currentUserId != null) {
-                          list = list.where((d) => d.responsibleId?.toString() == _currentUserId.toString()).toList();
+                          if (widget.showOnlyVerification) {
+                            list = list.where((d) {
+                              final parsedVer = VerificationDetails.parse(d.description);
+                              return parsedVer.verifierId?.toString() == _currentUserId.toString();
+                            }).toList();
+                          } else {
+                            list = list.where((d) => d.responsibleId?.toString() == _currentUserId.toString()).toList();
+                          }
                         }
                         return list.isEmpty
                             ? _buildEmptyState()

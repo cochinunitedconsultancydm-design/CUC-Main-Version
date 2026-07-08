@@ -21,10 +21,13 @@ class OfficeLocationService {
     try {
       final request = ModelMutations.create(location);
       final response = await Amplify.API.mutate(request: request).response;
-      return !response.hasErrors;
+      if (response.hasErrors) {
+        throw Exception(response.errors.map((e) => e.message).join(', '));
+      }
+      return true;
     } catch (e) {
       safePrint('Error creating office location: $e');
-      return false;
+      rethrow;
     }
   }
 
@@ -52,7 +55,8 @@ class OfficeLocationService {
 
   Future<String?> uploadImage(File file, String pathPrefix) async {
     try {
-      final key = '$pathPrefix/${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
+      final filename = file.path.replaceAll('\\', '/').split('/').last;
+      final key = '$pathPrefix/${DateTime.now().millisecondsSinceEpoch}_$filename';
       final result = await Amplify.Storage.uploadFile(
         localFile: AWSFile.fromPath(file.path),
         path: StoragePath.fromString(key),

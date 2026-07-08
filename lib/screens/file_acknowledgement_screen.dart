@@ -14,6 +14,7 @@ import '../services/deal_service.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
+import 'dart:async';
 
 class FileAcknowledgementScreen extends StatefulWidget {
   final String currentUserRole;
@@ -53,6 +54,8 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
   List<String> _selectedFiles = [];
   Map<String, String> _fileRemarks = {};
   final Map<String, TextEditingController> _fileRemarkControllers = {};
+  Map<String, String> _fileTypes = {};
+  List<StreamSubscription> _subscriptions = [];
   bool _isLoading = true;
   InwardPost? _selectedPost;
   InwardPost? _editingPost;
@@ -77,9 +80,26 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
     if (widget.initialFileName != null) {
       _fileController.text = widget.initialFileName!;
       _selectedFiles = widget.initialFileName!.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      for (var f in _selectedFiles) {
+        _fileTypes[f] = 'Original';
+      }
     }
     
     _loadPosts();
+    _setupSubscriptions();
+  }
+
+  void _setupSubscriptions() {
+    try {
+      final req = ModelSubscriptions.onCreate(amplify_models.InwardPosts.classType);
+      _subscriptions.add(Amplify.API.subscribe(req, onEstablished: () {}).listen((event) => _loadPosts()));
+      final reqUp = ModelSubscriptions.onUpdate(amplify_models.InwardPosts.classType);
+      _subscriptions.add(Amplify.API.subscribe(reqUp, onEstablished: () {}).listen((event) => _loadPosts()));
+      final reqDel = ModelSubscriptions.onDelete(amplify_models.InwardPosts.classType);
+      _subscriptions.add(Amplify.API.subscribe(reqDel, onEstablished: () {}).listen((event) => _loadPosts()));
+    } catch (e) {
+      debugPrint('Failed to setup subscriptions: $e');
+    }
   }
 
   void _updateControllersForAction({bool clearFiles = true}) {
@@ -183,6 +203,7 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
 
   @override
   void dispose() {
+    for (var s in _subscriptions) { s.cancel(); }
     _fileController.dispose();
     _fromController.dispose();
     _toController.dispose();
@@ -203,7 +224,9 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
 
     final String fileName = _selectedFiles.map((f) {
       final remark = _fileRemarks[f] ?? '';
-      return remark.isNotEmpty ? '$f::$remark' : f;
+      final type = _fileTypes[f] ?? 'Original';
+      String res = '$f||$type';
+      return remark.isNotEmpty ? '$res::$remark' : res;
     }).join(' ; ');
 
     if (fileName.isEmpty || _fromController.text.trim().isEmpty || _toController.text.trim().isEmpty) {
@@ -220,7 +243,7 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
       receivedBy: _editingPost?.receivedBy ?? widget.currentUserName,
       receivedDate: _editingPost?.receivedDate ?? DateTime.now(),
       status: _editingPost?.status ?? PostStatus.pendingConfirmation,
-      description: '[$_actionType] File: $fileName ($_fileType)',
+      description: '[$_actionType] File: $fileName',
     );
 
     if (_editingPost != null) {
@@ -280,6 +303,7 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
       _fileController.clear();
       _selectedFiles.clear();
       _fileRemarks.clear();
+      _fileTypes.clear();
       for (var c in _fileRemarkControllers.values) {
         c.clear();
       }
@@ -339,11 +363,11 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
     if (filesPart.startsWith('File: ')) {
       filesPart = filesPart.replaceFirst('File: ', '');
     }
-    String fileTypeStr = '';
+    String legacyFileTypeStr = '';
     if (filesPart.contains('(') && filesPart.endsWith(')')) {
       int lastParen = filesPart.lastIndexOf('(');
-      fileTypeStr = filesPart.substring(lastParen).trim();
-      fileTypeStr = fileTypeStr.replaceAll('(', '[').replaceAll(')', ']');
+      legacyFileTypeStr = filesPart.substring(lastParen).trim();
+      legacyFileTypeStr = legacyFileTypeStr.replaceAll('(', '[').replaceAll(')', ']');
       filesPart = filesPart.substring(0, lastParen).trim();
     }
     List<String> filePartsList = filesPart.contains(' ; ') ? filesPart.split(' ; ') : filesPart.split(',');
@@ -501,25 +525,40 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
                                 ],
                               ),
                               ...List.generate(fileNames.length, (index) {
-                                String fName = fileNames[index];
-                                String fileRemark = '';
-                                if (fName.contains('::')) {
-                                  final parts = fName.split('::');
-                                  fName = parts[0].trim();
-                                  if (parts.length > 1) {
-                                    fileRemark = parts[1].trim();
+                                  String fName = fileNames[index];
+                                  String fileRemark = '';
+                                  String currentFileType = legacyFileTypeStr.isNotEmpty ? legacyFileTypeStr : '[Original]';
+                                  
+                                  if (fName.contains('||')) {
+                                    final typeParts = fName.split('||');
+                                    fName = typeParts[0].trim();
+                                    if (typeParts.length > 1) {
+                                      final rest = typeParts[1];
+                                      if (rest.contains('::')) {
+                                        final rParts = rest.split('::');
+                                        currentFileType = '[${rParts[0].trim()}]';
+                                        fileRemark = rParts[1].trim();
+                                      } else {
+                                        currentFileType = '[${rest.trim()}]';
+                                      }
+                                    }
+                                  } else if (fName.contains('::')) {
+                                    final parts = fName.split('::');
+                                    fName = parts[0].trim();
+                                    if (parts.length > 1) {
+                                      fileRemark = parts[1].trim();
+                                    }
                                   }
-                                }
-                                if (fileRemark.isEmpty && remarks.isNotEmpty) {
-                                  fileRemark = remarks;
-                                }
+                                  if (fileRemark.isEmpty && remarks.isNotEmpty) {
+                                    fileRemark = remarks;
+                                  }
 
-                                return pw.TableRow(
-                                  children: [
-                                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('${index + 1}', style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.center)),
-                                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(fName.toUpperCase(), style: const pw.TextStyle(fontSize: 10))),
-                                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(fileTypeStr, style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.center)),
-                                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(fileRemark, style: const pw.TextStyle(fontSize: 10))),
+                                  return pw.TableRow(
+                                    children: [
+                                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('${index + 1}', style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.center)),
+                                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(fName.toUpperCase(), style: const pw.TextStyle(fontSize: 10))),
+                                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(currentFileType, style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.center)),
+                                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(fileRemark, style: const pw.TextStyle(fontSize: 10))),
                                   ],
                                 );
                               }),
@@ -596,31 +635,45 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
       if (filesPart.startsWith('File: ')) {
         filesPart = filesPart.replaceFirst('File: ', '');
       }
-      String fileTypeStr = 'Original';
+      String legacyFileTypeStr = 'Original';
       if (filesPart.contains('(') && filesPart.endsWith(')')) {
         int lastParen = filesPart.lastIndexOf('(');
         String extractedType = filesPart.substring(lastParen).replaceAll('(', '').replaceAll(')', '').trim();
         if (extractedType.toLowerCase().contains('copy')) {
-          fileTypeStr = 'Copy';
+          legacyFileTypeStr = 'Copy';
         } else {
-          fileTypeStr = 'Original';
+          legacyFileTypeStr = 'Original';
         }
         filesPart = filesPart.substring(0, lastParen).trim();
       }
-      _fileType = fileTypeStr;
       
       _fileRemarks.clear();
+      _fileTypes.clear();
       List<String> filePartsList = filesPart.contains(' ; ') ? filesPart.split(' ; ') : filesPart.split(',');
       _selectedFiles = filePartsList.map((e) {
         String f = e.trim();
-        if (f.contains('::')) {
-          final parts = f.split('::');
-          String name = parts[0].trim();
-          if (parts.length > 1) {
-            _fileRemarks[name] = parts[1].trim();
+        String currentType = legacyFileTypeStr;
+        if (f.contains('||')) {
+          final typeParts = f.split('||');
+          f = typeParts[0].trim();
+          if (typeParts.length > 1) {
+            final rest = typeParts[1];
+            if (rest.contains('::')) {
+              final rParts = rest.split('::');
+              currentType = rParts[0].trim();
+              _fileRemarks[f] = rParts[1].trim();
+            } else {
+              currentType = rest.trim();
+            }
           }
-          return name;
+        } else if (f.contains('::')) {
+          final parts = f.split('::');
+          f = parts[0].trim();
+          if (parts.length > 1) {
+            _fileRemarks[f] = parts[1].trim();
+          }
         }
+        _fileTypes[f] = currentType;
         return f;
       }).where((e) => e.isNotEmpty).toList();
       _fromController.text = postToEdit.senderName;
@@ -635,6 +688,7 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
       _editingPost = null;
       _selectedFiles.clear();
       _fileRemarks.clear();
+      _fileTypes.clear();
       for (var c in _fileRemarkControllers.values) {
         c.clear();
       }
@@ -961,24 +1015,50 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
           ),
           const SizedBox(height: 12),
           if (_selectedFiles.isNotEmpty) ...[
-            const Text('File Remarks:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
+            const Text('File Settings:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
             const SizedBox(height: 8),
             ..._selectedFiles.map((f) {
               _fileRemarkControllers[f] ??= TextEditingController(text: _fileRemarks[f] ?? '');
               return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: TextField(
-                  controller: _fileRemarkControllers[f],
-                  decoration: InputDecoration(
-                    labelText: f,
-                    hintText: 'Add remarks for $f (optional)',
-                    hintStyle: const TextStyle(fontSize: 12),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  onChanged: (val) {
-                    _fileRemarks[f] = val;
-                  },
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _fileRemarkControllers[f],
+                        decoration: InputDecoration(
+                          labelText: f,
+                          hintText: 'Remarks (optional)',
+                          hintStyle: const TextStyle(fontSize: 12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        onChanged: (val) {
+                          _fileRemarks[f] = val;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: DropdownButtonFormField<String>(
+                        value: _fileTypes[f] ?? 'Original',
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        items: ['Original', 'Copy'].map((type) {
+                          return DropdownMenuItem(value: type, child: Text(type, style: const TextStyle(fontSize: 13)));
+                        }).toList(),
+                        onChanged: (val) {
+                          _updateState(() {
+                            _fileTypes[f] = val!;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               );
             }).toList(),
@@ -1055,40 +1135,6 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
               _buildFileChecklist(),
             const SizedBox(height: 16),
             if (_selectedDeal != null || _editingPost != null) ...[
-              const Text('FILE TYPE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-              Row(
-                children: [
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Original', style: TextStyle(fontSize: 14)),
-                      value: 'Original',
-                      groupValue: _fileType,
-                      activeColor: AppTheme.primaryColor,
-                      contentPadding: EdgeInsets.zero,
-                      onChanged: (val) {
-                        _updateState(() {
-                          _fileType = val!;
-                        });
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Copy', style: TextStyle(fontSize: 14)),
-                      value: 'Copy',
-                      groupValue: _fileType,
-                      activeColor: AppTheme.primaryColor,
-                      contentPadding: EdgeInsets.zero,
-                      onChanged: (val) {
-                        _updateState(() {
-                          _fileType = val!;
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
               _buildUserAutocomplete(controller: _fromController, hint: 'Handed Over By', icon: Icons.person_outline),
               const SizedBox(height: 16),
               _buildUserAutocomplete(controller: _toController, hint: 'Received By', icon: Icons.how_to_reg),

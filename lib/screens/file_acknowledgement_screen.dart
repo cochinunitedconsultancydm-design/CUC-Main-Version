@@ -548,9 +548,9 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
                         pw.Column(
                           crossAxisAlignment: pw.CrossAxisAlignment.center,
                           children: [
-                            pw.Text('Yours faithfully', style: const pw.TextStyle(fontSize: 11)),
+                            pw.Text(action == 'Returned' ? 'Received By' : 'Yours faithfully', style: const pw.TextStyle(fontSize: 11)),
                             pw.SizedBox(height: 40),
-                            pw.Text(fromName.toUpperCase(), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                            pw.Text(post.recipientName.split('\n').first.toUpperCase(), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
                           ],
                         ),
                       ]

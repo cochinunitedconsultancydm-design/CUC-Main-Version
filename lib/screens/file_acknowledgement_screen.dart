@@ -1229,7 +1229,12 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
               children: [
                 const Icon(Icons.history, color: AppTheme.primaryColor),
                 const SizedBox(width: 12),
-                const Text('RECENT ACKNOWLEDGEMENTS', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryColor, letterSpacing: 1.2)),
+                const Expanded(
+                  child: Text('RECENT ACKNOWLEDGEMENTS', 
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryColor, letterSpacing: 1.2),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 const Spacer(),
                 if (_isLoading) const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)),
               ],

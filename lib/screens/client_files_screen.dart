@@ -498,15 +498,38 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
     }
   }
 
+  Future<void> _removeFileItem(int index) async {
+    setState(() => _isUploading = true);
+    try {
+      List<dynamic> currentFiles = [];
+      if (_currentWorkFile.files_received != null && _currentWorkFile.files_received!.isNotEmpty) {
+        currentFiles = jsonDecode(_currentWorkFile.files_received!);
+      }
+      currentFiles.removeAt(index);
+      
+      final updatedDeal = _currentWorkFile.copyWith(files_received: jsonEncode(currentFiles));
+      await BackupAwareApi().update(updatedDeal);
+      
+      setState(() {
+        _currentWorkFile = updatedDeal;
+      });
+      widget.onUpdate();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
   Future<void> _attachFileToWork(String path) async {
     setState(() => _isUploading = true);
     try {
-      List<String> files = [];
+      List<dynamic> files = [];
       if (_currentWorkFile.files_received != null && _currentWorkFile.files_received!.isNotEmpty) {
         try {
           final decoded = jsonDecode(_currentWorkFile.files_received!);
           if (decoded is List) {
-            files = decoded.map((e) => e.toString()).toList();
+            files = decoded.toList();
           }
         } catch (e) {
           debugPrint("Parse error in attach: $e");
@@ -804,12 +827,29 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
 
   @override
   Widget build(BuildContext context) {
-    List<String> files = [];
+    List<dynamic> files = [];
     if (_currentWorkFile.files_received != null && _currentWorkFile.files_received!.isNotEmpty) {
       try {
         final decoded = jsonDecode(_currentWorkFile.files_received!);
         if (decoded is List) {
-          files = decoded.map((e) => e.toString()).toList();
+          // Check for corrupted strings like "{name: Sale deed, status: Returned, type: Copy}"
+          files = decoded.map((e) {
+            if (e is String && e.startsWith('{name:') && e.endsWith('}')) {
+              try {
+                final inner = e.substring(1, e.length - 1);
+                final parts = inner.split(', ');
+                Map<String, dynamic> result = {};
+                for (var p in parts) {
+                  final kv = p.split(': ');
+                  if (kv.length == 2) result[kv[0].trim()] = kv[1].trim();
+                }
+                return result;
+              } catch (_) {
+                return e;
+              }
+            }
+            return e;
+          }).toList();
         }
       } catch (e) {
         debugPrint("Error parsing files JSON: $e");
@@ -1043,24 +1083,90 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
                 child: ListView.builder(
                   itemCount: files.length,
                   itemBuilder: (context, index) {
-                    final path = files[index];
-                    final fileName = path.split('/').last;
-                    final isPersonal = path.contains('/personal/');
-                    final category = isPersonal ? 'Personal' : 'Work';
+                    final item = files[index];
                     
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: Icon(isPersonal ? Icons.person : Icons.work, color: AppTheme.primaryColor),
-                        title: Text(fileName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                        subtitle: Text(category, style: TextStyle(fontSize: 12, color: isPersonal ? Colors.blue.shade700 : Colors.green.shade700)),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.download_rounded),
-                          onPressed: () => _downloadFile(context, path),
-                          tooltip: 'Open / Download',
+                    if (item is Map) {
+                      // Physical Document Record
+                      final name = item['name'] ?? 'Unknown Document';
+                      final type = item['type'] ?? 'Unknown Type';
+                      final status = item['status'] ?? 'Unknown Status';
+                      
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                        child: ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: Colors.amber.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                            child: const Icon(Icons.file_present_rounded, color: Colors.amber),
+                          ),
+                          title: Text(name.toString(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                  child: Text(type.toString(), style: TextStyle(color: Colors.blue.shade700, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: status == 'Returned' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                  child: Text(status.toString(), style: TextStyle(color: status == 'Returned' ? Colors.green.shade700 : Colors.orange.shade700, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                            onPressed: () => _removeFileItem(index),
+                            tooltip: 'Remove',
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    } else {
+                      // Digital File Path
+                      final path = item.toString();
+                      final fileName = path.split('/').last;
+                      final isPersonal = path.contains('/personal/');
+                      final category = isPersonal ? 'Personal' : 'Work';
+                      
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                        child: ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                            child: Icon(isPersonal ? Icons.person : Icons.cloud_done, color: AppTheme.primaryColor),
+                          ),
+                          title: Text(fileName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(category, style: TextStyle(fontSize: 12, color: isPersonal ? Colors.purple.shade700 : Colors.blue.shade700)),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.download_rounded, color: Colors.blue),
+                                onPressed: () => _downloadFile(context, path),
+                                tooltip: 'Open / Download',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                onPressed: () => _removeFileItem(index),
+                                tooltip: 'Remove',
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
                   },
                 ),
               ),

@@ -914,8 +914,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                         : Column(
                             children: _staffLogs.map((log) {
                               String ts = log['created_at']?.toString() ?? '';
-                              if (ts.isNotEmpty && !ts.endsWith('Z') && !ts.contains('+')) ts += 'Z';
-                              final dt = ts.isNotEmpty ? DateTime.parse(ts).toUtc().add(const Duration(hours: 5, minutes: 30)) : null;
+                              final dt = ts.isNotEmpty ? DateTime.parse(ts).toLocal() : null;
                               final date = dt != null ? DateFormat('hh:mm a • dd MMM').format(dt) : '-';
                               Color actionColor = Colors.blue;
                               if (log['action'].toString().contains('DELETE')) actionColor = Colors.red;
@@ -974,8 +973,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                         : Column(
                             children: _recentActivity.map((act) {
                               String ts = act['created_at']?.toString() ?? '';
-                              if (ts.isNotEmpty && !ts.endsWith('Z') && !ts.contains('+')) ts += 'Z';
-                              final dt = ts.isNotEmpty ? DateTime.parse(ts).toUtc().add(const Duration(hours: 5, minutes: 30)) : null;
+                              final dt = ts.isNotEmpty ? DateTime.parse(ts).toLocal() : null;
                               final date = dt != null ? DateFormat('hh:mm a • dd MMM').format(dt) : '-';
                               final isQuote = act['type'] == 'QUOTATION';
                               final accentColor = isQuote ? Colors.purple : AppTheme.primaryColor;

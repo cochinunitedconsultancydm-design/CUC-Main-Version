@@ -543,6 +543,14 @@ class DealService {
           break;
         }
       }
+      
+      // Deduplicate by ID
+      final uniqueMap = <String, Users>{};
+      for (var u in all) {
+        uniqueMap[u.id] = u;
+      }
+      all = uniqueMap.values.toList();
+      
       all.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       return all.map((u) => u.toJson()).toList();
     } catch (e) {

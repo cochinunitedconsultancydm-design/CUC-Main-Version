@@ -465,14 +465,17 @@ class _MonitorScreenState extends State<MonitorScreen> {
               itemBuilder: (context, index) {
                 final l = _logs[index];
                 
-                DateTime toIST(String? ts) {
+                DateTime parseTime(String? ts) {
                   if (ts == null || ts.isEmpty) return DateTime.now();
-                  String iso = ts;
-                  if (!iso.endsWith('Z') && !iso.contains('+')) iso += 'Z';
-                  return DateTime.parse(iso).toUtc().add(const Duration(hours: 5, minutes: 30));
+                  try {
+                    // Dart automatically handles 'Z' (UTC) vs no 'Z' (Local) correctly.
+                    return DateTime.parse(ts).toLocal();
+                  } catch (e) {
+                    return DateTime.now();
+                  }
                 }
                 
-                final time = toIST(l['created_at']?.toString());
+                final time = parseTime(l['created_at']?.toString());
                 
                 Color actionColor = Colors.blue;
                 if (l['action'].toString().contains('DELETE')) actionColor = Colors.red;

@@ -988,13 +988,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  Future<List<Map<String, dynamic>>> _fetchAuditLogs() async {
+    final logsRes = await Amplify.API.query(request: ModelQueries.list(ActivityLogs.classType, limit: 10000)).response;
+    final logsList = logsRes.data?.items.where((e) => e != null).cast<ActivityLogs>().toList() ?? [];
+    logsList.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
+
+    final usersRes = await Amplify.API.query(request: ModelQueries.list(Users.classType, limit: 10000)).response;
+    final usersList = usersRes.data?.items.where((e) => e != null).cast<Users>().toList() ?? [];
+    final userMap = {for (var u in usersList) u.id.toString(): u.name ?? 'Unknown'};
+
+    return logsList.map((log) => {
+      'user_id': log.user_id,
+      'user_name': userMap[log.user_id?.toString()] ?? log.user_id?.toString() ?? 'Unknown',
+      'action': log.action,
+      'details': log.details,
+      'created_at': log.createdAt?.toString() ?? DateTime.now().toIso8601String(),
+    }).toList();
+  }
+
   Widget _buildAuditLogView(bool isWide) {
-    return FutureBuilder<GraphQLResponse<PaginatedResult<ActivityLogs>>>(
-      future: Amplify.API.query(request: ModelQueries.list(ActivityLogs.classType, limit: 200)).response,
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _fetchAuditLogs(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        var logsList = snapshot.data?.data?.items.where((e) => e != null).cast<ActivityLogs>().toList() ?? [];
-        logsList.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
+        var logsList = snapshot.data ?? [];
         return Column(
           children: [
             Padding(
@@ -1015,8 +1032,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final log = logsList[index];
-                  final userName = log.user_id?.toString() ?? 'Unknown';
-                  final dateStr = log.createdAt?.toString() ?? DateTime.now().toIso8601String();
+                  final userName = log['user_name'] as String;
+                  final dateStr = log['created_at'] as String;
                   final date = DateTime.parse(dateStr).toLocal();
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -1029,10 +1046,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                            child: Text(log.action ?? '-', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryColor), textAlign: TextAlign.center),
+                            child: Text(log['action']?.toString() ?? '-', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryColor), textAlign: TextAlign.center),
                           ),
                         ),
-                        Expanded(flex: 4, child: Text(log.details ?? '-', style: const TextStyle(fontSize: 12, color: AppTheme.mutedTextColor))),
+                        Expanded(flex: 4, child: Text(log['details']?.toString() ?? '-', style: const TextStyle(fontSize: 12, color: AppTheme.mutedTextColor))),
                       ],
                     ),
                   );

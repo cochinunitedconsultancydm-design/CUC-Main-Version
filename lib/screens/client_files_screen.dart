@@ -267,7 +267,7 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                             maxCrossAxisExtent: 400,
                             crossAxisSpacing: 16,
                             mainAxisSpacing: 16,
-                            mainAxisExtent: 160,
+                            mainAxisExtent: 200,
                           ),
                           itemCount: _filtered.length,
                           itemBuilder: (context, index) {

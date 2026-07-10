@@ -1372,11 +1372,15 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
                                   children: [
                                     const Icon(Icons.person_outline, size: 16, color: Colors.grey),
                                     const SizedBox(width: 8),
-                                    Text('From: ${post.senderName}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                                    Expanded(
+                                      child: Text('From: ${post.senderName}', style: const TextStyle(fontSize: 13, color: Colors.grey), overflow: TextOverflow.ellipsis),
+                                    ),
                                     const SizedBox(width: 16),
                                     const Icon(Icons.how_to_reg, size: 16, color: Colors.grey),
                                     const SizedBox(width: 8),
-                                    Text('To: ${post.recipientName}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                                    Expanded(
+                                      child: Text('To: ${post.recipientName}', style: const TextStyle(fontSize: 13, color: Colors.grey), overflow: TextOverflow.ellipsis),
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),

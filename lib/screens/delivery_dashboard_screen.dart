@@ -444,24 +444,34 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
+              child: ElevatedButton(
                 onPressed: _isAttendanceLoading ? null : _toggleAttendance,
-                icon: _isAttendanceLoading
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Icon(_isCheckedIn ? Icons.stop_circle : Icons.play_circle_fill, size: 24),
-                label: Text(
-                  _isCheckedIn 
-                      ? 'Check Out (In since ${_checkInTimeStr ?? ""})' 
-                      : 'Check In to Start Tracking',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _isCheckedIn ? const Color(0xFFEF4444) : const Color(0xFF10B981),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 8,
                   shadowColor: (_isCheckedIn ? const Color(0xFFEF4444) : const Color(0xFF10B981)).withValues(alpha: 0.4),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _isAttendanceLoading
+                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Icon(_isCheckedIn ? Icons.stop_circle : Icons.play_circle_fill, size: 24),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        _isCheckedIn 
+                            ? 'Check Out (In since ${_checkInTimeStr ?? ""})' 
+                            : 'Check In to Start Tracking',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

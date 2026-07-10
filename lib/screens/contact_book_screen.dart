@@ -215,13 +215,15 @@ class _ContactBookScreenState extends State<ContactBookScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Contact Book', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
-            SizedBox(height: 4),
-            Text('Manage external contacts and associates', style: TextStyle(color: AppTheme.mutedTextColor)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Contact Book', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+              const SizedBox(height: 4),
+              const Text('Manage external contacts and associates', style: TextStyle(color: AppTheme.mutedTextColor)),
+            ],
+          ),
         ),
         ElevatedButton.icon(
           onPressed: () => _showContactDialog(),

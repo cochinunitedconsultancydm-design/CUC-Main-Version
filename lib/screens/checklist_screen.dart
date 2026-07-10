@@ -229,34 +229,38 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             ],
             if (!_isManager && checklist.status == 'Pending') ...[
               const SizedBox(height: 16),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _showStatusDialog(checklist, 'Completed'),
-                      icon: const Icon(Icons.check_circle_outline, size: 18),
-                      label: const Text("Complete"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                      ),
+                  ElevatedButton.icon(
+                    onPressed: () => _showStatusDialog(checklist, 'Completed'),
+                    icon: const Icon(Icons.check_circle_outline, size: 16),
+                    label: const Text("Complete", style: TextStyle(fontSize: 12)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size.zero,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _showStatusDialog(checklist, 'Not Completed'),
-                      style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                      child: const Text("Not Done"),
+                  OutlinedButton(
+                    onPressed: () => _showStatusDialog(checklist, 'Not Completed'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size.zero,
                     ),
+                    child: const Text("Not Done", style: TextStyle(fontSize: 12)),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _showStatusDialog(checklist, 'Postponed'),
-                      style: OutlinedButton.styleFrom(foregroundColor: Colors.orange),
-                      child: const Text("Postpone"),
+                  OutlinedButton(
+                    onPressed: () => _showStatusDialog(checklist, 'Postponed'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size.zero,
                     ),
+                    child: const Text("Postpone", style: TextStyle(fontSize: 12)),
                   ),
                 ],
               ),

@@ -325,30 +325,28 @@ class _InwardPostScreenState extends State<InwardPostScreen> {
                             if (post.description.isNotEmpty) ...[
                               const SizedBox(height: 4),
                               Text(post.description, style: const TextStyle(fontSize: 13, color: AppTheme.mutedTextColor, fontStyle: FontStyle.italic)),
-                            ]
+                            ],
+                            const SizedBox(height: 8),
+                            Text(DateFormat('MMM dd, yyyy - hh:mm a').format(post.receivedDate), style: const TextStyle(fontSize: 11, color: AppTheme.primaryColor)),
+                            if (isPending) ...[
+                              const SizedBox(height: 8),
+                              ElevatedButton(
+                                onPressed: () => _confirmReceipt(post),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.redAccent,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  minimumSize: Size.zero,
+                                ),
+                                child: const Text('CONFIRM RECEIPT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              ),
+                            ] else ...[
+                              const SizedBox(height: 8),
+                              const Text('RECEIVED', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                            ],
                           ],
                         ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(DateFormat('MMM dd, yyyy - hh:mm a').format(post.receivedDate), style: const TextStyle(fontSize: 11, color: AppTheme.primaryColor)),
-                          const SizedBox(height: 8),
-                          if (isPending)
-                            ElevatedButton(
-                              onPressed: () => _confirmReceipt(post),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.redAccent,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                minimumSize: Size.zero,
-                              ),
-                              child: const Text('CONFIRM RECEIPT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                            )
-                          else
-                            const Text('RECEIVED', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
-                        ],
                       ),
                     ],
                   ),

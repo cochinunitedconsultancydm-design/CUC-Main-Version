@@ -182,6 +182,7 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isWide = MediaQuery.of(context).size.width > 600;
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA), // Premium light gray background
       appBar: AppBar(
@@ -270,11 +271,12 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
                                   children: [
                                     const Text('Add Office Phone Number', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
                                     const SizedBox(height: 12),
-                                    Row(
+                                    Flex(
+                                      direction: isWide ? Axis.horizontal : Axis.vertical,
                                       children: [
-                                        Expanded(child: _buildTextField(controller: _officePhoneDesigController, label: 'Designation (e.g. Front Desk)', icon: Icons.badge_outlined, isRequired: false)),
-                                        const SizedBox(width: 12),
-                                        Expanded(child: _buildTextField(controller: _officePhoneNumController, label: 'Phone Number', icon: Icons.phone_outlined, isRequired: false)),
+                                        isWide ? Expanded(child: _buildTextField(controller: _officePhoneDesigController, label: 'Designation (e.g. Front Desk)', icon: Icons.badge_outlined, isRequired: false)) : _buildTextField(controller: _officePhoneDesigController, label: 'Designation (e.g. Front Desk)', icon: Icons.badge_outlined, isRequired: false),
+                                        if (isWide) const SizedBox(width: 12) else const SizedBox(height: 12),
+                                        isWide ? Expanded(child: _buildTextField(controller: _officePhoneNumController, label: 'Phone Number', icon: Icons.phone_outlined, isRequired: false)) : _buildTextField(controller: _officePhoneNumController, label: 'Phone Number', icon: Icons.phone_outlined, isRequired: false),
                                       ],
                                     ),
                                     const SizedBox(height: 12),
@@ -348,11 +350,12 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
                                   children: [
                                     const Text('Add New Contact', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
                                     const SizedBox(height: 16),
-                                    Row(
+                                    Flex(
+                                      direction: isWide ? Axis.horizontal : Axis.vertical,
                                       children: [
-                                        Expanded(child: _buildTextField(controller: _officerNameController, label: 'Officer Name', icon: Icons.person_outline, isRequired: false)),
-                                        const SizedBox(width: 16),
-                                        Expanded(child: _buildTextField(controller: _officerDesigController, label: 'Designation', icon: Icons.work_outline, isRequired: false)),
+                                        isWide ? Expanded(child: _buildTextField(controller: _officerNameController, label: 'Officer Name', icon: Icons.person_outline, isRequired: false)) : _buildTextField(controller: _officerNameController, label: 'Officer Name', icon: Icons.person_outline, isRequired: false),
+                                        if (isWide) const SizedBox(width: 16) else const SizedBox(height: 16),
+                                        isWide ? Expanded(child: _buildTextField(controller: _officerDesigController, label: 'Designation', icon: Icons.work_outline, isRequired: false)) : _buildTextField(controller: _officerDesigController, label: 'Designation', icon: Icons.work_outline, isRequired: false),
                                       ],
                                     ),
                                     const SizedBox(height: 16),

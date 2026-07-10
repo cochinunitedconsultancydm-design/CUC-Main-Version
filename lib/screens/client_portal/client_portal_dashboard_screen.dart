@@ -365,12 +365,15 @@ class _ClientPortalDashboardScreenState extends State<ClientPortalDashboardScree
             children: [
               Icon(icon, size: 20, color: isSelected ? AppTheme.primaryColor : Colors.white60),
               const SizedBox(width: 14),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.white60,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  fontSize: 14,
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.white60,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

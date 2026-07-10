@@ -811,69 +811,81 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
           // â”€â”€â”€ CATEGORY FILTER â”€â”€â”€
           _buildCategoryFilter(),
           
-          // â”€â”€â”€ BILL LIST â”€â”€â”€
+          // ─── BILL LIST ───
           Expanded(
             child: _isLoading 
                 ? const Center(child: CircularProgressIndicator())
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // â”€â”€â”€ INCOME COLUMN â”€â”€â”€
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                : Builder(
+                    builder: (context) {
+                      final bool isWide = MediaQuery.of(context).size.width > 600;
+                      
+                      final incomeHeader = Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                        child: const Text('INCOME', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green, letterSpacing: 1.2), textAlign: TextAlign.center),
+                      );
+                      
+                      final expenseHeader = Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                        child: const Text('EXPENDITURE', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.red, letterSpacing: 1.2), textAlign: TextAlign.center),
+                      );
+
+                      final incomeList = incomeBills.isEmpty
+                          ? _buildEmptyState()
+                          : Card(
+                              margin: EdgeInsets.zero,
+                              child: ListView.separated(
+                                shrinkWrap: !isWide,
+                                physics: !isWide ? const NeverScrollableScrollPhysics() : null,
+                                padding: EdgeInsets.zero,
+                                itemCount: incomeBills.length,
+                                separatorBuilder: (_, _) => const Divider(height: 1),
+                                itemBuilder: (context, index) => _buildBillCard(incomeBills[index], index),
+                              ),
+                            );
+
+                      final expenseList = expenseBills.isEmpty
+                          ? _buildEmptyState()
+                          : Card(
+                              margin: EdgeInsets.zero,
+                              child: ListView.separated(
+                                shrinkWrap: !isWide,
+                                physics: !isWide ? const NeverScrollableScrollPhysics() : null,
+                                padding: EdgeInsets.zero,
+                                itemCount: expenseBills.length,
+                                separatorBuilder: (_, _) => const Divider(height: 1),
+                                itemBuilder: (context, index) => _buildBillCard(expenseBills[index], index),
+                              ),
+                            );
+
+                      if (isWide) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              margin: const EdgeInsets.only(bottom: 8),
-                              decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                              child: const Text('INCOME', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green, letterSpacing: 1.2), textAlign: TextAlign.center),
-                            ),
-                            Expanded(
-                              child: incomeBills.isEmpty
-                                  ? _buildEmptyState()
-                                  : Card(
-                                      margin: EdgeInsets.zero,
-                                      child: ListView.separated(
-                                        padding: EdgeInsets.zero,
-                                        itemCount: incomeBills.length,
-                                        separatorBuilder: (_, _) => const Divider(height: 1),
-                                        itemBuilder: (context, index) => _buildBillCard(incomeBills[index], index),
-                                      ),
-                                    ),
-                            ),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [incomeHeader, Expanded(child: incomeList)])),
+                            const SizedBox(width: 16),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [expenseHeader, Expanded(child: expenseList)])),
                           ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // â”€â”€â”€ EXPENDITURE COLUMN â”€â”€â”€
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              margin: const EdgeInsets.only(bottom: 8),
-                              decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                              child: const Text('EXPENDITURE', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.red, letterSpacing: 1.2), textAlign: TextAlign.center),
-                            ),
-                            Expanded(
-                              child: expenseBills.isEmpty
-                                  ? _buildEmptyState()
-                                  : Card(
-                                      margin: EdgeInsets.zero,
-                                      child: ListView.separated(
-                                        padding: EdgeInsets.zero,
-                                        itemCount: expenseBills.length,
-                                        separatorBuilder: (_, _) => const Divider(height: 1),
-                                        itemBuilder: (context, index) => _buildBillCard(expenseBills[index], index),
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                        );
+                      } else {
+                        return SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              incomeHeader,
+                              incomeList,
+                              const SizedBox(height: 24),
+                              expenseHeader,
+                              expenseList,
+                              const SizedBox(height: 80), // Padding for floating action button
+                            ],
+                          ),
+                        );
+                      }
+                    }
                   ),
           ),
         ],
@@ -933,22 +945,31 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                         children: [
                           const Text('Monthly Income', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
                           const SizedBox(height: 4),
-                          Text(
-                            '\u20B9${NumberFormat("#,##,###").format(income)}',
-                            style: const TextStyle(color: Colors.greenAccent, fontSize: 24, fontWeight: FontWeight.w900),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '\u20B9${NumberFormat("#,##,###").format(income)}',
+                              style: const TextStyle(color: Colors.greenAccent, fontSize: 24, fontWeight: FontWeight.w900),
+                            ),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text('Monthly Expenses', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
                           const SizedBox(height: 4),
-                          Text(
-                            '\u20B9${NumberFormat("#,##,###").format(expenses)}',
-                            style: const TextStyle(color: Colors.redAccent, fontSize: 24, fontWeight: FontWeight.w900),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '\u20B9${NumberFormat("#,##,###").format(expenses)}',
+                              style: const TextStyle(color: Colors.redAccent, fontSize: 24, fontWeight: FontWeight.w900),
+                            ),
                           ),
                         ],
                       ),

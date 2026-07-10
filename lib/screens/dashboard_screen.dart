@@ -44,6 +44,8 @@ import '../utils/number_to_words.dart';
 import 'checklist_screen.dart';
 import '../services/checklist_service.dart';
 import 'office_details_screen.dart';
+import 'property_management_screen.dart';
+import 'contact_book_screen.dart';
 import '../widgets/upcoming_deadlines_widget.dart';
 import '../widgets/premium_stat_card.dart';
 import '../services/attendance_service.dart';
@@ -593,6 +595,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 21: return const ClientFilesScreen();
       case 22: return const HelpAndQueriesManagementScreen();
       case 23: return const OfficeDetailsScreen();
+      case 24: return const PropertyManagementScreen();
+      case 25: return const ContactBookScreen();
       default: return const Center(child: Text('Page not found'));
     }
   }
@@ -674,6 +678,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _sidebarItem(18, Icons.history_rounded, 'Verification History'),
                   _sidebarItem(19, Icons.directions_car_filled_outlined, 'Travel Logs'),
                   _sidebarItem(23, Icons.business_rounded, 'Office Details'),
+                  _sidebarItem(24, Icons.real_estate_agent_rounded, 'Property Management'),
+                  _sidebarItem(25, Icons.contacts_rounded, 'Contact Book'),
                   _sidebarItem(7, Icons.settings_rounded, 'Settings'),
                 ],
               ),
@@ -775,12 +781,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: isSelected ? AppTheme.primaryColor : Colors.white60,
               ),
               const SizedBox(width: 14),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.white60,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  fontSize: 14,
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.white60,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (badge != null)
@@ -864,6 +873,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     final bool isNarrow = MediaQuery.of(context).size.width < 900;
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
     
     final mainStats = [
       PremiumStatCard(
@@ -929,6 +939,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
           });
         },
       ),
+      PremiumStatCard(
+        title: 'Property Management',
+        value: 'Manage',
+        trend: 'View properties',
+        icon: Icons.real_estate_agent_rounded,
+        color: Colors.brown,
+        isNarrow: isNarrow,
+        onTap: () {
+          setState(() {
+            _selectedIndex = 24;
+            _selectedCategory = null;
+          });
+        },
+      ),
+      PremiumStatCard(
+        title: 'Contact Book',
+        value: 'Directory',
+        trend: 'View contacts',
+        icon: Icons.contacts_rounded,
+        color: Colors.indigo,
+        isNarrow: isNarrow,
+        onTap: () {
+          setState(() {
+            _selectedIndex = 25;
+            _selectedCategory = null;
+          });
+        },
+      ),
     ];
 
     return SingleChildScrollView(
@@ -938,10 +976,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: isNarrow ? 2 : 3,
+            crossAxisCount: isMobile ? 1 : (isNarrow ? 2 : 3),
             mainAxisSpacing: isNarrow ? 12 : 24,
             crossAxisSpacing: isNarrow ? 12 : 24,
-            childAspectRatio: isNarrow ? 1.8 : 2.0,
+            childAspectRatio: isMobile ? 2.5 : (isNarrow ? 1.5 : 2.0),
             children: mainStats.animate(interval: 100.ms).fadeIn(duration: 500.ms).slideY(begin: 0.1),
           ),
           const SizedBox(height: 32),
@@ -950,10 +988,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: isNarrow ? 2 : 2,
+            crossAxisCount: isMobile ? 1 : (isNarrow ? 2 : 2),
             mainAxisSpacing: isNarrow ? 12 : 24,
             crossAxisSpacing: isNarrow ? 12 : 24,
-            childAspectRatio: isNarrow ? 1.9 : 2.2,
+            childAspectRatio: isMobile ? 2.5 : (isNarrow ? 1.6 : 2.2),
             children: actionableStats.animate(interval: 100.ms).fadeIn(duration: 500.ms, delay: 200.ms).slideY(begin: 0.1),
           ),
           const SizedBox(height: 32),

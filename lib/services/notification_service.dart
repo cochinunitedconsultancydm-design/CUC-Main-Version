@@ -322,7 +322,7 @@ class NotificationService {
     }
   }
 
-  /// Notifies only relevant stakeholders (Managers, Responsible Staff, and Participants/Collaborators).
+  /// Notifies only relevant stakeholders (Managers and Responsible Staff).
   Future<void> notifyStakeholders({
     dynamic dealId,
     dynamic taskId,
@@ -341,7 +341,7 @@ class NotificationService {
         recipients.add(row.id);
       }
 
-      // 2. If Deal, include Responsible and Assignees
+      // 2. If Deal, include Responsible
       if (dealId != null) {
         final dReq = ModelQueries.list(Deals.classType, where: Deals.ID.eq(dealId.toString()));
         final dRes = await Amplify.API.query(request: dReq).response;
@@ -350,13 +350,6 @@ class NotificationService {
           if (dealRes.responsible_id != null) {
             recipients.add(dealRes.responsible_id.toString());
           }
-        }
-        
-        final aReq = ModelQueries.list(DealAssignees.classType);
-        final aRes = await Amplify.API.query(request: aReq).response;
-        final assignees = aRes.data?.items.where((e) => e != null && e.deal_id?.toString() == dealId.toString()).cast<DealAssignees>() ?? [];
-        for (var row in assignees) {
-          if (row.user_id != null) recipients.add(row.user_id.toString());
         }
       }
 

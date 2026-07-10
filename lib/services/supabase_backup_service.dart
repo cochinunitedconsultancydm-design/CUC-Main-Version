@@ -273,6 +273,28 @@ class SupabaseBackupService {
     }
   }
 
+  Future<Map<String, int>> getUsernameToIdMap() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_supabaseUrl/rest/v1/users?select=id,username,email'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final map = <String, int>{};
+        for (var u in data) {
+          final id = u['id'] as int;
+          if (u['username'] != null) map[u['username'].toString()] = id;
+          if (u['email'] != null) map[u['email'].toString()] = id;
+        }
+        return map;
+      }
+    } catch (e) {
+      debugPrint('Supabase getUsernameToIdMap error: $e');
+    }
+    return {};
+  }
+
   /// Get user ID by username
   Future<int?> getUserIdByUsername(String username) async {
     try {

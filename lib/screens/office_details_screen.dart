@@ -153,7 +153,7 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                         int crossAxisCount = constraints.maxWidth > 1200 ? 3 : constraints.maxWidth > 800 ? 2 : 1;
                         
                         return SingleChildScrollView(
-                          padding: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
                           child: Wrap(
                             spacing: 24,
                             runSpacing: 24,

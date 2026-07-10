@@ -223,8 +223,10 @@ class _MonitorScreenState extends State<MonitorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                runSpacing: 16,
+                spacing: 16,
                 children: [
                   Container(
                     height: 48,

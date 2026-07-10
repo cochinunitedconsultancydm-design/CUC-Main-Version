@@ -240,11 +240,13 @@ class _ClientDealsViewState extends State<ClientDealsView> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    bool isMobile = MediaQuery.of(context).size.width < 600;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
           child: Row(
             children: [
               Container(
@@ -259,12 +261,12 @@ class _ClientDealsViewState extends State<ClientDealsView> {
                 child: const Icon(Icons.work_outline_rounded, color: Colors.white, size: 28),
               ),
               const SizedBox(width: 16),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('My Workfiles', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppTheme.textColor, letterSpacing: -0.5)),
-                    Text('Track the progress of your ongoing cases', style: TextStyle(fontSize: 14, color: AppTheme.mutedTextColor)),
+                    Text('My Workfiles', style: TextStyle(fontSize: isMobile ? 22 : 26, fontWeight: FontWeight.w800, color: AppTheme.textColor, letterSpacing: -0.5)),
+                    Text('Track the progress of your ongoing cases', style: TextStyle(fontSize: isMobile ? 12 : 14, color: AppTheme.mutedTextColor)),
                   ],
                 ),
               ),
@@ -284,7 +286,7 @@ class _ClientDealsViewState extends State<ClientDealsView> {
                 ).animate().fade().scale(curve: Curves.easeOutBack, duration: 500.ms),
               )
             : ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: 8),
                 itemCount: _deals.length,
                 itemBuilder: (context, index) {
                   final deal = _deals[index];
@@ -320,7 +322,7 @@ class _ClientDealsViewState extends State<ClientDealsView> {
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.all(24),
+                            padding: EdgeInsets.all(isMobile ? 16 : 24),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -369,7 +371,7 @@ class _ClientDealsViewState extends State<ClientDealsView> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 16),
                                 Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
@@ -390,7 +392,7 @@ class _ClientDealsViewState extends State<ClientDealsView> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 16),
                                 
                                 // Payment Progress Section
                                 Column(

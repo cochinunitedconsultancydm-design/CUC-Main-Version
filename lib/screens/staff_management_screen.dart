@@ -1425,11 +1425,12 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Flex(
+                direction: isWide ? Axis.horizontal : Axis.vertical,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: isWide ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
-                  Expanded(
+                  isWide ? Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1438,10 +1439,17 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                         Text('Manage directory and monitor live tracking', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 16),
+                  ) : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Staff Hub', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: -1)),
+                        const SizedBox(height: 6),
+                        Text('Manage directory and monitor live tracking', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                      ],
+                    ),
+                  if (isWide) const SizedBox(width: 16) else const SizedBox(height: 16),
                   Container(
-                    width: 320,
+                    width: isWide ? 320 : double.infinity,
                     height: 48,
                     decoration: BoxDecoration(
                       color: Colors.grey.shade200,

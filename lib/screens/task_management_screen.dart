@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import 'task_detail_screen.dart';
 import 'dart:async';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import '../services/supabase_backup_service.dart';
 
 class TaskManagementScreen extends StatefulWidget {
   final String? initialStatus;
@@ -147,12 +148,18 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
         }
       }
       var users = uniqueUsers.values.toList();
+      
+      final sbUserMap = await SupabaseBackupService().getUsernameToIdMap();
+
       users.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       if (mounted) {
         setState(() {
-          _allUsers = users.map((u) => {
-            'id': u.id,
-            'name': u.name,
+          _allUsers = users.map((u) {
+            final intId = sbUserMap[u.username] ?? sbUserMap[u.email];
+            return {
+              'id': intId?.toString() ?? u.id,
+              'name': u.name,
+            };
           }).toList();
         });
       }
@@ -176,7 +183,12 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
       final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
       final usersList = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
-      final userMap = {for (var u in usersList) u.id.toString(): u};
+      
+      final sbUserMap = await SupabaseBackupService().getUsernameToIdMap();
+      final userMap = {
+        for (var u in usersList) 
+          (sbUserMap[u.username] ?? sbUserMap[u.email] ?? u.id).toString(): u
+      };
 
       final List<Task> parsedTasks = tasks.map((m) {
         final assignedByMap = userMap[m.assigned_by?.toString()];
@@ -701,6 +713,8 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
           const SizedBox(height: 24),
           TabBar(
             controller: _tabController,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             labelColor: AppTheme.primaryColor,
             unselectedLabelColor: Colors.grey,
             indicatorColor: AppTheme.primaryColor,
@@ -713,21 +727,33 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
             ],
           ),
           const SizedBox(height: 16),
-          Row(
+          Flex(
+            direction: isWide ? Axis.horizontal : Axis.vertical,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search deliveries, pickups, clients...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    isDense: true,
+              isWide 
+                ? Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search deliveries, pickups, clients...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        isDense: true,
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  )
+                : TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search deliveries, pickups, clients...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      isDense: true,
+                    ),
+                    onChanged: (_) => setState(() {}),
                   ),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-              const SizedBox(width: 12),
+              if (isWide) const SizedBox(width: 12) else const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(

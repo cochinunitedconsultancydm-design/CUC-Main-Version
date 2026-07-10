@@ -7,6 +7,9 @@ import 'package:cuc_app/services/backup_aware_api.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../models/client.dart';
 import '../theme.dart';
+import '../services/auth_service.dart';
+import '../services/backup_aware_api.dart';
+import '../services/supabase_backup_service.dart';
 import '../widgets/google_docs_picker_dialog.dart';
 import '../services/logging_service.dart';
 
@@ -30,6 +33,7 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
   
   List<amplify_models.Users> _staffList = [];
   amplify_models.Users? _selectedStaff;
+  Map<String, int> _staffIdMap = {};
   
   List<StorageItem> _clientFiles = [];
   Set<String> _selectedFiles = {};
@@ -48,8 +52,13 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
       final res = await Amplify.API.query(request: req).response;
       if (res.data != null) {
         final List<amplify_models.Users> fetched = res.data!.items.whereType<amplify_models.Users>().toList();
+        final sbUserMap = await SupabaseBackupService().getUsernameToIdMap();
         final List<amplify_models.Users> deduplicated = [];
         for (var staff in fetched) {
+          final intId = sbUserMap[staff.username] ?? sbUserMap[staff.email];
+          if (intId != null) {
+            _staffIdMap[staff.id] = intId;
+          }
           final name = (staff.name ?? staff.username ?? 'Unknown').trim();
           if (name == 'Unknown' || name.isEmpty) continue;
           
@@ -164,7 +173,7 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
         drive_link: _googleDocsController.text.trim(),
         register_no: _fileNoController.text.trim(),
         files_received: filesJson,
-        responsible_id: _selectedStaff != null ? int.tryParse(_selectedStaff!.id) : null,
+        responsible_id: _selectedStaff != null ? (_staffIdMap[_selectedStaff!.id] ?? int.tryParse(_selectedStaff!.id)) : null,
         responsible_name: _selectedStaff?.name,
         referred_by: currentUserName, // Using referred_by to store the creator
         created_at: DateTime.now().toIso8601String(),
@@ -212,7 +221,7 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
             child: const Icon(Icons.create_new_folder_rounded, color: AppTheme.primaryColor, size: 24),
           ),
           const SizedBox(width: 16),
-          const Text('Create New Work File', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: -0.5)),
+          const Expanded(child: Text('Create New Work File', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: -0.5))),
         ],
       ),
       content: SizedBox(
@@ -284,7 +293,7 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       color: Colors.white,
                       child: Container(
-                        width: 450,
+                        width: MediaQuery.of(context).size.width > 600 ? 450 : MediaQuery.of(context).size.width * 0.8,
                         constraints: const BoxConstraints(maxHeight: 250),
                         child: ListView.builder(
                           padding: const EdgeInsets.symmetric(vertical: 8),

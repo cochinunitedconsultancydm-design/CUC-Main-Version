@@ -468,6 +468,7 @@ class _SopScreenState extends State<SopScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isWide = MediaQuery.of(context).size.width > 600;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
@@ -475,8 +476,10 @@ class _SopScreenState extends State<SopScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            Flex(
+              direction: isWide ? Axis.horizontal : Axis.vertical,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: isWide ? CrossAxisAlignment.center : CrossAxisAlignment.start,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,6 +500,7 @@ class _SopScreenState extends State<SopScreen> {
                     ).animate().fadeIn(delay: 100.ms),
                   ],
                 ),
+                if (!isWide) const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () => _showAddEditSopDialog(),
                   icon: const Icon(Icons.add, size: 20),

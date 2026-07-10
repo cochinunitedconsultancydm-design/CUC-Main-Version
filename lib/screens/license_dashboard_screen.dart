@@ -229,6 +229,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width > 900;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -249,82 +250,84 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
               child: const Icon(Icons.verified_user_rounded, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'License & Agreement Dashboard',
-              style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 20),
+            Expanded(
+              child: const Text(
+                'License & Agreement Dashboard',
+                style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 20),
+              ),
             ),
           ],
         ),
         actions: [
-          _buildActionButton(
-            label: 'Export All',
-            icon: Icons.download,
-            backgroundColor: const Color(0xFF10B981), // Emerald
-            onPressed: _exportData,
-          ),
-          const SizedBox(width: 12),
-          _buildActionButton(
-            label: 'Add License',
-            icon: Icons.add_circle_outline,
-            backgroundColor: const Color(0xFFF59E0B), // Amber
-            onPressed: () async {
-              final result = await showDialog<bool>(
-                context: context,
-                builder: (context) => const AddLicenseDialog(),
-              );
-              if (result == true) {
-                _fetchDashboardData();
-              }
-            },
-          ),
-          const SizedBox(width: 12),
-          _buildActionButton(
-            label: 'Manage Licenses',
-            icon: Icons.settings,
-            backgroundColor: const Color(0xFF6366F1), // Indigo
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => Scaffold(
-                  appBar: AppBar(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    leading: const BackButton(color: Colors.black),
-                    title: const Text('Manage License Types', style: TextStyle(color: Colors.black)),
-                  ),
-                  body: const SafeArea(child: LicenseManagementScreen()),
-                )),
-              ).then((_) => _fetchDashboardData());
-            },
-          ),
-          const SizedBox(width: 12),
-          _buildActionButton(
-            label: 'Accounting & Pay',
-            icon: Icons.account_balance_wallet_rounded,
-            backgroundColor: const Color(0xFF8B5CF6), // Purple
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => Scaffold(
-                  appBar: AppBar(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    leading: const BackButton(color: Colors.black),
-                  ),
-                  body: const CompanyBillManagementScreen(),
-                )),
-              );
-            },
-          ),
-          const SizedBox(width: 12),
-          _buildActionButton(
-            label: 'Logout',
-            backgroundColor: const Color(0xFF1F2937), // Dark Gray
-            onPressed: () {
-              // Usually handled by the main dashboard, but added here for UI completeness
-            },
-          ),
-          const SizedBox(width: 24),
+          if (isWide) ...[
+            _buildActionButton(
+              label: 'Export All',
+              icon: Icons.download,
+              backgroundColor: const Color(0xFF10B981), // Emerald
+              onPressed: _exportData,
+            ),
+            const SizedBox(width: 12),
+            _buildActionButton(
+              label: 'Add License',
+              icon: Icons.add_circle_outline,
+              backgroundColor: const Color(0xFFF59E0B), // Amber
+              onPressed: () async {
+                final result = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => const AddLicenseDialog(),
+                );
+                if (result == true) {
+                  _fetchDashboardData();
+                }
+              },
+            ),
+            const SizedBox(width: 12),
+            _buildActionButton(
+              label: 'Manage Licenses',
+              icon: Icons.settings,
+              backgroundColor: const Color(0xFF6366F1), // Indigo
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => Scaffold(
+                    appBar: AppBar(
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      leading: const BackButton(color: Colors.black),
+                      title: const Text('Manage License Types', style: TextStyle(color: Colors.black)),
+                    ),
+                    body: const SafeArea(child: LicenseManagementScreen()),
+                  )),
+                ).then((_) => _fetchDashboardData());
+              },
+            ),
+            const SizedBox(width: 12),
+            _buildActionButton(
+              label: 'Accounting & Pay',
+              icon: Icons.account_balance_wallet_rounded,
+              backgroundColor: const Color(0xFF8B5CF6), // Purple
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => Scaffold(
+                    appBar: AppBar(
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      leading: const BackButton(color: Colors.black),
+                    ),
+                    body: const CompanyBillManagementScreen(),
+                  )),
+                );
+              },
+            ),
+            const SizedBox(width: 12),
+            _buildActionButton(
+              label: 'Logout',
+              backgroundColor: const Color(0xFF1F2937), // Dark Gray
+              onPressed: () {},
+            ),
+            const SizedBox(width: 24),
+          ],
         ],
       ),
       body: _isLoading 
@@ -334,6 +337,72 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (!isWide) ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildActionButton(
+                        label: 'Export All',
+                        icon: Icons.download,
+                        backgroundColor: const Color(0xFF10B981),
+                        onPressed: _exportData,
+                      ),
+                      _buildActionButton(
+                        label: 'Add License',
+                        icon: Icons.add_circle_outline,
+                        backgroundColor: const Color(0xFFF59E0B),
+                        onPressed: () async {
+                          final result = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => const AddLicenseDialog(),
+                          );
+                          if (result == true) {
+                            _fetchDashboardData();
+                          }
+                        },
+                      ),
+                      _buildActionButton(
+                        label: 'Manage Licenses',
+                        icon: Icons.settings,
+                        backgroundColor: const Color(0xFF6366F1),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => Scaffold(
+                              appBar: AppBar(
+                                backgroundColor: Colors.transparent,
+                                elevation: 0,
+                                leading: const BackButton(color: Colors.black),
+                                title: const Text('Manage License Types', style: TextStyle(color: Colors.black)),
+                              ),
+                              body: const SafeArea(child: LicenseManagementScreen()),
+                            )),
+                          ).then((_) => _fetchDashboardData());
+                        },
+                      ),
+                      _buildActionButton(
+                        label: 'Accounting & Pay',
+                        icon: Icons.account_balance_wallet_rounded,
+                        backgroundColor: const Color(0xFF8B5CF6),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => Scaffold(
+                              appBar: AppBar(
+                                backgroundColor: Colors.transparent,
+                                elevation: 0,
+                                leading: const BackButton(color: Colors.black),
+                              ),
+                              body: const CompanyBillManagementScreen(),
+                            )),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                ],
                 _buildSummaryCards(),
                 const SizedBox(height: 32),
                 ...(_licensesByType.keys.toList()..sort()).map((typeName) {

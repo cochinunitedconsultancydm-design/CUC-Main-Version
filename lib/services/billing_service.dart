@@ -223,7 +223,7 @@ class BillingService {
       map['created_at'] = m.created_at ?? m.createdAt?.toString();
       
       String phone = clientPhones[m.client_name] ?? '';
-      String dataStr = map['data'] ?? '{}';
+      String dataStr = map['data']?.toString() ?? '{}';
       try {
         var dataMap = jsonDecode(dataStr);
         if (dataMap is Map) {

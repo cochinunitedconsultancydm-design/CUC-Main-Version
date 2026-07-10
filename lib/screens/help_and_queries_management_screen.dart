@@ -126,15 +126,17 @@ class _HelpAndQueriesManagementScreenState extends State<HelpAndQueriesManagemen
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Helpdesk & Ticketing',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textColor,
-                  letterSpacing: -0.5,
-                ),
-              ).animate().fadeIn().slideX(begin: -0.2, end: 0),
+              Expanded(
+                child: const Text(
+                  'Helpdesk & Ticketing',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textColor,
+                    letterSpacing: -0.5,
+                  ),
+                ).animate().fadeIn().slideX(begin: -0.2, end: 0),
+              ),
               
               IconButton(
                 icon: const Icon(Icons.refresh_rounded, color: AppTheme.accentColor),

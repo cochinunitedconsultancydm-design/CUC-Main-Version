@@ -801,6 +801,8 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   }
 
   Widget _buildAdminView(bool isWide) {
+    bool isMobile = MediaQuery.of(context).size.width < 600;
+    
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -812,10 +814,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: isWide ? 3 : 2,
+            crossAxisCount: isWide ? 3 : (isMobile ? 1 : 2),
             mainAxisSpacing: isWide ? 24 : 12,
             crossAxisSpacing: isWide ? 24 : 12,
-            childAspectRatio: isWide ? 2.0 : 1.8,
+            childAspectRatio: isWide ? 2.0 : (isMobile ? 2.5 : 1.8),
             children: [
               PremiumStatCard(title: 'Total Revenue', value: _adminStats['monthlyRevenue'], trend: '+24%', icon: Icons.account_balance_wallet_rounded, color: AppTheme.primaryColor, isNarrow: !isWide, onTap: () => setState(() => _selectedCategory = 'Bills to Receive')),
               PremiumStatCard(title: 'Company Expenses', value: _adminStats['totalExpenses'], trend: 'Payables', icon: Icons.outbound_rounded, color: AppTheme.textColor, isNarrow: !isWide, onTap: () => setState(() => _selectedIndex = 11)),

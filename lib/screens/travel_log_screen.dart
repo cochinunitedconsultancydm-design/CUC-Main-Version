@@ -124,7 +124,7 @@ class _TravelLogScreenState extends State<TravelLogScreen> {
                                 children: [
                                   const Icon(Icons.person, size: 14, color: Colors.grey),
                                   const SizedBox(width: 4),
-                                  Text('$name ($role)', style: const TextStyle(fontWeight: FontWeight.w500)),
+                                  Expanded(child: Text('$name ($role)', style: const TextStyle(fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
                                 ],
                               ),
                               const SizedBox(height: 4),
@@ -132,7 +132,7 @@ class _TravelLogScreenState extends State<TravelLogScreen> {
                                 children: [
                                   const Icon(Icons.access_time, size: 14, color: Colors.grey),
                                   const SizedBox(width: 4),
-                                  Text(timeString, style: const TextStyle(color: Colors.grey)),
+                                  Expanded(child: Text(timeString, style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis)),
                                 ],
                               ),
                             ],

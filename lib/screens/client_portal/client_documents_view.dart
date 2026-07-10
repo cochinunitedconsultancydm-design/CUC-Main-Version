@@ -199,15 +199,17 @@ class _ClientDocumentsViewState extends State<ClientDocumentsView> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    bool isMobile = MediaQuery.of(context).size.width < 600;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('My Documents', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textColor)),
+              Text('My Documents', style: TextStyle(fontSize: isMobile ? 20 : 24, fontWeight: FontWeight.bold, color: AppTheme.textColor)),
               ElevatedButton.icon(
                 onPressed: _uploadFile,
                 icon: const Icon(Icons.upload_file),
@@ -224,7 +226,7 @@ class _ClientDocumentsViewState extends State<ClientDocumentsView> {
           child: _documents.isEmpty
             ? const Center(child: Text('No documents found.', style: TextStyle(color: AppTheme.mutedTextColor)))
             : ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24),
                 itemCount: _documents.length,
                 itemBuilder: (context, index) {
                   final doc = _documents[index];
@@ -238,7 +240,7 @@ class _ClientDocumentsViewState extends State<ClientDocumentsView> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
                     child: Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: EdgeInsets.all(isMobile ? 16 : 20),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: Colors.grey.shade200),
@@ -283,7 +285,7 @@ class _ClientDocumentsViewState extends State<ClientDocumentsView> {
                               const SizedBox(width: 12),
                               if (doc.verification_status != null && doc.verification_status!.isNotEmpty)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 10, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: isOk ? Colors.green.shade50 : (isRejected ? Colors.red.shade50 : Colors.amber.shade50),
                                     borderRadius: BorderRadius.circular(20),

@@ -2,6 +2,8 @@ import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import 'dart:convert';
@@ -93,6 +95,203 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
         builder: (context) => formWidget,
       );
     }
+  }
+
+  void _showDetails(amplify_models.Properties property) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        clipBehavior: Clip.antiAlias,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 800),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppTheme.primaryColor, AppTheme.accentColor],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.apartment_rounded, color: Colors.white, size: 32),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Property Details', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                          Text(property.property_name ?? 'Unnamed Property', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _detailRow('Client Name', property.client_name, Icons.person_rounded),
+                      _detailRow('Location', property.location, Icons.location_on_rounded),
+                      _detailRow('Property Type', property.property_type, Icons.category_rounded),
+                      _detailRow('Owner Name', property.owner_name, Icons.manage_accounts_rounded),
+                      _phoneDetailRow('Owner Phone', property.owner_phone_numbers, Icons.phone_rounded),
+                      _detailRow('Broker Details', property.broker_details, Icons.handshake_rounded),
+                      _detailRow('Care Of', property.care_of, Icons.supervised_user_circle_rounded),
+                      _detailRow('Transaction Type', property.transaction_type, Icons.swap_horiz_rounded),
+                      _detailRow('Area', property.area, Icons.square_foot_rounded),
+                      _detailRow('Price', property.price != null ? _formatPrice(property.price) : null, Icons.currency_rupee_rounded),
+                      _detailRow('Advance Amount', property.advance_amount != null ? _formatPrice(property.advance_amount) : null, Icons.account_balance_wallet_rounded),
+                      _detailRow('Period', property.period, Icons.timer_rounded),
+                      _detailRow('Floor', property.floor, Icons.stairs_rounded),
+                      _detailRow('Balcony Count', property.balcony_count?.toString(), Icons.balcony_rounded),
+                      _detailRow('Expenses', property.expenses, Icons.receipt_long_rounded),
+                      _detailRow('Status', property.status, Icons.info_outline_rounded),
+                      _detailRow('Notes', property.notes, Icons.notes_rounded),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String? value, IconData icon) {
+    if (value == null || value.isEmpty) return const SizedBox.shrink();
+    
+    final urlRegex = RegExp(r'(https?:\/\/[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s]*)');
+    final match = urlRegex.firstMatch(value);
+    final hasUrl = match != null;
+
+    Widget valueWidget;
+    if (hasUrl) {
+      final urlStr = match.group(0)!;
+      final uriStr = urlStr.startsWith('http') ? urlStr : 'https://$urlStr';
+      valueWidget = InkWell(
+        onTap: () async {
+          final uri = Uri.parse(uriStr);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri);
+          }
+        },
+        child: Text(
+          value,
+          style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline, fontSize: 14),
+        ),
+      );
+    } else {
+      valueWidget = Text(value, style: const TextStyle(color: AppTheme.textColor, fontSize: 14));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: AppTheme.primaryColor),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.mutedTextColor, letterSpacing: 0.5)),
+                const SizedBox(height: 4),
+                valueWidget,
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _phoneDetailRow(String label, List<String>? phones, IconData icon) {
+    if (phones == null || phones.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: AppTheme.primaryColor),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.mutedTextColor, letterSpacing: 0.5)),
+                const SizedBox(height: 8),
+                ...phones.map((phoneStr) {
+                  final phoneRegex = RegExp(r'\+?[0-9][0-9\s-]{7,}');
+                  final match = phoneRegex.firstMatch(phoneStr);
+                  
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(phoneStr.trim(), style: const TextStyle(color: AppTheme.textColor, fontSize: 14)),
+                        ),
+                        if (match != null)
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.call, color: Colors.green, size: 20),
+                              onPressed: () async {
+                                final telStr = 'tel:${match.group(0)!.replaceAll(RegExp(r'[^\d+]'), '')}';
+                                final uri = Uri.parse(telStr);
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri);
+                                }
+                              },
+                              tooltip: 'Call',
+                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _deleteProperty(amplify_models.Properties property) async {
@@ -306,7 +505,7 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => _showEditForm(prop),
+            onTap: () => _showDetails(prop),
             hoverColor: AppTheme.primaryColor.withValues(alpha: 0.02),
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -314,8 +513,8 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 100,
-                    height: 100,
+                    width: 72,
+                    height: 72,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [AppTheme.primaryColor.withValues(alpha: 0.2), AppTheme.accentColor.withValues(alpha: 0.05)],
@@ -328,7 +527,7 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
                     child: Center(
                       child: Icon(
                         Icons.apartment_rounded,
-                        size: 44,
+                        size: 32,
                         color: AppTheme.primaryColor.withValues(alpha: 0.8),
                       ),
                     ),
@@ -345,8 +544,10 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
                             Expanded(
                               child: Text(
                                 prop.property_name ?? 'Unnamed Property',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: AppTheme.textColor,
                                   letterSpacing: -0.5,

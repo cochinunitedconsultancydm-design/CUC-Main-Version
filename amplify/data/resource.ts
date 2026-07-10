@@ -192,7 +192,7 @@ const schema = a.schema({
   }).authorization((allow) => [allow.authenticated()]),
   DealActivities: a.model({
     id: a.id().required(),
-    deal_id: a.integer(),
+    deal_id: a.string(),
     type: a.string(),
     title: a.string(),
     description: a.string(),

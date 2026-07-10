@@ -337,7 +337,8 @@ class DealService {
 
   Future<void> addAssignee(dynamic dealId, int userId, {String role = 'Collaborator'}) async {
     try {
-      final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(dealId.toString()).and(DealAssignees.USER_ID.eq(userId)));
+      final parsedDealId = int.tryParse(dealId.toString()) ?? 0;
+      final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(parsedDealId).and(DealAssignees.USER_ID.eq(userId)));
       final aRes = await Amplify.API.query(request: aReq).response;
       if (aRes.data?.items.isNotEmpty == true) {
         final a = aRes.data!.items.first!;
@@ -365,7 +366,8 @@ class DealService {
 
   Future<void> removeAssignee(dynamic dealId, int userId) async {
     try {
-      final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(dealId.toString()).and(DealAssignees.USER_ID.eq(userId)));
+      final parsedDealId = int.tryParse(dealId.toString()) ?? 0;
+      final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(parsedDealId).and(DealAssignees.USER_ID.eq(userId)));
       final aRes = await Amplify.API.query(request: aReq).response;
       if (aRes.data?.items.isNotEmpty == true) {
         await BackupAwareApi().delete(aRes.data!.items.first!);
@@ -377,7 +379,8 @@ class DealService {
 
   Future<List<old.DealAssignee>> getAssignees(dynamic dealId) async {
     try {
-      final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(dealId.toString()));
+      final parsedDealId = int.tryParse(dealId.toString()) ?? 0;
+      final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(parsedDealId));
       final aRes = await Amplify.API.query(request: aReq).response;
       var items = aRes.data?.items.where((e) => e != null).cast<DealAssignees>().toList() ?? [];
       
@@ -401,23 +404,36 @@ class DealService {
     }
   }
 
+
   Future<void> addActivity(oldActivity.DealActivity activity) async {
     try {
       final values = activity.toMap();
       values['id'] = values['id']?.toString() ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
       values.remove('is_completed');
-      values['deal_id'] = values['deal_id']?.toString();
+      // deal_id is now String in the schema, so just convert to string
+      if (values['deal_id'] != null) {
+        values['deal_id'] = values['deal_id'].toString();
+      }
+      // Ensure created_by is int for the schema
+      if (values['created_by'] != null) {
+        values['created_by'] = values['created_by'] is int ? values['created_by'] : int.tryParse(values['created_by'].toString());
+      }
+      if (values['created_at'] == null) {
+        values['created_at'] = DateTime.now().toIso8601String();
+      }
       
       final newAct = DealActivities.fromJson(values);
       await BackupAwareApi().create(newAct);
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Error addActivity: $e');
+      debugPrint('Stack: $stackTrace');
     }
   }
 
   Future<List<oldActivity.DealActivity>> getActivities(dynamic dealId) async {
     try {
-      var req = ModelQueries.list(DealActivities.classType, where: DealActivities.DEAL_ID.eq(dealId.toString()));
+      final dealIdStr = dealId.toString();
+      var req = ModelQueries.list(DealActivities.classType, where: DealActivities.DEAL_ID.eq(dealIdStr));
       List<DealActivities> all = [];
       while (true) {
         final res = await Amplify.API.query(request: req).response;

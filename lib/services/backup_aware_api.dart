@@ -12,11 +12,14 @@ class BackupAwareApi {
 
   final _backup = SupabaseBackupService();
 
-  /// Create a record in DynamoDB and backup to Supabase.
   Future<GraphQLResponse<T>> create<T extends Model>(T model) async {
     final response = await Amplify.API
         .mutate(request: ModelMutations.create(model))
         .response;
+
+    if (response.hasErrors) {
+      debugPrint('GraphQL mutation errors: ${response.errors}');
+    }
 
     if (response.data != null) {
       _backupInBackground(model.getInstanceType().modelName(), model.toJson());

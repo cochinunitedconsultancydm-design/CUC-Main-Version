@@ -149,36 +149,74 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
       body: Column(
         children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
               decoration: BoxDecoration(
                 color: AppTheme.surfaceColor,
-                border: Border(bottom: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.1))),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final searchField = TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search properties, clients, owners...',
-                      prefixIcon: const Icon(Icons.search, color: AppTheme.mutedTextColor),
-                      filled: true,
-                      fillColor: AppTheme.backgroundColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  final searchField = Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    onChanged: (val) => setState(() => _searchTerm = val),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search properties, clients, owners...',
+                        hintStyle: const TextStyle(color: AppTheme.mutedTextColor),
+                        prefixIcon: const Icon(Icons.search, color: AppTheme.primaryColor),
+                        filled: true,
+                        fillColor: Colors.transparent,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      ),
+                      onChanged: (val) => setState(() => _searchTerm = val),
+                    ),
                   );
-                  final addButton = ElevatedButton.icon(
-                    onPressed: () => _showEditForm(),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Property'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  final addButton = Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppTheme.primaryColor, AppTheme.accentColor],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showEditForm(),
+                      icon: const Icon(Icons.add_home_work_outlined),
+                      label: const Text('Add Property', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                   );
 
@@ -249,99 +287,226 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
   }
 
   Widget _buildPropertyCard(amplify_models.Properties prop, {EdgeInsetsGeometry margin = const EdgeInsets.only(bottom: 16)}) {
-    return Card(
+    return Container(
       margin: margin,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    prop.property_name ?? 'Unnamed Property',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textColor),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    prop.status ?? 'Active',
-                    style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w600, fontSize: 12),
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: AppTheme.mutedTextColor),
-                      onPressed: () => _showEditForm(prop),
-                      tooltip: 'Edit',
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _deleteProperty(prop),
-                      tooltip: 'Delete',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.person, size: 16, color: AppTheme.mutedTextColor),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Owner: ${prop.owner_name ?? "N/A"}', style: const TextStyle(color: AppTheme.mutedTextColor))),
-                const Icon(Icons.location_on, size: 16, color: AppTheme.mutedTextColor),
-                const SizedBox(width: 8),
-                Expanded(child: Text(prop.location ?? 'No location', style: const TextStyle(color: AppTheme.mutedTextColor))),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.category, size: 16, color: AppTheme.mutedTextColor),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Type: ${prop.property_type ?? "N/A"}', style: const TextStyle(color: AppTheme.mutedTextColor))),
-                const Icon(Icons.square_foot, size: 16, color: AppTheme.mutedTextColor),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Area: ${prop.area ?? "N/A"}', style: const TextStyle(color: AppTheme.mutedTextColor))),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.attach_money, size: 16, color: AppTheme.mutedTextColor),
-                const SizedBox(width: 8),
-                Text('Price: ${prop.price ?? 0.0}', style: const TextStyle(color: AppTheme.mutedTextColor, fontWeight: FontWeight.bold)),
-                if (prop.is_negotiable == true)
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.15), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _showEditForm(prop),
+            hoverColor: AppTheme.primaryColor.withValues(alpha: 0.02),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Container(
-                    margin: const EdgeInsets.only(left: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                    child: const Text('Negotiable', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppTheme.primaryColor.withValues(alpha: 0.2), AppTheme.accentColor.withValues(alpha: 0.05)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2), width: 1),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.apartment_rounded,
+                        size: 44,
+                        color: AppTheme.primaryColor.withValues(alpha: 0.8),
+                      ),
+                    ),
                   ),
-              ],
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                prop.property_name ?? 'Unnamed Property',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textColor,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _getStatusColor(prop.status).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: _getStatusColor(prop.status).withValues(alpha: 0.3)),
+                              ),
+                              child: Text(
+                                (prop.status ?? 'Active').toUpperCase(),
+                                style: TextStyle(
+                                  color: _getStatusColor(prop.status),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 11,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            _buildInfoChip(Icons.person_outline, prop.owner_name ?? "N/A"),
+                            const SizedBox(width: 16),
+                            _buildInfoChip(Icons.location_on_outlined, prop.location ?? "No location"),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            _buildInfoChip(Icons.category_outlined, prop.property_type ?? "N/A"),
+                            const SizedBox(width: 16),
+                            _buildInfoChip(Icons.square_foot_outlined, prop.area ?? "N/A"),
+                          ],
+                        ),
+                        if (prop.notes != null && prop.notes!.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(prop.notes!, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.mutedTextColor, fontSize: 12)),
+                        ],
+                        const SizedBox(height: 16),
+                        Divider(color: Colors.grey.withValues(alpha: 0.15)),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'PRICE',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.mutedTextColor,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text(
+                                      '₹ ',
+                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                                    ),
+                                    Text(
+                                      _formatPrice(prop.price),
+                                      style: const TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.textColor,
+                                      ),
+                                    ),
+                                    if (prop.is_negotiable == true)
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 8, bottom: 4),
+                                        child: Text(
+                                          '(Negotiable)',
+                                          style: TextStyle(color: Colors.green.shade600, fontSize: 12, fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined, color: AppTheme.mutedTextColor),
+                                  onPressed: () => _showEditForm(prop),
+                                  tooltip: 'Edit',
+                                  hoverColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                  onPressed: () => _deleteProperty(prop),
+                                  tooltip: 'Delete',
+                                  hoverColor: Colors.red.withValues(alpha: 0.1),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            if (prop.notes != null && prop.notes!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const Divider(),
-              const SizedBox(height: 4),
-              const Text('Notes:', style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textColor, fontSize: 13)),
-              const SizedBox(height: 4),
-              Text(prop.notes!, style: const TextStyle(color: AppTheme.mutedTextColor, fontSize: 13)),
-            ],
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Color _getStatusColor(String? status) {
+    final s = (status ?? '').toLowerCase();
+    if (s.contains('sold') || s.contains('rented') || s.contains('leased')) return Colors.blue.shade600;
+    if (s.contains('inactive')) return Colors.grey.shade600;
+    if (s.contains('negotiation')) return Colors.orange.shade600;
+    return AppTheme.primaryColor;
+  }
+
+  String _formatPrice(double? price) {
+    if (price == null) return '0';
+    if (price >= 10000000) {
+      return '${(price / 10000000).toStringAsFixed(2)} Cr';
+    } else if (price >= 100000) {
+      return '${(price / 100000).toStringAsFixed(2)} Lac';
+    }
+    return price.toStringAsFixed(0);
+  }
+
+  Widget _buildInfoChip(IconData icon, String text) {
+    return Expanded(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppTheme.primaryColor.withValues(alpha: 0.6)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AppTheme.mutedTextColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

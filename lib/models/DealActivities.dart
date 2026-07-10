@@ -27,7 +27,7 @@ import 'package:amplify_core/amplify_core.dart' as amplify_core;
 class DealActivities extends amplify_core.Model {
   static const classType = const _DealActivitiesModelType();
   final String id;
-  final int? _deal_id;
+  final String? _deal_id;
   final String? _type;
   final String? _title;
   final String? _description;
@@ -51,7 +51,7 @@ class DealActivities extends amplify_core.Model {
       );
   }
   
-  int? get deal_id {
+  String? get deal_id {
     return _deal_id;
   }
   
@@ -93,7 +93,7 @@ class DealActivities extends amplify_core.Model {
   
   const DealActivities._internal({required this.id, deal_id, type, title, description, due_date, is_completed, created_by, created_at, createdAt, updatedAt}): _deal_id = deal_id, _type = type, _title = title, _description = description, _due_date = due_date, _is_completed = is_completed, _created_by = created_by, _created_at = created_at, _createdAt = createdAt, _updatedAt = updatedAt;
   
-  factory DealActivities({String? id, int? deal_id, String? type, String? title, String? description, String? due_date, bool? is_completed, int? created_by, String? created_at}) {
+  factory DealActivities({String? id, String? deal_id, String? type, String? title, String? description, String? due_date, bool? is_completed, int? created_by, String? created_at}) {
     return DealActivities._internal(
       id: id == null ? amplify_core.UUID.getUUID() : id,
       deal_id: deal_id,
@@ -149,7 +149,7 @@ class DealActivities extends amplify_core.Model {
     return buffer.toString();
   }
   
-  DealActivities copyWith({int? deal_id, String? type, String? title, String? description, String? due_date, bool? is_completed, int? created_by, String? created_at}) {
+  DealActivities copyWith({String? deal_id, String? type, String? title, String? description, String? due_date, bool? is_completed, int? created_by, String? created_at}) {
     return DealActivities._internal(
       id: id,
       deal_id: deal_id ?? this.deal_id,
@@ -163,7 +163,7 @@ class DealActivities extends amplify_core.Model {
   }
   
   DealActivities copyWithModelFieldValues({
-    ModelFieldValue<int?>? deal_id,
+    ModelFieldValue<String?>? deal_id,
     ModelFieldValue<String?>? type,
     ModelFieldValue<String?>? title,
     ModelFieldValue<String?>? description,
@@ -187,7 +187,7 @@ class DealActivities extends amplify_core.Model {
   
   DealActivities.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
-      _deal_id = (json['deal_id'] as num?)?.toInt(),
+      _deal_id = json['deal_id']?.toString(),
       _type = json['type'],
       _title = json['title'],
       _description = json['description'],
@@ -250,7 +250,7 @@ class DealActivities extends amplify_core.Model {
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: DealActivities.DEAL_ID,
       isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.int)
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
     ));
     
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(

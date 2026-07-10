@@ -35,7 +35,7 @@ class _HelpAndQueriesManagementScreenState extends State<HelpAndQueriesManagemen
       final allActs = actRes.data?.items.whereType<DealActivities>().toList() ?? [];
 
       // Group by deal_id
-      final Map<int, List<DealActivities>> groupedActs = {};
+      final Map<String, List<DealActivities>> groupedActs = {};
       for (var act in allActs) {
         if (act.type == 'client_query' || act.type == 'staff_reply') {
           final dId = act.deal_id;
@@ -58,7 +58,7 @@ class _HelpAndQueriesManagementScreenState extends State<HelpAndQueriesManagemen
       Map<String, int> unread = {};
 
       for (var deal in activeDeals) {
-        final acts = groupedActs[int.tryParse(deal.id) ?? 0] ?? [];
+        final acts = groupedActs[deal.id] ?? [];
         if (acts.isNotEmpty) {
           acts.sort((a, b) {
             final aDate = a.createdAt?.getDateTimeInUtc() ?? DateTime.tryParse(a.created_at ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);

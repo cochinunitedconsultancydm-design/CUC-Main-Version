@@ -87,7 +87,7 @@ class _ClientDealChatScreenState extends State<ClientDealChatScreen> {
 
     try {
       final act = DealActivities(
-        deal_id: int.tryParse(widget.deal.id) ?? 0,
+        deal_id: widget.deal.id.toString(),
         type: widget.isStaff ? 'staff_reply' : 'client_query',
         title: widget.isStaff ? 'Staff Reply' : 'Client Query',
         description: text,

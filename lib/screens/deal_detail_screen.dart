@@ -5479,6 +5479,8 @@ final dLink = "";
     final prefs = await SharedPreferences.getInstance();
     final myId = prefs.getInt('current_user_id') ?? 1;
 
+    debugPrint('DEBUG _postActivity: dealId=${widget.deal?.id}, dealIdType=${widget.deal?.id.runtimeType}, myId=$myId, text=${_commentController.text}');
+
     final activity = DealActivity(
       dealId: widget.deal?.id ?? 0,
       type: 'comment',
@@ -5488,11 +5490,17 @@ final dLink = "";
     );
 
     if (widget.deal?.id != null) {
-      await _dealService.addActivity(activity);
-      _commentController.clear();
-      _loadDetails();
+      debugPrint('DEBUG _postActivity: calling addActivity...');
+      try {
+        await _dealService.addActivity(activity);
+        debugPrint('DEBUG _postActivity: addActivity completed successfully');
+        _commentController.clear();
+        _loadDetails();
+      } catch (e) {
+        debugPrint('DEBUG _postActivity: addActivity threw: $e');
+      }
     } else {
-      // For new unsaved deals, we can't save activity yet
+      debugPrint('DEBUG _postActivity: deal id is null, showing snackbar');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please save the deal first to post comments.'),
@@ -5524,7 +5532,7 @@ final dLink = "";
       // 2. Save to Amplify for client portal
       try {
         final amplifyAct = amplify_models.DealActivities(
-          deal_id: widget.deal!.id!,
+          deal_id: widget.deal!.id!.toString(),
           type: 'daily_update',
           title: 'Daily Update',
           description: description,

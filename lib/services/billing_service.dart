@@ -100,6 +100,40 @@ class BillingService {
     }
   }
 
+  static Map<String, String>? _clientPhoneCache;
+  static DateTime? _cacheTime;
+
+  Future<Map<String, String>> _getClientPhoneMap() async {
+    if (_clientPhoneCache != null && _cacheTime != null && DateTime.now().difference(_cacheTime!).inMinutes < 15) {
+      return _clientPhoneCache!;
+    }
+    try {
+      final req = ModelQueries.list(Clients.classType);
+      List<Clients> allClients = [];
+      var currentReq = req;
+      while(true) {
+        final res = await Amplify.API.query(request: currentReq).response;
+        allClients.addAll(res.data?.items.whereType<Clients>() ?? []);
+        if (res.data?.hasNextResult ?? false) {
+          currentReq = res.data!.requestForNextResult!;
+        } else {
+          break;
+        }
+      }
+      _clientPhoneCache = {};
+      for (var c in allClients) {
+        if (c.name != null && c.phone != null) {
+          _clientPhoneCache![c.name!] = c.phone!;
+        }
+      }
+      _cacheTime = DateTime.now();
+      return _clientPhoneCache!;
+    } catch (e) {
+      return _clientPhoneCache ?? {};
+    }
+  }
+
+
   Future<List<Billing>> fetchBillings({
     required int limit,
     required int offset,
@@ -124,6 +158,8 @@ class BillingService {
     
     // Sort descending by ID or date (using ID for now as original code used order by id)
     var allList = all.toList()..sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
+
+    final clientPhones = await _getClientPhoneMap();
 
     List<Billings> filtered = [];
     
@@ -169,10 +205,12 @@ class BillingService {
         final invNo = b.invoice_no?.toLowerCase() ?? '';
         final dataStr = b.data?.toLowerCase() ?? '';
         final amt = b.amount?.toLowerCase() ?? '';
+        final phone = clientPhones[b.client_name]?.toLowerCase() ?? '';
         if (!cName.contains(query) && 
             !invNo.contains(query) &&
             !dataStr.contains(query) &&
-            !amt.contains(query)) {
+            !amt.contains(query) &&
+            !phone.contains(query)) {
           match = false;
         }
       }
@@ -183,6 +221,19 @@ class BillingService {
     var billings = filtered.map((m) {
       final map = m.toMap();
       map['created_at'] = m.created_at ?? m.createdAt?.toString();
+      
+      String phone = clientPhones[m.client_name] ?? '';
+      String dataStr = map['data'] ?? '{}';
+      try {
+        var dataMap = jsonDecode(dataStr);
+        if (dataMap is Map) {
+          dataMap['client_phone'] = phone;
+          map['data'] = jsonEncode(dataMap);
+        }
+      } catch(_) {
+        map['data'] = jsonEncode({'client_phone': phone});
+      }
+      
       return Billing.fromMap(map);
     }).toList();
 

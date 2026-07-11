@@ -121,10 +121,10 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     final emailController = TextEditingController(text: client?.email);
     final phoneController = TextEditingController(text: client?.phone);
     final workController = TextEditingController(text: client?.typeOfWork);
-    final caseController = TextEditingController(text: client?.caseNumber);
     final fileNoController = TextEditingController(text: client?.fileNo);
     final fileDateController = TextEditingController(text: client?.fileDate);
     final dobController = TextEditingController(text: client?.dob);
+    final careOfController = TextEditingController(text: client?.managedBy);
     final addressController = TextEditingController(text: client?.address);
     bool isContacted = client?.isContacted ?? false;
     final formKey = GlobalKey<FormState>();
@@ -203,33 +203,33 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                       children: [
                         Expanded(child: _buildFormField(workController, 'Type of Work', Icons.work, false)),
                         const SizedBox(width: 20),
-                        Expanded(child: _buildFormField(caseController, 'Case Number', Icons.gavel, false)),
+                        Expanded(child: _buildFormField(fileNoController, 'File Number', Icons.folder, false)),
                       ],
                     ) : Column(
                       children: [
                         _buildFormField(workController, 'Type of Work', Icons.work, false),
                         const SizedBox(height: 20),
-                        _buildFormField(caseController, 'Case Number', Icons.gavel, false),
+                        _buildFormField(fileNoController, 'File Number', Icons.folder, false),
                       ],
                     ),
                     const SizedBox(height: 20),
                     isWide ? Row(
                       children: [
-                        Expanded(child: _buildFormField(fileNoController, 'File Number', Icons.folder, false)),
-                        const SizedBox(width: 20),
                         Expanded(child: _buildFormField(fileDateController, 'File Date', Icons.calendar_today, false)),
+                        const SizedBox(width: 20),
+                        Expanded(child: _buildFormField(dobController, 'Date of Birth', Icons.cake, false)),
                       ],
                     ) : Column(
                       children: [
-                        _buildFormField(fileNoController, 'File Number', Icons.folder, false),
-                        const SizedBox(height: 20),
                         _buildFormField(fileDateController, 'File Date', Icons.calendar_today, false),
+                        const SizedBox(height: 20),
+                        _buildFormField(dobController, 'Date of Birth', Icons.cake, false),
                       ],
                     ),
                     const SizedBox(height: 20),
                     isWide ? Row(
                       children: [
-                        Expanded(child: _buildFormField(dobController, 'Date of Birth', Icons.cake, false)),
+                        Expanded(child: _buildFormField(careOfController, 'Care Of', Icons.supervised_user_circle, false)),
                         const SizedBox(width: 20),
                         Expanded(
                           child: Container(
@@ -251,11 +251,11 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(width: 20),
+                        const Spacer(), // Balance layout if needed
                       ],
                     ) : Column(
                       children: [
-                        _buildFormField(dobController, 'Date of Birth', Icons.cake, false),
-                        const SizedBox(height: 20),
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.grey.shade50,
@@ -289,11 +289,11 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                           phone: phoneController.text,
                           address: addressController.text,
                           typeOfWork: workController.text,
-                          caseNumber: caseController.text,
                           fileDate: fileDateController.text,
                           fileNo: fileNoController.text,
                           isContacted: isContacted,
                           dob: dobController.text,
+                          managedBy: careOfController.text,
                           balanceDue: client?.balanceDue,
                         );
                         try {
@@ -304,11 +304,11 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               phone: newClient.phone,
                               address: newClient.address,
                               type_of_work: newClient.typeOfWork,
-                              case_number: newClient.caseNumber,
                               file_no: newClient.fileNo,
                               file_date: newClient.fileDate,
                               is_contacted: newClient.isContacted,
                               dob: newClient.dob,
+                              managed_by: newClient.managedBy,
                             );
                             await BackupAwareApi().create(model);
                           } else {
@@ -319,11 +319,11 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               phone: newClient.phone,
                               address: newClient.address,
                               type_of_work: newClient.typeOfWork,
-                              case_number: newClient.caseNumber,
                               file_no: newClient.fileNo,
                               file_date: newClient.fileDate,
                               is_contacted: newClient.isContacted,
                               dob: newClient.dob,
+                              managed_by: newClient.managedBy,
                             );
                             await BackupAwareApi().update(model);
                           }
@@ -649,10 +649,10 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
               children: [
                 _buildInfoPill(Icons.email_outlined, c.email?.isNotEmpty == true ? c.email! : 'No Email', isWide),
                 _buildInfoPill(Icons.phone_outlined, c.phone?.isNotEmpty == true ? c.phone! : 'No Phone', isWide),
-                _buildInfoPill(Icons.gavel_outlined, 'Case: ${c.caseNumber?.isNotEmpty == true ? c.caseNumber! : 'N/A'}', isWide),
                 _buildInfoPill(Icons.calendar_today_outlined, 'File Date: ${c.fileDate?.isNotEmpty == true ? c.fileDate! : 'N/A'}', isWide),
                 _buildInfoPill(Icons.cake_outlined, 'DOB: ${c.dob?.isNotEmpty == true ? c.dob! : 'N/A'}', isWide),
                 _buildInfoPill(Icons.location_on_outlined, c.address?.isNotEmpty == true ? c.address! : 'No Address', isWide),
+                _buildInfoPill(Icons.supervised_user_circle_outlined, 'Care Of: ${c.managedBy?.isNotEmpty == true ? c.managedBy! : 'N/A'}', isWide),
               ],
             ),
             const SizedBox(height: 16),

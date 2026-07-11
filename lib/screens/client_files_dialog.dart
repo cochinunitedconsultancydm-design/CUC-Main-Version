@@ -29,8 +29,9 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
   List<StorageItem> _personalFiles = [];
   List<StorageItem> _workItems = [];
   List<String> _workFolders = [];
+  List<StorageItem> _voiceFiles = [];
   String? _currentWorkFolder;
-  String _currentTab = 'personal'; // 'personal' or 'work'
+  String _currentTab = 'personal'; // 'personal', 'work', or 'voice'
   Map<String, amplify_models.ClientDocuments> _dbDocs = {};
 
   @override
@@ -88,9 +89,14 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
         path: StoragePath.fromString(workPath),
       ).result;
       
+      final vFilesRes = await Amplify.Storage.list(
+        path: StoragePath.fromString('public/${widget.client.id}/voice/'),
+      ).result;
+      
       if (!mounted) return;
       setState(() {
         _personalFiles = pFilesRes.items.where((f) => !f.path.contains('.emptyPlaceholder')).toList();
+        _voiceFiles = vFilesRes.items.where((f) => !f.path.contains('.emptyPlaceholder')).toList();
         
         if (_currentWorkFolder == null) {
           Set<String> folderNames = {};
@@ -260,8 +266,8 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
   Future<void> _uploadFile(String category) async {
     try {
       FilePickerResult? result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx'],
+        type: category == 'voice' ? FileType.any : FileType.custom,
+        allowedExtensions: category == 'voice' ? null : ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx', 'mp3', 'wav', 'm4a', 'aac', 'ogg'],
       );
 
       if (result != null && result.files.single.path != null) {
@@ -269,8 +275,13 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
         String fileName = result.files.single.name;
         
         // Show dialog to collect og_copy and remarks
-        final details = await _showUploadDetailsDialog(fileName);
+        final details = await _showUploadDetailsDialog(fileName, isVoiceNote: category == 'voice');
         if (details == null) return; // User cancelled
+        
+        if (category == 'voice' && details['name'] != null && details['name']!.trim().isNotEmpty) {
+           final extension = fileName.contains('.') ? '.${fileName.split('.').last}' : '';
+           fileName = '${details['name']!.trim()}$extension';
+        }
         
         setState(() => _isLoading = true);
         
@@ -358,10 +369,11 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
     return prefix;
   }
 
-  Future<Map<String, String>?> _showUploadDetailsDialog(String fileName) async {
+  Future<Map<String, String>?> _showUploadDetailsDialog(String fileName, {bool isVoiceNote = false}) async {
     String selectedOgCopy = 'Copy';
     bool shareWithClient = false;
     final remarksController = TextEditingController();
+    final nameController = TextEditingController();
     
     return await showDialog<Map<String, String>>(
       context: context,
@@ -376,20 +388,33 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                 children: [
                   Text('File: $fileName', style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
-                  const Text('Document Type', style: TextStyle(fontWeight: FontWeight.w500)),
-                  DropdownButton<String>(
-                    value: selectedOgCopy,
-                    isExpanded: true,
-                    items: const [
-                      DropdownMenuItem(value: 'Original', child: Text('Original')),
-                      DropdownMenuItem(value: 'Copy', child: Text('Copy')),
-                      DropdownMenuItem(value: 'NA', child: Text('NA')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) setDialogState(() => selectedOgCopy = val);
-                    },
-                  ),
-                  const SizedBox(height: 16),
+                  if (isVoiceNote) ...[
+                    const Text('Voice Note Name', style: TextStyle(fontWeight: FontWeight.w500)),
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        hintText: 'e.g. Meeting Recording 1',
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (!isVoiceNote) ...[
+                    const Text('Document Type', style: TextStyle(fontWeight: FontWeight.w500)),
+                    DropdownButton<String>(
+                      value: selectedOgCopy,
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(value: 'Original', child: Text('Original')),
+                        DropdownMenuItem(value: 'Copy', child: Text('Copy')),
+                        DropdownMenuItem(value: 'NA', child: Text('NA')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => selectedOgCopy = val);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   const Text('Remarks', style: TextStyle(fontWeight: FontWeight.w500)),
                   TextField(
                     controller: remarksController,
@@ -423,10 +448,11 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                     }
                     Navigator.pop(context, {
                       'og_copy': selectedOgCopy,
-                      'remarks': finalRemarks.trim(),
+                      'remarks': finalRemarks,
+                      'name': nameController.text,
                     });
                   },
-                  child: const Text('Upload'),
+                  child: const Text('Save'),
                 ),
               ],
             );
@@ -549,11 +575,13 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                 if (isWide) ...[
                   _buildNavItem('Personal Details', Icons.person_outline, 'personal', isMobile: false),
                   _buildNavItem('Work Folders', Icons.work_outline, 'work', isMobile: false),
+                  _buildNavItem('Voice Notes', Icons.mic_none_outlined, 'voice', isMobile: false),
                 ] else
                   Row(
                     children: [
                       Expanded(child: _buildNavItem('Personal', Icons.person_outline, 'personal', isMobile: true)),
                       Expanded(child: _buildNavItem('Work', Icons.work_outline, 'work', isMobile: true)),
+                      Expanded(child: _buildNavItem('Voice', Icons.mic_none_outlined, 'voice', isMobile: true)),
                     ],
                   ),
               ],
@@ -588,6 +616,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                       Expanded(
                         child: Text(
                           _currentTab == 'personal' ? 'Personal Files' 
+                          : _currentTab == 'voice' ? 'Voice Notes'
                           : _currentWorkFolder == null ? 'Work Folders' 
                           : _currentWorkFolder!,
                           style: TextStyle(fontSize: isWide ? 22 : 18, fontWeight: FontWeight.w700),
@@ -631,7 +660,9 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                       ? const Center(child: CircularProgressIndicator())
                       : _currentTab == 'personal' 
                           ? _buildFileList(_personalFiles, 'personal', isWide) 
-                          : _buildFileList(_workItems, 'work', isWide),
+                          : _currentTab == 'voice'
+                              ? _buildFileList(_voiceFiles, 'voice', isWide)
+                              : _buildFileList(_workItems, 'work', isWide),
                   ),
                 ),
               ],
@@ -826,9 +857,12 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
         if (itemName.toLowerCase().endsWith('.pdf')) {
           icon = Icons.picture_as_pdf;
           iconColor = Colors.redAccent;
-        } else if (itemName.toLowerCase().endsWith('.jpg') || itemName.toLowerCase().endsWith('.png')) {
+        } else if (itemName.toLowerCase().endsWith('.jpg') || itemName.toLowerCase().endsWith('.png') || itemName.toLowerCase().endsWith('.jpeg')) {
           icon = Icons.image;
           iconColor = Colors.purpleAccent;
+        } else if (itemName.toLowerCase().endsWith('.mp3') || itemName.toLowerCase().endsWith('.wav') || itemName.toLowerCase().endsWith('.m4a') || itemName.toLowerCase().endsWith('.aac') || itemName.toLowerCase().endsWith('.ogg')) {
+          icon = Icons.audiotrack;
+          iconColor = Colors.orangeAccent;
         }
 
         return Card(

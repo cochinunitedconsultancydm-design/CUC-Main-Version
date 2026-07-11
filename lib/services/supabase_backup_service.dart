@@ -284,8 +284,8 @@ class SupabaseBackupService {
         final map = <String, int>{};
         for (var u in data) {
           final id = u['id'] as int;
-          if (u['username'] != null) map[u['username'].toString()] = id;
-          if (u['email'] != null) map[u['email'].toString()] = id;
+          if (u['username'] != null) map[u['username'].toString().toLowerCase()] = id;
+          if (u['email'] != null) map[u['email'].toString().toLowerCase()] = id;
         }
         return map;
       }

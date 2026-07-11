@@ -6,6 +6,7 @@ import '../services/checklist_service.dart';
 import '../services/auth_service.dart';
 import '../services/deal_service.dart';
 import '../models/deal.dart';
+import '../services/supabase_backup_service.dart';
 import '../theme.dart';
 import '../widgets/premium_app_bar.dart';
 class ChecklistScreen extends StatefulWidget {
@@ -15,7 +16,7 @@ class ChecklistScreen extends StatefulWidget {
   State<ChecklistScreen> createState() => _ChecklistScreenState();
 }
 
-class _ChecklistScreenState extends State<ChecklistScreen> {
+class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProviderStateMixin {
   final _checklistService = ChecklistService();
   final _authService = AuthService();
   
@@ -23,6 +24,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   bool _isManager = false;
   int? _userId;
   List<Checklist> _checklists = [];
+  List<Checklist> _myTasks = [];
+  List<Checklist> _delegatedTasks = [];
+  List<Checklist> _allTasks = [];
+  TabController? _tabController;
   List<Map<String, dynamic>> _users = [];
   List<Deal> _deals = [];
   
@@ -42,15 +47,41 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     _initData();
   }
 
+  @override
+  void dispose() {
+    _tabController?.dispose();
+    super.dispose();
+  }
+
   Future<void> _initData() async {
     setState(() => _isLoading = true);
     _userId = await _authService.getUserId();
     _isManager = await _authService.isManager() || await _authService.isAdmin();
     
+    if (_tabController != null) _tabController!.dispose();
+    _tabController = TabController(length: _isManager ? 3 : 2, vsync: this);
+    
     final allUsers = await _checklistService.getAllUsers();
-    _users = allUsers;
+    final sbUserMap = await SupabaseBackupService().getUsernameToIdMap();
+    _users = allUsers.map((u) {
+      final uname = u['username']?.toString().toLowerCase();
+      final uemail = u['email']?.toString().toLowerCase();
+      final intId = sbUserMap[uname] ?? sbUserMap[uemail];
+      return {
+        ...u,
+        'id': intId ?? u['id'],
+      };
+    }).toList();
     _deals = await DealService().getAllDeals();
     
+    final sariga = _users.firstWhere(
+      (u) => (u['name'] ?? '').toString().toLowerCase().contains('sariga'), 
+      orElse: () => {}
+    );
+    if (sariga.isNotEmpty && sariga['id'] is int) {
+      await _checklistService.patchNullTasksToSariga(sariga['id']);
+    }
+
     await _fetchChecklists();
     setState(() => _isLoading = false);
   }
@@ -58,7 +89,19 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   Future<void> _fetchChecklists() async {
     if (_userId == null) return;
     
-    _checklists = await _checklistService.getAllChecklists();
+    final all = await _checklistService.getAllChecklists();
+    
+    if (mounted) {
+      setState(() {
+        _checklists = all;
+        _myTasks = all.where((c) {
+          debugPrint('Checking task: ${c.title}, resp: ${c.responsibleId}, user: $_userId');
+          return c.responsibleId?.toString() == _userId?.toString();
+        }).toList();
+        _delegatedTasks = all.where((c) => c.managerId?.toString() == _userId?.toString()).toList();
+        _allTasks = all;
+      });
+    }
   }
 
   Future<void> _handleRefresh() async {
@@ -68,7 +111,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (_isLoading || _tabController == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
@@ -76,7 +119,70 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       appBar: PremiumAppBar(
         title: const Text("Today's Task", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
-      body: _buildChecklistList(),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+              ],
+              border: Border.all(color: Colors.grey.shade100),
+            ),
+            child: TabBar(
+              controller: _tabController!,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              labelColor: AppTheme.primaryColor,
+              unselectedLabelColor: Colors.grey.shade500,
+              indicator: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              tabs: [
+                const Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [Icon(Icons.person_outline, size: 18), SizedBox(width: 8), Text('My Tasks')],
+                  ),
+                ),
+                const Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [Icon(Icons.forward_to_inbox_outlined, size: 18), SizedBox(width: 8), Text('Delegated Tasks')],
+                  ),
+                ),
+                if (_isManager) 
+                  const Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [Icon(Icons.list_alt_rounded, size: 18), SizedBox(width: 8), Text('All Tasks')],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController!,
+              children: [
+                _buildChecklistList(_myTasks),
+                _buildChecklistList(_delegatedTasks),
+                if (_isManager) _buildChecklistList(_allTasks),
+              ],
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           showDialog(
@@ -98,8 +204,8 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     );
   }
 
-  Widget _buildChecklistList() {
-    if (_checklists.isEmpty) {
+  Widget _buildChecklistList(List<Checklist> tasks) {
+    if (tasks.isEmpty) {
       return RefreshIndicator(
         onRefresh: _handleRefresh,
         child: ListView(
@@ -115,9 +221,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       onRefresh: _handleRefresh,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _checklists.length,
+        itemCount: tasks.length,
         itemBuilder: (context, index) {
-          final checklist = _checklists[index];
+          final checklist = tasks[index];
           return _buildChecklistCard(checklist);
         },
       ),
@@ -141,133 +247,151 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       displayTitle = timeMatch.group(2)!;
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      child: InkWell(
-        onTap: () => _showChecklistDetails(checklist, statusColor),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayTitle,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      if (displayTime != null) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.access_time, size: 14, color: AppTheme.primaryColor),
-                            const SizedBox(width: 4),
-                            Text(displayTime, style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 13)),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    checklist.status,
-                    style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-            if (checklist.description != null && checklist.description!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(checklist.description!, style: const TextStyle(color: Colors.grey)),
-            ],
-            if (checklist.dealId != null) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.link, size: 14, color: AppTheme.primaryColor),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      "Connected Work: ${checklist.dealName}",
-                      style: const TextStyle(fontSize: 12, color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            const Divider(height: 24),
-            Row(
-              children: [
-                const Icon(Icons.person_outline, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  (checklist.managerId == _userId || _isManager) ? "Responsible: ${checklist.responsibleName ?? 'Unknown'}" : "Assigned by: ${checklist.managerName ?? 'Manager'}",
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-            if (checklist.status != 'Pending') ...[
-              const SizedBox(height: 8),
-              Text(
-                checklist.status == 'Completed' ? "Remarks: ${checklist.remarks ?? 'N/A'}" : "Reason: ${checklist.reason ?? 'N/A'}",
-                style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic),
-              ),
-            ],
-            if (!_isManager && checklist.status == 'Pending') ...[
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () => _showStatusDialog(checklist, 'Completed'),
-                    icon: const Icon(Icons.check_circle_outline, size: 16),
-                    label: const Text("Complete", style: TextStyle(fontSize: 12)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      minimumSize: Size.zero,
-                    ),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => _showStatusDialog(checklist, 'Not Completed'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      minimumSize: Size.zero,
-                    ),
-                    child: const Text("Not Done", style: TextStyle(fontSize: 12)),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => _showStatusDialog(checklist, 'Postponed'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.orange,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      minimumSize: Size.zero,
-                    ),
-                    child: const Text("Postpone", style: TextStyle(fontSize: 12)),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 16, offset: const Offset(0, 8)),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
       ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _showChecklistDetails(checklist, statusColor),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(width: 5, color: statusColor),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      displayTitle,
+                                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textColor, height: 1.3),
+                                    ),
+                                    if (displayTime != null) ...[
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.schedule, size: 14, color: AppTheme.primaryColor.withValues(alpha: 0.8)),
+                                          const SizedBox(width: 6),
+                                          Text(displayTime, style: TextStyle(color: AppTheme.primaryColor.withValues(alpha: 0.8), fontWeight: FontWeight.w600, fontSize: 13)),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: statusColor.withValues(alpha: 0.2)),
+                                ),
+                                child: Text(
+                                  checklist.status,
+                                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (checklist.description != null && checklist.description!.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Text(checklist.description!, style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.4)),
+                          ],
+                          if (checklist.dealId != null) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.link, size: 14, color: Colors.blue.shade700),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      "Deal: ${checklist.dealName}",
+                                      style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w600),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Icon(Icons.person_outline, size: 16, color: Colors.grey.shade500),
+                              const SizedBox(width: 6),
+                              Builder(
+                                builder: (context) {
+                                  final respUser = _users.firstWhere((u) => u['id']?.toString() == checklist.responsibleId?.toString(), orElse: () => {});
+                                  final mgrUser = _users.firstWhere((u) => u['id']?.toString() == checklist.managerId?.toString(), orElse: () => {});
+                                  
+                                  final rName = respUser.isNotEmpty ? respUser['name'] : (checklist.responsibleName ?? 'Unknown');
+                                  final mName = mgrUser.isNotEmpty ? mgrUser['name'] : (checklist.managerName ?? 'Manager');
+                                  
+                                  return Text(
+                                    (checklist.managerId == _userId || _isManager) ? "Assigned to $rName" : "From $mName",
+                                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                                  );
+                                }
+                              ),
+                            ],
+                          ),
+                          if (checklist.status != 'Pending') ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.info_outline, size: 14, color: Colors.grey.shade600),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      checklist.status == 'Completed' ? "Remarks: ${checklist.remarks ?? 'N/A'}" : "Reason: ${checklist.reason ?? 'N/A'}",
+                                      style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: Colors.grey.shade700),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -349,6 +473,66 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 const SizedBox(height: 4),
                 Text(checklist.reason!, style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.red)),
                 const SizedBox(height: 16),
+              ],
+              if (!_isManager && checklist.status == 'Pending') ...[
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 16),
+                const Text("Update Status", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showStatusDialog(checklist, 'Completed');
+                        },
+                        icon: const Icon(Icons.check_circle_outline, size: 16),
+                        label: const Text("Complete", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showStatusDialog(checklist, 'Not Completed');
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: BorderSide(color: Colors.red.shade200),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text("Not Done", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showStatusDialog(checklist, 'Postponed');
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.orange,
+                          side: BorderSide(color: Colors.orange.shade200),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text("Postpone", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ],
           ),

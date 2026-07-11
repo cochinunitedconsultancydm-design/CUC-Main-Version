@@ -97,76 +97,151 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
     }
   }
 
-  void _showDetails(amplify_models.Properties property) {
+  void _showDetails(amplify_models.Properties initialProperty) {
+    int currentIndex = _filteredProperties.indexWhere((p) => p.id == initialProperty.id);
+    if (currentIndex == -1) currentIndex = 0;
+
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        clipBehavior: Clip.antiAlias,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 800),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppTheme.primaryColor, AppTheme.accentColor],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          final property = _filteredProperties.isNotEmpty ? _filteredProperties[currentIndex] : initialProperty;
+          
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500, maxHeight: 800),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppTheme.primaryColor, AppTheme.accentColor],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.apartment_rounded, color: Colors.white, size: 32),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Property Details', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                              Text(property.property_name ?? 'Unnamed Property', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
+                            ],
+                          ),
+                        ),
+                        if (_filteredProperties.length > 1) ...[
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                            tooltip: 'Previous',
+                            onPressed: () {
+                              setState(() {
+                                currentIndex = (currentIndex - 1) % _filteredProperties.length;
+                                if (currentIndex < 0) currentIndex += _filteredProperties.length;
+                              });
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
+                            tooltip: 'Next',
+                            onPressed: () {
+                              setState(() {
+                                currentIndex = (currentIndex + 1) % _filteredProperties.length;
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, color: Colors.white),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.apartment_rounded, color: Colors.white, size: 32),
-                    const SizedBox(width: 16),
-                    Expanded(
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Property Details', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                          Text(property.property_name ?? 'Unnamed Property', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
+                          _detailRow('Client Name', property.client_name, Icons.person_rounded),
+                          _detailRow('Location', property.location, Icons.location_on_rounded),
+                          _detailRow('Property Type', property.property_type, Icons.category_rounded),
+                          _detailRow('Owner Name', property.owner_name, Icons.manage_accounts_rounded),
+                          _phoneDetailRow('Owner Phone', property.owner_phone_numbers, Icons.phone_rounded),
+                          _detailRow('Multiple Owners', property.has_multiple_owners != null ? (property.has_multiple_owners! ? 'Yes' : 'No') : null, Icons.group_rounded),
+                          _detailRow('Broker Details', property.broker_details, Icons.handshake_rounded),
+                          _detailRow('Care Of', property.care_of, Icons.supervised_user_circle_rounded),
+                          _detailRow('Legal Disputes', property.has_legal_disputes != null ? (property.has_legal_disputes! ? 'Yes' : 'No') : null, Icons.gavel_rounded),
+                          _detailRow('Transaction Type', property.transaction_type, Icons.swap_horiz_rounded),
+                          _detailRow('Area', property.area, Icons.square_foot_rounded),
+                          _detailRow('Price', property.price != null ? _formatPrice(property.price) : null, Icons.currency_rupee_rounded),
+                          _detailRow('Advance Amount', property.advance_amount != null ? _formatPrice(property.advance_amount) : null, Icons.account_balance_wallet_rounded),
+                          _detailRow('Negotiable', property.is_negotiable != null ? (property.is_negotiable! ? 'Yes' : 'No') : null, Icons.price_change_rounded),
+                          _detailRow('Period', property.period, Icons.timer_rounded),
+                          _detailRow('Floor', property.floor, Icons.stairs_rounded),
+                          _detailRow('Balcony', property.has_balcony != null ? (property.has_balcony! ? 'Yes' : 'No') : null, Icons.balcony_rounded),
+                          _detailRow('Balcony Count', property.balcony_count?.toString(), Icons.numbers_rounded),
+                          _detailRow('Furnished', property.is_furnished != null ? (property.is_furnished! ? 'Yes' : 'No') : null, Icons.chair_rounded),
+                          _detailRow('Car Parking', property.has_car_parking != null ? (property.has_car_parking! ? 'Yes' : 'No') : null, Icons.local_parking_rounded),
+                          _detailRow('Expenses', property.expenses, Icons.receipt_long_rounded),
+                          _detailRow('Status', property.status, Icons.info_outline_rounded),
+                          _detailRow('Notes', property.notes, Icons.notes_rounded),
+                          if (property.photos != null && property.photos!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Photos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 12,
+                                    runSpacing: 12,
+                                    children: property.photos!.asMap().entries.map((entry) {
+                                      final idx = entry.key;
+                                      return InkWell(
+                                        onTap: () => _previewPropertyImage(property.photos!, idx),
+                                        child: Container(
+                                          width: 100,
+                                          height: 100,
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                                          ),
+                                          child: const Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(Icons.image, color: AppTheme.primaryColor, size: 32),
+                                              SizedBox(height: 8),
+                                              Text('View', style: TextStyle(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _detailRow('Client Name', property.client_name, Icons.person_rounded),
-                      _detailRow('Location', property.location, Icons.location_on_rounded),
-                      _detailRow('Property Type', property.property_type, Icons.category_rounded),
-                      _detailRow('Owner Name', property.owner_name, Icons.manage_accounts_rounded),
-                      _phoneDetailRow('Owner Phone', property.owner_phone_numbers, Icons.phone_rounded),
-                      _detailRow('Broker Details', property.broker_details, Icons.handshake_rounded),
-                      _detailRow('Care Of', property.care_of, Icons.supervised_user_circle_rounded),
-                      _detailRow('Transaction Type', property.transaction_type, Icons.swap_horiz_rounded),
-                      _detailRow('Area', property.area, Icons.square_foot_rounded),
-                      _detailRow('Price', property.price != null ? _formatPrice(property.price) : null, Icons.currency_rupee_rounded),
-                      _detailRow('Advance Amount', property.advance_amount != null ? _formatPrice(property.advance_amount) : null, Icons.account_balance_wallet_rounded),
-                      _detailRow('Period', property.period, Icons.timer_rounded),
-                      _detailRow('Floor', property.floor, Icons.stairs_rounded),
-                      _detailRow('Balcony Count', property.balcony_count?.toString(), Icons.balcony_rounded),
-                      _detailRow('Expenses', property.expenses, Icons.receipt_long_rounded),
-                      _detailRow('Status', property.status, Icons.info_outline_rounded),
-                      _detailRow('Notes', property.notes, Icons.notes_rounded),
-                    ],
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        }
       ),
     );
   }
@@ -327,15 +402,19 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final filtered = _properties.where((p) {
+  List<amplify_models.Properties> get _filteredProperties {
+    return _properties.where((p) {
       final t = _searchTerm.toLowerCase();
       final pName = (p.property_name ?? '').toLowerCase();
       final cName = (p.client_name ?? '').toLowerCase();
       final oName = (p.owner_name ?? '').toLowerCase();
       return pName.contains(t) || cName.contains(t) || oName.contains(t);
     }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _filteredProperties;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -709,6 +788,85 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _previewPropertyImage(List<String> photos, int initialIndex) async {
+    showDialog(
+      context: context,
+      builder: (c) {
+        int currentIndex = initialIndex;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final key = photos[currentIndex];
+            final isUrl = key.startsWith('http://') || key.startsWith('https://');
+
+            Future<String> getUrl() async {
+              if (isUrl) return key;
+              final result = await Amplify.Storage.getUrl(path: StoragePath.fromString(key)).result;
+              return result.url.toString();
+            }
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.all(16),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  FutureBuilder<String>(
+                    future: getUrl(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator(color: Colors.white));
+                      }
+                      if (snapshot.hasError || !snapshot.hasData) {
+                        return const Center(child: Text('Could not load image', style: TextStyle(color: Colors.white)));
+                      }
+                      return InteractiveViewer(
+                        child: Image.network(snapshot.data!),
+                      );
+                    }
+                  ),
+                  if (photos.length > 1) ...[
+                    Positioned(
+                      left: 16,
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 48),
+                        onPressed: () {
+                          setState(() {
+                            currentIndex = (currentIndex - 1) % photos.length;
+                            if (currentIndex < 0) currentIndex += photos.length;
+                          });
+                        }
+                      ),
+                    ),
+                    Positioned(
+                      right: 16,
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 48),
+                        onPressed: () {
+                          setState(() {
+                            currentIndex = (currentIndex + 1) % photos.length;
+                          });
+                        }
+                      ),
+                    ),
+                  ],
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                      onPressed: () => Navigator.pop(c),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+        );
+      }
     );
   }
 }

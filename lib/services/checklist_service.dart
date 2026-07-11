@@ -217,6 +217,22 @@ class ChecklistService {
     }
   }
 
+  Future<void> patchNullTasksToSariga(int sarigaId) async {
+    try {
+      final req = ModelQueries.list(Checklists.classType);
+      final res = await Amplify.API.query(request: req).response;
+      final items = res.data?.items ?? [];
+      for (var item in items) {
+        if (item != null && item.responsible_id == null) {
+          final uReq = ModelMutations.update(item.copyWith(responsible_id: sarigaId));
+          await Amplify.API.mutate(request: uReq).response;
+        }
+      }
+    } catch (e) {
+      safePrint('Error patching tasks: $e');
+    }
+  }
+
   Future<void> deleteChecklist(dynamic id) async {
     try {
       await BackupAwareApi().deleteById(Checklists.classType, ChecklistsModelIdentifier(id: id.toString())

@@ -82,7 +82,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
       setState(() {
         _isAdmin = isAdmin;
         _currentUserId = userId ?? '0';
-        _tabController = TabController(length: _isAdmin ? 3 : 2, vsync: this);
+        _tabController = TabController(length: _isAdmin ? 3 : 1, vsync: this);
       });
     }
 
@@ -711,21 +711,22 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
             ),
           ],
           const SizedBox(height: 24),
-          TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            labelColor: AppTheme.primaryColor,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: AppTheme.primaryColor,
-            indicatorSize: TabBarIndicatorSize.label,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            tabs: [
-              const Tab(text: 'My Deliveries/Pickups'),
-              const Tab(text: 'Delegated Deliveries/Pickups'),
-              if (_isAdmin) const Tab(text: 'All Deliveries/Pickups'),
-            ],
-          ),
+          if (_isAdmin)
+            TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              labelColor: AppTheme.primaryColor,
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: AppTheme.primaryColor,
+              indicatorSize: TabBarIndicatorSize.label,
+              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              tabs: const [
+                Tab(text: 'My Deliveries/Pickups'),
+                Tab(text: 'Delegated Deliveries/Pickups'),
+                Tab(text: 'All Deliveries/Pickups'),
+              ],
+            ),
           const SizedBox(height: 16),
           Flex(
             direction: isWide ? Axis.horizontal : Axis.vertical,
@@ -779,14 +780,16 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
           Expanded(
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator())
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildTaskList(_myTasks, isWide, isMyTask: true),
-                    _buildTaskList(_delegatedTasks, isWide, isMyTask: false),
-                    if (_isAdmin) _buildTaskList(_allTasks, isWide, isMyTask: false),
-                  ],
-                ),
+              : (_isAdmin 
+                  ? TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildTaskList(_myTasks, isWide, isMyTask: true),
+                        _buildTaskList(_delegatedTasks, isWide, isMyTask: false),
+                        _buildTaskList(_allTasks, isWide, isMyTask: false),
+                      ],
+                    )
+                  : _buildTaskList(_myTasks, isWide, isMyTask: true)),
           ),
         ],
       ).animate().fadeIn(),

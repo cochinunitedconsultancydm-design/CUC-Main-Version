@@ -127,15 +127,15 @@ class ServiceContent extends amplify_core.Model {
     
     buffer.write("ServiceContent {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("service_id=" + (_service_id != null ? _service_id!.toString() : "null") + ", ");
+    buffer.write("service_id=" + (_service_id != null ? _service_id.toString() : "null") + ", ");
     buffer.write("title=" + "$_title" + ", ");
     buffer.write("description=" + "$_description" + ", ");
     buffer.write("image_path=" + "$_image_path" + ", ");
     buffer.write("details=" + "$_details" + ", ");
     buffer.write("pdf_url=" + "$_pdf_url" + ", ");
     buffer.write("previous_case_id=" + "$_previous_case_id" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

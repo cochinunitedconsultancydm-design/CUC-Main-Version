@@ -120,14 +120,14 @@ class LicenseNotifications extends amplify_core.Model {
     
     buffer.write("LicenseNotifications {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("client_license_id=" + (_client_license_id != null ? _client_license_id!.toString() : "null") + ", ");
+    buffer.write("client_license_id=" + (_client_license_id != null ? _client_license_id.toString() : "null") + ", ");
     buffer.write("notification_type=" + "$_notification_type" + ", ");
     buffer.write("message=" + "$_message" + ", ");
-    buffer.write("is_sent=" + (_is_sent != null ? _is_sent!.toString() : "null") + ", ");
+    buffer.write("is_sent=" + (_is_sent != null ? _is_sent.toString() : "null") + ", ");
     buffer.write("scheduled_date=" + "$_scheduled_date" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

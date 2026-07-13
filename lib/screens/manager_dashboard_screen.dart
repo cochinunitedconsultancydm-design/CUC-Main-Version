@@ -18,7 +18,6 @@ import 'license_dashboard_screen.dart';
 import 'dsc_management_screen.dart';
 import 'work_management_screen.dart';
 import 'company_bill_management_screen.dart';
-import 'file_acknowledgement_screen.dart';
 import 'contact_book_screen.dart';
 import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
@@ -36,8 +35,6 @@ import 'checklist_screen.dart';
 import 'help_and_queries_management_screen.dart';
 import 'uploaded_files_screen.dart';
 import 'reminder_calendar_screen.dart';
-import '../models/inward_post_model.dart';
-import '../services/inward_post_service.dart';
 import 'client_files_screen.dart';
 import 'inward_post_screen.dart';
 import '../services/checklist_service.dart';
@@ -50,9 +47,7 @@ import '../widgets/premium_stat_card.dart';
 import 'dart:async';
 import 'document_list_screen.dart';
 import 'verification_history_view.dart';
-import 'property_management_screen.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
-import 'file_acknowledgement_screen.dart';
 
 class ManagerDashboardScreen extends StatefulWidget {
   const ManagerDashboardScreen({super.key});
@@ -2569,10 +2564,8 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                   }
                                   
                                   // Update password
-                                  if (userObj != null) {
-                                    final updatedUser = userObj.copyWith(password: newPass);
-                                    await BackupAwareApi().update(updatedUser);
-                                  }
+                                  final updatedUser = userObj.copyWith(password: newPass);
+                                  await BackupAwareApi().update(updatedUser);
                                   
                                   if (context.mounted) {
                                     Navigator.pop(context);

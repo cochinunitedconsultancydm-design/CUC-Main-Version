@@ -7,8 +7,6 @@ import 'package:cuc_app/services/backup_aware_api.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../models/client.dart';
 import '../theme.dart';
-import '../services/auth_service.dart';
-import '../services/backup_aware_api.dart';
 import '../services/supabase_backup_service.dart';
 import '../widgets/google_docs_picker_dialog.dart';
 import '../services/logging_service.dart';
@@ -33,10 +31,10 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
   
   List<amplify_models.Users> _staffList = [];
   amplify_models.Users? _selectedStaff;
-  Map<String, int> _staffIdMap = {};
+  final Map<String, int> _staffIdMap = {};
   
   List<StorageItem> _clientFiles = [];
-  Set<String> _selectedFiles = {};
+  final Set<String> _selectedFiles = {};
   bool _isLoadingFiles = false;
 
   @override
@@ -315,7 +313,7 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<amplify_models.Users>(
-                value: _selectedStaff,
+                initialValue: _selectedStaff,
                 decoration: InputDecoration(
                   labelText: 'Assign To Staff (Optional)',
                   filled: true,

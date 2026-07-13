@@ -94,8 +94,8 @@ class ServiceNames extends amplify_core.Model {
     buffer.write("id=" + "$id" + ", ");
     buffer.write("name=" + "$_name" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

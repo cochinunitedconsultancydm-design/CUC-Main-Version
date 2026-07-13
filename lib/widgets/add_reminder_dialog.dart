@@ -1,7 +1,5 @@
-import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import '../theme.dart';
 import '../services/notification_service.dart';

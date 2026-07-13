@@ -281,10 +281,10 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1.5),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.1), width: 1.5),
         boxShadow: isModal ? [] : [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, spreadRadius: 0, offset: const Offset(0, 8)),
-          BoxShadow(color: AppTheme.primaryColor.withOpacity(0.02), blurRadius: 10, spreadRadius: 0, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 20, spreadRadius: 0, offset: const Offset(0, 8)),
+          BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.02), blurRadius: 10, spreadRadius: 0, offset: const Offset(0, 4)),
         ],
       ),
       child: ClipRRect(
@@ -293,7 +293,7 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
           color: Colors.transparent,
           child: InkWell(
             onTap: isModal ? null : () => _showOfficeDetailsModal(loc),
-            hoverColor: AppTheme.primaryColor.withOpacity(0.02),
+            hoverColor: AppTheme.primaryColor.withValues(alpha: 0.02),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min, // Hug content vertically!
@@ -308,12 +308,12 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [AppTheme.primaryColor.withOpacity(0.2), AppTheme.primaryColor.withOpacity(0.05)],
+                            colors: [AppTheme.primaryColor.withValues(alpha: 0.2), AppTheme.primaryColor.withValues(alpha: 0.05)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+                          border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
                         ),
                         child: const Icon(Icons.apartment_rounded, color: AppTheme.primaryColor, size: 28),
                       ),
@@ -327,7 +327,7 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                             if (loc.place != null && loc.place!.isNotEmpty)
                               Row(
                                 children: [
-                                  Icon(Icons.location_on, size: 14, color: AppTheme.primaryColor.withOpacity(0.8)),
+                                  Icon(Icons.location_on, size: 14, color: AppTheme.primaryColor.withValues(alpha: 0.8)),
                                   const SizedBox(width: 4),
                                   Expanded(child: Text(loc.place!, style: TextStyle(fontSize: 14, color: Colors.grey.shade700, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
                                 ],
@@ -339,7 +339,7 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                         Container(
                           margin: const EdgeInsets.only(left: 12),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
+                            color: Colors.red.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: IconButton(
@@ -387,7 +387,7 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                       if (loc.location_link != null && loc.location_link!.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         Material(
-                          color: Colors.blue.withOpacity(0.08),
+                          color: Colors.blue.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(12),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(12),
@@ -419,7 +419,7 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: officers.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          separatorBuilder: (_, _) => const SizedBox(height: 8),
                           itemBuilder: (context, idx) {
                             final o = officers[idx];
                             return Container(
@@ -427,7 +427,7 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                               decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.grey.shade200)),
                               child: Row(
                                 children: [
-                                  CircleAvatar(radius: 18, backgroundColor: AppTheme.primaryColor.withOpacity(0.1), child: const Icon(Icons.person, size: 18, color: AppTheme.primaryColor)),
+                                  CircleAvatar(radius: 18, backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1), child: const Icon(Icons.person, size: 18, color: AppTheme.primaryColor)),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
@@ -503,17 +503,17 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
     return Padding(
       padding: const EdgeInsets.only(right: 12),
       child: Material(
-        color: AppTheme.primaryColor.withOpacity(0.08),
+        color: AppTheme.primaryColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () => _showPhotoGallery(context, label, jsonArrayStr),
-          hoverColor: AppTheme.primaryColor.withOpacity(0.12),
+          hoverColor: AppTheme.primaryColor.withValues(alpha: 0.12),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.primaryColor.withOpacity(0.15)),
+              border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.15)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -540,7 +540,7 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
 
     showGeneralDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.9),
+      barrierColor: Colors.black.withValues(alpha: 0.9),
       barrierDismissible: true,
       barrierLabel: 'Gallery',
       transitionDuration: const Duration(milliseconds: 300),
@@ -629,9 +629,9 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                                   filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.15),
+                                      color: Colors.white.withValues(alpha: 0.15),
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                                     ),
                                     child: IconButton(
                                       icon: const Icon(Icons.chevron_left, color: Colors.white, size: 32),
@@ -655,9 +655,9 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                                   filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.15),
+                                      color: Colors.white.withValues(alpha: 0.15),
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                                     ),
                                     child: IconButton(
                                       icon: const Icon(Icons.chevron_right, color: Colors.white, size: 32),
@@ -682,7 +682,7 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                       height: 140,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                          colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                         ),
@@ -712,9 +712,9 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                             child: Container(
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.15),
+                                color: Colors.white.withValues(alpha: 0.15),
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                               ),
                               child: IconButton(
                                 icon: const Icon(Icons.close, color: Colors.white, size: 24),
@@ -739,9 +739,9 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.4),
+                                color: Colors.black.withValues(alpha: 0.4),
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -753,7 +753,7 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
                                     height: 8,
                                     width: currentIndex == i ? 24 : 8,
                                     decoration: BoxDecoration(
-                                      color: currentIndex == i ? AppTheme.primaryColor : Colors.white.withOpacity(0.4),
+                                      color: currentIndex == i ? AppTheme.primaryColor : Colors.white.withValues(alpha: 0.4),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                   );

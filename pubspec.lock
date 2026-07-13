@@ -58,7 +58,7 @@ packages:
     source: hosted
     version: "0.11.20"
   amplify_core:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: amplify_core
       sha256: "153141495f3d7188bcfdb81f8439612ecece6a0af48ad69b16d2f2d0249c3b40"
@@ -258,7 +258,7 @@ packages:
     source: hosted
     version: "1.2.1"
   collection:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: collection
       sha256: "2f5709ae4d3d59dd8f7cd309b4e023046b57d8a6c82130785d2b0e5868084e76"

@@ -17,7 +17,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _auth = AuthService();
   
-  ForgotPasswordPhase _currentPhase = ForgotPasswordPhase.email;
+  final ForgotPasswordPhase _currentPhase = ForgotPasswordPhase.email;
   bool _isLoading = false;
 
   // Controllers

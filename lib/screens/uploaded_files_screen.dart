@@ -572,7 +572,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
                           value: doc.remarks.contains('[SHARED]'),
                           onChanged: (val) {
                             String newRemarks = doc.remarks.replaceAll('[SHARED]', '').trim();
-                            if (val) newRemarks += (newRemarks.isEmpty ? '' : ' ') + '[SHARED]';
+                            if (val) newRemarks += '${newRemarks.isEmpty ? '' : ' '}[SHARED]';
                             
                             setState(() {
                               _documents[index] = ClientDocument(
@@ -584,7 +584,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
                             });
                             _updateField(doc.id, 'remarks', newRemarks);
                           },
-                          activeColor: AppTheme.primaryColor,
+                          activeThumbColor: AppTheme.primaryColor,
                         ),
                       ],
                     ),
@@ -827,7 +827,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
                       value: doc.remarks.contains('[SHARED]'),
                       onChanged: (val) {
                         String newRemarks = doc.remarks.replaceAll('[SHARED]', '').trim();
-                        if (val) newRemarks += (newRemarks.isEmpty ? '' : ' ') + '[SHARED]';
+                        if (val) newRemarks += '${newRemarks.isEmpty ? '' : ' '}[SHARED]';
                         
                         setState(() {
                           _documents[index] = ClientDocument(
@@ -839,7 +839,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
                         });
                         _updateField(doc.id, 'remarks', newRemarks);
                       },
-                      activeColor: AppTheme.primaryColor,
+                      activeThumbColor: AppTheme.primaryColor,
                     ),
                   ),
                   DataCell(

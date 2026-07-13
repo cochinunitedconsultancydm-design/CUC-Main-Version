@@ -113,7 +113,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
       return InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
-        prefixIcon: Icon(icon, color: AppTheme.primaryColor.withOpacity(0.7), size: 22),
+        prefixIcon: Icon(icon, color: AppTheme.primaryColor.withValues(alpha: 0.7), size: 22),
         filled: true,
         fillColor: Colors.grey.shade50,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
@@ -136,8 +136,8 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: isSelected ? color.withOpacity(0.1) : Colors.grey.shade50,
-              border: Border.all(color: isSelected ? color.withOpacity(0.5) : Colors.grey.shade200, width: isSelected ? 1.5 : 1),
+              color: isSelected ? color.withValues(alpha: 0.1) : Colors.grey.shade50,
+              border: Border.all(color: isSelected ? color.withValues(alpha: 0.5) : Colors.grey.shade200, width: isSelected ? 1.5 : 1),
               borderRadius: BorderRadius.circular(12),
             ),
             alignment: Alignment.center,
@@ -176,7 +176,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 30, offset: const Offset(0, 10)),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 30, offset: const Offset(0, 10)),
               ],
             ),
             child: Column(
@@ -196,7 +196,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                         children: [
                           Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
                             child: Icon(bill == null ? Icons.add_circle_outline_rounded : Icons.edit_note_rounded, color: Colors.white),
                           ),
                           const SizedBox(width: 16),
@@ -206,7 +206,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                       IconButton(
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(Icons.close_rounded, color: Colors.white),
-                        style: IconButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.1)),
+                        style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.1)),
                       )
                     ],
                   ),
@@ -308,7 +308,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.calendar_month_rounded, color: AppTheme.primaryColor.withOpacity(0.7), size: 22),
+                                Icon(Icons.calendar_month_rounded, color: AppTheme.primaryColor.withValues(alpha: 0.7), size: 22),
                                 const SizedBox(width: 16),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,7 +366,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.person_search_rounded, size: 22, color: selectedStaffId == null ? Colors.grey : AppTheme.primaryColor.withOpacity(0.7)),
+                                Icon(Icons.person_search_rounded, size: 22, color: selectedStaffId == null ? Colors.grey : AppTheme.primaryColor.withValues(alpha: 0.7)),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Text(
@@ -392,7 +392,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), offset: const Offset(0, -4), blurRadius: 10)],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), offset: const Offset(0, -4), blurRadius: 10)],
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -418,8 +418,11 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                             final uname = await AuthService().getUserName();
           
                             double parsedAmount = double.tryParse(amount.text) ?? 0;
-                            if (isIncoming) parsedAmount = -parsedAmount.abs();
-                            else parsedAmount = parsedAmount.abs();
+                            if (isIncoming) {
+                              parsedAmount = -parsedAmount.abs();
+                            } else {
+                              parsedAmount = parsedAmount.abs();
+                            }
           
                             final finalSpentBy = selectedStaffId ?? uid;
                             final finalSpentByName = selectedStaffName ?? uname;
@@ -494,8 +497,8 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                                   bool isPaid = updatedBalance <= 0;
                                   
                                   oldData['payment_received'] = isPaid;
-                                  oldData['advance_received'] = totalReceived.toStringAsFixed(0) + '/-';
-                                  oldData['balance_due'] = updatedBalance > 0 ? updatedBalance.toStringAsFixed(0) + '/-' : '0/-';
+                                  oldData['advance_received'] = '${totalReceived.toStringAsFixed(0)}/-';
+                                  oldData['balance_due'] = updatedBalance > 0 ? '${updatedBalance.toStringAsFixed(0)}/-' : '0/-';
                                   if (isPaid) oldData['payment_date'] = DateTime.now().toIso8601String();
                                   
                                   final updatedBill = b.copyWith(status: isPaid ? 'Received' : (totalReceived > 0 ? 'Part Payment' : 'Pending'), data: jsonEncode(oldData));
@@ -614,7 +617,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
             Future<void> fetchBal() async {
               String? b;
               if (invoiceNo != null) {
-                b = await _getInvoiceBalance(invoiceNo!);
+                b = await _getInvoiceBalance(invoiceNo);
               }
               if (b == null || b == '0') {
                 final cb = await _getClientBalance(clientName!);

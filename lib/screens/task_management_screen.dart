@@ -306,7 +306,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10)),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10)),
                 ],
               ),
               child: Material(
@@ -318,7 +318,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.08),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.08),
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                     ),
                     child: Row(
@@ -326,7 +326,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.15),
+                            color: AppTheme.primaryColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(task == null ? Icons.add_task_rounded : Icons.edit_note_rounded, color: AppTheme.primaryColor, size: 24),
@@ -360,7 +360,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                             children: [
                               Expanded(
                                 child: DropdownButtonFormField<String>(
-                                  value: selectedTaskType,
+                                  initialValue: selectedTaskType,
                                   decoration: InputDecoration(
                                     labelText: 'Type',
                                     prefixIcon: const Icon(Icons.category_outlined, color: Colors.black54),
@@ -491,9 +491,9 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                               decoration: BoxDecoration(
-                                color: dueDate == null ? Colors.grey.shade50 : AppTheme.primaryColor.withOpacity(0.05),
+                                color: dueDate == null ? Colors.grey.shade50 : AppTheme.primaryColor.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: dueDate == null ? Colors.grey.shade200 : AppTheme.primaryColor.withOpacity(0.3)),
+                                border: Border.all(color: dueDate == null ? Colors.grey.shade200 : AppTheme.primaryColor.withValues(alpha: 0.3)),
                               ),
                               child: Row(
                                 children: [

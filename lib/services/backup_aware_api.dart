@@ -19,6 +19,7 @@ class BackupAwareApi {
 
     if (response.hasErrors) {
       debugPrint('GraphQL mutation errors: ${response.errors}');
+      throw Exception(response.errors.map((e) => e.message).join(', '));
     }
 
     if (response.data != null) {
@@ -32,6 +33,11 @@ class BackupAwareApi {
     final response = await Amplify.API
         .mutate(request: ModelMutations.update(model))
         .response;
+
+    if (response.hasErrors) {
+      debugPrint('GraphQL mutation errors: ${response.errors}');
+      throw Exception(response.errors.map((e) => e.message).join(', '));
+    }
 
     if (response.data != null) {
       _backupInBackground(model.getInstanceType().modelName(), model.toJson());

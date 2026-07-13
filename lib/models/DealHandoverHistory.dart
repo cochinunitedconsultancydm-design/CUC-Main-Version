@@ -113,13 +113,13 @@ class DealHandoverHistory extends amplify_core.Model {
     
     buffer.write("DealHandoverHistory {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("deal_id=" + (_deal_id != null ? _deal_id!.toString() : "null") + ", ");
-    buffer.write("from_user_id=" + (_from_user_id != null ? _from_user_id!.toString() : "null") + ", ");
-    buffer.write("to_user_id=" + (_to_user_id != null ? _to_user_id!.toString() : "null") + ", ");
+    buffer.write("deal_id=" + (_deal_id != null ? _deal_id.toString() : "null") + ", ");
+    buffer.write("from_user_id=" + (_from_user_id != null ? _from_user_id.toString() : "null") + ", ");
+    buffer.write("to_user_id=" + (_to_user_id != null ? _to_user_id.toString() : "null") + ", ");
     buffer.write("note=" + "$_note" + ", ");
     buffer.write("handed_over_at=" + "$_handed_over_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

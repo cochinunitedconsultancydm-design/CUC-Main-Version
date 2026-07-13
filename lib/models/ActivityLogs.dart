@@ -120,14 +120,14 @@ class ActivityLogs extends amplify_core.Model {
     
     buffer.write("ActivityLogs {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("user_id=" + (_user_id != null ? _user_id!.toString() : "null") + ", ");
+    buffer.write("user_id=" + (_user_id != null ? _user_id.toString() : "null") + ", ");
     buffer.write("action=" + "$_action" + ", ");
     buffer.write("target_type=" + "$_target_type" + ", ");
     buffer.write("target_id=" + "$_target_id" + ", ");
     buffer.write("details=" + "$_details" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

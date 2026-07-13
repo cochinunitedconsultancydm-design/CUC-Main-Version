@@ -157,8 +157,8 @@ class Tasks extends amplify_core.Model {
     buffer.write("id=" + "$id" + ", ");
     buffer.write("title=" + "$_title" + ", ");
     buffer.write("description=" + "$_description" + ", ");
-    buffer.write("assigned_to=" + (_assigned_to != null ? _assigned_to!.toString() : "null") + ", ");
-    buffer.write("assigned_by=" + (_assigned_by != null ? _assigned_by!.toString() : "null") + ", ");
+    buffer.write("assigned_to=" + (_assigned_to != null ? _assigned_to.toString() : "null") + ", ");
+    buffer.write("assigned_by=" + (_assigned_by != null ? _assigned_by.toString() : "null") + ", ");
     buffer.write("status=" + "$_status" + ", ");
     buffer.write("due_date=" + "$_due_date" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
@@ -166,8 +166,8 @@ class Tasks extends amplify_core.Model {
     buffer.write("client_name=" + "$_client_name" + ", ");
     buffer.write("phone_number=" + "$_phone_number" + ", ");
     buffer.write("updated_at=" + "$_updated_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

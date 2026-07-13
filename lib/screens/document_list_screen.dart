@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;

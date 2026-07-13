@@ -184,14 +184,14 @@ class Clients extends amplify_core.Model {
     buffer.write("type_of_work=" + "$_type_of_work" + ", ");
     buffer.write("case_number=" + "$_case_number" + ", ");
     buffer.write("dob=" + "$_dob" + ", ");
-    buffer.write("review_rating=" + (_review_rating != null ? _review_rating!.toString() : "null") + ", ");
+    buffer.write("review_rating=" + (_review_rating != null ? _review_rating.toString() : "null") + ", ");
     buffer.write("file_no=" + "$_file_no" + ", ");
     buffer.write("file_date=" + "$_file_date" + ", ");
-    buffer.write("is_contacted=" + (_is_contacted != null ? _is_contacted!.toString() : "null") + ", ");
+    buffer.write("is_contacted=" + (_is_contacted != null ? _is_contacted.toString() : "null") + ", ");
     buffer.write("managed_by=" + "$_managed_by" + ", ");
     buffer.write("balance_due=" + "$_balance_due" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

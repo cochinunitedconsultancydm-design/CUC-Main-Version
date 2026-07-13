@@ -113,13 +113,13 @@ class LicenseServices extends amplify_core.Model {
     
     buffer.write("LicenseServices {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("client_license_id=" + (_client_license_id != null ? _client_license_id!.toString() : "null") + ", ");
+    buffer.write("client_license_id=" + (_client_license_id != null ? _client_license_id.toString() : "null") + ", ");
     buffer.write("service_description=" + "$_service_description" + ", ");
-    buffer.write("service_cost=" + (_service_cost != null ? _service_cost!.toString() : "null") + ", ");
+    buffer.write("service_cost=" + (_service_cost != null ? _service_cost.toString() : "null") + ", ");
     buffer.write("service_date=" + "$_service_date" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

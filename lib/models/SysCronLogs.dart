@@ -94,8 +94,8 @@ class SysCronLogs extends amplify_core.Model {
     buffer.write("id=" + "$id" + ", ");
     buffer.write("job_name=" + "$_job_name" + ", ");
     buffer.write("last_run_date=" + "$_last_run_date" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

@@ -99,11 +99,11 @@ class TravelLogs extends amplify_core.Model {
     
     buffer.write("TravelLogs {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("user_id=" + (_user_id != null ? _user_id!.toString() : "null") + ", ");
+    buffer.write("user_id=" + (_user_id != null ? _user_id.toString() : "null") + ", ");
     buffer.write("destination=" + "$_destination" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

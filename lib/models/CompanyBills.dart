@@ -143,15 +143,15 @@ class CompanyBills extends amplify_core.Model {
     buffer.write("id=" + "$id" + ", ");
     buffer.write("category=" + "$_category" + ", ");
     buffer.write("title=" + "$_title" + ", ");
-    buffer.write("amount=" + (_amount != null ? _amount!.toString() : "null") + ", ");
+    buffer.write("amount=" + (_amount != null ? _amount.toString() : "null") + ", ");
     buffer.write("bill_date=" + "$_bill_date" + ", ");
     buffer.write("status=" + "$_status" + ", ");
     buffer.write("description=" + "$_description" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write("spent_by=" + (_spent_by != null ? _spent_by!.toString() : "null") + ", ");
+    buffer.write("spent_by=" + (_spent_by != null ? _spent_by.toString() : "null") + ", ");
     buffer.write("spent_by_name=" + "$_spent_by_name" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

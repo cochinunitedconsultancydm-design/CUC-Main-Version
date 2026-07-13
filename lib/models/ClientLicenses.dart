@@ -148,8 +148,8 @@ class ClientLicenses extends amplify_core.Model {
     
     buffer.write("ClientLicenses {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("client_id=" + (_client_id != null ? _client_id!.toString() : "null") + ", ");
-    buffer.write("license_type_id=" + (_license_type_id != null ? _license_type_id!.toString() : "null") + ", ");
+    buffer.write("client_id=" + (_client_id != null ? _client_id.toString() : "null") + ", ");
+    buffer.write("license_type_id=" + (_license_type_id != null ? _license_type_id.toString() : "null") + ", ");
     buffer.write("file_no=" + "$_file_no" + ", ");
     buffer.write("service_date=" + "$_service_date" + ", ");
     buffer.write("expiry_date=" + "$_expiry_date" + ", ");
@@ -158,8 +158,8 @@ class ClientLicenses extends amplify_core.Model {
     buffer.write("created_at=" + "$_created_at" + ", ");
     buffer.write("updated_at=" + "$_updated_at" + ", ");
     buffer.write("manual_client_name=" + "$_manual_client_name" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

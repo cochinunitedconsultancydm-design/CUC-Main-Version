@@ -23,10 +23,10 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
   final _officePhoneDesigController = TextEditingController();
   final _officePhoneNumController = TextEditingController();
   
-  List<File> _frontViewPhotos = [];
-  List<File> _designationBoards = [];
-  List<File> _noticeBoards = [];
-  List<File> _otherPhotos = [];
+  final List<File> _frontViewPhotos = [];
+  final List<File> _designationBoards = [];
+  final List<File> _noticeBoards = [];
+  final List<File> _otherPhotos = [];
   
   List<Map<String, String>> _officers = [];
   final _officerNameController = TextEditingController();
@@ -243,7 +243,7 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
                                   shrinkWrap: true,
                                   physics: const NeverScrollableScrollPhysics(),
                                   itemCount: _officePhones.length,
-                                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                                   itemBuilder: (context, index) {
                                     final phone = _officePhones[index];
                                     return Container(
@@ -319,7 +319,7 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
                                   shrinkWrap: true,
                                   physics: const NeverScrollableScrollPhysics(),
                                   itemCount: _officers.length,
-                                  separatorBuilder: (_, __) => const Divider(height: 1),
+                                  separatorBuilder: (_, _) => const Divider(height: 1),
                                   itemBuilder: (context, index) {
                                     final officer = _officers[index];
                                     return ListTile(
@@ -521,8 +521,11 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
                           child: InkWell(
                             onTap: () {
                               setState(() {
-                                if (label.contains('Front View')) _frontViewPhotos.remove(f);
-                                else files.remove(f);
+                                if (label.contains('Front View')) {
+                                  _frontViewPhotos.remove(f);
+                                } else {
+                                  files.remove(f);
+                                }
                               });
                             },
                             customBorder: const CircleBorder(),

@@ -666,6 +666,30 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                           }
                           try {
                             if (user == null) {
+                              try {
+                                final normalizedUser = username.text.toLowerCase().trim();
+                                final userPart = normalizedUser.contains('@') ? normalizedUser.split('@')[0] : normalizedUser;
+                                final loginEmail = normalizedUser.contains('@') ? normalizedUser : '$userPart@cuc.local';
+
+                                await Amplify.Auth.signUp(
+                                  username: loginEmail,
+                                  password: password.text,
+                                  options: SignUpOptions(
+                                    userAttributes: {
+                                      CognitoUserAttributeKey.email: loginEmail,
+                                      CognitoUserAttributeKey.name: name.text.trim(),
+                                    },
+                                  ),
+                                );
+                                debugPrint('Created Cognito user for $loginEmail');
+                              } catch (e) {
+                                debugPrint('Cognito signup failed: $e');
+                                if (!e.toString().contains('UsernameExistsException')) {
+                                  _msg('Failed to create Cognito login: $e', false);
+                                  return;
+                                }
+                              }
+
                               // SECURITY: Hash password before storing
                               final hashedPassword = SecurityService().hashPassword(password.text);
                               final newUser = amplify_models.Users(

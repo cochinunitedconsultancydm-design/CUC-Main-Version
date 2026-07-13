@@ -127,15 +127,15 @@ class Messages extends amplify_core.Model {
     
     buffer.write("Messages {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("sender_id=" + (_sender_id != null ? _sender_id!.toString() : "null") + ", ");
-    buffer.write("receiver_id=" + (_receiver_id != null ? _receiver_id!.toString() : "null") + ", ");
+    buffer.write("sender_id=" + (_sender_id != null ? _sender_id.toString() : "null") + ", ");
+    buffer.write("receiver_id=" + (_receiver_id != null ? _receiver_id.toString() : "null") + ", ");
     buffer.write("content=" + "$_content" + ", ");
-    buffer.write("is_read=" + (_is_read != null ? _is_read!.toString() : "null") + ", ");
+    buffer.write("is_read=" + (_is_read != null ? _is_read.toString() : "null") + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
     buffer.write("attachment_type=" + "$_attachment_type" + ", ");
-    buffer.write("attachment_id=" + (_attachment_id != null ? _attachment_id!.toString() : "null") + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("attachment_id=" + (_attachment_id != null ? _attachment_id.toString() : "null") + ", ");
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

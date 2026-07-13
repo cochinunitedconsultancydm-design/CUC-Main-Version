@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_api/amplify_api.dart';
-import 'package:intl/intl.dart';
 import '../../theme.dart';
 import '../../models/ModelProvider.dart';
 import '../../services/auth_service.dart';

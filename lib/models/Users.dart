@@ -255,8 +255,8 @@ class Users extends amplify_core.Model {
     buffer.write("personal_email=" + "$_personal_email" + ", ");
     buffer.write("company_email=" + "$_company_email" + ", ");
     buffer.write("company_phone=" + "$_company_phone" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

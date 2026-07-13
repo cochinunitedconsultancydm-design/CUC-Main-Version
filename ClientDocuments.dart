@@ -150,8 +150,8 @@ class ClientDocuments extends amplify_core.Model {
     buffer.write("created_at=" + "$_created_at" + ", ");
     buffer.write("verification_status=" + "$_verification_status" + ", ");
     buffer.write("rejection_reason=" + "$_rejection_reason" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

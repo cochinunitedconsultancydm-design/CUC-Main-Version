@@ -1,7 +1,5 @@
-import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 

@@ -150,16 +150,16 @@ class Checklists extends amplify_core.Model {
     buffer.write("id=" + "$id" + ", ");
     buffer.write("title=" + "$_title" + ", ");
     buffer.write("description=" + "$_description" + ", ");
-    buffer.write("manager_id=" + (_manager_id != null ? _manager_id!.toString() : "null") + ", ");
-    buffer.write("responsible_id=" + (_responsible_id != null ? _responsible_id!.toString() : "null") + ", ");
+    buffer.write("manager_id=" + (_manager_id != null ? _manager_id.toString() : "null") + ", ");
+    buffer.write("responsible_id=" + (_responsible_id != null ? _responsible_id.toString() : "null") + ", ");
     buffer.write("status=" + "$_status" + ", ");
     buffer.write("remarks=" + "$_remarks" + ", ");
     buffer.write("reason=" + "$_reason" + ", ");
     buffer.write("due_date=" + "$_due_date" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
     buffer.write("updated_at=" + "$_updated_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

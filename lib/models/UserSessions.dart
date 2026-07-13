@@ -134,16 +134,16 @@ class UserSessions extends amplify_core.Model {
     
     buffer.write("UserSessions {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("user_id=" + (_user_id != null ? _user_id!.toString() : "null") + ", ");
+    buffer.write("user_id=" + (_user_id != null ? _user_id.toString() : "null") + ", ");
     buffer.write("login_time=" + "$_login_time" + ", ");
     buffer.write("logout_time=" + "$_logout_time" + ", ");
     buffer.write("ip_address=" + "$_ip_address" + ", ");
-    buffer.write("is_active=" + (_is_active != null ? _is_active!.toString() : "null") + ", ");
+    buffer.write("is_active=" + (_is_active != null ? _is_active.toString() : "null") + ", ");
     buffer.write("status=" + "$_status" + ", ");
-    buffer.write("active_seconds=" + (_active_seconds != null ? _active_seconds!.toString() : "null") + ", ");
-    buffer.write("idle_seconds=" + (_idle_seconds != null ? _idle_seconds!.toString() : "null") + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("active_seconds=" + (_active_seconds != null ? _active_seconds.toString() : "null") + ", ");
+    buffer.write("idle_seconds=" + (_idle_seconds != null ? _idle_seconds.toString() : "null") + ", ");
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

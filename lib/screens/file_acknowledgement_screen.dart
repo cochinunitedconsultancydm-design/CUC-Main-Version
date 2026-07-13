@@ -12,9 +12,10 @@ import '../services/inward_post_service.dart';
 import '../models/deal.dart';
 import '../services/deal_service.dart';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'dart:async';
+
+import 'create_file_acknowledgement_screen.dart';
 
 class FileAcknowledgementScreen extends StatefulWidget {
   final String currentUserRole;
@@ -40,49 +41,17 @@ class FileAcknowledgementScreen extends StatefulWidget {
 }
 
 class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
-  final _fileController = TextEditingController();
-  final _fromController = TextEditingController();
-  final _toController = TextEditingController();
-  final _newFileController = TextEditingController();
-  
-  String _actionType = 'Received';
-  String _fileType = 'Original';
   List<InwardPost> _posts = [];
-  List<Map<String, dynamic>> _users = [];
-  List<Deal> _deals = [];
-  Deal? _selectedDeal;
-  List<String> _selectedFiles = [];
-  Map<String, String> _fileRemarks = {};
-  final Map<String, TextEditingController> _fileRemarkControllers = {};
-  Map<String, String> _fileTypes = {};
-  List<StreamSubscription> _subscriptions = [];
+  final List<StreamSubscription> _subscriptions = [];
   bool _isLoading = true;
-  InwardPost? _selectedPost;
-  InwardPost? _editingPost;
-  StateSetter? _dialogSetState;
-
-  void _updateState(VoidCallback fn) {
-    setState(fn);
-    if (_dialogSetState != null) {
-      _dialogSetState!(fn);
-    }
-  }
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialAction != null) {
-      _actionType = widget.initialAction!;
-    }
-    
-    _updateControllersForAction();
-
-    if (widget.initialFileName != null) {
-      _fileController.text = widget.initialFileName!;
-      _selectedFiles = widget.initialFileName!.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-      for (var f in _selectedFiles) {
-        _fileTypes[f] = 'Original';
-      }
+    if (widget.initialAction != null && widget.initialAction == 'Create') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigateToCreateScreen();
+      });
     }
     
     _loadPosts();
@@ -102,68 +71,11 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
     }
   }
 
-  void _updateControllersForAction({bool clearFiles = true}) {
-    String dealClientData = '';
-    if (_selectedDeal != null) {
-      List<String> parts = [];
-      if (_selectedDeal!.clientName != null && _selectedDeal!.clientName!.isNotEmpty) {
-        parts.add(_selectedDeal!.clientName!);
-      }
-      if (_selectedDeal!.company != null && _selectedDeal!.company!.isNotEmpty) {
-        parts.add(_selectedDeal!.company!);
-      }
-      if (_selectedDeal!.contactInfo != null && _selectedDeal!.contactInfo!.isNotEmpty) {
-        parts.add(_selectedDeal!.contactInfo!);
-      }
-      dealClientData = parts.join('\n');
-    }
 
-    String currentClientName = '';
-    if (_fromController.text != widget.currentUserName && _fromController.text.isNotEmpty) {
-      currentClientName = _fromController.text;
-    } else if (_toController.text != widget.currentUserName && _toController.text.isNotEmpty) {
-      currentClientName = _toController.text;
-    }
-
-    if (_actionType == 'Received') {
-      _toController.text = widget.currentUserName;
-      if (_selectedDeal != null) {
-        _fromController.text = dealClientData;
-      } else if (widget.initialFromName != null) {
-        _fromController.text = widget.initialFromName!;
-      } else if (currentClientName.isNotEmpty) {
-        _fromController.text = currentClientName;
-      } else if (_editingPost == null) {
-        _fromController.clear();
-      }
-    } else {
-      _fromController.text = widget.currentUserName;
-      if (_selectedDeal != null) {
-        _toController.text = dealClientData;
-      } else if (widget.initialFromName != null) {
-        _toController.text = widget.initialFromName!;
-      } else if (currentClientName.isNotEmpty) {
-        _toController.text = currentClientName;
-      } else if (_editingPost == null) {
-        _toController.clear();
-      }
-    }
-    
-    if (clearFiles) {
-      _selectedFiles.clear();
-      _fileController.clear();
-    }
-  }
 
   Future<void> _loadPosts() async {
-    _updateState(() => _isLoading = true);
+    setState(() => _isLoading = true);
     final posts = await InwardPostService.getPosts();
-    List<Deal> deals = [];
-    try {
-      deals = await DealService().getAllDeals();
-    } catch(e) {
-      debugPrint('Error fetching deals: $e');
-    }
     List<Map<String, dynamic>> users = [];
     try {
       final req = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
@@ -180,22 +92,13 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
     }
     
     if (mounted) {
-      _updateState(() {
+      setState(() {
         // Show file acknowledgements by checking ID prefix OR description
         _posts = posts.where((p) => 
           p.id.startsWith('FILEACK-') || 
           p.description.startsWith('[Received] File:') ||
           p.description.startsWith('[Returned] File:')
         ).toList();
-        _users = users;
-        _deals = deals;
-        if (widget.initialDeal != null) {
-          try {
-            _selectedDeal = deals.firstWhere((d) => d.id == widget.initialDeal!.id);
-          } catch(e) {
-            _selectedDeal = widget.initialDeal;
-          }
-        }
         _isLoading = false;
       });
     }
@@ -204,129 +107,30 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
   @override
   void dispose() {
     for (var s in _subscriptions) { s.cancel(); }
-    _fileController.dispose();
-    _fromController.dispose();
-    _toController.dispose();
-    _newFileController.dispose();
-    for (var c in _fileRemarkControllers.values) {
-      c.dispose();
-    }
     super.dispose();
   }
 
-  Future<void> _logAcknowledgement() async {
-    if (_selectedDeal == null && _editingPost == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must link this acknowledgement to a Work / Deal.'), backgroundColor: Colors.redAccent),
-      );
-      return;
-    }
-
-    final String fileName = _selectedFiles.map((f) {
-      final remark = _fileRemarks[f] ?? '';
-      final type = _fileTypes[f] ?? 'Original';
-      String res = '$f||$type';
-      return remark.isNotEmpty ? '$res::$remark' : res;
-    }).join(' ; ');
-
-    if (fileName.isEmpty || _fromController.text.trim().isEmpty || _toController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('File Name, Handed Over By, and Received By are required'), backgroundColor: Colors.redAccent),
-      );
-      return;
-    }
-
-    final newPost = InwardPost(
-      id: _editingPost?.id ?? 'FILEACK-${DateTime.now().millisecondsSinceEpoch}',
-      senderName: _fromController.text.trim(),
-      recipientName: _toController.text.trim(),
-      receivedBy: _editingPost?.receivedBy ?? widget.currentUserName,
-      receivedDate: _editingPost?.receivedDate ?? DateTime.now(),
-      status: _editingPost?.status ?? PostStatus.pendingConfirmation,
-      description: '[$_actionType] File: $fileName',
-    );
-
-    if (_editingPost != null) {
-      await InwardPostService.updatePost(newPost);
-    } else {
-      await InwardPostService.addPost(newPost);
-    }
-    
-    if (_selectedDeal != null && _selectedFiles.isNotEmpty) {
-      try {
-        List<Map<String, dynamic>> fileStates = [];
-        final rawReceived = _selectedDeal!.filesReceived ?? '';
-        final receivedJson = rawReceived.isEmpty ? '[]' : rawReceived;
-        final decoded = jsonDecode(receivedJson);
-        if (decoded is List) {
-           if (decoded.isNotEmpty && decoded.first is String) {
-             fileStates = decoded.map((e) => {'name': e.toString(), 'status': 'Received', 'type': 'Copy'}).toList();
-           } else {
-             fileStates = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-           }
-        }
-        
-        List<String> askedList = (_selectedDeal!.filesAsked ?? '').split(RegExp(r'[,\n]')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-
-        for (final file in _selectedFiles) {
-          int stateIndex = fileStates.indexWhere((s) => s['name'] == file);
-          if (stateIndex != -1) {
-            fileStates[stateIndex]['status'] = _actionType == 'Received' ? 'Received' : 'Returned';
-          } else {
-            fileStates.add({
-              'name': file,
-              'status': _actionType == 'Received' ? 'Received' : 'Returned',
-              'type': 'Copy'
-            });
-          }
-          if (_actionType == 'Received' && !askedList.contains(file)) {
-            askedList.add(file);
-          }
-        }
-
-        final updatedDeal = _selectedDeal!.copyWith(
-          filesReceived: jsonEncode(fileStates),
-          filesAsked: askedList.join(', ')
-        );
-        await DealService().updateDeal(updatedDeal);
-        
-        final idx = _deals.indexWhere((d) => d.id == _selectedDeal!.id);
-        if (idx != -1) _deals[idx] = updatedDeal;
-        _selectedDeal = updatedDeal;
-
-      } catch (e) {
-        debugPrint('Error updating deal files: $e');
-      }
-    }
-
-    _updateState(() {
-      _fileController.clear();
-      _selectedFiles.clear();
-      _fileRemarks.clear();
-      _fileTypes.clear();
-      for (var c in _fileRemarkControllers.values) {
-        c.clear();
-      }
-      _newFileController.clear();
-      _editingPost = null;
-      if (_actionType == 'Received') {
-        if (_selectedDeal == null) _fromController.clear();
-        _toController.text = widget.currentUserName;
-      } else {
-        _toController.clear();
-        if (_selectedDeal == null) _fromController.text = widget.currentUserName;
+  void _navigateToCreateScreen({InwardPost? postToEdit}) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CreateFileAcknowledgementScreen(
+          currentUserRole: widget.currentUserRole,
+          currentUserName: widget.currentUserName,
+          initialDeal: widget.initialDeal,
+          initialFileName: widget.initialFileName,
+          initialFromName: widget.initialFromName,
+          initialAction: widget.initialAction,
+          editingPost: postToEdit,
+        ),
+      ),
+    ).then((value) {
+      if (value == true) {
+        _loadPosts();
       }
     });
-
-    await _loadPosts();
-
-    if (mounted) {
-      Navigator.of(context).pop(); // Close dialog if open
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Acknowledgement logged successfully!'), backgroundColor: Colors.green),
-      );
-    }
   }
+
+
 
   Future<void> _confirmReceipt(InwardPost post) async {
     await InwardPostService.updatePostStatus(post.id, PostStatus.confirmedReceived);
@@ -355,7 +159,15 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
     // Parse files from fileDesc
     String filesPart = fileDesc;
     String remarks = '';
-    if (fileDesc.contains(' | Remarks:')) {
+    String title = '';
+    
+    if (filesPart.contains('Title: ') && filesPart.contains(' | File: ')) {
+      final titlePart = filesPart.split(' | File: ')[0];
+      title = titlePart.replaceFirst('Title: ', '').trim();
+      filesPart = filesPart.substring(filesPart.indexOf(' | File: ') + 9);
+    }
+
+    if (filesPart.contains(' | Remarks:')) {
       final parts = fileDesc.split(' | Remarks:');
       filesPart = parts[0];
       remarks = parts[1].trim();
@@ -388,15 +200,15 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
     bool recipientIsCompany = action == 'Received';
     bool senderIsCompany = action == 'Returned';
 
-    String fromName = action == 'Returned' ? post.senderName : post.recipientName;
-    bool fromIsCompany = action == 'Returned' ? senderIsCompany : recipientIsCompany;
+    String fromName = post.senderName;
+    bool fromIsCompany = senderIsCompany;
 
-    String toName = action == 'Returned' ? post.recipientName : post.senderName;
-    bool toIsCompany = action == 'Returned' ? recipientIsCompany : senderIsCompany;
+    String toName = post.recipientName;
+    bool toIsCompany = recipientIsCompany;
     
     String bodyText = action == 'Returned' 
-        ? 'We are hereby returning the below mentioned documents' 
-        : 'I hereby acknowledge that I have received the below mentioned documents';
+        ? 'We are hereby returning the below mentioned documents:' 
+        : 'The following documents are submitted herewith:';
 
     pw.MemoryImage? logoImage;
     try {
@@ -502,6 +314,11 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
                         
                         pw.Text(bodyText, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
                         
+                        if (title.isNotEmpty) ...[
+                          pw.SizedBox(height: 10),
+                          pw.Text('Title: $title', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                        ],
+
                         pw.SizedBox(height: 20),
                         
                         pw.Padding(
@@ -617,110 +434,31 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
     );
   }
 
-  void _showCreateDialog({InwardPost? postToEdit}) {
-    if (postToEdit != null) {
-      _editingPost = postToEdit;
-      String action = 'Received';
-      String fileDesc = postToEdit.description;
-      if (postToEdit.description.startsWith('[Received]')) {
-        action = 'Received';
-        fileDesc = postToEdit.description.replaceAll('[Received]', '').trim();
-      } else if (postToEdit.description.startsWith('[Returned]')) {
-        action = 'Returned';
-        fileDesc = postToEdit.description.replaceAll('[Returned]', '').trim();
-      }
-      _actionType = action;
-      
-      String filesPart = fileDesc;
-      if (fileDesc.contains(' | Remarks:')) {
-        final parts = fileDesc.split(' | Remarks:');
-        filesPart = parts[0];
-      }
-      
-      if (filesPart.startsWith('File: ')) {
-        filesPart = filesPart.replaceFirst('File: ', '');
-      }
-      String legacyFileTypeStr = 'Original';
-      if (filesPart.contains('(') && filesPart.endsWith(')')) {
-        int lastParen = filesPart.lastIndexOf('(');
-        String extractedType = filesPart.substring(lastParen).replaceAll('(', '').replaceAll(')', '').trim();
-        if (extractedType.toLowerCase().contains('copy')) {
-          legacyFileTypeStr = 'Copy';
-        } else {
-          legacyFileTypeStr = 'Original';
-        }
-        filesPart = filesPart.substring(0, lastParen).trim();
-      }
-      
-      _fileRemarks.clear();
-      _fileTypes.clear();
-      List<String> filePartsList = filesPart.contains(' ; ') ? filesPart.split(' ; ') : filesPart.split(',');
-      _selectedFiles = filePartsList.map((e) {
-        String f = e.trim();
-        String currentType = legacyFileTypeStr;
-        if (f.contains('||')) {
-          final typeParts = f.split('||');
-          f = typeParts[0].trim();
-          if (typeParts.length > 1) {
-            final rest = typeParts[1];
-            if (rest.contains('::')) {
-              final rParts = rest.split('::');
-              currentType = rParts[0].trim();
-              _fileRemarks[f] = rParts[1].trim();
-            } else {
-              currentType = rest.trim();
-            }
-          }
-        } else if (f.contains('::')) {
-          final parts = f.split('::');
-          f = parts[0].trim();
-          if (parts.length > 1) {
-            _fileRemarks[f] = parts[1].trim();
-          }
-        }
-        _fileTypes[f] = currentType;
-        return f;
-      }).where((e) => e.isNotEmpty).toList();
-      _fromController.text = postToEdit.senderName;
-      _toController.text = postToEdit.recipientName;
-      _selectedDeal = null; // Let them link it if they want, else it stays null
-      
-      // Update controllers
-      _fileRemarkControllers.forEach((key, controller) {
-        controller.text = _fileRemarks[key] ?? '';
-      });
-    } else {
-      _editingPost = null;
-      _selectedFiles.clear();
-      _fileRemarks.clear();
-      _fileTypes.clear();
-      for (var c in _fileRemarkControllers.values) {
-        c.clear();
-      }
-      _updateControllersForAction();
-    }
-
+  void _showPdfPreviewDialog(InwardPost post) {
     showDialog(
       context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            _dialogSetState = setDialogState;
-            return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 500, maxHeight: 800),
-                child: _buildLogForm(),
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800, maxHeight: 800),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: PdfPreview(
+                build: (format) => _generatePdfDocument(post, format),
+                allowPrinting: true,
+                allowSharing: true,
+                canChangeOrientation: false,
+                canChangePageFormat: false,
               ),
-            );
-          }
+            ),
+          ),
         );
-      }
-    ).then((_) {
-      _dialogSetState = null;
-      _editingPost = null;
-    });
+      },
+    );
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -730,716 +468,278 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
       backgroundColor: const Color(0xFFF8FAFB),
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 1,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppTheme.textColor, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1E293B), size: 20),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: const Text(
           'File Handover Acknowledgements', 
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textColor)
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: Color(0xFF1E293B), letterSpacing: -0.5)
         ),
-        centerTitle: true,
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateDialog,
-        backgroundColor: AppTheme.primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
+        centerTitle: false,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ElevatedButton.icon(
+              onPressed: () => _navigateToCreateScreen(),
+              icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+              label: const Text('Create New', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.all(MediaQuery.of(context).size.width > 800 ? 24.0 : 16.0),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth > 800) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 1, child: _buildArchivesList(visiblePosts)),
-                    const SizedBox(width: 24),
-                    Expanded(flex: 2, child: _buildLivePreview()),
-                  ],
-                );
-              } else {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(flex: 1, child: _buildArchivesList(visiblePosts)),
-                    const SizedBox(height: 16),
-                    Expanded(flex: 1, child: _buildLivePreview()),
-                  ],
-                );
-              }
-            }
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLivePreview() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: _selectedPost == null
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.picture_as_pdf, size: 64, color: Colors.black12),
-                  SizedBox(height: 16),
-                  Text('Select an acknowledgement to preview', style: TextStyle(color: Colors.black38, fontSize: 16, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 8),
-                  Text('Or tap + to create a new one', style: TextStyle(color: Colors.black38, fontSize: 14)),
-                ],
-              ),
-            )
-          : ClipRRect(
+          padding: const EdgeInsets.all(24.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              child: PdfPreview(
-                build: (format) => _generatePdfDocument(_selectedPost!, format),
-                canChangePageFormat: false,
-                canChangeOrientation: false,
-                canDebug: false,
-                allowPrinting: true,
-                allowSharing: true,
-              ),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5)),
+              ],
+              border: Border.all(color: Colors.grey.shade200),
             ),
-    );
-  }
-
-  Widget _buildDealAutocomplete() {
-    return Autocomplete<Deal>(
-      optionsBuilder: (TextEditingValue textEditingValue) {
-        if (textEditingValue.text.isEmpty) {
-          return const Iterable<Deal>.empty();
-        }
-        return _deals.where((Deal deal) {
-          final dealName = deal.name.toLowerCase();
-          final clientName = (deal.clientName ?? '').toLowerCase();
-          final query = textEditingValue.text.toLowerCase();
-          return dealName.contains(query) || clientName.contains(query);
-        });
-      },
-      displayStringForOption: (Deal option) => '${option.name} (${option.clientName ?? 'No Client'})',
-      onSelected: (Deal selection) {
-        _updateState(() {
-          _selectedDeal = selection;
-          _updateControllersForAction(clearFiles: _editingPost == null);
-        });
-      },
-      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-        if (_selectedDeal != null && controller.text.isEmpty) {
-           controller.text = '${_selectedDeal!.name} (${_selectedDeal!.clientName ?? 'No Client'})';
-        }
-        return TextFormField(
-          controller: controller,
-          focusNode: focusNode,
-          decoration: InputDecoration(
-            hintText: _editingPost != null ? 'Link to a Work / Deal (Optional for Edit)' : 'Link to a Work / Deal (Required)',
-            hintStyle: const TextStyle(fontSize: 13, color: Colors.black38),
-            prefixIcon: const Icon(Icons.business_center, color: AppTheme.primaryColor),
-            suffixIcon: _selectedDeal != null
-                ? IconButton(
-                    icon: const Icon(Icons.clear, size: 20),
-                    onPressed: () {
-                      controller.clear();
-                      _updateState(() {
-                        _selectedDeal = null;
-                        _updateControllersForAction();
-                      });
-                    },
-                  )
-                : null,
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-        );
-      },
-      optionsViewBuilder: (context, onSelected, options) {
-        return Align(
-          alignment: Alignment.topLeft,
-          child: Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: 300,
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final deal = options.elementAt(index);
-                  return ListTile(
-                    title: Text(deal.name, style: const TextStyle(fontSize: 14)),
-                    subtitle: Text(deal.clientName ?? 'No Client', style: const TextStyle(fontSize: 12)),
-                    onTap: () => onSelected(deal),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildFileChecklist() {
-    List<String> availableFiles = [];
-    
-    if (_selectedDeal != null) {
-      // Parse Deal files
-      List<Map<String, dynamic>> fileStates = [];
-      try {
-        final rawReceived = _selectedDeal!.filesReceived ?? '';
-        final receivedJson = rawReceived.isEmpty ? '[]' : rawReceived;
-        final decoded = jsonDecode(receivedJson);
-        if (decoded is List) {
-           if (decoded.isNotEmpty && decoded.first is String) {
-             fileStates = decoded.map((e) => {'name': e.toString(), 'status': 'Received', 'type': 'Copy'}).toList();
-           } else {
-             fileStates = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-           }
-        }
-      } catch(e) {
-        debugPrint('Error parsing files: $e');
-      }
-      
-      final askedList = (_selectedDeal!.filesAsked ?? '').split(RegExp(r'[,\n]')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-
-      if (_actionType == 'Received') {
-        // Show asked files that are not received yet
-        for (final f in askedList) {
-          final state = fileStates.firstWhere((s) => s['name'] == f, orElse: () => {'name': f, 'status': 'Pending', 'type': 'Copy'});
-          if (state['status'] != 'Received') {
-            availableFiles.add(f);
-          }
-        }
-      } else {
-        // Show files that are currently received
-        for (final state in fileStates) {
-          if (state['status'] == 'Received') {
-            availableFiles.add(state['name']);
-          }
-        }
-      }
-    }
-
-    // Include newly typed files
-    for (final f in _selectedFiles) {
-      if (!availableFiles.contains(f)) {
-        availableFiles.add(f);
-      }
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            _actionType == 'Received' ? 'Select files being received:' : 'Select files being handed over:',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
-          ),
-          const SizedBox(height: 8),
-          if (availableFiles.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text('No matching files found. You can add one below.', style: TextStyle(fontSize: 12, color: Colors.black54)),
-            ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: availableFiles.map((file) {
-              final isSelected = _selectedFiles.contains(file);
-              return FilterChip(
-                label: Text(file, style: TextStyle(fontSize: 12, color: isSelected ? Colors.white : Colors.black87)),
-                selected: isSelected,
-                selectedColor: AppTheme.primaryColor,
-                checkmarkColor: Colors.white,
-                onSelected: (val) {
-                  _updateState(() {
-                    if (val) _selectedFiles.add(file);
-                    else _selectedFiles.remove(file);
-                  });
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _newFileController,
-                  decoration: InputDecoration(
-                    hintText: 'Type new file name and press Add...',
-                    hintStyle: const TextStyle(fontSize: 12),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  onSubmitted: (val) {
-                    if (val.trim().isNotEmpty) {
-                      _updateState(() {
-                        if (!_selectedFiles.contains(val.trim())) _selectedFiles.add(val.trim());
-                        _newFileController.clear();
-                      });
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  final val = _newFileController.text.trim();
-                  if (val.isNotEmpty) {
-                    _updateState(() {
-                      if (!_selectedFiles.contains(val)) _selectedFiles.add(val);
-                      _newFileController.clear();
-                    });
-                  }
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
-                child: const Text('Add'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_selectedFiles.isNotEmpty) ...[
-            const Text('File Settings:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
-            const SizedBox(height: 8),
-            ..._selectedFiles.map((f) {
-              _fileRemarkControllers[f] ??= TextEditingController(text: _fileRemarks[f] ?? '');
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: _fileRemarkControllers[f],
-                        decoration: InputDecoration(
-                          labelText: f,
-                          hintText: 'Remarks (optional)',
-                          hintStyle: const TextStyle(fontSize: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        onChanged: (val) {
-                          _fileRemarks[f] = val;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 1,
-                      child: DropdownButtonFormField<String>(
-                        value: _fileTypes[f] ?? 'Original',
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: ['Original', 'Copy'].map((type) {
-                          return DropdownMenuItem(value: type, child: Text(type, style: const TextStyle(fontSize: 13)));
-                        }).toList(),
-                        onChanged: (val) {
-                          _updateState(() {
-                            _fileTypes[f] = val!;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLogForm() {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.1),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(_editingPost != null ? 'EDIT ACKNOWLEDGEMENT' : 'CREATE ACKNOWLEDGEMENT', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryColor, letterSpacing: 1.2)),
-            const SizedBox(height: 24),
-            Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: RadioListTile<String>(
-                    title: const Text('Received', style: TextStyle(fontSize: 14)),
-                    value: 'Received',
-                    groupValue: _actionType,
-                    activeColor: AppTheme.primaryColor,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (val) {
-                      _updateState(() {
-                        _actionType = val!;
-                        _updateControllersForAction(clearFiles: false);
-                      });
-                    },
+                // Table Header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFB),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 3, child: Text('TITLE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1.0))),
+                      Expanded(flex: 2, child: Text('HANDED OVER BY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1.0))),
+                      Expanded(flex: 2, child: Text('RECEIVED BY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1.0))),
+                      Expanded(flex: 2, child: Text('DATE & TIME', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1.0))),
+                      SizedBox(width: 100, child: Text('STATUS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1.0))),
+                      SizedBox(width: 140, child: Text('ACTIONS', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1.0))),
+                    ],
                   ),
                 ),
                 Expanded(
-                  child: RadioListTile<String>(
-                    title: const Text('Returned', style: TextStyle(fontSize: 14)),
-                    value: 'Returned',
-                    groupValue: _actionType,
-                    activeColor: AppTheme.primaryColor,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (val) {
-                      _updateState(() {
-                        _actionType = val!;
-                        _updateControllersForAction(clearFiles: false);
-                      });
-                    },
-                  ),
+                  child: _isLoading 
+                      ? const Center(child: CircularProgressIndicator())
+                      : visiblePosts.isEmpty 
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.folder_open_rounded, size: 48, color: Colors.grey.shade300),
+                                  const SizedBox(height: 16),
+                                  Text('No acknowledgements found', style: TextStyle(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: visiblePosts.length,
+                              separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade100),
+                              itemBuilder: (context, index) {
+                                return _buildTableRow(visiblePosts[index]);
+                              },
+                            ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            _buildDealAutocomplete(),
-            const SizedBox(height: 16),
-            if (_selectedDeal == null && _editingPost == null)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange.shade200)),
-                child: const Row(
-                  children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                    SizedBox(width: 8),
-                    Expanded(child: Text('Please select a Work / Deal above to proceed with the file acknowledgement.', style: TextStyle(color: Colors.orange, fontSize: 13))),
-                  ],
-                ),
-              )
-            else
-              _buildFileChecklist(),
-            const SizedBox(height: 16),
-            if (_selectedDeal != null || _editingPost != null) ...[
-              _buildUserAutocomplete(controller: _fromController, hint: 'Handed Over By', icon: Icons.person_outline),
-              const SizedBox(height: 16),
-              _buildUserAutocomplete(controller: _toController, hint: 'Received By', icon: Icons.how_to_reg),
-              const SizedBox(height: 24),
-              SizedBox(
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _logAcknowledgement,
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: Text(_editingPost != null ? 'UPDATE ACKNOWLEDGEMENT' : 'SAVE ACKNOWLEDGEMENT', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
-      ),
       ),
     );
   }
 
-  Widget _buildUserAutocomplete({required TextEditingController controller, required String hint, required IconData icon}) {
-    return Autocomplete<Map<String, dynamic>>(
-      key: ValueKey('${controller.hashCode}_$_actionType'),
-      initialValue: TextEditingValue(text: controller.text),
-      optionsBuilder: (TextEditingValue textEditingValue) {
-        if (textEditingValue.text.isEmpty) return _users;
-        return _users.where((u) => 
-          (u['name']?.toString().toLowerCase() ?? '').contains(textEditingValue.text.toLowerCase())
-        );
-      },
-      displayStringForOption: (u) => u['name']?.toString() ?? '',
-      onSelected: (u) {
-        controller.text = u['name']?.toString() ?? '';
-      },
-      fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-        return ValueListenableBuilder<TextEditingValue>(
-          valueListenable: controller,
-          builder: (context, value, child) {
-            if (textEditingController.text != value.text) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (textEditingController.text != value.text) {
-                  textEditingController.text = value.text;
-                }
-              });
-            }
-            return Container(
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200, width: 1),
-              ),
-              child: TextFormField(
-                controller: textEditingController,
-                focusNode: focusNode,
-                style: const TextStyle(color: AppTheme.textColor, fontSize: 14),
-                minLines: 1,
-                maxLines: 5,
-                onChanged: (val) {
-                  if (controller.text != val) {
-                    controller.text = val;
-                  }
-                },
-                decoration: InputDecoration(
-                  prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 20),
-                  hintText: hint,
-                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                  contentPadding: const EdgeInsets.all(16),
-                  border: InputBorder.none,
+  Widget _buildTableRow(InwardPost post) {
+    final isConfirmed = post.status == PostStatus.confirmedReceived;
+    
+    String action = 'Received';
+    String fileDesc = post.description;
+    if (post.description.startsWith('[Received]')) {
+      action = 'Received';
+      fileDesc = post.description.replaceAll('[Received]', '').trim();
+    } else if (post.description.startsWith('[Returned]')) {
+      action = 'Returned';
+      fileDesc = post.description.replaceAll('[Returned]', '').trim();
+    }
+
+    final actionColor = action == 'Received' ? const Color(0xFF3B82F6) : const Color(0xFFF59E0B);
+    final iconData = action == 'Received' ? Icons.file_download_outlined : Icons.file_upload_outlined;
+
+    String displayTitle = fileDesc;
+    if (fileDesc.contains('Title: ') && fileDesc.contains(' | File: ')) {
+      final titlePart = fileDesc.split(' | File: ')[0];
+      displayTitle = titlePart.replaceFirst('Title: ', '').trim();
+      if (displayTitle.isEmpty) displayTitle = 'Untitled Acknowledgement';
+    }
+
+    return InkWell(
+      onTap: () => _showPdfPreviewDialog(post),
+      hoverColor: Colors.blue.withValues(alpha: 0.03),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+            flex: 3,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Premium Icon Anchor
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: actionColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: actionColor.withValues(alpha: 0.2)),
+                  ),
+                  child: Icon(iconData, color: actionColor, size: 20),
                 ),
-              ),
-            );
-          },
-        );
-      },
-      optionsViewBuilder: (context, onSelected, options) {
-        return Align(
-          alignment: Alignment.topLeft,
-          child: Material(
-            elevation: 8,
-            borderRadius: BorderRadius.circular(12),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 250, maxWidth: 300),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final option = options.elementAt(index);
-                  return ListTile(
-                    title: Text("${option['name']}", style: const TextStyle(fontWeight: FontWeight.w500)),
-                    onTap: () => onSelected(option),
-                  );
-                },
-              ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        displayTitle, 
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF1E293B), height: 1.4),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: actionColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          action.toUpperCase(),
+                          style: TextStyle(color: actionColor, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16), // buffer
+              ],
             ),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildInputField({required TextEditingController controller, required String hint, required IconData icon, bool isOptional = false}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200, width: 1),
-      ),
-      child: TextField(
-        controller: controller,
-        style: const TextStyle(color: AppTheme.textColor, fontSize: 14),
-        decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 20),
-          hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-          contentPadding: const EdgeInsets.all(16),
-          border: InputBorder.none,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildArchivesList(List<InwardPost> posts) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(24),
+          Expanded(
+            flex: 2,
             child: Row(
               children: [
-                const Icon(Icons.history, color: AppTheme.primaryColor),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text('RECENT ACKNOWLEDGEMENTS', 
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryColor, letterSpacing: 1.2),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                CircleAvatar(
+                  radius: 12,
+                  backgroundColor: Colors.blueGrey.shade50,
+                  child: Text(post.senderName.isNotEmpty ? post.senderName[0].toUpperCase() : '?', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey.shade700)),
                 ),
-                const Spacer(),
-                if (_isLoading) const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(width: 8),
+                Expanded(child: Text(post.senderName, style: const TextStyle(fontSize: 13, color: Color(0xFF475569), fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
               ],
             ),
           ),
-          const Divider(height: 1),
           Expanded(
-            child: posts.isEmpty && !_isLoading
-                ? const Center(child: Text('No acknowledgements found', style: TextStyle(color: Colors.grey)))
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: posts.length,
-                    separatorBuilder: (context, index) => const Divider(),
-                    itemBuilder: (context, index) {
-                      final post = posts[index];
-                      final isConfirmed = post.status == PostStatus.confirmedReceived;
-                      
-                      String action = 'Received';
-                      String fileDesc = post.description;
-                      if (post.description.startsWith('[Received]')) {
-                        action = 'Received';
-                        fileDesc = post.description.replaceAll('[Received]', '').trim();
-                      } else if (post.description.startsWith('[Returned]')) {
-                        action = 'Returned';
-                        fileDesc = post.description.replaceAll('[Returned]', '').trim();
-                      }
-
-                      final isSelected = _selectedPost?.id == post.id;
-
-                      return Material(
-                        color: isSelected 
-                            ? AppTheme.primaryColor.withValues(alpha: 0.05) 
-                            : (isConfirmed ? Colors.green.shade50 : AppTheme.surfaceColor),
-                        borderRadius: BorderRadius.circular(12),
-                        child: InkWell(
-                          onTap: () {
-                            _updateState(() {
-                              _selectedPost = post;
-                            });
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isSelected 
-                                    ? AppTheme.primaryColor 
-                                    : (isConfirmed ? Colors.green.shade200 : Colors.grey.shade200),
-                                width: isSelected ? 2 : 1,
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        fileDesc,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: action == 'Received' ? Colors.blue.shade100 : Colors.orange.shade100,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        action,
-                                        style: TextStyle(
-                                          color: action == 'Received' ? Colors.blue.shade800 : Colors.orange.shade800,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.person_outline, size: 16, color: Colors.grey),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text('From: ${post.senderName}', style: const TextStyle(fontSize: 13, color: Colors.grey), overflow: TextOverflow.ellipsis),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    const Icon(Icons.how_to_reg, size: 16, color: Colors.grey),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text('To: ${post.recipientName}', style: const TextStyle(fontSize: 13, color: Colors.grey), overflow: TextOverflow.ellipsis),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                                    const SizedBox(width: 8),
-                                    Text(DateFormat('MMM dd, yyyy - hh:mm a').format(post.receivedDate), style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text('Logged by: ${post.receivedBy}', style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey)),
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.edit, color: Colors.grey, size: 20),
-                                          onPressed: () => _showCreateDialog(postToEdit: post),
-                                          tooltip: 'Edit Acknowledgement',
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.print, color: Colors.grey, size: 20),
-                                          onPressed: () => _printAcknowledgement(post),
-                                          tooltip: 'Print Acknowledgement',
-                                        ),
-                                        if (!isConfirmed && post.recipientName.toLowerCase() == widget.currentUserName.toLowerCase())
-                                          TextButton.icon(
-                                            onPressed: () => _confirmReceipt(post),
-                                            icon: const Icon(Icons.check_circle_outline, size: 18),
-                                            label: const Text('Confirm'),
-                                            style: TextButton.styleFrom(
-                                              foregroundColor: Colors.green,
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                            ),
-                                          )
-                                        else if (isConfirmed)
-                                          const Row(
-                                            children: [
-                                              Icon(Icons.check_circle, color: Colors.green, size: 16),
-                                              SizedBox(width: 4),
-                                              Text('Confirmed', style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
-                                            ],
-                                          )
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+            flex: 2,
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 12,
+                  backgroundColor: Colors.teal.shade50,
+                  child: Text(post.recipientName.isNotEmpty ? post.recipientName[0].toUpperCase() : '?', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.teal.shade700)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(post.recipientName, style: const TextStyle(fontSize: 13, color: Color(0xFF475569), fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.calendar_month_rounded, size: 14, color: Colors.grey.shade400),
+                    const SizedBox(width: 6),
+                    Text(DateFormat('MMM dd, yyyy').format(post.receivedDate), style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B), fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.access_time_rounded, size: 14, color: Colors.grey.shade400),
+                    const SizedBox(width: 6),
+                    Text(DateFormat('hh:mm a').format(post.receivedDate), style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text('By: ${post.receivedBy}', style: TextStyle(fontSize: 11, color: Colors.grey.shade400, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+          SizedBox(
+            width: 100,
+            child: isConfirmed 
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.green.shade200)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_rounded, color: Colors.green.shade600, size: 14), 
+                        const SizedBox(width: 4), 
+                        Text('Confirmed', style: TextStyle(color: Colors.green.shade700, fontSize: 11, fontWeight: FontWeight.bold))
+                      ]
+                    )
+                  )
+                : Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange.shade200)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.pending_actions_rounded, color: Colors.orange.shade600, size: 14), 
+                        const SizedBox(width: 4), 
+                        Text('Pending', style: TextStyle(color: Colors.orange.shade700, fontSize: 11, fontWeight: FontWeight.bold))
+                      ]
+                    )
                   ),
+          ),
+          SizedBox(
+            width: 140,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(onPressed: () => _navigateToCreateScreen(postToEdit: post), icon: Icon(Icons.edit_note_rounded, color: Colors.blue.shade600, size: 24), tooltip: 'Edit', padding: const EdgeInsets.all(4), constraints: const BoxConstraints()),
+                const SizedBox(width: 8),
+                IconButton(onPressed: () => _printAcknowledgement(post), icon: Icon(Icons.print_rounded, color: Colors.teal.shade600, size: 20), tooltip: 'Print', padding: const EdgeInsets.all(4), constraints: const BoxConstraints()),
+                if (!isConfirmed && post.recipientName.toLowerCase() == widget.currentUserName.toLowerCase()) ...[
+                  const SizedBox(width: 8),
+                  IconButton(onPressed: () => _confirmReceipt(post), icon: Icon(Icons.check_circle_outline_rounded, color: Colors.green.shade600, size: 22), tooltip: 'Confirm', padding: const EdgeInsets.all(4), constraints: const BoxConstraints()),
+                ],
+              ],
+            ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+
+
 }

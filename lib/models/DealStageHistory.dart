@@ -113,13 +113,13 @@ class DealStageHistory extends amplify_core.Model {
     
     buffer.write("DealStageHistory {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("deal_id=" + (_deal_id != null ? _deal_id!.toString() : "null") + ", ");
+    buffer.write("deal_id=" + (_deal_id != null ? _deal_id.toString() : "null") + ", ");
     buffer.write("from_stage=" + "$_from_stage" + ", ");
     buffer.write("to_stage=" + "$_to_stage" + ", ");
-    buffer.write("changed_by=" + (_changed_by != null ? _changed_by!.toString() : "null") + ", ");
+    buffer.write("changed_by=" + (_changed_by != null ? _changed_by.toString() : "null") + ", ");
     buffer.write("changed_at=" + "$_changed_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

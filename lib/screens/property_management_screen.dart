@@ -2,11 +2,9 @@ import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
-import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 class PropertyManagementScreen extends StatefulWidget {
@@ -1096,7 +1094,7 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
 
     // Media
     if (p?.photos != null && p!.photos!.isNotEmpty) {
-      _uploadedPhotos = List.from(p!.photos!);
+      _uploadedPhotos = List.from(p.photos!);
     }
   }
 
@@ -1284,7 +1282,7 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
                       value: _isNegotiable,
                       onChanged: (val) => setState(() => _isNegotiable = val),
                       contentPadding: EdgeInsets.zero,
-                      activeColor: AppTheme.primaryColor,
+                      activeThumbColor: AppTheme.primaryColor,
                     ),
                     const SizedBox(height: 16),
 
@@ -1294,7 +1292,7 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
                       value: _hasMultipleOwners,
                       onChanged: (val) => setState(() => _hasMultipleOwners = val),
                       contentPadding: EdgeInsets.zero,
-                      activeColor: AppTheme.primaryColor,
+                      activeThumbColor: AppTheme.primaryColor,
                     ),
                     _buildField('Owner Name', _ownerNameCtrl),
                     const SizedBox(height: 16),
@@ -1326,7 +1324,7 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                     TextButton.icon(
                       onPressed: () => setState(() => _ownerPhoneContacts.add(_PhoneContact())),
                       icon: const Icon(Icons.add, size: 18),
@@ -1344,7 +1342,7 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
                       value: _hasLegalDisputes,
                       onChanged: (val) => setState(() => _hasLegalDisputes = val),
                       contentPadding: EdgeInsets.zero,
-                      activeColor: AppTheme.primaryColor,
+                      activeThumbColor: AppTheme.primaryColor,
                     ),
                     _buildField('Floor Level', _floorCtrl),
                     SwitchListTile(
@@ -1352,7 +1350,7 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
                       value: _hasBalcony,
                       onChanged: (val) => setState(() => _hasBalcony = val),
                       contentPadding: EdgeInsets.zero,
-                      activeColor: AppTheme.primaryColor,
+                      activeThumbColor: AppTheme.primaryColor,
                     ),
                     if (_hasBalcony) ...[
                       _buildField('Balcony Count', _balconyCountCtrl, isNumber: true),
@@ -1363,14 +1361,14 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
                       value: _isFurnished,
                       onChanged: (val) => setState(() => _isFurnished = val),
                       contentPadding: EdgeInsets.zero,
-                      activeColor: AppTheme.primaryColor,
+                      activeThumbColor: AppTheme.primaryColor,
                     ),
                     SwitchListTile(
                       title: const Text('Has Car Parking', style: TextStyle(color: AppTheme.mutedTextColor)),
                       value: _hasCarParking,
                       onChanged: (val) => setState(() => _hasCarParking = val),
                       contentPadding: EdgeInsets.zero,
-                      activeColor: AppTheme.primaryColor,
+                      activeThumbColor: AppTheme.primaryColor,
                     ),
                     const SizedBox(height: 16),
                     _buildField('Expenses / Maintenance Details', _expensesCtrl, maxLines: 2),
@@ -1401,7 +1399,7 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
                           ),
                           contentPadding: EdgeInsets.zero,
                         );
-                      }).toList(),
+                      }),
                     const SizedBox(height: 8),
                     ElevatedButton.icon(
                       onPressed: _isUploadingPhoto ? null : _uploadPhotosToAWS,
@@ -1503,7 +1501,7 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
           onChanged: onChanged,
           decoration: InputDecoration(

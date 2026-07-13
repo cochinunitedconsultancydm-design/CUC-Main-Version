@@ -1,6 +1,5 @@
 import 'package:amplify_api/amplify_api.dart';
 import 'dart:io';
-import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:file_picker/file_picker.dart';
@@ -178,7 +177,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
       final existingDoc = _dbDocs[path];
       if (existingDoc != null) {
         String newRemarks = (existingDoc.remarks ?? '').replaceAll('[SHARED]', '').trim();
-        if (makeVisible) newRemarks += (newRemarks.isEmpty ? '' : ' ') + '[SHARED]';
+        if (makeVisible) newRemarks += '${newRemarks.isEmpty ? '' : ' '}[SHARED]';
         
         final updatedDoc = existingDoc.copyWith(remarks: newRemarks);
         
@@ -489,7 +488,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
             String pathToRemove = f.path;
             if (!pathToRemove.startsWith('public/')) {
               if (pathToRemove.contains('${widget.client.id}/work/')) {
-                pathToRemove = 'public/' + pathToRemove;
+                pathToRemove = 'public/$pathToRemove';
               } else {
                 pathToRemove = folderPath + pathToRemove.replaceFirst(RegExp(r'^/'), '');
               }
@@ -904,7 +903,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                         child: Switch(
                           value: isShared,
                           onChanged: (val) => _toggleVisibility(actualPath, itemName, val),
-                          activeColor: AppTheme.primaryColor,
+                          activeThumbColor: AppTheme.primaryColor,
                         ),
                       ),
                       const SizedBox(width: 8),

@@ -134,16 +134,16 @@ class DealActivities extends amplify_core.Model {
     
     buffer.write("DealActivities {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("deal_id=" + (_deal_id != null ? _deal_id!.toString() : "null") + ", ");
+    buffer.write("deal_id=" + (_deal_id != null ? _deal_id.toString() : "null") + ", ");
     buffer.write("type=" + "$_type" + ", ");
     buffer.write("title=" + "$_title" + ", ");
     buffer.write("description=" + "$_description" + ", ");
     buffer.write("due_date=" + "$_due_date" + ", ");
-    buffer.write("is_completed=" + (_is_completed != null ? _is_completed!.toString() : "null") + ", ");
-    buffer.write("created_by=" + (_created_by != null ? _created_by!.toString() : "null") + ", ");
+    buffer.write("is_completed=" + (_is_completed != null ? _is_completed.toString() : "null") + ", ");
+    buffer.write("created_by=" + (_created_by != null ? _created_by.toString() : "null") + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

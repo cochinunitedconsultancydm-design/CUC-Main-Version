@@ -106,12 +106,12 @@ class StaffAttendance extends amplify_core.Model {
     
     buffer.write("StaffAttendance {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("user_id=" + (_user_id != null ? _user_id!.toString() : "null") + ", ");
+    buffer.write("user_id=" + (_user_id != null ? _user_id.toString() : "null") + ", ");
     buffer.write("check_in_time=" + "$_check_in_time" + ", ");
     buffer.write("check_out_time=" + "$_check_out_time" + ", ");
     buffer.write("attendance_date=" + "$_attendance_date" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

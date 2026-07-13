@@ -158,8 +158,8 @@ class Billings extends amplify_core.Model {
     buffer.write("category=" + "$_category" + ", ");
     buffer.write("authorities=" + "$_authorities" + ", ");
     buffer.write("status=" + "$_status" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

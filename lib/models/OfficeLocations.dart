@@ -2,7 +2,7 @@ import 'ModelProvider.dart';
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
 
 class OfficeLocations extends amplify_core.Model {
-  static const classType = const _OfficeLocationsModelType();
+  static const classType = _OfficeLocationsModelType();
   final String id;
   final String? _name;
   final String? _place;
@@ -25,6 +25,7 @@ class OfficeLocations extends amplify_core.Model {
   @override
   String getId() => id;
   
+  @override
   OfficeLocationsModelIdentifier get modelIdentifier {
       return OfficeLocationsModelIdentifier(id: id);
   }
@@ -47,7 +48,7 @@ class OfficeLocations extends amplify_core.Model {
   
   factory OfficeLocations({String? id, required String name, required String place, String? location_link, String? office_phone_numbers, String? front_view_photo, String? designation_boards_photos, String? notice_boards_photos, String? officers_contacts, String? other_photos, String? created_at, String? updated_at}) {
     return OfficeLocations._internal(
-      id: id == null ? amplify_core.UUID.getUUID() : id,
+      id: id ?? amplify_core.UUID.getUUID(),
       name: name,
       place: place,
       location_link: location_link,
@@ -88,23 +89,23 @@ class OfficeLocations extends amplify_core.Model {
   
   @override
   String toString() {
-    var buffer = new StringBuffer();
+    var buffer = StringBuffer();
     
     buffer.write("OfficeLocations {");
-    buffer.write("id=" + "$id" + ", ");
-    buffer.write("name=" + "$_name" + ", ");
-    buffer.write("place=" + "$_place" + ", ");
-    buffer.write("location_link=" + "$_location_link" + ", ");
-    buffer.write("office_phone_numbers=" + "$_office_phone_numbers" + ", ");
-    buffer.write("front_view_photo=" + "$_front_view_photo" + ", ");
-    buffer.write("designation_boards_photos=" + "$_designation_boards_photos" + ", ");
-    buffer.write("notice_boards_photos=" + "$_notice_boards_photos" + ", ");
-    buffer.write("officers_contacts=" + "$_officers_contacts" + ", ");
-    buffer.write("other_photos=" + "$_other_photos" + ", ");
-    buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write("updated_at=" + "$_updated_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("id=" "$id, ");
+    buffer.write("name=" "$_name" ", ");
+    buffer.write("place=" "$_place" ", ");
+    buffer.write("location_link=" "$_location_link" ", ");
+    buffer.write("office_phone_numbers=" "$_office_phone_numbers" ", ");
+    buffer.write("front_view_photo=" "$_front_view_photo" ", ");
+    buffer.write("designation_boards_photos=" "$_designation_boards_photos" ", ");
+    buffer.write("notice_boards_photos=" "$_notice_boards_photos" ", ");
+    buffer.write("officers_contacts=" "$_officers_contacts" ", ");
+    buffer.write("other_photos=" "$_other_photos" ", ");
+    buffer.write("created_at=" "$_created_at" ", ");
+    buffer.write("updated_at=" "$_updated_at" ", ");
+    buffer.write("createdAt=${_createdAt != null ? _createdAt.format() : "null"}, ");
+    buffer.write("updatedAt=${_updatedAt != null ? _updatedAt.format() : "null"}");
     buffer.write("}");
     
     return buffer.toString();
@@ -171,10 +172,12 @@ class OfficeLocations extends amplify_core.Model {
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
       _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
   
+  @override
   Map<String, dynamic> toJson() => {
     'id': id, 'name': _name, 'place': _place, 'location_link': _location_link, 'office_phone_numbers': _office_phone_numbers, 'front_view_photo': _front_view_photo, 'designation_boards_photos': _designation_boards_photos, 'notice_boards_photos': _notice_boards_photos, 'officers_contacts': _officers_contacts, 'other_photos': _other_photos, 'created_at': _created_at, 'updated_at': _updated_at, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
   };
   
+  @override
   Map<String, Object?> toMap() => {
     'id': id,
     'name': _name,

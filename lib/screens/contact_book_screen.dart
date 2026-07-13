@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
-import 'package:amplify_api/amplify_api.dart';
 import 'dart:convert';
 import '../theme.dart';
 import '../widgets/premium_app_bar.dart';
@@ -301,7 +300,7 @@ class _ContactBookScreenState extends State<ContactBookScreen> {
                   child: Row(
                     children: [
                       CircleAvatar(
-                        backgroundColor: avatarColor.withOpacity(0.1),
+                        backgroundColor: avatarColor.withValues(alpha: 0.1),
                         foregroundColor: avatarColor,
                         child: Text(initial, style: const TextStyle(fontWeight: FontWeight.bold)),
                       ),
@@ -575,7 +574,7 @@ class _ContactDialogState extends State<_ContactDialog> {
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: AppTheme.primaryColor.withOpacity(0.7)),
+        prefixIcon: Icon(icon, color: AppTheme.primaryColor.withValues(alpha: 0.7)),
         filled: true,
         fillColor: Colors.grey.shade50,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),

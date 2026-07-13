@@ -9,8 +9,6 @@ import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import '../widgets/premium_app_bar.dart';
 import 'create_work_file_dialog.dart';
-import '../models/deal.dart' as models;
-import 'deal_detail_screen.dart';
 import '../models/client.dart';
 import 'client_files_dialog.dart';
 import '../services/logging_service.dart';
@@ -222,7 +220,7 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
                     ),
                     child: TextField(
                       controller: _searchController,
@@ -1098,7 +1096,7 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
                         child: ListTile(
                           leading: Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: Colors.amber.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                            decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                             child: const Icon(Icons.file_present_rounded, color: Colors.amber),
                           ),
                           title: Text(name.toString(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
@@ -1108,13 +1106,13 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
                               children: [
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                  decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                                   child: Text(type.toString(), style: TextStyle(color: Colors.blue.shade700, fontSize: 10, fontWeight: FontWeight.bold)),
                                 ),
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: status == 'Returned' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                  decoration: BoxDecoration(color: status == 'Returned' ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                                   child: Text(status.toString(), style: TextStyle(color: status == 'Returned' ? Colors.green.shade700 : Colors.orange.shade700, fontSize: 10, fontWeight: FontWeight.bold)),
                                 ),
                               ],
@@ -1141,7 +1139,7 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
                         child: ListTile(
                           leading: Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                            decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                             child: Icon(isPersonal ? Icons.person : Icons.cloud_done, color: AppTheme.primaryColor),
                           ),
                           title: Text(fileName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),

@@ -164,7 +164,7 @@ class DealService {
       return dealId;
     } catch (e) {
       debugPrint('Error createDeal: $e');
-      throw e;
+      rethrow;
     }
   }
 

@@ -122,7 +122,7 @@ class ChecklistService {
       return checklistId;
     } catch (e) {
       safePrint('Error createChecklist: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -165,7 +165,7 @@ class ChecklistService {
       }
     } catch (e) {
       safePrint('Error updateChecklistStatus: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -239,7 +239,7 @@ class ChecklistService {
       );
     } catch (e) {
       safePrint('Error deleteChecklist: $e');
-      throw e;
+      rethrow;
     }
   }
 }

@@ -187,16 +187,18 @@ class BillingService {
         }
       }
 
-      if (statusFilter == 'All') match = true;
-      else if (statusFilter == 'Paid' && isPaid) match = true;
+      if (statusFilter == 'All') {
+        match = true;
+      } else if (statusFilter == 'Paid' && isPaid) match = true;
       else if (statusFilter == 'Pending' && isPending) match = true;
       else if (statusFilter == 'Overdue' && isPending) match = true;
       else if (statusFilter == 'Interested' && b.status == 'Interested') match = true;
       else if (statusFilter == 'Not Interested' && b.status == 'Not Interested') match = true;
       
       if (match && typeFilter != 'All') {
-        if (typeFilter == 'Quotation' && b.type != 'QUOTATION') match = false;
-        else if (typeFilter == 'Invoice' && b.type == 'QUOTATION') match = false;
+        if (typeFilter == 'Quotation' && b.type != 'QUOTATION') {
+          match = false;
+        } else if (typeFilter == 'Invoice' && b.type == 'QUOTATION') match = false;
       }
       
       if (match && searchTerm.isNotEmpty) {

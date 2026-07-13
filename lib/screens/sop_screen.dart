@@ -587,7 +587,7 @@ class _SopScreenState extends State<SopScreen> {
                             ).animate().fadeIn(duration: 600.ms)
                           : ListView.separated(
                               itemCount: _filteredSops.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 20),
+                              separatorBuilder: (_, _) => const SizedBox(height: 20),
                               itemBuilder: (context, index) {
                                 final sop = _filteredSops[index];
                                 return Card(

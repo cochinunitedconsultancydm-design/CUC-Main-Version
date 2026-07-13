@@ -386,7 +386,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
           client_id: license.clientId,
           license_type_id: license.licenseTypeId,
           service_date: DateTime.now().toIso8601String(),
-          expiry_date: nextExpiry?.toIso8601String(),
+          expiry_date: nextExpiry.toIso8601String(),
           file_no: license.fileNo,
           notes: 'Renewal of ${license.fileNo}',
           status: 'Active',

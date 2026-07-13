@@ -21,7 +21,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import '../widgets/premium_app_bar.dart';
-import 'package:cuc_app/services/backup_aware_api.dart';
 import '../services/supabase_backup_service.dart';
 class BillingScreen extends StatefulWidget {
   const BillingScreen({super.key});
@@ -1468,9 +1467,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         if (dataStr != null) {
           Map<String, dynamic> dataMap = {};
           try {
-            if (dataStr is String) {
-              dataMap = jsonDecode(dataStr);
-            }
+            dataMap = jsonDecode(dataStr);
           } catch (_) {}
           final list = dataMap['items'] as List<dynamic>?;
           if (list != null) {

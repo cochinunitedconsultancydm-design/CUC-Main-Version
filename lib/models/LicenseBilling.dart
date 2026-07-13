@@ -120,14 +120,14 @@ class LicenseBilling extends amplify_core.Model {
     
     buffer.write("LicenseBilling {");
     buffer.write("id=" + "$id" + ", ");
-    buffer.write("client_license_id=" + (_client_license_id != null ? _client_license_id!.toString() : "null") + ", ");
-    buffer.write("amount=" + (_amount != null ? _amount!.toString() : "null") + ", ");
+    buffer.write("client_license_id=" + (_client_license_id != null ? _client_license_id.toString() : "null") + ", ");
+    buffer.write("amount=" + (_amount != null ? _amount.toString() : "null") + ", ");
     buffer.write("payment_status=" + "$_payment_status" + ", ");
     buffer.write("invoice_no=" + "$_invoice_no" + ", ");
     buffer.write("payment_date=" + "$_payment_date" + ", ");
     buffer.write("created_at=" + "$_created_at" + ", ");
-    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
-    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();

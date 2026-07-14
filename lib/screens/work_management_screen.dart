@@ -25,6 +25,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
   bool _isLoading = true;
 
   String _searchQuery = '';
+  String _sortOption = 'Newest First';
   bool _showOnlyMyWorks = false;
   int? _currentUserId;
   StreamSubscription? _dealsSubscription;
@@ -250,6 +251,24 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                             list = list.where((d) => d.responsibleId?.toString() == _currentUserId.toString()).toList();
                           }
                         }
+                        
+                        if (_searchQuery.isNotEmpty) {
+                          list = list.where((d) => 
+                              d.name.toLowerCase().contains(_searchQuery.toLowerCase()) || 
+                              (d.clientName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false)
+                          ).toList();
+                        }
+                        
+                        if (_sortOption == 'Newest First') {
+                          list.sort((a, b) => (b.createdAt ?? DateTime(2000)).compareTo(a.createdAt ?? DateTime(2000)));
+                        } else if (_sortOption == 'Oldest First') {
+                          list.sort((a, b) => (a.createdAt ?? DateTime(2000)).compareTo(b.createdAt ?? DateTime(2000)));
+                        } else if (_sortOption == 'A-Z') {
+                          list.sort((a, b) => a.name.compareTo(b.name));
+                        } else if (_sortOption == 'Z-A') {
+                          list.sort((a, b) => b.name.compareTo(a.name));
+                        }
+
                         return list.isEmpty
                             ? _buildEmptyState()
                             : _buildPremiumListView(MediaQuery.of(context).size.width > 1100);
@@ -358,6 +377,8 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
             ),
             if (isWide) ...[
               const SizedBox(width: 16),
+              _buildSortDropdown(),
+              const SizedBox(width: 16),
               _filterIconButton(Icons.filter_list_rounded, 'Filter'),
             ],
           ],
@@ -366,11 +387,47 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
+              Expanded(child: _buildSortDropdown()),
+              const SizedBox(width: 12),
               Expanded(child: _filterIconButton(Icons.filter_list_rounded, 'Filter', showLabel: true)),
             ],
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildSortDropdown() {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _sortOption,
+          icon: Padding(
+            padding: const EdgeInsets.only(left: 8.0),
+            child: Icon(Icons.sort_rounded, color: Colors.grey.shade700, size: 20),
+          ),
+          isExpanded: false,
+          items: ['Newest First', 'Oldest First', 'A-Z', 'Z-A']
+              .map((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value, style: TextStyle(color: Colors.grey.shade800, fontSize: 13, fontWeight: FontWeight.w600)),
+            );
+          }).toList(),
+          onChanged: (newValue) {
+            if (newValue != null) {
+              setState(() => _sortOption = newValue);
+            }
+          },
+        ),
+      ),
     );
   }
 

@@ -439,11 +439,11 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
     bool recipientIsCompany = action == 'Received';
     bool senderIsCompany = action == 'Returned';
 
-    String fromName = post.senderName;
-    bool fromIsCompany = senderIsCompany;
+    String fromName = post.recipientName;
+    bool fromIsCompany = recipientIsCompany;
 
-    String toName = post.recipientName;
-    bool toIsCompany = recipientIsCompany;
+    String toName = post.senderName;
+    bool toIsCompany = senderIsCompany;
     
     String bodyText = action == 'Returned' 
         ? 'We are hereby returning the below mentioned documents:' 

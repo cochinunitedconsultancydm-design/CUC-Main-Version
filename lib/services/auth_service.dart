@@ -286,43 +286,9 @@ class AuthService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     final sessionIdStr = prefs.getString('${_sessionIdKey}_str');
-
-    if (sessionIdStr != null) {
-      try {
-        TimeTrackingService.instance.stopTracking();
-
-        final request = ModelQueries.get(
-          UserSessions.classType,
-          UserSessionsModelIdentifier(id: sessionIdStr),
-        );
-        final response = await Amplify.API.query(request: request).response;
-        final session = response.data;
-        if (session != null) {
-          final updatedSession = session.copyWith(
-            logout_time: DateTime.now().toIso8601String(),
-            is_active: false,
-          );
-          await BackupAwareApi().update(updatedSession);
-        }
-      } catch (e) {
-        debugPrint('Logout session error: $e');
-      }
-    }
-
     final userName = prefs.getString(_userKey) ?? 'Unknown';
-    await LoggingService().logAction(
-      action: 'LOGOUT',
-      targetType: 'System',
-      targetId: userName,
-      details: 'User logged out',
-    );
 
-    try {
-      await Amplify.Auth.signOut();
-    } catch (e) {
-      debugPrint('Cognito SignOut error: $e');
-    }
-
+    // Clear local prefs immediately so UI is not blocked
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);
     await prefs.remove(_roleKey);
@@ -331,6 +297,44 @@ class AuthService {
     await prefs.remove('${_sessionIdKey}_str');
     await prefs.remove('${_userIdKey}_str');
     await prefs.remove(SecurityService.lastActivityKey);
+
+    // Perform network operations in the background
+    Future.microtask(() async {
+      if (sessionIdStr != null) {
+        try {
+          TimeTrackingService.instance.stopTracking();
+
+          final request = ModelQueries.get(
+            UserSessions.classType,
+            UserSessionsModelIdentifier(id: sessionIdStr),
+          );
+          final response = await Amplify.API.query(request: request).response;
+          final session = response.data;
+          if (session != null) {
+            final updatedSession = session.copyWith(
+              logout_time: DateTime.now().toIso8601String(),
+              is_active: false,
+            );
+            await BackupAwareApi().update(updatedSession);
+          }
+        } catch (e) {
+          debugPrint('Logout session error: $e');
+        }
+      }
+
+      await LoggingService().logAction(
+        action: 'LOGOUT',
+        targetType: 'System',
+        targetId: userName,
+        details: 'User logged out',
+      );
+
+      try {
+        await Amplify.Auth.signOut();
+      } catch (e) {
+        debugPrint('Cognito SignOut error: $e');
+      }
+    });
   }
 
   Future<bool> isLoggedIn() async {

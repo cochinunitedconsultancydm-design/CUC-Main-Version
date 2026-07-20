@@ -56,11 +56,11 @@ class OfficeLocationService {
     try {
       final filename = file.path.replaceAll('\\', '/').split('/').last;
       final key = '$pathPrefix/${DateTime.now().millisecondsSinceEpoch}_$filename';
-      final result = await Amplify.Storage.uploadFile(
+      await Amplify.Storage.uploadFile(
         localFile: AWSFile.fromPath(file.path),
         path: StoragePath.fromString(key),
       ).result;
-      return result.uploadedItem.path;
+      return key;
     } catch (e) {
       safePrint('Error uploading image: $e');
       return null;

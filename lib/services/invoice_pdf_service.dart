@@ -166,12 +166,14 @@ class InvoicePdfService {
                       ...() {
                         int slNo = 1;
                         return items.map((item) {
-                          final isHeading = item['amount'].toString().trim().isEmpty;
+                          final isHeading = item['isHeading'] == true || item['amount'].toString().trim().isEmpty;
                           final slNoStr = isHeading ? '' : '${slNo++}.';
                           return pw.TableRow(
                             children: [
                               _cell(slNoStr, align: pw.Alignment.center),
-                              _cell(item['description'].toString().toUpperCase()),
+                              _cell(item['description'].toString().toUpperCase(), 
+                                    font: isHeading ? bodyBold : null, 
+                                    align: isHeading ? pw.Alignment.center : pw.Alignment.centerLeft),
                               _cell(isHeading ? '' : 
                                   (item['amount'].toString().endsWith('/-') ? item['amount'].toString() : '${item['amount']}/-'), 
                                   align: pw.Alignment.center),

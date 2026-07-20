@@ -1394,7 +1394,13 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     _advanceReceived = TextEditingController(text: b?.data?['advance_received']?.toString() ?? '');
     _approvedAmount = TextEditingController(text: b?.data?['approved_amount']?.toString() ?? '');
     _authorities = b?.authorities ?? '';
-    _items = b?.items ?? [{'description': '', 'amount': ''}];
+    _items = List<Map<String, dynamic>>.from(b?.items?.map((e) => Map<String, dynamic>.from(e)) ?? [{'description': '', 'amount': '', 'isHeading': false}]);
+    
+    for (var item in _items) {
+      if (!item.containsKey('isHeading')) {
+        item['isHeading'] = item['amount']?.toString().trim().isEmpty ?? true;
+      }
+    }
 
     // Initialize quotation terms
     _quotationTerms = List<String>.from(b?.data?['quotation_terms'] ?? _getDefaultTerms(_category));
@@ -1964,13 +1970,24 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
               const SizedBox(height: 32),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 _sectionTitle('Line Items'),
-                TextButton.icon(onPressed: () {
-                  setState(() {
-                    _items.add({'description': '', 'amount': ''});
-                    _itemDescControllers.add(TextEditingController()..addListener(() { _calc(); setState(() {}); }));
-                    _itemAmountControllers.add(TextEditingController()..addListener(() { _calc(); setState(() {}); }));
-                  });
-                }, icon: const Icon(Icons.add_circle_outline_rounded, size: 18), label: const Text('Add Item'), style: TextButton.styleFrom(foregroundColor: const Color(0xFF2563EB))),
+                Row(
+                  children: [
+                    TextButton.icon(onPressed: () {
+                      setState(() {
+                        _items.add({'description': '', 'amount': '', 'isHeading': true});
+                        _itemDescControllers.add(TextEditingController()..addListener(() { _calc(); setState(() {}); }));
+                        _itemAmountControllers.add(TextEditingController()..addListener(() { _calc(); setState(() {}); }));
+                      });
+                    }, icon: const Icon(Icons.title_rounded, size: 18), label: const Text('Add Heading'), style: TextButton.styleFrom(foregroundColor: Colors.teal)),
+                    TextButton.icon(onPressed: () {
+                      setState(() {
+                        _items.add({'description': '', 'amount': '', 'isHeading': false});
+                        _itemDescControllers.add(TextEditingController()..addListener(() { _calc(); setState(() {}); }));
+                        _itemAmountControllers.add(TextEditingController()..addListener(() { _calc(); setState(() {}); }));
+                      });
+                    }, icon: const Icon(Icons.add_circle_outline_rounded, size: 18), label: const Text('Add Item'), style: TextButton.styleFrom(foregroundColor: const Color(0xFF2563EB))),
+                  ],
+                ),
               ]),
               const SizedBox(height: 12),
               ..._items.asMap().entries.map((e) => _buildItemRow(e.key, e.value)),
@@ -2234,12 +2251,15 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     });
   }
 
-  Widget _buildItemRow(int idx, Map<String, dynamic> item) => Container(
+  Widget _buildItemRow(int idx, Map<String, dynamic> item) {
+    bool isHeading = item['isHeading'] == true;
+    
+    return Container(
     margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade100)),
+    decoration: BoxDecoration(color: isHeading ? Colors.teal.shade50 : Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: isHeading ? Colors.teal.shade200 : Colors.grey.shade100)),
     child: Column(children: [
       Row(children: [
-        Container(width: 24, height: 24, decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)), child: Center(child: Text('${idx + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade400)))),
+        Container(width: 24, height: 24, decoration: BoxDecoration(color: isHeading ? Colors.teal.shade100 : Colors.grey.shade100, borderRadius: BorderRadius.circular(6)), child: Center(child: Text(isHeading ? 'H' : '${idx + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isHeading ? Colors.teal.shade700 : Colors.grey.shade400)))),
         const Spacer(),
         if (idx > 0) IconButton(onPressed: () => _moveItem(idx, -1), icon: const Icon(Icons.arrow_upward_rounded, size: 18, color: Colors.blueGrey)),
         if (idx < _items.length - 1) IconButton(onPressed: () => _moveItem(idx, 1), icon: const Icon(Icons.arrow_downward_rounded, size: 18, color: Colors.blueGrey)),
@@ -2282,7 +2302,9 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           return TextField(
             controller: controller,
             focusNode: focusNode,
-            decoration: const InputDecoration(hintText: 'Item description...', border: InputBorder.none),
+            textAlign: isHeading ? TextAlign.center : TextAlign.start,
+            style: TextStyle(fontWeight: isHeading ? FontWeight.bold : FontWeight.normal, color: isHeading ? Colors.teal.shade900 : Colors.black87),
+            decoration: InputDecoration(hintText: isHeading ? 'Enter Heading Title...' : 'Item description...', border: InputBorder.none, hintStyle: TextStyle(fontWeight: FontWeight.normal, color: Colors.grey.shade400)),
           );
         },
         optionsViewBuilder: (context, onSelected, options) {
@@ -2312,34 +2334,37 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           );
         },
       ),
-      const Divider(),
-      Row(children: [
-        const Icon(Icons.currency_rupee_rounded, size: 16, color: Colors.grey),
-        Expanded(child: Focus(
-          onFocusChange: (hasFocus) {
-            if (!hasFocus) {
-              double a = NumberToWords.parseCurrency(item['amount'].toString());
-              if (a > 0) setState(() => item['amount'] = NumberToWords.formatIndianCurrency(a));
-              _calc();
-            }
-          },
-          child: TextField(
-            decoration: const InputDecoration(hintText: 'Amount', border: InputBorder.none), 
-            controller: _itemAmountControllers[idx], 
-            onChanged: (v) { 
-              _items[idx]['amount'] = v; 
-              _calc(); 
+      if (!isHeading) ...[
+        const Divider(),
+        Row(children: [
+          const Icon(Icons.currency_rupee_rounded, size: 16, color: Colors.grey),
+          Expanded(child: Focus(
+            onFocusChange: (hasFocus) {
+              if (!hasFocus) {
+                double a = NumberToWords.parseCurrency(item['amount'].toString());
+                if (a > 0) setState(() => item['amount'] = NumberToWords.formatIndianCurrency(a));
+                _calc();
+              }
             },
-            onSubmitted: (v) { 
-              double a = NumberToWords.parseCurrency(v); 
-              setState(() => _itemAmountControllers[idx].text = NumberToWords.formatIndianCurrency(a)); 
-              _calc(); 
-            },
-          ),
-        )),
-      ]),
+            child: TextField(
+              decoration: const InputDecoration(hintText: 'Amount', border: InputBorder.none), 
+              controller: _itemAmountControllers[idx], 
+              onChanged: (v) { 
+                _items[idx]['amount'] = v; 
+                _calc(); 
+              },
+              onSubmitted: (v) { 
+                double a = NumberToWords.parseCurrency(v); 
+                setState(() => _itemAmountControllers[idx].text = NumberToWords.formatIndianCurrency(a)); 
+                _calc(); 
+              },
+            ),
+          )),
+        ]),
+      ],
     ]),
   ).animate().slideY(begin: 0.1, end: 0, duration: 300.ms);
+  }
 
   Widget _emptyItems() => Container(width: double.infinity, padding: const EdgeInsets.all(32), decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid)), child: const Column(children: [Icon(Icons.add_shopping_cart_rounded, color: Colors.grey, size: 32), SizedBox(height: 12), Text('No items added yet', style: TextStyle(color: Colors.grey))]));
 

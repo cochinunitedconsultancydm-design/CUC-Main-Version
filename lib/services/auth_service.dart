@@ -78,8 +78,8 @@ class AuthService {
         final allUsers = response.data?.items.whereType<Users>().toList() ?? [];
 
         final users = allUsers.where((u) {
-          if (loginEmail.contains('@')) {
-            return u.email?.toLowerCase().trim() == loginEmail;
+          if (normalizedUser.contains('@')) {
+            return u.email?.toLowerCase().trim() == normalizedUser;
           }
           return u.username?.toLowerCase().trim() == normalizedUser;
         }).toList();

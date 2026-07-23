@@ -34,13 +34,14 @@ class AuthService {
       final userPart = normalizedUser.contains('@') ? normalizedUser.split('@')[0] : normalizedUser;
       final loginEmail = normalizedUser.contains('@') ? normalizedUser : '$userPart@cuc.local';
 
-      String targetRole = 'staff';
+      // Determine default role for new users if they don't exist
+      String defaultRole = 'staff';
       if (userPart == 'jesna') {
-        targetRole = 'manager';
+        defaultRole = 'manager';
       } else if (userPart == 'irshad') {
-        targetRole = 'hr';
+        defaultRole = 'hr';
       } else if (userPart == 'admin') {
-        targetRole = 'admin';
+        defaultRole = 'admin';
       }
 
       // Clear any stale Cognito session before attempting new sign-in
@@ -88,12 +89,8 @@ class AuthService {
 
         if (users.isNotEmpty) {
           dbUser = users.first;
-          if (dbUser.role != targetRole) {
-            debugPrint('Updating user role in AppSync for ${dbUser.username} to: $targetRole');
-            final updatedUser = dbUser.copyWith(role: targetRole);
-            await BackupAwareApi().update(updatedUser);
-            dbUser = updatedUser;
-          }
+          // We no longer overwrite the user's role on every login.
+          // The role assigned in Staff Management will persist.
         }
       } catch (e) {
         debugPrint('Failed to query AppSync for user: $e');
@@ -104,7 +101,7 @@ class AuthService {
         dbUser = Users(
           username: username,
           email: loginEmail,
-          role: targetRole,
+          role: defaultRole,
           name: username,
         );
         try {

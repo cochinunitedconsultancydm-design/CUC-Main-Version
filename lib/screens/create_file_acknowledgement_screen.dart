@@ -270,6 +270,32 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
     super.dispose();
   }
 
+  Future<void> _deletePost(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Acknowledgement'),
+        content: const Text('Are you sure you want to delete this acknowledgement? This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true), 
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirm == true && mounted) {
+      setState(() => _isLoading = true);
+      await InwardPostService.deletePost(widget.editingPost!.id);
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    }
+  }
+
   Future<void> _save() async {
     final String fileName = _selectedFiles.map((f) {
       final remark = _fileRemarks[f] ?? '';
@@ -436,15 +462,30 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
     List<String> fileNames = filePartsList.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
     List<pw.Widget> buildAddress(String name, bool isCompany) {
-      return [
-        pw.Text(name.toUpperCase(), style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-        if (isCompany) ...[
+      final lines = name.split('\n');
+      final widgets = <pw.Widget>[];
+      for (int i = 0; i < lines.length; i++) {
+        final line = lines[i].trim();
+        if (line.isEmpty) continue;
+        widgets.add(
+          pw.Text(
+            line.toUpperCase(), 
+            style: pw.TextStyle(
+              fontSize: 10, 
+              fontWeight: i == 0 ? pw.FontWeight.bold : pw.FontWeight.normal,
+            )
+          )
+        );
+      }
+      if (isCompany) {
+        widgets.addAll([
           pw.Text('COCHIN UNITED CONSULTANCY', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
           pw.Text('4th FLOOR, MATHER SQUARE, C- BLOCK,', style: const pw.TextStyle(fontSize: 10)),
           pw.Text('NEAR NORTH RAILWAY STATION', style: const pw.TextStyle(fontSize: 10)),
           pw.Text('ERNAKULAM - 682018', style: const pw.TextStyle(fontSize: 10)),
-        ]
-      ];
+        ]);
+      }
+      return widgets;
     }
 
     bool senderIsCompany = action == 'Received';
@@ -614,7 +655,7 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
                           children: [
                             pw.Text('Receiver Signature', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
                             pw.SizedBox(height: 40),
-                            pw.Text('($toName)', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                            pw.Text('(${toName.split('\n').first.trim()})', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                           ],
                         ),
                         pw.Column(
@@ -622,7 +663,7 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
                           children: [
                             pw.Text('Authorized Signature', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
                             pw.SizedBox(height: 40),
-                            pw.Text('($fromName)', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                            pw.Text('(${fromName.split('\n').first.trim()})', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                           ],
                         ),
                       ],
@@ -1047,6 +1088,14 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
                     if (!isMobile)
                       Row(
                         children: [
+                          if (widget.editingPost != null) ...[
+                            IconButton(
+                              onPressed: () => _deletePost(context),
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              tooltip: 'Delete',
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 13))),
                           const SizedBox(width: 8),
                           ElevatedButton.icon(
@@ -1176,6 +1225,13 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
               appBar: PremiumAppBar(
                 title: Text(widget.editingPost != null ? 'Edit Acknowledgement' : 'New Acknowledgement', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 leading: IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20)),
+                actions: [
+                  if (widget.editingPost != null)
+                    IconButton(
+                      onPressed: () => _deletePost(context),
+                      icon: const Icon(Icons.delete_outline, color: Colors.white),
+                    ),
+                ],
                 bottom: const TabBar(
                   tabs: [
                     Tab(text: 'DETAILS', icon: Icon(Icons.edit_note_rounded, size: 20)),

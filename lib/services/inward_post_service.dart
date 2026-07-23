@@ -84,4 +84,18 @@ class InwardPostService {
       debugPrint('Error updating inward post status: $e');
     }
   }
+
+  /// Delete an existing inward post
+  static Future<void> deletePost(String id) async {
+    try {
+      final req = ModelQueries.list(InwardPosts.classType, where: InwardPosts.ID.eq(id));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data?.items.isNotEmpty == true) {
+        final item = res.data!.items.first!;
+        await BackupAwareApi().delete(item);
+      }
+    } catch (e) {
+      debugPrint('Error deleting inward post: $e');
+    }
+  }
 }

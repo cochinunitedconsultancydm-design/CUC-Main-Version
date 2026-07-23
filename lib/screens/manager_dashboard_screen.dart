@@ -44,6 +44,7 @@ import 'travel_log_screen.dart';
 import '../widgets/upcoming_reminders_widget.dart';
 import '../widgets/upcoming_deadlines_widget.dart';
 import '../widgets/premium_stat_card.dart';
+import '../widgets/dashboard_menu_grid.dart';
 import 'dart:async';
 import 'document_list_screen.dart';
 import 'verification_history_view.dart';
@@ -58,7 +59,7 @@ class ManagerDashboardScreen extends StatefulWidget {
 }
 
 class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
-  int _selectedIndex = 0;
+  int _selectedIndex = -1;
   String? _selectedCategory;
   final _searchController = TextEditingController();
   bool _isLoading = true;
@@ -462,18 +463,23 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             }
           },
           child: Scaffold(
-            drawer: !isWide ? Drawer(
-              backgroundColor: const Color(0xFF13131A),
-              child: _buildSidebarContent(isWide),
-            ) : null,
             appBar: !isWide ? PremiumAppBar(
               title: Image.asset('assets/CUnitedGold.png', height: 30),
               centerTitle: true,
+              actions: [
+                IconButton(
+                  icon: Icon(_selectedIndex == -1 ? Icons.home_rounded : Icons.apps_rounded, color: AppTheme.primaryColor),
+                  onPressed: () => setState(() {
+                    _selectedIndex = _selectedIndex == -1 ? 0 : -1;
+                    _selectedCategory = null;
+                  }),
+                ),
+                const SizedBox(width: 8),
+              ],
             ) : null,
             body: SafeArea(
               child: Row(
                 children: [
-                  if (isWide) _buildSidebar(isWide),
                 Expanded(
                   child: Container(
                     padding: EdgeInsets.all(isWide ? 32 : 16),
@@ -541,133 +547,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     );
   }
 
-  Widget _buildSidebar(bool isWide) {
-    return Material(
-      color: const Color(0xFF13131A), // Deep dark slate
-      child: Container(
-        width: 260,
-        decoration: BoxDecoration(
-          border: Border(
-            right: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
-          ),
-        ),
-        child: _buildSidebarContent(isWide),
-      ),
-    );
-  }
-
-  Widget _buildSidebarContent(bool isWide) {
-    return Column(
-      children: [
-        const SizedBox(height: 40),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            children: [
-              Image.asset('assets/CUnitedGold.png', height: 40, fit: BoxFit.contain),
-              const SizedBox(width: 12),
-              const Text(
-                'Manager Panel',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 40),
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                _sidebarItem(0, Icons.insights_rounded, 'Operations Overview', isWide),
-                _sidebarItem(12, Icons.playlist_add_check_rounded, 'Today\'s Task', isWide),
-                _sidebarItem(1, Icons.design_services_outlined, 'Service Checklist', isWide),
-                _sidebarItem(23, Icons.menu_book_rounded, 'SOP', isWide),
-                _sidebarItem(2, Icons.people_outline_rounded, 'Staff Management', isWide),
-                _sidebarItem(24, Icons.folder_shared_rounded, 'Work File', isWide),
-                _sidebarItem(3, Icons.people_alt_rounded, 'Client Data', isWide),
-                _sidebarItem(25, Icons.contacts_rounded, 'Contact Book', isWide),
-                _sidebarItem(4, Icons.receipt_long_rounded, 'Billing', isWide),
-                _sidebarItem(11, Icons.account_balance_wallet_rounded, 'Accounting & Pay', isWide),
-                _sidebarItem(5, Icons.verified_user_rounded, 'Licences', isWide),
-                _sidebarItem(9, Icons.vpn_key_rounded, 'Digital Signature', isWide),
-                _sidebarItem(6, Icons.work_rounded, 'Work Management', isWide),
-                _sidebarItem(13, Icons.rate_review_rounded, 'Verification', isWide),
-                _sidebarItem(8, Icons.task_alt_rounded, 'Deliveries and Pickup', isWide),
-                _sidebarItem(17, Icons.calendar_month_rounded, 'Reminder Calendar', isWide),
-                _sidebarItem(10, Icons.chat_bubble_outline_rounded, 'Staff Chat', isWide),
-
-                _sidebarItem(16, Icons.directions_car_filled_outlined, 'Travel Logs', isWide),
-                _sidebarItem(14, Icons.table_view_rounded, 'Upload Table', isWide),
-                _sidebarItem(18, Icons.mark_email_unread_rounded, 'Post Register', isWide),
-                _sidebarItem(22, Icons.handshake_rounded, 'File Acknowledgement', isWide),
-                _sidebarItem(26, Icons.help_center_rounded, 'Client Help & Queries', isWide),
-                _sidebarItem(19, Icons.cloud_sync, 'Google Docs Vault', isWide),
-                _sidebarItem(20, Icons.history_rounded, 'Verification History', isWide),
-                _sidebarItem(21, Icons.real_estate_agent_rounded, 'Property Management', isWide),
-                _sidebarItem(27, Icons.business_rounded, 'Office Details', isWide),
-                _sidebarItem(7, Icons.settings_rounded, 'Settings', isWide),
-              ],
-            ),
-          ),
-        ),
-        _sidebarItem(99, Icons.logout_rounded, 'Exit Admin', isWide),
-        const SizedBox(height: 24),
-      ],
-    );
-  }
-
-  Widget _sidebarItem(int index, IconData icon, String label, bool isWide) {
-    final isSelected = _selectedIndex == index;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: InkWell(
-        onTap: () async {
-          if (!isWide) Navigator.pop(context);
-          if (index == 99) {
-            // Logout logic
-            await AuthService().logout();
-            if (mounted) {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-                (route) => false,
-              );
-            }
-          } else {
-            setState(() {
-              _selectedIndex = index;
-              _selectedCategory = null;
-            });
-          }
-        },
-        borderRadius: BorderRadius.circular(10),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.15) : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.3) : Colors.transparent,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: isSelected ? AppTheme.primaryColor : Colors.white60),
-              const SizedBox(width: 14),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.white60,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+// Sidebar methods removed.
 
     Widget _buildHeader(bool isWide) {
     return Column(
@@ -698,6 +578,22 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 _buildAttendanceButton(),
                 const SizedBox(width: 16),
                 const NotificationBell(),
+                const SizedBox(width: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1C1C24),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: IconButton(
+                    icon: Icon(_selectedIndex == -1 ? Icons.home_rounded : Icons.apps_rounded, color: AppTheme.primaryColor),
+                    tooltip: _selectedIndex == -1 ? 'Home Dashboard' : 'Menu',
+                    onPressed: () => setState(() {
+                      _selectedIndex = _selectedIndex == -1 ? 0 : -1;
+                      _selectedCategory = null;
+                    }),
+                  ),
+                ),
                 const SizedBox(width: 16),
                 ElevatedButton.icon(
                   onPressed: _fetchAdminStats,
@@ -742,6 +638,28 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
 
   Widget _buildMainAdminContent(bool isWide) {
     switch (_selectedIndex) {
+      case -1:
+        return DashboardMenuGrid(
+          selectedIndex: _selectedIndex,
+          onBackPressed: () => setState(() => _selectedIndex = 0),
+          onItemSelected: (idx) {
+            if (idx == 99) {
+              AuthService().logout().then((_) {
+                if (mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (Route<dynamic> route) => false,
+                  );
+                }
+              });
+              return;
+            }
+            setState(() {
+              _selectedIndex = idx;
+              _selectedCategory = null;
+            });
+          },
+        );
       case 0: return _buildAdminView(isWide);
       case 1: return const ServiceManagementScreen();
       case 2: return const StaffManagementScreen();

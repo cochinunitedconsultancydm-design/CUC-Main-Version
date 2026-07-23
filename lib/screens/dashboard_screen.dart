@@ -763,7 +763,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _selectedIndex = index;
             _selectedCategory = null;
           });
-          if (MediaQuery.of(context).size.width <= 1100) {
+          if (MediaQuery.of(context).size.width <= 900) {
             Navigator.pop(context); // Close drawer on mobile
           }
         },
@@ -954,6 +954,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onTap: () {
           setState(() {
             _selectedIndex = 24;
+            _selectedCategory = null;
+          });
+        },
+      ),
+      PremiumStatCard(
+        title: 'Client Data',
+        value: 'Manage',
+        trend: 'View all clients',
+        icon: Icons.people_alt_rounded,
+        color: Colors.blueAccent,
+        isNarrow: isNarrow,
+        onTap: () {
+          setState(() {
+            _selectedIndex = 3;
             _selectedCategory = null;
           });
         },

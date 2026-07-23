@@ -47,7 +47,7 @@ class SupabaseBackupService {
     'tasks': ['id', 'title', 'description', 'assigned_to', 'assigned_by', 'status', 'priority', 'due_date', 'created_at', 'client_name', 'data'],
     'deals': ['id', 'title', 'client_name', 'stage', 'value', 'assigned_to', 'created_at', 'expected_close_date', 'data', 'status'],
     'messages': ['id', 'sender', 'receiver', 'content', 'timestamp', 'read', 'data'],
-    'staff_attendance': ['id', 'username', 'date', 'check_in', 'check_out', 'status', 'data'],
+    'staff_attendance': ['id', 'user_id', 'check_in_time', 'check_out_time', 'attendance_date', 'data'],
     'client_documents': ['id', 'client_name', 'document_name', 'file_url', 'uploaded_by', 'uploaded_at', 'data'],
     'activity_logs': ['id', 'username', 'action', 'details', 'timestamp', 'data'],
     'inward_posts': ['id', 'date', 'from_whom', 'to_whom', 'subject', 'reference_no', 'data'],

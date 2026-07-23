@@ -35,8 +35,10 @@ class AuthService {
       final loginEmail = normalizedUser.contains('@') ? normalizedUser : '$userPart@cuc.local';
 
       String targetRole = 'staff';
-      if (userPart == 'irshad' || userPart == 'jesna') {
+      if (userPart == 'jesna') {
         targetRole = 'manager';
+      } else if (userPart == 'irshad') {
+        targetRole = 'hr';
       } else if (userPart == 'admin') {
         targetRole = 'admin';
       }

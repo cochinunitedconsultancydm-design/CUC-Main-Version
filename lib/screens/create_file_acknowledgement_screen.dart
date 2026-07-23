@@ -122,7 +122,12 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
       legacyFileTypeStr = legacyFileTypeStr.replaceAll('(', '').replaceAll(')', '');
       filesPart = filesPart.substring(0, lastParen).trim();
     }
-    List<String> filePartsList = filesPart.contains(' ; ') ? filesPart.split(' ; ') : filesPart.split(',');
+    List<String> filePartsList;
+    if (filesPart.contains('||')) {
+      filePartsList = filesPart.split(' ; ');
+    } else {
+      filePartsList = filesPart.contains(' ; ') ? filesPart.split(' ; ') : filesPart.split(',');
+    }
     
     for (var fName in filePartsList) {
       fName = fName.trim();
@@ -266,13 +271,6 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
   }
 
   Future<void> _save() async {
-    if (_selectedDeal == null && widget.editingPost == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must link this acknowledgement to a Work / Deal.'), backgroundColor: Colors.redAccent),
-      );
-      return;
-    }
-
     final String fileName = _selectedFiles.map((f) {
       final remark = _fileRemarks[f] ?? '';
       final type = _fileTypes[f] ?? 'Original';
@@ -384,7 +382,15 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
 
   Future<Uint8List> _generateLivePdf(PdfPageFormat format) async {
     final post = _buildPreviewPost();
-    final doc = pw.Document();
+    final font = await PdfGoogleFonts.notoSansRegular();
+    final fontBold = await PdfGoogleFonts.notoSansBold();
+    final fallbackFont = await PdfGoogleFonts.notoSansMalayalamRegular();
+    final fallbackEmoji = await PdfGoogleFonts.notoColorEmoji();
+    final doc = pw.Document(theme: pw.ThemeData.withFont(
+      base: font, 
+      bold: fontBold,
+      fontFallback: [fallbackFont, fallbackEmoji],
+    ));
     
     String action = 'Received';
     String fileDesc = post.description;
@@ -421,7 +427,12 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
       legacyFileTypeStr = legacyFileTypeStr.replaceAll('(', '[').replaceAll(')', ']');
       filesPart = filesPart.substring(0, lastParen).trim();
     }
-    List<String> filePartsList = filesPart.contains(' ; ') ? filesPart.split(' ; ') : filesPart.split(',');
+    List<String> filePartsList;
+    if (filesPart.contains('||')) {
+      filePartsList = filesPart.split(' ; ');
+    } else {
+      filePartsList = filesPart.contains(' ; ') ? filesPart.split(' ; ') : filesPart.split(',');
+    }
     List<String> fileNames = filePartsList.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
     List<pw.Widget> buildAddress(String name, bool isCompany) {
@@ -436,14 +447,14 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
       ];
     }
 
-    bool recipientIsCompany = action == 'Received';
-    bool senderIsCompany = action == 'Returned';
+    bool senderIsCompany = action == 'Received';
+    bool recipientIsCompany = action == 'Returned';
 
-    String fromName = post.recipientName;
-    bool fromIsCompany = recipientIsCompany;
+    String fromName = post.senderName;
+    bool fromIsCompany = senderIsCompany;
 
-    String toName = post.senderName;
-    bool toIsCompany = senderIsCompany;
+    String toName = post.recipientName;
+    bool toIsCompany = recipientIsCompany;
     
     String bodyText = action == 'Returned' 
         ? 'We are hereby returning the below mentioned documents:' 
@@ -603,7 +614,7 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
                           children: [
                             pw.Text('Receiver Signature', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
                             pw.SizedBox(height: 40),
-                            pw.Text('($fromName)', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                            pw.Text('($toName)', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                           ],
                         ),
                         pw.Column(
@@ -611,7 +622,7 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
                           children: [
                             pw.Text('Authorized Signature', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
                             pw.SizedBox(height: 40),
-                            pw.Text('($toName)', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                            pw.Text('($fromName)', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                           ],
                         ),
                       ],
@@ -633,10 +644,8 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
   }
   
   Widget _buildFileChecklist() {
-    if (_selectedDeal == null) return const SizedBox();
-    
     final availableFiles = <String>{};
-    if (_selectedDeal!.filesReceived != null) {
+    if (_selectedDeal?.filesReceived != null) {
       List<Map<String, dynamic>> fileStates = [];
       try {
         final rawReceived = _selectedDeal!.filesReceived ?? '';
@@ -764,20 +773,24 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
             ..._selectedFiles.map((f) {
               _fileRemarkControllers[f] ??= TextEditingController(text: _fileRemarks[f] ?? '');
               return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: _fileRemarkControllers[f],
-                        decoration: InputDecoration(
-                          labelText: f,
-                          hintText: 'Remarks (optional)',
-                          hintStyle: const TextStyle(fontSize: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
+                    Text(f, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: _fileRemarkControllers[f],
+                            decoration: InputDecoration(
+                              labelText: 'Remarks (optional)',
+                              hintStyle: const TextStyle(fontSize: 12),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
                         onChanged: (val) {
                           _fileRemarks[f] = val;
                           setState(() {}); // live update
@@ -802,6 +815,8 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
                           });
                         },
                       ),
+                    ),
+                      ],
                     ),
                   ],
                 ),
@@ -935,6 +950,10 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
         return TextField(
           controller: textController,
           focusNode: focusNode,
+          maxLines: null,
+          minLines: 1,
+          keyboardType: TextInputType.multiline,
+          textInputAction: TextInputAction.newline,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
@@ -1091,30 +1110,15 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
                       const SizedBox(height: 8),
                       _buildDealAutocomplete(),
                       const SizedBox(height: 16),
-                      if (_selectedDeal == null && widget.editingPost == null)
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange.shade200)),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                              SizedBox(width: 8),
-                              Expanded(child: Text('Please select a Work / Deal above to proceed with the file acknowledgement.', style: TextStyle(color: Colors.orange, fontSize: 13))),
-                            ],
-                          ),
-                        )
-                      else
-                        _buildFileChecklist(),
+                      _buildFileChecklist(),
                       const SizedBox(height: 16),
-                      if (_selectedDeal != null || widget.editingPost != null) ...[
-                        const Text('FROM', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54, letterSpacing: 1.0)),
-                        const SizedBox(height: 8),
-                        _buildUserAutocomplete(controller: _fromController, hint: 'Handed Over By', icon: Icons.person_outline),
-                        const SizedBox(height: 16),
-                        const Text('TO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54, letterSpacing: 1.0)),
-                        const SizedBox(height: 8),
-                        _buildUserAutocomplete(controller: _toController, hint: 'Received By', icon: Icons.person_outline),
-                      ],
+                      const Text('FROM', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54, letterSpacing: 1.0)),
+                      const SizedBox(height: 8),
+                      _buildUserAutocomplete(controller: _fromController, hint: 'Handed Over By', icon: Icons.person_outline),
+                      const SizedBox(height: 16),
+                      const Text('TO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54, letterSpacing: 1.0)),
+                      const SizedBox(height: 8),
+                      _buildUserAutocomplete(controller: _toController, hint: 'Received By', icon: Icons.person_outline),
                       const SizedBox(height: 60),
                     ],
                   ),

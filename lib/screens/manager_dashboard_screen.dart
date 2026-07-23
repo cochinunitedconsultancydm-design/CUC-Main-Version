@@ -48,6 +48,7 @@ import 'dart:async';
 import 'document_list_screen.dart';
 import 'verification_history_view.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import '../services/attendance_service.dart';
 
 class ManagerDashboardScreen extends StatefulWidget {
   const ManagerDashboardScreen({super.key});
@@ -78,6 +79,11 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   List<Map<String, dynamic>> _staffLogs = [];
   List<Map<String, dynamic>> _peakActivity = [];
   StreamSubscription? _notifSubscription;
+  bool _isCheckedIn = false;
+  String? _attendanceId;
+  String? _checkInTimeStr;
+  int _dailyTotalMinutes = 0;
+  bool _isAttendanceLoading = true;
 
   @override
   void dispose() {
@@ -91,6 +97,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     super.initState();
     // Delay to ensure connection is stable on mobile
     Future.delayed(const Duration(milliseconds: 500), () => _fetchAdminStats());
+    _fetchAttendanceStatus();
     
     // Start realtime notifications
     AuthService().getUserId().then((id) {
@@ -143,6 +150,71 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         ],
       ),
     );
+  }
+  
+  Future<void> _fetchAttendanceStatus() async {
+    final userId = await AuthService().getUserId();
+    if (userId == null) {
+      if (mounted) setState(() => _isAttendanceLoading = false);
+      return;
+    }
+
+    try {
+      final res = await AttendanceService().getCheckInStatus(userId);
+      final todayStr = DateTime.now().toIso8601String().split('T')[0];
+      final totalMins = await AttendanceService().getDailyTotalTime(userId, todayStr);
+      
+      if (mounted) {
+        setState(() {
+          _dailyTotalMinutes = totalMins;
+          if (res != null) {
+            _isCheckedIn = true;
+            _attendanceId = res['id'];
+            final checkInTime = DateTime.parse(res['check_in_time']).toLocal();
+            _checkInTimeStr = DateFormat('hh:mm a').format(checkInTime);
+          } else {
+            _isCheckedIn = false;
+            _attendanceId = null;
+            _checkInTimeStr = null;
+          }
+          _isAttendanceLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching attendance status: $e');
+      if (mounted) setState(() => _isAttendanceLoading = false);
+    }
+  }
+
+  Future<void> _toggleAttendance() async {
+    final userId = await AuthService().getUserId();
+    if (userId == null) {
+      setState(() => _isAttendanceLoading = false);
+      return;
+    }
+
+    setState(() => _isAttendanceLoading = true);
+    try {
+      if (_isCheckedIn && _attendanceId != null) {
+        final success = await AttendanceService().checkOut(_attendanceId!);
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Checked Out Successfully')));
+        }
+      } else {
+        final success = await AttendanceService().checkIn(userId);
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Checked In Successfully')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed: $e'),
+          backgroundColor: Colors.redAccent,
+        ));
+      }
+    }
+    await _fetchAttendanceStatus();
   }
 
   Future<void> _fetchAdminStats({int retryCount = 0}) async {
@@ -597,7 +669,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     );
   }
 
-   Widget _buildHeader(bool isWide) {
+    Widget _buildHeader(bool isWide) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -623,6 +695,8 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               children: [
                 _headerBadge('System Health: Excellent', Colors.green),
                 const SizedBox(width: 16),
+                _buildAttendanceButton(),
+                const SizedBox(width: 16),
                 const NotificationBell(),
                 const SizedBox(width: 16),
                 ElevatedButton.icon(
@@ -633,6 +707,8 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               ],
             ) else Row(
               children: [
+                _buildAttendanceButton(),
+                const SizedBox(width: 8),
                 const NotificationBell(),
                 IconButton(
                   onPressed: _fetchAdminStats,
@@ -644,6 +720,23 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildAttendanceButton() {
+    return ElevatedButton.icon(
+      onPressed: _isAttendanceLoading ? null : _toggleAttendance,
+      icon: _isAttendanceLoading
+          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+          : Icon(_isCheckedIn ? Icons.stop_circle_rounded : Icons.play_circle_fill_rounded, color: Colors.white, size: 18),
+      label: Text(_isCheckedIn ? 'Check Out' + (_checkInTimeStr != null ? ' (In since $_checkInTimeStr)' : '') : 'Check In', style: const TextStyle(fontSize: 12)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _isCheckedIn ? Colors.redAccent : Colors.green,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
     );
   }
 

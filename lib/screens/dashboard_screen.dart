@@ -23,6 +23,7 @@ import 'reminder_calendar_screen.dart';
 import '../widgets/upcoming_reminders_widget.dart';
 import 'delivery_dashboard_screen.dart';
 import 'accountant_dashboard_screen.dart';
+
 import 'help_and_queries_management_screen.dart';
 import 'company_bill_management_screen.dart';
 import '../services/auth_service.dart';
@@ -146,7 +147,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _fetchAttendanceStatus() async {
     final userId = await AuthService().getUserId();
-    if (userId == null) return;
+    if (userId == null) {
+      if (mounted) setState(() => _isAttendanceLoading = false);
+      return;
+    }
 
     try {
       final res = await AttendanceService().getCheckInStatus(userId);
@@ -177,7 +181,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _toggleAttendance() async {
     final userId = await AuthService().getUserId();
-    if (userId == null) return;
+    if (userId == null) {
+      setState(() => _isAttendanceLoading = false);
+      return;
+    }
 
     setState(() => _isAttendanceLoading = true);
     try {
@@ -538,6 +545,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Return different views based on sidebar selection
     switch (_selectedIndex) {
       case 0:
+
         if (_userRole == 'accountant') {
           return AccountantDashboardScreen(
             hideScaffold: true,
@@ -1669,7 +1677,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                   ),
-                  if (!_isAdmin && !kIsWeb && (Platform.isAndroid || Platform.isIOS)) ...[
+                  if (true) ...[
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,

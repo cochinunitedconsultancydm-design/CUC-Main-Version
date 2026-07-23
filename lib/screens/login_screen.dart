@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme.dart';
 import 'dashboard_screen.dart';
+import 'hr_dashboard_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'manager_dashboard_screen.dart';
 import 'delivery_dashboard_screen.dart';
@@ -92,6 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (role == 'manager') return const ManagerDashboardScreen();
                 if (role == 'delivery') return const DeliveryDashboardScreen();
                 if (role == 'accountant') return const DashboardScreen();
+                if (role == 'hr') return const HRDashboardScreen();
                 return const DashboardScreen();
               },
               transitionsBuilder: (context, animation, secondaryAnimation, child) {

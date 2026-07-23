@@ -2246,13 +2246,6 @@ final dLink = "";
                                   _buildClientAutocompleteField(),
                                   const SizedBox(height: 20),
                                   _buildField(
-                                    'Company',
-                                    _companyController,
-                                    'Company details...',
-                                    icon: Icons.business_rounded,
-                                  ),
-                                  const SizedBox(height: 20),
-                                  _buildField(
                                     'Work Type',
                                     _workTypeController,
                                     'e.g. Audit, GST, License...',
@@ -2956,27 +2949,11 @@ final dLink = "";
                                                 child:
                                                     _buildClientAutocompleteField(),
                                               ),
-                                              const SizedBox(width: 20),
-                                              Expanded(
-                                                child: _buildField(
-                                                  'Company',
-                                                  _companyController,
-                                                  'Company details...',
-                                                  icon: Icons.business_rounded,
-                                                ),
-                                              ),
                                             ],
                                           )
                                         : Column(
                                             children: [
                                               _buildClientAutocompleteField(),
-                                              const SizedBox(height: 20),
-                                              _buildField(
-                                                'Company',
-                                                _companyController,
-                                                'Company details...',
-                                                icon: Icons.business_rounded,
-                                              ),
                                             ],
                                           ),
                                     const SizedBox(height: 20),
@@ -4036,7 +4013,7 @@ final dLink = "";
           onSelected: (Map<String, dynamic> selection) {
             setState(() {
               _clientController.text = selection['name'];
-              _companyController.text = selection['address'];
+              _companyController.text = selection['id']?.toString() ?? '';
               _contactController.text =
                   selection['phone'] ?? selection['email'] ?? '';
               _workTypeController.text = selection['type_of_work'];

@@ -28,15 +28,39 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   String _timeTrackerSort = 'Name (A-Z)';
   DateTimeRange? _customDateRange;
   
+  // Tab 3: HR Dashboard State
+  List<amplify_models.StaffAttendance> _attendanceLogs = [];
+  bool _isLoadingAttendance = true;
+  
   @override
   void initState() {
     super.initState();
     _fetchStaff();
+    _fetchAttendance();
   }
 
   // ==========================================
   // SHARED UTILITIES
   // ==========================================
+  Future<void> _fetchAttendance() async {
+    if (!mounted) return;
+    setState(() => _isLoadingAttendance = true);
+    try {
+      final req = ModelQueries.list(amplify_models.StaffAttendance.classType);
+      final res = await Amplify.API.query(request: req).response;
+      var att = res.data?.items.whereType<amplify_models.StaffAttendance>().toList() ?? [];
+      if (mounted) {
+        setState(() {
+          _attendanceLogs = att;
+          _isLoadingAttendance = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching attendance: $e');
+      if (mounted) setState(() => _isLoadingAttendance = false);
+    }
+  }
+
   void _msg(String t, bool ok) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
     content: Text(t), backgroundColor: ok ? Colors.green : Colors.redAccent,
   ));
@@ -44,6 +68,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   Color _getRoleColor(String role) {
     switch (role) {
       case 'admin': return Colors.purple;
+      case 'hr': return Colors.pink;
       case 'manager': return Colors.indigo;
       case 'accountant': return Colors.teal;
       case 'delivery': return Colors.orange;
@@ -68,20 +93,23 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       // Deduplicate users by username, prioritizing UUID-based IDs (Cognito)
       final Map<String, amplify_models.Users> uniqueUsers = {};
       for (var u in usersResRaw) {
-        final un = u.username?.toLowerCase() ?? '';
-        if (un.isEmpty) {
-          uniqueUsers[u.id] = u; // Keep if no username
+        final name = (u.name ?? '').toLowerCase().trim();
+        if (name.isEmpty) {
+          uniqueUsers[u.id] = u; // Keep if no name
           continue;
         }
-        if (uniqueUsers.containsKey(un)) {
-          final existing = uniqueUsers[un]!;
+        var firstName = name.split(' ')[0];
+        if (firstName == 'jithasree') firstName = 'jitha';
+        
+        if (uniqueUsers.containsKey(firstName)) {
+          final existing = uniqueUsers[firstName]!;
           final isNewUuid = u.id.contains('-');
           final isExistingUuid = existing.id.contains('-');
           if (isNewUuid && !isExistingUuid) {
-            uniqueUsers[un] = u;
+            uniqueUsers[firstName] = u;
           }
         } else {
-          uniqueUsers[un] = u;
+          uniqueUsers[firstName] = u;
         }
       }
       var usersRes = uniqueUsers.values.toList();
@@ -625,6 +653,8 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                         const SizedBox(height: 12),
                         Row(
                           children: [
+                            roleChip('HR', 'hr', role == 'hr', Colors.pink, (v) => setModalState(() => role = v)),
+                            const SizedBox(width: 12),
                             roleChip('Staff', 'staff', role == 'staff', AppTheme.primaryColor, (v) => setModalState(() => role = v)),
                             const SizedBox(width: 12),
                             roleChip('Delivery', 'delivery', role == 'delivery', Colors.orange, (v) => setModalState(() => role = v)),
@@ -1109,8 +1139,28 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   Future<List<Map<String, dynamic>>> _fetchStaffTimeStats() async {
     final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
     final uRes = await Amplify.API.query(request: uReq).response;
-    var usersRes = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
-    usersRes = usersRes.where((u) => u.role != 'admin').toList();
+    var usersResRaw = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+    
+    final Map<String, amplify_models.Users> uniqueUsers = {};
+    for (var u in usersResRaw) {
+      final name = (u.name ?? '').toLowerCase().trim();
+      if (name.isEmpty) {
+        uniqueUsers[u.id] = u;
+        continue;
+      }
+      var firstName = name.split(' ')[0];
+      if (firstName == 'jithasree') firstName = 'jitha';
+      if (uniqueUsers.containsKey(firstName)) {
+        final existing = uniqueUsers[firstName]!;
+        if (u.id.contains('-') && !existing.id.contains('-')) {
+          uniqueUsers[firstName] = u;
+        }
+      } else {
+        uniqueUsers[firstName] = u;
+      }
+    }
+    
+    var usersRes = uniqueUsers.values.where((u) => u.role != 'admin' && u.role != 'client').toList();
     usersRes.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
     
     final today = DateTime.now();
@@ -1435,6 +1485,131 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     );
   }
 
+  Widget _buildHRManagementTab(bool isWide) {
+    if (_isLoadingDirectory || _isLoadingAttendance) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final hrStaffList = _staff.toList();
+    hrStaffList.sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
+
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('HR Dashboard', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ElevatedButton.icon(
+              onPressed: () => _fetchStaff().then((_) => _fetchAttendance()),
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Refresh Data'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.pink, 
+                foregroundColor: Colors.white, 
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Expanded(
+          child: ListView.separated(
+            itemCount: hrStaffList.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final s = hrStaffList[index];
+              final role = s['role']?.toString() ?? 'staff';
+              final color = _getRoleColor(role);
+              
+              final atts = _attendanceLogs.where((a) => a.user_id?.toString() == s['id']).toList();
+              atts.sort((a, b) => (b.attendance_date ?? '').compareTo(a.attendance_date ?? ''));
+              final latestAtt = atts.isNotEmpty ? atts.first : null;
+              
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withAlpha(5), blurRadius: 10, offset: const Offset(0, 4))],
+                  border: Border.all(color: Colors.grey.shade100, width: 1.5),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: color.withAlpha(25),
+                          child: Text(s['name']?[0] ?? '?', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(s['name'] ?? 'No Name', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              Text(role.toUpperCase(), style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text('Latest Attendance', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                            if (latestAtt != null) ...[
+                              Text(latestAtt.attendance_date ?? 'No Date', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                              Text('${latestAtt.check_in_time ?? '--:--'} - ${latestAtt.check_out_time ?? '--:--'}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                            ] else ...[
+                              const Text('No records', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            ]
+                          ],
+                        ),
+                      ],
+                    ),
+                    const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider()),
+                    Wrap(
+                      spacing: 24,
+                      runSpacing: 12,
+                      children: [
+                        _buildHRInfoItem(Icons.monetization_on, 'Salary', s['salary']),
+                        _buildHRInfoItem(Icons.access_time, 'Work Time', s['work_time']),
+                        _buildHRInfoItem(Icons.bloodtype, 'Blood Group', s['blood_group']),
+                        _buildHRInfoItem(Icons.contact_emergency, 'Emergency Contact', s['emergency_contact']),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHRInfoItem(IconData icon, String label, String? value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Colors.grey.shade400),
+        const SizedBox(width: 6),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+            Text(
+              (value == null || value.trim().isEmpty) ? 'N/A' : value,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: value == null || value.trim().isEmpty ? Colors.grey.shade400 : Colors.black87),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   // ==========================================
   // MAIN BUILD - TABS
   // ==========================================
@@ -1473,7 +1648,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                     ),
                   if (isWide) const SizedBox(width: 16) else const SizedBox(height: 16),
                   Container(
-                    width: isWide ? 320 : double.infinity,
+                    width: isWide ? 420 : double.infinity,
                     height: 48,
                     decoration: BoxDecoration(
                       color: Colors.grey.shade200,

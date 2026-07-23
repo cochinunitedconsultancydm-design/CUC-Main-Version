@@ -8,6 +8,8 @@ import '../theme.dart';
 import '../models/client.dart';
 import '../services/excel_service.dart';
 import '../services/logging_service.dart';
+import '../services/billing_service.dart';
+import '../models/billing.dart';
 import 'client_files_dialog.dart';
 
 class ClientManagementScreen extends StatefulWidget {
@@ -22,6 +24,27 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
   List<Client> _clients = [];
   bool _isLoading = true;
   String _searchTerm = '';
+  String _currentSort = 'Name (A-Z)';
+
+  void _applySort() {
+    switch (_currentSort) {
+      case 'Name (A-Z)':
+        _clients.sort((a, b) => a.name.trim().toLowerCase().compareTo(b.name.trim().toLowerCase()));
+        break;
+      case 'Name (Z-A)':
+        _clients.sort((a, b) => b.name.trim().toLowerCase().compareTo(a.name.trim().toLowerCase()));
+        break;
+      case 'Due (High-Low)':
+        _clients.sort((a, b) => _parseDue(b.balanceDue).compareTo(_parseDue(a.balanceDue)));
+        break;
+    }
+  }
+
+  double _parseDue(String? due) {
+    if (due == null || due.isEmpty) return 0.0;
+    final clean = due.replaceAll(RegExp(r'[^\d.]'), '');
+    return double.tryParse(clean) ?? 0.0;
+  }
 
   @override
   void initState() {
@@ -44,7 +67,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
           name: m.name ?? '',
           email: m.email,
           phone: m.phone,
-          address: m.address,
+          address: (m.address?.trim().toLowerCase() == 'false') ? '' : m.address,
           typeOfWork: m.type_of_work,
           caseNumber: m.case_number,
           dob: m.dob,
@@ -53,6 +76,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
           isContacted: m.is_contacted ?? false,
           balanceDue: m.balance_due,
         )).toList();
+        _applySort();
       });
     } catch (e) {
       _showError('Failed to fetch clients: $e');
@@ -113,6 +137,14 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (context) => ClientFilesDialog(client: client),
+    );
+  }
+
+  void _showClientBillsDialog(Client client) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      builder: (context) => _ClientBillsDialog(client: client),
     );
   }
 
@@ -282,6 +314,48 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     ElevatedButton(
                       onPressed: () async {
                         if (!formKey.currentState!.validate()) return;
+
+                        if (client == null) {
+                          final newName = nameController.text.trim().toLowerCase();
+                          final newPhone = phoneController.text.trim();
+                          
+                          Client? existingClient;
+                          for (var c in _clients) {
+                            if (c.name.trim().toLowerCase() == newName || 
+                                (newPhone.isNotEmpty && c.phone != null && c.phone!.trim() == newPhone)) {
+                              existingClient = c;
+                              break;
+                            }
+                          }
+                          
+                          if (existingClient != null) {
+                            final action = await showDialog<String>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Client Already Exists'),
+                                content: Text('A client with the name "${existingClient!.name}" or phone "${existingClient.phone}" already exists.\n\nDo you want to create a new client anyway or open the existing one?'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx, 'cancel'), child: const Text('Cancel')),
+                                  TextButton(onPressed: () => Navigator.pop(ctx, 'create'), child: const Text('Create New')),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.pop(ctx, 'open'),
+                                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
+                                    child: const Text('Open Existing'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            
+                            if (action == 'cancel' || action == null) return;
+                            
+                            if (action == 'open') {
+                              if (context.mounted) Navigator.pop(context); // close new client form
+                              _showClientForm(existingClient); // open existing client form
+                              return;
+                            }
+                          }
+                        }
+
                         final newClient = Client(
                           id: client?.id,
                           name: nameController.text,
@@ -445,6 +519,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                         ),
                       ),
                       const SizedBox(width: 16),
+                      _buildSortDropdown(),
+                      const SizedBox(width: 12),
                       _headerAction(Icons.refresh_rounded, 'Refresh', AppTheme.primaryColor, _fetchClients),
                       const SizedBox(width: 12),
                       _headerAction(Icons.download_rounded, 'Export to Excel', Colors.green, _exportToExcel),
@@ -519,6 +595,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
+                  _buildSortDropdown(),
+                  const SizedBox(width: 12),
                   _headerAction(Icons.refresh_rounded, 'Refresh', AppTheme.primaryColor, _fetchClients),
                   const SizedBox(width: 8),
                   _headerAction(Icons.download_rounded, 'Export', Colors.green, _exportToExcel),
@@ -550,6 +628,32 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     },
   );
 }
+
+  Widget _buildSortDropdown() {
+    return PopupMenuButton<String>(
+      tooltip: 'Sort Clients',
+      initialValue: _currentSort,
+      onSelected: (val) {
+        setState(() {
+          _currentSort = val;
+          _applySort();
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.sort_rounded, color: AppTheme.primaryColor, size: 20),
+      ),
+      itemBuilder: (context) => [
+        const PopupMenuItem(value: 'Name (A-Z)', child: Text('Name (A-Z)')),
+        const PopupMenuItem(value: 'Name (Z-A)', child: Text('Name (Z-A)')),
+        const PopupMenuItem(value: 'Due (High-Low)', child: Text('Due (High-Low)')),
+      ],
+    );
+  }
 
   Widget _headerAction(IconData icon, String tooltip, Color color, VoidCallback onTap) {
     return IconButton(
@@ -612,23 +716,26 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                                 ],
                               ),
                             ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0" ? Colors.orange.shade50 : Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0" ? Colors.orange.shade200 : Colors.grey.shade200),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.account_balance_wallet_outlined, size: 14, color: c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0" ? Colors.orange.shade800 : Colors.grey.shade600),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "Due: ${c.balanceDue ?? '0/-'}",
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0" ? Colors.orange.shade800 : Colors.grey.shade600),
-                                ),
-                              ],
+                          GestureDetector(
+                            onTap: () => _showClientBillsDialog(c),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0" ? Colors.orange.shade50 : Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0" ? Colors.orange.shade200 : Colors.grey.shade200),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.account_balance_wallet_outlined, size: 14, color: c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0" ? Colors.orange.shade800 : Colors.grey.shade600),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "Due: ${c.balanceDue ?? '0/-'}",
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0" ? Colors.orange.shade800 : Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -715,3 +822,97 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     );
   }
 }
+
+class _ClientBillsDialog extends StatefulWidget {
+  final Client client;
+  const _ClientBillsDialog({required this.client});
+
+  @override
+  State<_ClientBillsDialog> createState() => _ClientBillsDialogState();
+}
+
+class _ClientBillsDialogState extends State<_ClientBillsDialog> {
+  final _billingService = BillingService();
+  bool _isLoading = true;
+  List<Billing> _bills = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBills();
+  }
+
+  Future<void> _loadBills() async {
+    final ledger = await _billingService.getClientLedger(widget.client.name);
+    if (!mounted) return;
+    setState(() {
+      _bills = ledger;
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        width: 600,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: Text('${widget.client.name} - Ledger', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_isLoading)
+              const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+            else if (_bills.isEmpty)
+              const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('No bills found for this client.', style: TextStyle(color: Colors.grey))))
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 400),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _bills.length,
+                  itemBuilder: (context, index) {
+                    final b = _bills[index];
+                    final isPaid = b.status == 'Received';
+                    return Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                          child: const Icon(Icons.receipt_long_rounded, color: AppTheme.primaryColor, size: 20),
+                        ),
+                        title: Text('Invoice: ${b.invoiceNo ?? 'N/A'} - ₹${b.amount ?? '0'}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('${b.type ?? 'N/A'} • ${b.date ?? 'N/A'}'),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isPaid ? Colors.green.shade50 : Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isPaid ? Colors.green.shade200 : Colors.orange.shade200),
+                          ),
+                          child: Text(isPaid ? 'Paid' : 'Pending', style: TextStyle(color: isPaid ? Colors.green : Colors.orange.shade800, fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

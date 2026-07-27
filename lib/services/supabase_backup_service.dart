@@ -83,7 +83,7 @@ class SupabaseBackupService {
   /// Backup a single record to Supabase (upsert).
   /// [modelName] is the DynamoDB model name (e.g. 'Clients').
   /// [data] is a Map of the record fields.
-  Future<bool> backupRecord(String modelName, Map<String, dynamic> data) async {
+  Future<bool> backupRecord(String modelName, Map<String, dynamic> data, {int retryCount = 0}) async {
     final table = _tableMap[modelName];
     if (table == null) {
       debugPrint('Supabase backup: No mapping for $modelName');
@@ -129,6 +129,10 @@ class SupabaseBackupService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return true;
       } else {
+        if (retryCount < 3 && response.statusCode == 409 && response.body.contains('23503')) {
+          final resolved = await _resolveForeignKeyAndRetry(modelName, data, response.body, retryCount);
+          if (resolved) return true;
+        }
         debugPrint('Supabase backup failed for $modelName: ${response.statusCode} ${response.body}');
         return false;
       }
@@ -139,7 +143,7 @@ class SupabaseBackupService {
   }
 
   /// Backup multiple records to Supabase (batch upsert).
-  Future<bool> backupRecords(String modelName, List<Map<String, dynamic>> records) async {
+  Future<bool> backupRecords(String modelName, List<Map<String, dynamic>> records, {int retryCount = 0}) async {
     final table = _tableMap[modelName];
     if (table == null) return false;
 
@@ -190,6 +194,91 @@ class SupabaseBackupService {
       debugPrint('Supabase batch backup error for $modelName: $e');
       return false;
     }
+  }
+
+  Future<bool> _resolveForeignKeyAndRetry(String modelName, Map<String, dynamic> data, String errorBody, int retryCount) async {
+    try {
+      bool resolvedAny = false;
+
+      // 1. Deal
+      if ((errorBody.contains('deal_id') || errorBody.contains('deals')) && data['deal_id'] != null) {
+        final dealIdStr = data['deal_id'].toString();
+        debugPrint('Supabase backup: resolving missing foreign key deal_id = $dealIdStr');
+        final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(dealIdStr));
+        final res = await Amplify.API.query(request: req).response;
+        final items = res.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
+        if (items.isNotEmpty) {
+          final parentBackedUp = await backupRecord('Deals', items.first.toJson(), retryCount: retryCount + 1);
+          if (parentBackedUp) resolvedAny = true;
+        } else {
+          debugPrint('Supabase backup: Deal $dealIdStr not found in Amplify.');
+        }
+      }
+
+      // 2. Task
+      if ((errorBody.contains('task_id') || errorBody.contains('tasks')) && data['task_id'] != null) {
+        final taskIdStr = data['task_id'].toString();
+        debugPrint('Supabase backup: resolving missing foreign key task_id = $taskIdStr');
+        final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(taskIdStr));
+        final res = await Amplify.API.query(request: req).response;
+        final items = res.data?.items.whereType<amplify_models.Tasks>().toList() ?? [];
+        if (items.isNotEmpty) {
+          final parentBackedUp = await backupRecord('Tasks', items.first.toJson(), retryCount: retryCount + 1);
+          if (parentBackedUp) resolvedAny = true;
+        } else {
+          debugPrint('Supabase backup: Task $taskIdStr not found in Amplify.');
+        }
+      }
+
+      // 3. Client
+      if (errorBody.contains('clients') || errorBody.contains('client_id') || errorBody.contains('client_name')) {
+        dynamic clientIdVal = data['client_id'] ?? data['client_name'];
+        if (clientIdVal != null) {
+          final clientStr = clientIdVal.toString();
+          debugPrint('Supabase backup: resolving missing foreign key client = $clientStr');
+          var req = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.ID.eq(clientStr));
+          var res = await Amplify.API.query(request: req).response;
+          var items = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+          if (items.isEmpty) {
+            req = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.NAME.eq(clientStr));
+            res = await Amplify.API.query(request: req).response;
+            items = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+          }
+          if (items.isNotEmpty) {
+            final parentBackedUp = await backupRecord('Clients', items.first.toJson(), retryCount: retryCount + 1);
+            if (parentBackedUp) resolvedAny = true;
+          } else {
+            debugPrint('Supabase backup: Client $clientStr not found in Amplify.');
+          }
+        }
+      }
+
+      // 4. User
+      if (errorBody.contains('users') || errorBody.contains('user_id') || errorBody.contains('assigned_to') || errorBody.contains('responsible_id') || errorBody.contains('created_by')) {
+        dynamic missingUserId = data['user_id'] ?? data['assigned_to'] ?? data['responsible_id'] ?? data['created_by'];
+        if (missingUserId != null) {
+          final userIdStr = missingUserId.toString();
+          debugPrint('Supabase backup: resolving missing foreign key user_id = $userIdStr');
+          final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(userIdStr));
+          final res = await Amplify.API.query(request: req).response;
+          final items = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+          if (items.isNotEmpty) {
+            final parentBackedUp = await backupRecord('Users', items.first.toJson(), retryCount: retryCount + 1);
+            if (parentBackedUp) resolvedAny = true;
+          } else {
+            debugPrint('Supabase backup: User $userIdStr not found in Amplify.');
+          }
+        }
+      }
+
+      if (resolvedAny) {
+        debugPrint('Supabase backup: resolved parent record(s). Retrying backup for $modelName...');
+        return await backupRecord(modelName, data, retryCount: retryCount + 1);
+      }
+    } catch (e) {
+      debugPrint('Supabase backup: error during foreign key resolution: $e');
+    }
+    return false;
   }
 
   /// Delete a record from Supabase backup.

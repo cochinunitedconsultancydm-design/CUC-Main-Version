@@ -108,34 +108,38 @@ class NotificationService {
     required String message,
     String? payload,
   }) async {
-    // Desktop / Web: show in-app toast notification
-    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
-      _showDesktopNotification(title: title, message: message);
-      return;
+    try {
+      // Desktop / Web: show in-app toast notification
+      if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
+        _showDesktopNotification(title: title, message: message);
+        return;
+      }
+      
+      await initLocalNotifications();
+
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'cuc_tasks',
+        'Task Notifications',
+        channelDescription: 'Notifications for tasks and work management',
+        importance: Importance.max,
+        priority: Priority.high,
+      );
+      
+      const NotificationDetails platformDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(),
+      );
+
+      await _localNotif.show(
+        id: DateTime.now().millisecond % 1000000,
+        title: title,
+        body: message,
+        notificationDetails: platformDetails,
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint('Error showing local notification: $e');
     }
-    
-    await initLocalNotifications();
-
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'cuc_tasks',
-      'Task Notifications',
-      channelDescription: 'Notifications for tasks and work management',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-    
-    const NotificationDetails platformDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: DarwinNotificationDetails(),
-    );
-
-    await _localNotif.show(
-      id: DateTime.now().millisecond % 1000000,
-      title: title,
-      body: message,
-      notificationDetails: platformDetails,
-      payload: payload,
-    );
   }
 
   /// Shows an in-app floating toast notification for desktop platforms.
@@ -258,7 +262,7 @@ class NotificationService {
 
       // Show local/desktop notification on sender device (skip for chat — receiver gets it via realtime)
       if (type != 'chat') {
-        showLocalNotification(title: title, message: message);
+        await showLocalNotification(title: title, message: message);
       }
     } catch (e) {
       debugPrint('Error sending notification: $e');

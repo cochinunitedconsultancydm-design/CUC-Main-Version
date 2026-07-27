@@ -79,18 +79,25 @@ class BackupAwareApi {
 
   /// Fire-and-forget backup to Supabase (non-blocking).
   void _backupInBackground(String modelName, Map<String, dynamic> data) {
-    _backup.backupRecord(modelName, data).then((success) {
-      if (!success) {
-        debugPrint('Supabase backup queued retry for $modelName');
+    Future.microtask(() async {
+      try {
+        final success = await _backup.backupRecord(modelName, data);
+        if (!success) {
+          debugPrint('Supabase backup queued retry for $modelName');
+        }
+      } catch (e) {
+        debugPrint('Supabase backup error: $e');
       }
-    }).catchError((e) {
-      debugPrint('Supabase backup error: $e');
     });
   }
 
   void _deleteBackupInBackground(String modelName, String id) {
-    _backup.deleteRecord(modelName, id).catchError((e) {
-      debugPrint('Supabase delete backup error: $e');
+    Future.microtask(() async {
+      try {
+        await _backup.deleteRecord(modelName, id);
+      } catch (e) {
+        debugPrint('Supabase delete backup error: $e');
+      }
     });
   }
 }

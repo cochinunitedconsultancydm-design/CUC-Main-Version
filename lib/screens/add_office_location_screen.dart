@@ -23,10 +23,10 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
   final _officePhoneDesigController = TextEditingController();
   final _officePhoneNumController = TextEditingController();
   
-  final List<File> _frontViewPhotos = [];
-  final List<File> _designationBoards = [];
-  final List<File> _noticeBoards = [];
-  final List<File> _otherPhotos = [];
+  final List<PlatformFile> _frontViewPhotos = [];
+  final List<PlatformFile> _designationBoards = [];
+  final List<PlatformFile> _noticeBoards = [];
+  final List<PlatformFile> _otherPhotos = [];
   
   List<Map<String, String>> _officers = [];
   final _officerNameController = TextEditingController();
@@ -72,11 +72,11 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
     }
   }
 
-  Future<void> _pickMultipleImages(List<File> targetList) async {
-    final result = await FilePicker.pickFiles(type: FileType.image, allowMultiple: true);
+  Future<void> _pickMultipleImages(List<PlatformFile> targetList) async {
+    final result = await FilePicker.pickFiles(type: FileType.image, allowMultiple: true, withData: true);
     if (result != null) {
       setState(() {
-        targetList.addAll(result.paths.whereType<String>().map((path) => File(path)));
+        targetList.addAll(result.files);
       });
     }
   }
@@ -486,7 +486,7 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
     );
   }
 
-  Widget _buildImageUploader(String label, List<File> files, VoidCallback onPick, IconData icon) {
+  Widget _buildImageUploader(String label, List<PlatformFile> files, VoidCallback onPick, IconData icon) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -508,7 +508,11 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.file(f, width: 100, height: 100, fit: BoxFit.cover),
+                          child: f.bytes != null
+                              ? Image.memory(f.bytes!, width: 100, height: 100, fit: BoxFit.cover)
+                              : (f.path != null
+                                  ? Image.file(File(f.path!), width: 100, height: 100, fit: BoxFit.cover)
+                                  : const SizedBox(width: 100, height: 100, child: Icon(Icons.image))),
                         ),
                       ),
                       Positioned(

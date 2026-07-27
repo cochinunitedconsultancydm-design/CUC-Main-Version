@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_api/amplify_api.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models/OfficeLocations.dart';
 import '../models/ModelProvider.dart';
 
@@ -52,12 +53,23 @@ class OfficeLocationService {
     }
   }
 
-  Future<String?> uploadImage(File file, String pathPrefix) async {
+  Future<String?> uploadImage(PlatformFile file, String pathPrefix) async {
     try {
-      final filename = file.path.replaceAll('\\', '/').split('/').last;
+      final filename = file.name.replaceAll('\\', '/').split('/').last;
       final key = '$pathPrefix/${DateTime.now().millisecondsSinceEpoch}_$filename';
+      
+      AWSFile localFile;
+      if (file.bytes != null) {
+        localFile = AWSFile.fromData(file.bytes!);
+      } else if (file.path != null) {
+        localFile = AWSFile.fromPath(file.path!);
+      } else {
+        safePrint('Error uploading image: no data or path available');
+        return null;
+      }
+
       await Amplify.Storage.uploadFile(
-        localFile: AWSFile.fromPath(file.path),
+        localFile: localFile,
         path: StoragePath.fromString(key),
       ).result;
       return key;

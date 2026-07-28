@@ -102,7 +102,12 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
           final workPathStr = workPath.toString();
           
           for (var item in wFilesRes.items) {
-            String itemPath = Uri.decodeFull(item.path);
+            String itemPath;
+            try {
+              itemPath = Uri.decodeFull(item.path);
+            } catch (_) {
+              itemPath = item.path; // Fallback to raw path if decoding fails
+            }
             String relativePath = itemPath;
             
             if (itemPath.startsWith(workPathStr)) {

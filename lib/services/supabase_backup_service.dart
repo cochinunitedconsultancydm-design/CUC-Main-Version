@@ -45,7 +45,17 @@ class SupabaseBackupService {
     'clients': ['id', 'name', 'email', 'phone', 'address', 'city', 'state', 'pincode', 'gst', 'pan', 'category', 'status', 'created_at', 'assigned_to', 'company_name', 'data'],
     'billings': ['id', 'client_name', 'invoice_no', 'date', 'amount', 'type', 'category', 'authorities', 'status', 'created_at', 'data'],
     'tasks': ['id', 'title', 'description', 'assigned_to', 'assigned_by', 'status', 'priority', 'due_date', 'created_at', 'client_name', 'data'],
-    'deals': ['id', 'title', 'client_name', 'stage', 'value', 'assigned_to', 'created_at', 'expected_close_date', 'data', 'status'],
+    'deals': [
+      'id', 'name', 'client_id', 'client_name', 'contact_info', 'company', 
+      'work_type', 'stage', 'responsible_id', 'responsible_name', 'amount', 
+      'currency', 'pipeline', 'priority', 'description', 'created_at', 
+      'updated_at', 'closed_at', 'is_won', 'reg_fee_required', 'files_received', 
+      'contact_status', 'files_asked', 'est_amount_work', 'create_invoice_share', 
+      'expense_spent', 'upload_invoice_path', 'send_to_customer', 'register_no', 
+      'invoice_amount', 'payment_type', 'drive_link', 'billing_id', 'quotation_id', 
+      'payment_received', 'part_payment_amount', 'noc_obtained', 'referred_by', 
+      'expenses_list', 'status', 'data'
+    ],
     'messages': ['id', 'sender', 'receiver', 'content', 'timestamp', 'read', 'data'],
     'staff_attendance': ['id', 'user_id', 'check_in_time', 'check_out_time', 'attendance_date', 'data'],
     'client_documents': ['id', 'client_name', 'document_name', 'file_url', 'uploaded_by', 'uploaded_at', 'data'],

@@ -61,17 +61,17 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
       // Fetch all license types first
       final typesReq = ModelQueries.list(amplify_models.LicenseTypes.classType, limit: 10000);
       final typesResRaw = await Amplify.API.query(request: typesReq).response;
-      final fetchedTypes = typesResRaw.data?.items.whereType<amplify_models.LicenseTypes>().toList() ?? [];
+      final fetchedTypes = (typesResRaw.data?.items ?? []).whereType<amplify_models.LicenseTypes>().toList() ?? [];
 
       // Fetch all clients
       final clientReq = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final clientRes = await Amplify.API.query(request: clientReq).response;
-      final clientsList = clientRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+      final clientsList = (clientRes.data?.items ?? []).whereType<amplify_models.Clients>().toList() ?? [];
 
       // Fetch all licenses
       final licensesReq = ModelQueries.list(amplify_models.ClientLicenses.classType, limit: 10000);
       final licensesRes = await Amplify.API.query(request: licensesReq).response;
-      final licenses = licensesRes.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
+      final licenses = (licensesRes.data?.items ?? []).whereType<amplify_models.ClientLicenses>().toList() ?? [];
       
       int total = 0;
       int active = 0;
@@ -146,7 +146,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
       // Fetch Pending Amount
       final billingReq = ModelQueries.list(amplify_models.LicenseBilling.classType, where: amplify_models.LicenseBilling.PAYMENT_STATUS.eq('Pending'), limit: 10000);
       final billingRes = await Amplify.API.query(request: billingReq).response;
-      final billingItems = billingRes.data?.items.whereType<amplify_models.LicenseBilling>().toList() ?? [];
+      final billingItems = (billingRes.data?.items ?? []).whereType<amplify_models.LicenseBilling>().toList() ?? [];
       double pending = 0;
       for (var b in billingItems) {
         pending += b.amount ?? 0.0;
@@ -190,13 +190,13 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
       
       final clientReq = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final clientRes = await Amplify.API.query(request: clientReq).response;
-      final clientsList = clientRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+      final clientsList = (clientRes.data?.items ?? []).whereType<amplify_models.Clients>().toList() ?? [];
 
       final typesReq = ModelQueries.list(amplify_models.LicenseTypes.classType);
       final typesRes = await Amplify.API.query(request: typesReq).response;
-      final typesList = typesRes.data?.items.whereType<amplify_models.LicenseTypes>().toList() ?? [];
+      final typesList = (typesRes.data?.items ?? []).whereType<amplify_models.LicenseTypes>().toList() ?? [];
 
-      final licensesList = res.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
+      final licensesList = (res.data?.items ?? []).whereType<amplify_models.ClientLicenses>().toList() ?? [];
       
       final licenses = licensesList.map((row) {
         final client = clientsList.firstWhere((c) => c.id == row.client_id, orElse: () => amplify_models.Clients(name: null));

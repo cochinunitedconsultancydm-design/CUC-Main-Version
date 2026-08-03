@@ -253,7 +253,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     try {
       final req = ModelQueries.list(amplify_models.LicenseTypes.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
-      final typesList = res.data?.items.whereType<amplify_models.LicenseTypes>().toList() ?? [];
+      final typesList = (res.data?.items ?? []).whereType<amplify_models.LicenseTypes>().toList() ?? [];
       typesList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       setState(() {
         _licenseTypes = typesList.map((t) => <String, dynamic>{'id': t.id, 'name': t.name}).toList();
@@ -277,9 +277,9 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
       
       final clientReq = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final clientRes = await Amplify.API.query(request: clientReq).response;
-      final clientsList = clientRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+      final clientsList = (clientRes.data?.items ?? []).whereType<amplify_models.Clients>().toList() ?? [];
       
-      final licenseList = res.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
+      final licenseList = (res.data?.items ?? []).whereType<amplify_models.ClientLicenses>().toList() ?? [];
       licenseList.sort((a, b) => (DateTime.tryParse(a.expiry_date ?? '') ?? DateTime.now()).compareTo(DateTime.tryParse(b.expiry_date ?? '') ?? DateTime.now()));
       
       setState(() {
@@ -313,7 +313,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     try {
       final req = ModelQueries.list(amplify_models.LicenseBilling.classType, where: amplify_models.LicenseBilling.CLIENT_LICENSE_ID.eq(licenseId.toString()), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
-      final billingList = res.data?.items.whereType<amplify_models.LicenseBilling>().toList() ?? [];
+      final billingList = (res.data?.items ?? []).whereType<amplify_models.LicenseBilling>().toList() ?? [];
       
       setState(() {
         _billings[licenseId] = billingList.map((row) => LicenseBilling(
@@ -488,7 +488,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     try {
       final req = ModelQueries.list(amplify_models.Billings.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
-      final billList = res.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
+      final billList = (res.data?.items ?? []).whereType<amplify_models.Billings>().toList() ?? [];
       billList.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
       
       allBills = billList.take(50).map((b) => {

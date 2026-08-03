@@ -369,7 +369,7 @@ class _BillingScreenState extends State<BillingScreen> {
       
       final req = ModelQueries.list(CompanyBills.classType);
       final res = await Amplify.API.query(request: req).response;
-      final existingBills = res.data?.items.whereType<CompanyBills>().toList() ?? [];
+      final existingBills = (res.data?.items ?? []).whereType<CompanyBills>().toList() ?? [];
       
       int added = 0;
       
@@ -1465,7 +1465,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       final res = await Amplify.API.query(request: req).response;
       final Set<String> seen = {};
       final List<Map<String, String>> items = [];
-      final billingsList = res.data?.items.whereType<Billings>().toList() ?? [];
+      final billingsList = (res.data?.items ?? []).whereType<Billings>().toList() ?? [];
       billingsList.sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
       
       for (var row in billingsList) {

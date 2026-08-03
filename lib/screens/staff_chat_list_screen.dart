@@ -128,7 +128,7 @@ class _ChatListViewState extends State<_ChatListView> {
 
       final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
-      var usersRes = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      var usersRes = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
       
       usersRes = usersRes.where((u) => u.id != myIdStr).toList();
       usersRes.sort((a, b) {
@@ -142,7 +142,7 @@ class _ChatListViewState extends State<_ChatListView> {
         where: amplify_models.Messages.RECEIVER_ID.eq(myId).and(amplify_models.Messages.IS_READ.eq(false))
       );
       final mRes = await Amplify.API.query(request: mReq).response;
-      final unreadRes = mRes.data?.items.whereType<amplify_models.Messages>().toList() ?? [];
+      final unreadRes = (mRes.data?.items ?? []).whereType<amplify_models.Messages>().toList() ?? [];
       
       final Map<String, int> unreadCounts = {};
       for (var msg in unreadRes) {
@@ -154,7 +154,7 @@ class _ChatListViewState extends State<_ChatListView> {
 
       final sReq = ModelQueries.list(amplify_models.UserSessions.classType);
       final sRes = await Amplify.API.query(request: sReq).response;
-      var sessionsRes = sRes.data?.items.whereType<amplify_models.UserSessions>().toList() ?? [];
+      var sessionsRes = (sRes.data?.items ?? []).whereType<amplify_models.UserSessions>().toList() ?? [];
       
       sessionsRes.sort((a, b) {
         final dateA = a.login_time != null ? DateTime.tryParse(a.login_time!) ?? DateTime(2000) : DateTime(2000);

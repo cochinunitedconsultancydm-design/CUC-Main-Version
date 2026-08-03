@@ -231,7 +231,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
 
       final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ASSIGNED_TO.eq(userId));
       final res = await Amplify.API.query(request: req).response;
-      final tasksList = res.data?.items.whereType<amplify_models.Tasks>().toList() ?? [];
+      final tasksList = (res.data?.items ?? []).whereType<amplify_models.Tasks>().toList() ?? [];
 
       int pending = 0;
       int completed = 0;

@@ -37,12 +37,12 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       // 0. Fetch Clients to map client_id to name
       final clientReq = ModelQueries.list(Clients.classType, limit: 10000);
       final clientRes = await Amplify.API.query(request: clientReq).response;
-      final clientsMap = { for (var c in clientRes.data?.items.whereType<Clients>() ?? []) c.id.toString(): c.name ?? 'Unknown' };
+      final clientsMap = { for (var c in (clientRes.data?.items ?? []).whereType<Clients>() ?? []) c.id.toString(): c.name ?? 'Unknown' };
 
       // 1. Fetch Tasks (Overdue or Due in next 7 days)
       final tReq = ModelQueries.list(Tasks.classType, where: Tasks.STATUS.ne('Completed'));
       final tRes = await Amplify.API.query(request: tReq).response;
-      final tasksRes = tRes.data?.items.whereType<Tasks>() ?? [];
+      final tasksRes = (tRes.data?.items ?? []).whereType<Tasks>() ?? [];
       
       for (var t in tasksRes) {
         if (t.due_date != null) {
@@ -65,7 +65,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       // 2. Fetch Licenses Expiry (Expired or Expiring in next 30 days)
       final lReq = ModelQueries.list(ClientLicenses.classType, where: ClientLicenses.STATUS.eq('Active'));
       final lRes = await Amplify.API.query(request: lReq).response;
-      final licenseRes = lRes.data?.items.whereType<ClientLicenses>() ?? [];
+      final licenseRes = (lRes.data?.items ?? []).whereType<ClientLicenses>() ?? [];
       
       for (var l in licenseRes) {
         if (l.expiry_date != null) {
@@ -89,7 +89,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       // 3. Fetch DSC Expiry (Expired or Expiring in next 30 days)
       final dReq = ModelQueries.list(DscRecords.classType);
       final dRes = await Amplify.API.query(request: dReq).response;
-      final dscRes = dRes.data?.items.whereType<DscRecords>() ?? [];
+      final dscRes = (dRes.data?.items ?? []).whereType<DscRecords>() ?? [];
       
       for (var d in dscRes) {
         if (d.dsc_expiry_date != null) {

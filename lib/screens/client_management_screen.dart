@@ -58,7 +58,32 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     try {
       final req = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
-      final clientsList = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+      var clientsList = (res.data?.items ?? []).whereType<amplify_models.Clients>().toList();
+      
+      int maxRegNo = 0;
+      for (var c in clientsList) {
+        if (c.registration_number != null) {
+          final match = RegExp(r'\d+').firstMatch(c.registration_number!);
+          if (match != null) {
+            final num = int.tryParse(match.group(0)!) ?? 0;
+            if (num > maxRegNo) maxRegNo = num;
+          }
+        }
+      }
+
+      var unassignedClients = clientsList.where((c) => c.registration_number == null).toList();
+      if (unassignedClients.isNotEmpty) {
+        unassignedClients.sort((a, b) => (a.createdAt?.toString() ?? '').compareTo(b.createdAt?.toString() ?? ''));
+        for (var c in unassignedClients) {
+          maxRegNo++;
+          final newRegNo = 'CUC-${maxRegNo.toString().padLeft(4, '0')}';
+          final updated = c.copyWith(registration_number: newRegNo);
+          await BackupAwareApi().update(updated);
+          final index = clientsList.indexWhere((element) => element.id == c.id);
+          if (index != -1) clientsList[index] = updated;
+        }
+      }
+
       clientsList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       if (!mounted) return;
       setState(() {
@@ -75,6 +100,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
           fileDate: m.file_date,
           isContacted: m.is_contacted ?? false,
           balanceDue: m.balance_due,
+          registrationNumber: m.registration_number,
         )).toList();
         _applySort();
       });
@@ -369,9 +395,22 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                           dob: dobController.text,
                           managedBy: careOfController.text,
                           balanceDue: client?.balanceDue,
+                          registrationNumber: client?.registrationNumber,
                         );
                         try {
                           if (client == null) {
+                            int maxRegNo = 0;
+                            for (var c in _clients) {
+                              if (c.registrationNumber != null) {
+                                final match = RegExp(r'\d+').firstMatch(c.registrationNumber!);
+                                if (match != null) {
+                                  final num = int.tryParse(match.group(0)!) ?? 0;
+                                  if (num > maxRegNo) maxRegNo = num;
+                                }
+                              }
+                            }
+                            final newRegNo = 'CUC-${(maxRegNo + 1).toString().padLeft(4, '0')}';
+                            
                             final model = amplify_models.Clients(
                               name: newClient.name,
                               email: newClient.email,
@@ -383,6 +422,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               is_contacted: newClient.isContacted,
                               dob: newClient.dob,
                               managed_by: newClient.managedBy,
+                              registration_number: newRegNo,
                             );
                             await BackupAwareApi().create(model);
                           } else {
@@ -398,6 +438,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               is_contacted: newClient.isContacted,
                               dob: newClient.dob,
                               managed_by: newClient.managedBy,
+                              registration_number: newClient.registrationNumber,
                             );
                             await BackupAwareApi().update(model);
                           }
@@ -741,7 +782,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text('${c.typeOfWork ?? "No Type of Work"} • File: ${c.fileNo ?? "N/A"}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                      Text('${c.typeOfWork ?? "No Type of Work"} • File: ${c.fileNo ?? "N/A"} • Reg No: ${c.registrationNumber ?? "N/A"}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                     ],
                   ),
                 ),

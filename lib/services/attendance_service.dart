@@ -12,7 +12,7 @@ class AttendanceService {
       where: StaffAttendance.ATTENDANCE_DATE.eq(DateTime.now().toIso8601String().split('T')[0])
     );
     final res = await Amplify.API.query(request: req).response;
-    final all = res.data?.items.whereType<StaffAttendance>() ?? [];
+    final all = (res.data?.items ?? []).whereType<StaffAttendance>() ?? [];
     
     final matches = all.where((e) => e.user_id?.toString() == userId.toString() && e.check_out_time == null).toList();
     if (matches.isNotEmpty) {
@@ -35,7 +35,7 @@ class AttendanceService {
       where: StaffAttendance.ATTENDANCE_DATE.eq(date)
     );
     final res = await Amplify.API.query(request: req).response;
-    final all = res.data?.items.whereType<StaffAttendance>() ?? [];
+    final all = (res.data?.items ?? []).whereType<StaffAttendance>() ?? [];
     
     final matches = all.where((e) => e.user_id?.toString() == userId.toString());
         

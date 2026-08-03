@@ -57,7 +57,7 @@ class _HRDashboardScreenState extends State<HRDashboardScreen> {
       
       final uReq = ModelQueries.list(Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
-      var usersResRaw = uRes.data?.items.whereType<Users>().toList() ?? [];
+      var usersResRaw = (uRes.data?.items ?? []).whereType<Users>().toList() ?? [];
       
       final Map<String, Users> uniqueUsers = {};
       for (var u in usersResRaw) {
@@ -89,7 +89,7 @@ class _HRDashboardScreenState extends State<HRDashboardScreen> {
         where: StaffAttendance.ATTENDANCE_DATE.eq(todayStr)
       );
       final aRes = await Amplify.API.query(request: aReq).response;
-      var attendanceRes = aRes.data?.items.whereType<StaffAttendance>().toList() ?? [];
+      var attendanceRes = (aRes.data?.items ?? []).whereType<StaffAttendance>().toList() ?? [];
 
       // Get unique users checked in today
       final presentUserIds = attendanceRes.map((a) => a.user_id.toString()).toSet();
@@ -130,7 +130,7 @@ class _HRDashboardScreenState extends State<HRDashboardScreen> {
     try {
       final uReq = ModelQueries.list(Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
-      var usersResRaw = uRes.data?.items.whereType<Users>().toList() ?? [];
+      var usersResRaw = (uRes.data?.items ?? []).whereType<Users>().toList() ?? [];
       
       final Map<String, Users> uniqueUsers = {};
       final List<Users> toDelete = [];

@@ -46,9 +46,9 @@ class _ClientDealsViewState extends State<ClientDealsView> {
           where: Billings.CLIENT_NAME.eq(clientName),
         );
         final billsRes = await Amplify.API.query(request: billsReq).response;
-        final clientBills = billsRes.data?.items.whereType<Billings>().toList() ?? [];
+        final clientBills = (billsRes.data?.items ?? []).whereType<Billings>().toList() ?? [];
 
-        final fetchedDeals = response.data?.items.whereType<Deals>().toList() ?? [];
+        final fetchedDeals = (response.data?.items ?? []).whereType<Deals>().toList() ?? [];
         final Map<String, double> paidAmounts = {};
 
         for (final deal in fetchedDeals) {
@@ -84,7 +84,7 @@ class _ClientDealsViewState extends State<ClientDealsView> {
         // Fetch Daily Updates
         final updatesReq = ModelQueries.list(DealActivities.classType, limit: 1000);
         final updatesRes = await Amplify.API.query(request: updatesReq).response;
-        final allUpdates = updatesRes.data?.items.whereType<DealActivities>().where((a) => a.type == 'daily_update').toList() ?? [];
+        final allUpdates = (updatesRes.data?.items ?? []).whereType<DealActivities>().where((a) => a.type == 'daily_update').toList() ?? [];
         
         final Map<String, List<DealActivities>> dealUpdates = {};
         for (var act in allUpdates) {

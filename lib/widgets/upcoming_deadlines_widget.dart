@@ -135,7 +135,7 @@ class UpcomingDeadlinesWidget extends StatelessWidget {
     }
 
     final res = await Amplify.API.query(request: req).response;
-    final all = res.data?.items.whereType<Billings>() ?? [];
+    final all = (res.data?.items ?? []).whereType<Billings>() ?? [];
     
     final List<Map<String, dynamic>> withDeadlines = [];
     for (var b in all) {

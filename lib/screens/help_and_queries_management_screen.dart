@@ -32,7 +32,7 @@ class _HelpAndQueriesManagementScreenState extends State<HelpAndQueriesManagemen
       // Fetch all activities
       final actReq = ModelQueries.list(DealActivities.classType, limit: 2000);
       final actRes = await Amplify.API.query(request: actReq).response;
-      final allActs = actRes.data?.items.whereType<DealActivities>().toList() ?? [];
+      final allActs = (actRes.data?.items ?? []).whereType<DealActivities>().toList() ?? [];
 
       // Group by deal_id
       final Map<String, List<DealActivities>> groupedActs = {};
@@ -50,7 +50,7 @@ class _HelpAndQueriesManagementScreenState extends State<HelpAndQueriesManagemen
       
       final dealsReq = ModelQueries.list(Deals.classType, limit: 2000);
       final dealsRes = await Amplify.API.query(request: dealsReq).response;
-      final allDeals = dealsRes.data?.items.whereType<Deals>().toList() ?? [];
+      final allDeals = (dealsRes.data?.items ?? []).whereType<Deals>().toList() ?? [];
       
       final activeDeals = allDeals.where((d) => dealIds.contains(d.id)).toList();
 

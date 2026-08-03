@@ -308,7 +308,7 @@ class NotificationService {
     try {
       final req = ModelQueries.list(Users.classType, where: Users.ROLE.eq('admin'));
       final response = await Amplify.API.query(request: req).response;
-      final items = response.data?.items.whereType<Users>() ?? [];
+      final items = (response.data?.items ?? []).whereType<Users>() ?? [];
       
       for (var row in items) {
         final adminId = row.id;
@@ -340,7 +340,7 @@ class NotificationService {
       // 1. Always include Managers
       final req = ModelQueries.list(Users.classType, where: Users.ROLE.eq('manager'));
       final response = await Amplify.API.query(request: req).response;
-      final managers = response.data?.items.whereType<Users>() ?? [];
+      final managers = (response.data?.items ?? []).whereType<Users>() ?? [];
       for (var row in managers) {
         recipients.add(row.id);
       }
@@ -392,7 +392,7 @@ class NotificationService {
       // 1. Remind Deals
       final reqDeals = ModelQueries.list(Deals.classType, where: Deals.STAGE.ne('Completed'));
       final resDeals = await Amplify.API.query(request: reqDeals).response;
-      final deals = resDeals.data?.items.whereType<Deals>() ?? [];
+      final deals = (resDeals.data?.items ?? []).whereType<Deals>() ?? [];
 
       for (final dealMap in deals) {
         if (dealMap.responsible_id == null) continue;
@@ -432,7 +432,7 @@ class NotificationService {
       // 2. Remind Tasks
       final reqTasks = ModelQueries.list(Tasks.classType, where: Tasks.STATUS.ne('Completed'));
       final resTasks = await Amplify.API.query(request: reqTasks).response;
-      final tasks = resTasks.data?.items.whereType<Tasks>() ?? [];
+      final tasks = (resTasks.data?.items ?? []).whereType<Tasks>() ?? [];
 
       for (final taskMap in tasks) {
         if (taskMap.assigned_to == null) continue;

@@ -27,7 +27,7 @@ class _TravelLogScreenState extends State<TravelLogScreen> {
     try {
       final req = ModelQueries.list(TravelLogs.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
-      var logs = res.data?.items.whereType<TravelLogs>().toList() ?? [];
+      var logs = (res.data?.items ?? []).whereType<TravelLogs>().toList() ?? [];
       
       logs.sort((a, b) {
         final dateA = a.createdAt?.getDateTimeInUtc() ?? DateTime(2000);
@@ -38,7 +38,7 @@ class _TravelLogScreenState extends State<TravelLogScreen> {
       // Also fetch users to join
       final uReq = ModelQueries.list(Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
-      final users = uRes.data?.items.whereType<Users>().toList() ?? [];
+      final users = (uRes.data?.items ?? []).whereType<Users>().toList() ?? [];
       final userMap = {for (var u in users) u.id.toString(): u};
 
       if (mounted) {

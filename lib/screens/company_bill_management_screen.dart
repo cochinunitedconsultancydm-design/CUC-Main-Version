@@ -42,10 +42,10 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
       final staffReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final staffRes = await Amplify.API.query(request: staffReq).response;
       
-      final billsList = res.data?.items.whereType<amplify_models.CompanyBills>().toList() ?? [];
+      final billsList = (res.data?.items ?? []).whereType<amplify_models.CompanyBills>().toList() ?? [];
       billsList.sort((a, b) => (DateTime.tryParse(b.bill_date ?? '') ?? DateTime.now()).compareTo(DateTime.tryParse(a.bill_date ?? '') ?? DateTime.now()));
       
-      final usersList = staffRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      final usersList = (staffRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
       usersList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
 
       setState(() {
@@ -91,7 +91,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     try {
       final req = ModelQueries.list(amplify_models.Billings.classType);
       final res = await Amplify.API.query(request: req).response;
-      availableInvoices = res.data?.items.whereType<amplify_models.Billings>().where((b) {
+      availableInvoices = (res.data?.items ?? []).whereType<amplify_models.Billings>().where((b) {
          return b.status != 'Received' && (b.invoice_no != null && b.invoice_no!.isNotEmpty);
       }).toList() ?? [];
       

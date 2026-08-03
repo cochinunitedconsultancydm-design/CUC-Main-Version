@@ -216,7 +216,7 @@ class SupabaseBackupService {
         debugPrint('Supabase backup: resolving missing foreign key deal_id = $dealIdStr');
         final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(dealIdStr));
         final res = await Amplify.API.query(request: req).response;
-        final items = res.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
+        final items = (res.data?.items ?? []).whereType<amplify_models.Deals>().toList() ?? [];
         if (items.isNotEmpty) {
           final parentBackedUp = await backupRecord('Deals', items.first.toJson(), retryCount: retryCount + 1);
           if (parentBackedUp) resolvedAny = true;
@@ -231,7 +231,7 @@ class SupabaseBackupService {
         debugPrint('Supabase backup: resolving missing foreign key task_id = $taskIdStr');
         final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(taskIdStr));
         final res = await Amplify.API.query(request: req).response;
-        final items = res.data?.items.whereType<amplify_models.Tasks>().toList() ?? [];
+        final items = (res.data?.items ?? []).whereType<amplify_models.Tasks>().toList() ?? [];
         if (items.isNotEmpty) {
           final parentBackedUp = await backupRecord('Tasks', items.first.toJson(), retryCount: retryCount + 1);
           if (parentBackedUp) resolvedAny = true;
@@ -248,11 +248,11 @@ class SupabaseBackupService {
           debugPrint('Supabase backup: resolving missing foreign key client = $clientStr');
           var req = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.ID.eq(clientStr));
           var res = await Amplify.API.query(request: req).response;
-          var items = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+          var items = (res.data?.items ?? []).whereType<amplify_models.Clients>().toList() ?? [];
           if (items.isEmpty) {
             req = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.NAME.eq(clientStr));
             res = await Amplify.API.query(request: req).response;
-            items = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+            items = (res.data?.items ?? []).whereType<amplify_models.Clients>().toList() ?? [];
           }
           if (items.isNotEmpty) {
             final parentBackedUp = await backupRecord('Clients', items.first.toJson(), retryCount: retryCount + 1);
@@ -271,7 +271,7 @@ class SupabaseBackupService {
           debugPrint('Supabase backup: resolving missing foreign key user_id = $userIdStr');
           final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(userIdStr));
           final res = await Amplify.API.query(request: req).response;
-          final items = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+          final items = (res.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
           if (items.isNotEmpty) {
             final parentBackedUp = await backupRecord('Users', items.first.toJson(), retryCount: retryCount + 1);
             if (parentBackedUp) resolvedAny = true;

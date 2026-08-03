@@ -40,7 +40,7 @@ class _HrAttendanceChartScreenState extends State<HrAttendanceChartScreen> {
       // 1. Get staff
       final uReq = ModelQueries.list(Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
-      var usersResRaw = uRes.data?.items.whereType<Users>().toList() ?? [];
+      var usersResRaw = (uRes.data?.items ?? []).whereType<Users>().toList() ?? [];
       
       final Map<String, Users> uniqueUsers = {};
       for (var u in usersResRaw) {
@@ -83,7 +83,7 @@ class _HrAttendanceChartScreenState extends State<HrAttendanceChartScreen> {
               where: StaffAttendance.ATTENDANCE_DATE.eq(dateStr)
             );
             final aRes = await Amplify.API.query(request: aReq).response;
-            var attendanceRes = aRes.data?.items.whereType<StaffAttendance>().toList() ?? [];
+            var attendanceRes = (aRes.data?.items ?? []).whereType<StaffAttendance>().toList() ?? [];
             
             final Map<String, StaffAttendance> dailyMap = {};
             for (var a in attendanceRes) {

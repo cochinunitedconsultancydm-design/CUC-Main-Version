@@ -80,7 +80,7 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
     try {
       final req = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
-      final usersList = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      final usersList = (res.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
       usersList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       users = usersList.map((u) => {
         'id': u.id,

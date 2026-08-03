@@ -30,7 +30,7 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
     try {
       final req = ModelQueries.list(amplify_models.Properties.classType);
       final res = await Amplify.API.query(request: req).response;
-      final result = res.data?.items.whereType<amplify_models.Properties>().toList() ?? [];
+      final result = (res.data?.items ?? []).whereType<amplify_models.Properties>().toList() ?? [];
       
       result.sort((a, b) => (a.property_name ?? '').compareTo(b.property_name ?? ''));
       

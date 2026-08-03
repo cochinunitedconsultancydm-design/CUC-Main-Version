@@ -14,7 +14,7 @@ class BillingService {
       List<Billings> all = [];
       while (true) {
         final res = await Amplify.API.query(request: req).response;
-        all.addAll(res.data?.items.whereType<Billings>() ?? []);
+        all.addAll((res.data?.items ?? []).whereType<Billings>() ?? []);
         if (res.data?.hasNextResult ?? false) {
           req = res.data!.requestForNextResult!;
         } else {
@@ -32,7 +32,7 @@ class BillingService {
   Future<Map<String, int>> fetchStats() async {
     final req = ModelQueries.list(Billings.classType);
     final res = await Amplify.API.query(request: req).response;
-    final all = res.data?.items.whereType<Billings>() ?? [];
+    final all = (res.data?.items ?? []).whereType<Billings>() ?? [];
     
     int total = all.length;
     int paid = 0;
@@ -64,7 +64,7 @@ class BillingService {
     
     final req = ModelQueries.list(Billings.classType, where: Billings.CLIENT_NAME.eq(clientName));
     final res = await Amplify.API.query(request: req).response;
-    final all = res.data?.items.whereType<Billings>() ?? [];
+    final all = (res.data?.items ?? []).whereType<Billings>() ?? [];
     
     double totalDue = 0;
     for (var b in all) {
@@ -113,7 +113,7 @@ class BillingService {
       var currentReq = req;
       while(true) {
         final res = await Amplify.API.query(request: currentReq).response;
-        allClients.addAll(res.data?.items.whereType<Clients>() ?? []);
+        allClients.addAll((res.data?.items ?? []).whereType<Clients>() ?? []);
         if (res.data?.hasNextResult ?? false) {
           currentReq = res.data!.requestForNextResult!;
         } else {
@@ -148,7 +148,7 @@ class BillingService {
     List<Billings> all = [];
     while (true) {
       final res = await Amplify.API.query(request: req).response;
-      all.addAll(res.data?.items.whereType<Billings>() ?? []);
+      all.addAll((res.data?.items ?? []).whereType<Billings>() ?? []);
       if (res.data?.hasNextResult ?? false) {
         req = res.data!.requestForNextResult!;
       } else {
@@ -355,7 +355,7 @@ class BillingService {
     List<Billings> all = [];
     while (true) {
       final res = await Amplify.API.query(request: req).response;
-      all.addAll(res.data?.items.whereType<Billings>() ?? []);
+      all.addAll((res.data?.items ?? []).whereType<Billings>() ?? []);
       if (res.data?.hasNextResult ?? false) {
         req = res.data!.requestForNextResult!;
       } else {
@@ -392,7 +392,7 @@ class BillingService {
     List<Billings> all = [];
     while (true) {
       final res = await Amplify.API.query(request: req).response;
-      all.addAll(res.data?.items.whereType<Billings>() ?? []);
+      all.addAll((res.data?.items ?? []).whereType<Billings>() ?? []);
       if (res.data?.hasNextResult ?? false) {
         req = res.data!.requestForNextResult!;
       } else {
@@ -410,7 +410,7 @@ class BillingService {
       var req = ModelQueries.list(Billings.classType);
       while (true) {
         final res = await Amplify.API.query(request: req).response;
-        final all = res.data?.items.whereType<Billings>() ?? [];
+        final all = (res.data?.items ?? []).whereType<Billings>() ?? [];
         for (var b in all) {
           final idVal = int.tryParse(b.id);
           if (idVal != null && idVal > maxId) {

@@ -1133,7 +1133,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           where: amplify_models.ClientLicenses.EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
         );
         final res = await Amplify.API.query(request: req).response;
-        final list = res.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.ClientLicenses>().toList() ?? [];
         list.sort((a, b) => (a.expiry_date ?? '').compareTo(b.expiry_date ?? ''));
         return list.map((l) => {
           'client_name': l.client_id, // We might not have client_name easily without relational fetch, but let's use client_id or check if model has client_name
@@ -1147,14 +1147,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           where: amplify_models.DscRecords.DSC_EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
         );
         final res = await Amplify.API.query(request: req).response;
-        final list = res.data?.items.whereType<amplify_models.DscRecords>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.DscRecords>().toList() ?? [];
         list.sort((a, b) => (a.dsc_expiry_date ?? '').compareTo(b.dsc_expiry_date ?? ''));
         return list.map((l) => l.toJson()).toList();
         
       case 'Work Management':
         final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed'));
         final res = await Amplify.API.query(request: req).response;
-        final list = res.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.Deals>().toList() ?? [];
         list.sort((a, b) => (b.updatedAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.updatedAt?.getDateTimeInUtc() ?? DateTime.now()));
         return list.take(20).map((l) => l.toJson()).toList();
         
@@ -1164,7 +1164,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           where: amplify_models.Billings.TYPE.eq('INVOICE').and(amplify_models.Billings.STATUS.ne('Received')),
         );
         final res = await Amplify.API.query(request: req).response;
-        final list = res.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.Billings>().toList() ?? [];
         list.sort((a, b) => (b.id).compareTo(a.id));
         return list.take(20).map((l) => l.toJson()).toList();
         

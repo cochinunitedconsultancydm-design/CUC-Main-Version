@@ -35,7 +35,7 @@ class _ClientBillingViewState extends State<ClientBillingView> {
         );
         final response = await Amplify.API.query(request: request).response;
         setState(() {
-          _bills = response.data?.items.whereType<Billings>().toList() ?? [];
+          _bills = (response.data?.items ?? []).whereType<Billings>().toList() ?? [];
         });
       }
     } catch (e) {

@@ -43,7 +43,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
     try {
       final req = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
-      final staff = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      final staff = (res.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
       
       // Deduplicate by name (merge similar names like "Irshad" and "Irshad VP")
       final List<amplify_models.Users> deduplicated = [];
@@ -85,7 +85,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
         where: amplify_models.ActivityLogs.CREATED_AT.gt(twentyFourHoursAgo)
       );
       final res = await Amplify.API.query(request: req).response;
-      final logs = res.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
+      final logs = (res.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList() ?? [];
       
       final Map<int, int> hoursMap = {};
       for (var row in logs) {
@@ -113,7 +113,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
           
       final req = ModelQueries.list(amplify_models.ActivityLogs.classType, where: whereClause, limit: 200);
       final res = await Amplify.API.query(request: req).response;
-      final fetchedLogs = res.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
+      final fetchedLogs = (res.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList() ?? [];
       
       // Sort by auto-generated createdAt (TemporalDateTime), falling back to custom created_at
       fetchedLogs.sort((a, b) {
@@ -179,7 +179,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
           
       final req = ModelQueries.list(amplify_models.UserSessions.classType, where: whereClause, limit: 100);
       final res = await Amplify.API.query(request: req).response;
-      final fetchedSessions = res.data?.items.whereType<amplify_models.UserSessions>().toList() ?? [];
+      final fetchedSessions = (res.data?.items ?? []).whereType<amplify_models.UserSessions>().toList() ?? [];
       
       // Sort in Dart
       fetchedSessions.sort((a, b) => (b.login_time ?? '').compareTo(a.login_time ?? ''));

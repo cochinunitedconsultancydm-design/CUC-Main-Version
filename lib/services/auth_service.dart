@@ -78,7 +78,7 @@ class AuthService {
           limit: 1000,
         );
         final response = await Amplify.API.query(request: request).response;
-        final allUsers = response.data?.items.whereType<Users>().toList() ?? [];
+        final allUsers = (response.data?.items ?? []).whereType<Users>().toList() ?? [];
 
         final users = allUsers.where((u) {
           if (normalizedUser.contains('@')) {
@@ -234,7 +234,7 @@ class AuthService {
       if (response.hasErrors) {
         debugPrint('DEBUG: GraphQL Errors: ${response.errors}');
       }
-      final allClients = response.data?.items.whereType<Clients>().toList() ?? [];
+      final allClients = (response.data?.items ?? []).whereType<Clients>().toList() ?? [];
       debugPrint('DEBUG: Fetched ${allClients.length} clients to filter');
 
       final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');

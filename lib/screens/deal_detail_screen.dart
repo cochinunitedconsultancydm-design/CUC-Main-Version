@@ -1248,7 +1248,7 @@ final dLink = "";
     try {
       final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.TYPE.eq('INVOICE'), limit: 10000);
       final resList = await Amplify.API.query(request: req).response;
-      final resultList = resList.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
+      final resultList = (resList.data?.items ?? []).whereType<amplify_models.Billings>().toList() ?? [];
       resultList.sort((a, b) => (b.id).compareTo(a.id));
       final result = resultList.map((e) => e.toJson()).toList();
 
@@ -1398,7 +1398,7 @@ final dLink = "";
 
       final reqAll = ModelQueries.list(amplify_models.Deals.classType, limit: 10000);
       final resAll = await Amplify.API.query(request: reqAll).response;
-      final allWFs = resAll.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
+      final allWFs = (resAll.data?.items ?? []).whereType<amplify_models.Deals>().toList() ?? [];
 
       if (match != null && mounted) {
         showDialog(context: context, builder: (_) => WorkFileDetailDialog(workFile: match, allWorkFiles: allWFs, onUpdate: _loadDetails));
@@ -1423,7 +1423,7 @@ final dLink = "";
       List<amplify_models.Clients> allClients = [];
       while (true) {
         final resList = await Amplify.API.query(request: req).response;
-        allClients.addAll(resList.data?.items.whereType<amplify_models.Clients>() ?? []);
+        allClients.addAll((resList.data?.items ?? []).whereType<amplify_models.Clients>() ?? []);
         if (resList.data?.hasNextResult ?? false) {
           req = resList.data!.requestForNextResult!;
         } else {
@@ -1488,7 +1488,7 @@ final dLink = "";
     try {
       final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.TYPE.eq('QUOTATION'), limit: 10000);
       final resList = await Amplify.API.query(request: req).response;
-      final resultList = resList.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
+      final resultList = (resList.data?.items ?? []).whereType<amplify_models.Billings>().toList() ?? [];
       resultList.sort((a, b) => (b.id).compareTo(a.id));
       final result = resultList.map((e) => e.toJson()).toList();
 

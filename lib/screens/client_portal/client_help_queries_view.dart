@@ -36,7 +36,7 @@ class _ClientHelpQueriesViewState extends State<ClientHelpQueriesView> {
         
         if (mounted) {
           setState(() {
-            _deals = response.data?.items.whereType<Deals>().toList() ?? [];
+            _deals = (response.data?.items ?? []).whereType<Deals>().toList() ?? [];
             // Sort by newest first
             _deals.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now())
                 .compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));

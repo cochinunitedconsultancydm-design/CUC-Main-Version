@@ -123,7 +123,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     try {
       final req = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
-      final clients = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+      final clients = (res.data?.items ?? []).whereType<amplify_models.Clients>().toList() ?? [];
       clients.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       if (mounted) setState(() => _allClients = clients);
     } catch (_) {}
@@ -133,7 +133,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     try {
       final req = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
-      var items = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      var items = (res.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
       final Map<String, amplify_models.Users> uniqueUsers = {};
       for (var user in items) {
         final name = (user.name ?? '').trim();
@@ -172,7 +172,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     try {
       final req = ModelQueries.list(amplify_models.Tasks.classType);
       final res = await Amplify.API.query(request: req).response;
-      var tasks = res.data?.items.whereType<amplify_models.Tasks>().toList() ?? [];
+      var tasks = (res.data?.items ?? []).whereType<amplify_models.Tasks>().toList() ?? [];
       
       tasks.sort((a, b) {
         final dateA = a.createdAt?.getDateTimeInUtc() ?? DateTime(2000);
@@ -182,7 +182,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
       
       final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
-      final usersList = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      final usersList = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
       
       final sbUserMap = await SupabaseBackupService().getUsernameToIdMap();
       final userMap = {

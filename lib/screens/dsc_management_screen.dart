@@ -34,7 +34,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
     try {
       final req = ModelQueries.list(amplify_models.DscRecords.classType);
       final res = await Amplify.API.query(request: req).response;
-      final recordsList = res.data?.items.whereType<amplify_models.DscRecords>().toList() ?? [];
+      final recordsList = (res.data?.items ?? []).whereType<amplify_models.DscRecords>().toList() ?? [];
       recordsList.sort((a, b) => (a.dsc_expiry_date ?? '').compareTo(b.dsc_expiry_date ?? ''));
       
       setState(() {

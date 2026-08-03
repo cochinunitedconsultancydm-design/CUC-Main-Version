@@ -9,6 +9,7 @@ import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import '../services/logging_service.dart';
 import '../services/security_service.dart';
+import '../services/supabase_backup_service.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 
 class StaffManagementScreen extends StatefulWidget {
@@ -31,12 +32,21 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   // Tab 3: HR Dashboard State
   List<amplify_models.StaffAttendance> _attendanceLogs = [];
   bool _isLoadingAttendance = true;
+  Map<String, int> _usernameToIdMap = {};
+  String _hrDashboardPeriod = 'This Month';
+  DateTimeRange? _hrCustomDateRange;
   
   @override
   void initState() {
     super.initState();
     _fetchStaff();
     _fetchAttendance();
+    _loadUserMappings();
+  }
+
+  Future<void> _loadUserMappings() async {
+    final map = await SupabaseBackupService().getUsernameToIdMap();
+    if (mounted) setState(() => _usernameToIdMap = map);
   }
 
   // ==========================================
@@ -48,7 +58,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     try {
       final req = ModelQueries.list(amplify_models.StaffAttendance.classType);
       final res = await Amplify.API.query(request: req).response;
-      var att = res.data?.items.whereType<amplify_models.StaffAttendance>().toList() ?? [];
+      var att = (res.data?.items ?? []).whereType<amplify_models.StaffAttendance>().toList() ?? [];
       if (mounted) {
         setState(() {
           _attendanceLogs = att;
@@ -88,7 +98,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       if (uRes.hasErrors) {
         _msg('GraphQL Errors: ${uRes.errors.map((e) => e.message).join(", ")}', false);
       }
-      var usersResRaw = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      var usersResRaw = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
       
       // Deduplicate users by username, prioritizing UUID-based IDs (Cognito)
       final Map<String, amplify_models.Users> uniqueUsers = {};
@@ -122,7 +132,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       
       final sReq = ModelQueries.list(amplify_models.UserSessions.classType);
       final sRes = await Amplify.API.query(request: sReq).response;
-      var sessionsRes = sRes.data?.items.whereType<amplify_models.UserSessions>().toList() ?? [];
+      var sessionsRes = (sRes.data?.items ?? []).whereType<amplify_models.UserSessions>().toList() ?? [];
       
       sessionsRes.sort((a, b) {
         final dateA = a.login_time != null ? DateTime.tryParse(a.login_time!) ?? DateTime(2000) : DateTime(2000);
@@ -1139,7 +1149,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   Future<List<Map<String, dynamic>>> _fetchStaffTimeStats() async {
     final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
     final uRes = await Amplify.API.query(request: uReq).response;
-    var usersResRaw = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+    var usersResRaw = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
     
     final Map<String, amplify_models.Users> uniqueUsers = {};
     for (var u in usersResRaw) {
@@ -1192,7 +1202,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     
     final sReq = ModelQueries.list(amplify_models.UserSessions.classType);
     final sRes = await Amplify.API.query(request: sReq).response;
-    var allSessions = sRes.data?.items.whereType<amplify_models.UserSessions>().toList() ?? [];
+    var allSessions = (sRes.data?.items ?? []).whereType<amplify_models.UserSessions>().toList() ?? [];
     
     var sessionsRes = allSessions.where((s) {
       if (s.login_time == null) return false;
@@ -1499,17 +1509,68 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('HR Dashboard', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ElevatedButton.icon(
-              onPressed: () => _fetchStaff().then((_) => _fetchAttendance()),
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('Refresh Data'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.pink, 
-                foregroundColor: Colors.white, 
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButton<String>(
+                    value: _hrDashboardPeriod,
+                    underline: const SizedBox(),
+                    icon: const Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
+                    items: ['Today', 'This Week', 'This Month', 'All Time', 'Custom'].map((String value) {
+                      String displayText = value;
+                      if (value == 'Custom' && _hrDashboardPeriod == 'Custom' && _hrCustomDateRange != null) {
+                        if (_hrCustomDateRange!.start.isAtSameMomentAs(_hrCustomDateRange!.end)) {
+                          displayText = 'On ${DateFormat('MMM dd').format(_hrCustomDateRange!.start)}';
+                        } else {
+                          displayText = '${DateFormat('MMM dd').format(_hrCustomDateRange!.start)} - ${DateFormat('MMM dd').format(_hrCustomDateRange!.end)}';
+                        }
+                      }
+                      
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(
+                          displayText, 
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor, fontSize: 13)
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) async {
+                      if (val == 'Custom') {
+                        final picked = await _showCompactDateRangePicker();
+                        if (picked != null) {
+                          setState(() {
+                            _hrCustomDateRange = picked;
+                            _hrDashboardPeriod = 'Custom';
+                          });
+                        }
+                      } else if (val != null) {
+                        setState(() {
+                          _hrDashboardPeriod = val;
+                          _hrCustomDateRange = null;
+                        });
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () => _fetchStaff().then((_) => _fetchAttendance()),
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Refresh Data'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.pink, 
+                    foregroundColor: Colors.white, 
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1580,6 +1641,22 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                         _buildHRInfoItem(Icons.contact_emergency, 'Emergency Contact', s['emergency_contact']),
                       ],
                     ),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showPerformanceModal(s),
+                        icon: const Icon(Icons.bar_chart, size: 16),
+                        label: const Text('View Performance'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: color.withAlpha(20),
+                          foregroundColor: color,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          side: BorderSide(color: color.withAlpha(50)),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -1607,6 +1684,190 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Future<void> _showPerformanceModal(Map<String, dynamic> user) async {
+    final int? supabaseUserId = _usernameToIdMap[(user['username'] ?? '').toString().toLowerCase()];
+    if (supabaseUserId == null) {
+      _msg('Could not resolve user ID for performance tracking', false);
+      return;
+    }
+
+    String period = _hrDashboardPeriod;
+    DateTimeRange? customDateRange = _hrCustomDateRange;
+    List<amplify_models.ActivityLogs> userLogs = [];
+    bool isLoadingLogs = true;
+
+    Future<void> fetchLogs(StateSetter setModalState) async {
+      setModalState(() => isLoadingLogs = true);
+      try {
+        final req = ModelQueries.list(amplify_models.ActivityLogs.classType, limit: 10000);
+        final res = await Amplify.API.query(request: req).response;
+        var logs = (res.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList() ?? [];
+        
+        final today = DateTime.now();
+        DateTime startDate;
+        DateTime? endDate;
+        
+        switch (period) {
+          case 'This Week':
+            startDate = today.subtract(Duration(days: today.weekday - 1));
+            startDate = DateTime(startDate.year, startDate.month, startDate.day);
+            break;
+          case 'This Month':
+            startDate = DateTime(today.year, today.month, 1);
+            break;
+          case 'All Time':
+            startDate = DateTime(2000, 1, 1);
+            break;
+          case 'Custom':
+            startDate = customDateRange?.start ?? DateTime(today.year, today.month, today.day);
+            if (customDateRange != null) {
+              endDate = DateTime(customDateRange!.end.year, customDateRange!.end.month, customDateRange!.end.day, 23, 59, 59);
+            }
+            break;
+          case 'Today':
+          default:
+            startDate = DateTime(today.year, today.month, today.day);
+            break;
+        }
+
+        logs = logs.where((l) {
+          if (l.user_id != supabaseUserId) return false;
+          final t = l.created_at != null ? DateTime.tryParse(l.created_at!)?.toLocal() : null;
+          if (t == null) return false;
+          if (t.isBefore(startDate)) return false;
+          if (endDate != null && t.isAfter(endDate)) return false;
+          return true;
+        }).toList();
+
+        setModalState(() {
+          userLogs = logs;
+          isLoadingLogs = false;
+        });
+      } catch (e) {
+        debugPrint('Error fetching performance logs: $e');
+        if (mounted) setModalState(() => isLoadingLogs = false);
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        bool initialized = false;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            if (!initialized) {
+              initialized = true;
+              fetchLogs(setModalState);
+            }
+            
+            int clientsCreated = userLogs.where((l) => l.action == 'CLIENT_CREATED').length;
+            int workFilesCreated = userLogs.where((l) => l.action == 'WORK_CREATED').length;
+            int workStatusUpdated = userLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED'].contains(l.action)).length;
+            int filesUploaded = userLogs.where((l) => l.action == 'FILE_UPLOADED').length;
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: Container(
+                width: 600,
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Performance: ${user['name']}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                        IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Filter by Period:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        DropdownButton<String>(
+                          value: period,
+                          items: ['Today', 'This Week', 'This Month', 'All Time', 'Custom'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                          onChanged: (val) async {
+                            if (val == 'Custom') {
+                              final picked = await showDateRangePicker(
+                                context: context,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now(),
+                                initialDateRange: customDateRange,
+                                builder: (context, child) => Theme(
+                                  data: Theme.of(context).copyWith(colorScheme: const ColorScheme.light(primary: AppTheme.primaryColor)),
+                                  child: child!,
+                                ),
+                              );
+                              if (picked != null) {
+                                customDateRange = picked;
+                                period = 'Custom';
+                                fetchLogs(setModalState);
+                              }
+                            } else if (val != null) {
+                              period = val;
+                              customDateRange = null;
+                              fetchLogs(setModalState);
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    if (isLoadingLogs)
+                      const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()))
+                    else
+                      GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        mainAxisSpacing: 16,
+                        crossAxisSpacing: 16,
+                        childAspectRatio: 2.5,
+                        children: [
+                          _buildMetricCard('Clients Created', clientsCreated, Icons.person_add, Colors.blue),
+                          _buildMetricCard('Work Files Created', workFilesCreated, Icons.folder, Colors.orange),
+                          _buildMetricCard('Work Status Updated', workStatusUpdated, Icons.update, Colors.purple),
+                          _buildMetricCard('Files Uploaded', filesUploaded, Icons.upload_file, Colors.green),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }
+        );
+      }
+    );
+  }
+
+  Widget _buildMetricCard(String title, int count, IconData icon, Color color) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withAlpha(20),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withAlpha(50)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          CircleAvatar(backgroundColor: color.withAlpha(40), child: Icon(icon, color: color)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(count.toString(), style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+                Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

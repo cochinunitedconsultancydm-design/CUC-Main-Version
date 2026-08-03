@@ -50,7 +50,7 @@ class _ClientDealChatScreenState extends State<ClientDealChatScreen> {
       final res = await Amplify.API.query(request: req).response;
       if (mounted) {
         setState(() {
-          final allActs = res.data?.items.whereType<DealActivities>().toList() ?? [];
+          final allActs = (res.data?.items ?? []).whereType<DealActivities>().toList() ?? [];
           _messages = allActs.where((a) => a.type == 'client_query' || a.type == 'staff_reply').toList();
           
           _messages.sort((a, b) {

@@ -12,6 +12,7 @@ import '../screens/file_acknowledgement_screen.dart';
 import '../screens/sop_screen.dart';
 import 'staff_chat_list_screen.dart';
 import 'task_management_screen.dart';
+import 'hr_performance_screen.dart';
 import 'billing_screen.dart';
 import 'client_management_screen.dart';
 import 'license_dashboard_screen.dart';
@@ -275,7 +276,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
 
       // 2. Recent Activity & Billings
       final allBillingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools)).response;
-      final allBillings = (allBillingsRes.data?.items.whereType<amplify_models.Billings>().toList() ?? []);
+      final allBillings = ((allBillingsRes.data?.items ?? []).whereType<amplify_models.Billings>().toList() ?? []);
       allBillings.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
       
       final activityRes = allBillings.take(5).map((e) => {
@@ -341,14 +342,14 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       List<Map<String, dynamic>> peakActivity = [];
       try {
         final staffLogsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ActivityLogs.classType, limit: 10000)).response;
-        final allLogs = (staffLogsRes.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? []);
+        final allLogs = ((staffLogsRes.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList() ?? []);
         allLogs.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
         
         final latestLogs = allLogs.take(5).toList();
         
         // Fetch user names for logs
         final allUsersRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Users.classType, limit: 10000)).response;
-        final allUsers = allUsersRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+        final allUsers = (allUsersRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
         final userMap = {for (var u in allUsers) u.id: u.name};
         
         staffLogs = latestLogs.map((m) {
@@ -686,6 +687,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       case 26: return const HelpAndQueriesManagementScreen();
       case 24: return const ClientFilesScreen();
       case 23: return const SopScreen();
+      case 28: return const HrPerformanceScreen();
       case 27: return const OfficeDetailsScreen();
       case 7: return _buildSettingsPage();
       default: return _buildPlaceholderView('Coming Soon');
@@ -1144,7 +1146,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   Future<List<Map<String, dynamic>>> _fetchAuditLogs() async {
     final req = ModelQueries.list(amplify_models.ActivityLogs.classType, limit: 200);
     final res = await Amplify.API.query(request: req).response;
-    final allLogs = res.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
+    final allLogs = (res.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList() ?? [];
     allLogs.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
     
     final usersReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
@@ -1462,7 +1464,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           where: amplify_models.ClientLicenses.EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
         );
         final res = await Amplify.API.query(request: req).response;
-        final list = res.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.ClientLicenses>().toList() ?? [];
         list.sort((a, b) => (a.expiry_date ?? '').compareTo(b.expiry_date ?? ''));
         return list.map((l) => {
           'client_name': l.client_id, // Might need to resolve name
@@ -1476,14 +1478,14 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           where: amplify_models.DscRecords.DSC_EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
         );
         final res = await Amplify.API.query(request: req).response;
-        final list = res.data?.items.whereType<amplify_models.DscRecords>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.DscRecords>().toList() ?? [];
         list.sort((a, b) => (a.dsc_expiry_date ?? '').compareTo(b.dsc_expiry_date ?? ''));
         return list.map((l) => l.toJson()).toList();
         
       case 'Work Management':
         final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed'));
         final res = await Amplify.API.query(request: req).response;
-        final list = res.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.Deals>().toList() ?? [];
         list.sort((a, b) => (b.id).compareTo(a.id));
         return list.map((l) => l.toJson()).toList();
         
@@ -1493,21 +1495,21 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           where: amplify_models.Billings.TYPE.eq('INVOICE').and(amplify_models.Billings.STATUS.ne('Received')),
         );
         final res = await Amplify.API.query(request: req).response;
-        final list = res.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.Billings>().toList() ?? [];
         list.sort((a, b) => (b.id).compareTo(a.id));
         return list.map((l) => l.toJson()).toList();
         
       case 'Clients':
         final req = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
         final res = await Amplify.API.query(request: req).response;
-        final list = res.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.Clients>().toList() ?? [];
         list.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
         return list.map((l) => l.toJson()).toList();
         
       default:
         final req = ModelQueries.list(amplify_models.Clients.classType, limit: 1);
         final res = await Amplify.API.query(request: req).response;
-        return res.data?.items.whereType<amplify_models.Clients>().map((e) => e.toJson()).toList() ?? [];
+        return (res.data?.items ?? []).whereType<amplify_models.Clients>().map((e) => e.toJson()).toList() ?? [];
     }
   }
 
@@ -1745,7 +1747,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       where: amplify_models.ActivityLogs.DETAILS.contains(title),
     );
     final res = await amplify_core.Amplify.API.query(request: req).response;
-    final logs = res.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
+    final logs = (res.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList() ?? [];
     logs.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
     return logs.map((l) => l.toJson()).toList();
   }

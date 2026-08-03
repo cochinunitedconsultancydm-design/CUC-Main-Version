@@ -13,6 +13,7 @@ class Client {
   final String? managedBy;
   final int reviewRating;
   final String? balanceDue;
+  final String? registrationNumber;
 
   Client({
     this.id,
@@ -29,6 +30,7 @@ class Client {
     this.managedBy,
     this.reviewRating = 0,
     this.balanceDue,
+    this.registrationNumber,
   });
 
   factory Client.fromMap(Map<String, dynamic> map) {
@@ -47,6 +49,7 @@ class Client {
       managedBy: map['managed_by'],
       reviewRating: map['review_rating'] ?? 0,
       balanceDue: map['balance_due'],
+      registrationNumber: map['registration_number'],
     );
   }
 
@@ -66,6 +69,7 @@ class Client {
       'managed_by': managedBy,
       'review_rating': reviewRating,
       'balance_due': balanceDue,
+      'registration_number': registrationNumber,
     };
   }
 }

@@ -11,7 +11,7 @@ class ClientService {
         limit: 10000
       );
       final res = await Amplify.API.query(request: req).response;
-      var items = res.data?.items.whereType<Clients>().toList() ?? [];
+      var items = (res.data?.items ?? []).whereType<Clients>().toList() ?? [];
       
       final lowerQuery = query.toLowerCase();
       var filtered = items.where((c) => (c.name ?? '').toLowerCase().contains(lowerQuery)).toList();

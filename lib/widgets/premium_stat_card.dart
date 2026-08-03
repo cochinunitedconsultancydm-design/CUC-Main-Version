@@ -57,11 +57,13 @@ class _PremiumStatCardState extends State<PremiumStatCard> {
           ),
           child: Padding(
             padding: EdgeInsets.all(widget.isNarrow ? 12 : 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
+            child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
@@ -129,7 +131,8 @@ class _PremiumStatCardState extends State<PremiumStatCard> {
                 ),
               ],
             ),
-          ),
+          ), // Closes SingleChildScrollView
+          ), // Closes Padding
         ),
       ),
     );

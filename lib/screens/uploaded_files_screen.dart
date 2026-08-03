@@ -37,7 +37,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
     try {
       final req = ModelQueries.list(ClientDocuments.classType);
       final res = await Amplify.API.query(request: req).response;
-      var all = res.data?.items.whereType<ClientDocuments>().toList() ?? [];
+      var all = (res.data?.items ?? []).whereType<ClientDocuments>().toList() ?? [];
       
       all.sort((a, b) {
         final dateA = a.createdAt?.getDateTimeInUtc() ?? DateTime(2000);

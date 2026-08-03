@@ -64,7 +64,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
       
       final req = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
-      final usersList = res.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      final usersList = (res.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
       usersList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       
       _allUsers = usersList.map((u) => {
@@ -89,12 +89,12 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
 
       final clientsReq = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final clientsRes = await Amplify.API.query(request: clientsReq).response;
-      final clientsList = clientsRes.data?.items.whereType<amplify_models.Clients>().toList() ?? [];
+      final clientsList = (clientsRes.data?.items ?? []).whereType<amplify_models.Clients>().toList() ?? [];
       final clientsMap = { for (var c in clientsList) c.id.toString(): c.name };
 
       final typesReq = ModelQueries.list(amplify_models.LicenseTypes.classType);
       final typesRes = await Amplify.API.query(request: typesReq).response;
-      final typesList = typesRes.data?.items.whereType<amplify_models.LicenseTypes>().toList() ?? [];
+      final typesList = (typesRes.data?.items ?? []).whereType<amplify_models.LicenseTypes>().toList() ?? [];
       final typesMap = { for (var t in typesList) t.id.toString(): t.name };
 
       // 1. Fetch Tasks
@@ -103,7 +103,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
         where: amplify_models.Tasks.STATUS.ne('Completed')
       );
       final tasksRes = await Amplify.API.query(request: tasksReq).response;
-      final tasks = tasksRes.data?.items.whereType<amplify_models.Tasks>().toList() ?? [];
+      final tasks = (tasksRes.data?.items ?? []).whereType<amplify_models.Tasks>().toList() ?? [];
       
       for (var t in tasks) {
         if (t.due_date != null) {
@@ -128,7 +128,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
         where: amplify_models.ClientLicenses.STATUS.eq('Active')
       );
       final licenseRes = await Amplify.API.query(request: licenseReq).response;
-      final licenses = licenseRes.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
+      final licenses = (licenseRes.data?.items ?? []).whereType<amplify_models.ClientLicenses>().toList() ?? [];
       
       for (var l in licenses) {
         if (l.expiry_date != null) {
@@ -158,7 +158,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
       // 3. Fetch DSC Expiry
       final dscReq = ModelQueries.list(amplify_models.DscRecords.classType);
       final dscRes = await Amplify.API.query(request: dscReq).response;
-      final dscs = dscRes.data?.items.whereType<amplify_models.DscRecords>().toList() ?? [];
+      final dscs = (dscRes.data?.items ?? []).whereType<amplify_models.DscRecords>().toList() ?? [];
       
       for (var d in dscs) {
         if (d.dsc_expiry_date != null) {

@@ -10,7 +10,7 @@ class OfficeLocationService {
     try {
       final request = ModelQueries.list(OfficeLocations.classType);
       final response = await Amplify.API.query(request: request).response;
-      return response.data?.items.whereType<OfficeLocations>().toList() ?? [];
+      return (response.data?.items ?? []).whereType<OfficeLocations>().toList() ?? [];
     } catch (e) {
       safePrint('Error fetching office locations: $e');
       return [];

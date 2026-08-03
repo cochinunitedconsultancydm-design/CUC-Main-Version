@@ -88,6 +88,7 @@ const schema = a.schema({
     is_contacted: a.boolean(),
     managed_by: a.string(),
     balance_due: a.string(),
+    registration_number: a.string(),
   }).authorization((allow) => [allow.authenticated()]),
   Tasks: a.model({
     id: a.id().required(),

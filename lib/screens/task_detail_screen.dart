@@ -115,7 +115,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       // Fetch users
       final uReq = ModelQueries.list(amplify_models.Users.classType);
       final uRes = await Amplify.API.query(request: uReq).response;
-      final users = uRes.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+      final users = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
       final userMap = {for (var u in users) u.id.toString(): u};
       
       final assignedByUser = userMap[t.assigned_by?.toString()];

@@ -35,7 +35,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
     try {
       final req = ModelQueries.list(amplify_models.ServiceContent.classType);
       final res = await Amplify.API.query(request: req).response;
-      final result = res.data?.items.whereType<amplify_models.ServiceContent>().toList() ?? [];
+      final result = (res.data?.items ?? []).whereType<amplify_models.ServiceContent>().toList() ?? [];
       
       // Sort by title
       result.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));

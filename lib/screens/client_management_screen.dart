@@ -62,8 +62,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
       
       int maxRegNo = 0;
       for (var c in clientsList) {
-        if (c.registration_number != null) {
-          final match = RegExp(r'\d+').firstMatch(c.registration_number!);
+        if (c.case_number != null && c.case_number!.startsWith('CUC-')) {
+          final match = RegExp(r'\d+').firstMatch(c.case_number!);
           if (match != null) {
             final num = int.tryParse(match.group(0)!) ?? 0;
             if (num > maxRegNo) maxRegNo = num;
@@ -71,13 +71,13 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
         }
       }
 
-      var unassignedClients = clientsList.where((c) => c.registration_number == null).toList();
+      var unassignedClients = clientsList.where((c) => c.case_number == null || !c.case_number!.startsWith('CUC-')).toList();
       if (unassignedClients.isNotEmpty) {
         unassignedClients.sort((a, b) => (a.createdAt?.toString() ?? '').compareTo(b.createdAt?.toString() ?? ''));
         for (var c in unassignedClients) {
           maxRegNo++;
           final newRegNo = 'CUC-${maxRegNo.toString().padLeft(4, '0')}';
-          final updated = c.copyWith(registration_number: newRegNo);
+          final updated = c.copyWith(case_number: newRegNo);
           await BackupAwareApi().update(updated);
           final index = clientsList.indexWhere((element) => element.id == c.id);
           if (index != -1) clientsList[index] = updated;
@@ -100,7 +100,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
           fileDate: m.file_date,
           isContacted: m.is_contacted ?? false,
           balanceDue: m.balance_due,
-          registrationNumber: m.registration_number,
+          registrationNumber: m.case_number,
         )).toList();
         _applySort();
       });
@@ -422,7 +422,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               is_contacted: newClient.isContacted,
                               dob: newClient.dob,
                               managed_by: newClient.managedBy,
-                              registration_number: newRegNo,
+                              case_number: newRegNo,
                             );
                             await BackupAwareApi().create(model);
                           } else {
@@ -438,7 +438,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               is_contacted: newClient.isContacted,
                               dob: newClient.dob,
                               managed_by: newClient.managedBy,
-                              registration_number: newClient.registrationNumber,
+                              case_number: newClient.registrationNumber,
                             );
                             await BackupAwareApi().update(model);
                           }
@@ -504,7 +504,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
         final filtered = _clients.where((c) => 
           c.name.toLowerCase().contains(_searchTerm.toLowerCase()) ||
           (c.phone?.contains(_searchTerm) ?? false) ||
-          (c.fileNo?.toLowerCase().contains(_searchTerm.toLowerCase()) ?? false)
+          (c.fileNo?.toLowerCase().contains(_searchTerm.toLowerCase()) ?? false) ||
+          (c.registrationNumber?.toLowerCase().contains(_searchTerm.toLowerCase()) ?? false)
         ).toList();
 
         return Padding(
@@ -548,7 +549,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                         child: TextField(
                           onChanged: (val) => setState(() => _searchTerm = val),
                           decoration: InputDecoration(
-                            hintText: 'Search clients, files, phone...',
+                            hintText: 'Search clients, reg no, files, phone...',
                             prefixIcon: const Icon(Icons.search, color: AppTheme.primaryColor),
                             filled: true,
                             fillColor: Colors.white,
@@ -610,7 +611,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
               TextField(
                 onChanged: (val) => setState(() => _searchTerm = val),
                 decoration: InputDecoration(
-                  hintText: 'Search clients...',
+                  hintText: 'Search clients, reg no...',
                   prefixIcon: const Icon(Icons.search, color: AppTheme.primaryColor),
                   filled: true,
                   fillColor: Colors.white,

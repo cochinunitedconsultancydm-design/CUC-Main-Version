@@ -219,208 +219,227 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
     }
 
     doc.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 30),
-        build: (pw.Context context) {
-          return pw.Stack(
-            children: [
-              if (logoImage != null)
-                pw.Center(
-                  child: pw.Opacity(
-                    opacity: 0.1,
-                    child: pw.Image(logoImage, width: 480, height: 480),
-                  ),
+      pw.MultiPage(
+        pageTheme: pw.PageTheme(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+          buildBackground: (pw.Context context) {
+            if (logoImage != null) {
+              return pw.Center(
+                child: pw.Opacity(
+                  opacity: 0.1,
+                  child: pw.Image(logoImage, width: 480, height: 480),
                 ),
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  // Letterhead Header
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      if (logoImage != null) pw.Image(logoImage, width: 90, height: 90) else pw.SizedBox(width: 90, height: 90),
-                      pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.end,
-                        children: [
-                          pw.Text(
-                            'COCHIN UNITED CONSULTANCY',
-                            style: pw.TextStyle(fontSize: 16, color: PdfColors.black, fontWeight: pw.FontWeight.bold),
-                          ),
-                          pw.SizedBox(height: 2),
-                          pw.Text(
-                            '4th Floor, Mather Square, C- Block,',
-                            style: const pw.TextStyle(fontSize: 8),
-                          ),
-                          pw.Text(
-                            'Near North Railway Station, Ernakulam, Kerala 682018',
-                            style: const pw.TextStyle(fontSize: 8),
-                          ),
-                          pw.SizedBox(height: 2),
-                          pw.Text('email id: cochinunitedconsultancydm@gmail.com', style: const pw.TextStyle(fontSize: 8, color: PdfColors.blue700)),
-                          pw.Text('mob no: +91 8590290105', style: const pw.TextStyle(fontSize: 8)),
-                        ],
-                      ),
-                    ],
-                  ),
-                  pw.SizedBox(height: 8),
-                  pw.Divider(thickness: 0.5, color: PdfColors.grey400),
-                  pw.SizedBox(height: 24),
-                  
-                  // Acknowledgement Letter Content
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 20),
-                    child: pw.Column(
+              );
+            }
+            return pw.SizedBox();
+          },
+        ),
+        footer: (pw.Context context) {
+          return pw.Column(
+            mainAxisSize: pw.MainAxisSize.min,
+            children: [
+              pw.SizedBox(height: 20),
+              pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(horizontal: 20),
+                child: pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Center(
-                          child: pw.Text(
-                            'ACKNOWLEDGEMENT LETTER',
-                            style: pw.TextStyle(
-                              fontSize: 14,
-                              fontWeight: pw.FontWeight.bold,
-                              decoration: pw.TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                        pw.SizedBox(height: 30),
-                        
-                        pw.Text('FROM', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.only(left: 40, top: 8),
-                          child: pw.Column(
-                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: buildAddress(fromName, fromIsCompany),
-                          ),
-                        ),
-                        
-                        pw.SizedBox(height: 20),
-                        
-                        pw.Text('TO', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.only(left: 40, top: 8),
-                          child: pw.Column(
-                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: buildAddress(toName, toIsCompany),
-                          ),
-                        ),
-                        
-                        pw.SizedBox(height: 30),
-                        
-                        pw.Text('Sub: Document Acknowledgement Letter.', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                        
-                        pw.SizedBox(height: 20),
-                        
-                        pw.Text(bodyText, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                        
-                        if (title.isNotEmpty) ...[
-                          pw.SizedBox(height: 10),
-                          pw.Text('Title: $title', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                        ],
-
-                        pw.SizedBox(height: 20),
-                        
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.symmetric(horizontal: 20),
-                          child: pw.Table(
-                            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
-                            columnWidths: {
-                              0: const pw.FixedColumnWidth(40),
-                              1: const pw.FlexColumnWidth(3),
-                              2: const pw.FixedColumnWidth(60),
-                              3: const pw.FlexColumnWidth(2),
-                            },
-                            children: [
-                              pw.TableRow(
-                                decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-                                children: [
-                                  pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Sl No', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold), textAlign: pw.TextAlign.center)),
-                                  pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Document Name', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold))),
-                                  pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Type', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold), textAlign: pw.TextAlign.center)),
-                                  pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Remarks', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold))),
-                                ],
-                              ),
-                              ...List.generate(fileNames.length, (index) {
-                                  String fName = fileNames[index];
-                                  String fileRemark = '';
-                                  String currentFileType = legacyFileTypeStr.isNotEmpty ? legacyFileTypeStr : '[Original]';
-                                  
-                                  if (fName.contains('||')) {
-                                    final typeParts = fName.split('||');
-                                    fName = typeParts[0].trim();
-                                    if (typeParts.length > 1) {
-                                      final rest = typeParts[1];
-                                      if (rest.contains('::')) {
-                                        final rParts = rest.split('::');
-                                        currentFileType = '[${rParts[0].trim()}]';
-                                        fileRemark = rParts[1].trim();
-                                      } else {
-                                        currentFileType = '[${rest.trim()}]';
-                                      }
-                                    }
-                                  } else if (fName.contains('::')) {
-                                    final parts = fName.split('::');
-                                    fName = parts[0].trim();
-                                    if (parts.length > 1) {
-                                      fileRemark = parts[1].trim();
-                                    }
-                                  }
-                                  if (fileRemark.isEmpty && remarks.isNotEmpty) {
-                                    fileRemark = remarks;
-                                  }
-
-                                  return pw.TableRow(
-                                    children: [
-                                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('${index + 1}', style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.center)),
-                                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(fName.toUpperCase(), style: const pw.TextStyle(fontSize: 10))),
-                                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(currentFileType, style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.center)),
-                                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(fileRemark, style: const pw.TextStyle(fontSize: 10))),
-                                  ],
-                                );
-                              }),
-                            ],
-                          ),
+                        pw.Text('Ernakulam', style: const pw.TextStyle(fontSize: 11)),
+                        pw.Text(DateFormat('dd/MM/yyyy').format(post.receivedDate), style: const pw.TextStyle(fontSize: 11)),
+                      ],
+                    ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        pw.Text('Received By', style: const pw.TextStyle(fontSize: 11)),
+                        pw.SizedBox(height: 40),
+                        pw.Text(
+                          action == 'Received' 
+                              ? 'COCHIN UNITED CONSULTANCY' 
+                              : post.recipientName.split('\n').first.toUpperCase(), 
+                          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
                         ),
                       ],
                     ),
+                  ]
+                )
+              ),
+              pw.SizedBox(height: 10),
+              pw.Center(
+                child: pw.Text('Page ${context.pageNumber} of ${context.pagesCount}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
+              ),
+            ]
+          );
+        },
+        build: (pw.Context context) {
+          return [
+            // Letterhead Header
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                if (logoImage != null) pw.Image(logoImage, width: 90, height: 90) else pw.SizedBox(width: 90, height: 90),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text(
+                      'COCHIN UNITED CONSULTANCY',
+                      style: pw.TextStyle(fontSize: 16, color: PdfColors.black, fontWeight: pw.FontWeight.bold),
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text(
+                      '4th Floor, Mather Square, C- Block,',
+                      style: const pw.TextStyle(fontSize: 8),
+                    ),
+                    pw.Text(
+                      'Near North Railway Station, Ernakulam, Kerala 682018',
+                      style: const pw.TextStyle(fontSize: 8),
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text('email id: cochinunitedconsultancydm@gmail.com', style: const pw.TextStyle(fontSize: 8, color: PdfColors.blue700)),
+                    pw.Text('mob no: +91 8590290105', style: const pw.TextStyle(fontSize: 8)),
+                  ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 8),
+            pw.Divider(thickness: 0.5, color: PdfColors.grey400),
+            pw.SizedBox(height: 24),
+            
+            // Acknowledgement Letter Content
+            pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 20),
+              child: pw.Center(
+                child: pw.Text(
+                  'ACKNOWLEDGEMENT LETTER',
+                  style: pw.TextStyle(
+                    fontSize: 14,
+                    fontWeight: pw.FontWeight.bold,
+                    decoration: pw.TextDecoration.underline,
                   ),
-                  
-                  pw.Spacer(),
-                  
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 20),
-                    child: pw.Row(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Column(
-                          crossAxisAlignment: pw.CrossAxisAlignment.start,
-                          children: [
-                            pw.Text('Ernakulam', style: const pw.TextStyle(fontSize: 11)),
-                            pw.Text(DateFormat('dd/MM/yyyy').format(post.receivedDate), style: const pw.TextStyle(fontSize: 11)),
-                          ],
-                        ),
-                        pw.Column(
-                          crossAxisAlignment: pw.CrossAxisAlignment.center,
-                          children: [
-                            pw.Text('Received By', style: const pw.TextStyle(fontSize: 11)),
-                            pw.SizedBox(height: 40),
-                            pw.Text(
-                              action == 'Received' 
-                                  ? 'COCHIN UNITED CONSULTANCY' 
-                                  : post.recipientName.split('\n').first.toUpperCase(), 
-                              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ]
-                    )
-                  )
-                ],
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 30),
+            
+            pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 20),
+              child: pw.Text('FROM', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(left: 60, right: 20, top: 8),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: buildAddress(fromName, fromIsCompany),
+              ),
+            ),
+            
+            pw.SizedBox(height: 20),
+            
+            pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 20),
+              child: pw.Text('TO', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(left: 60, right: 20, top: 8),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: buildAddress(toName, toIsCompany),
+              ),
+            ),
+            
+            pw.SizedBox(height: 30),
+            
+            pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 20),
+              child: pw.Text('Sub: Document Acknowledgement Letter.', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+            ),
+            
+            pw.SizedBox(height: 20),
+            
+            pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 20),
+              child: pw.Text(bodyText, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+            ),
+            
+            if (title.isNotEmpty) ...[
+              pw.SizedBox(height: 10),
+              pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(horizontal: 20),
+                child: pw.Text('Title: $title', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
               ),
             ],
-          );
+
+            pw.SizedBox(height: 20),
+            
+            pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 40),
+              child: pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+                columnWidths: {
+                  0: const pw.FixedColumnWidth(40),
+                  1: const pw.FlexColumnWidth(3),
+                  2: const pw.FixedColumnWidth(60),
+                  3: const pw.FlexColumnWidth(2),
+                },
+                children: [
+                  pw.TableRow(
+                    decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                    children: [
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Sl No', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold), textAlign: pw.TextAlign.center)),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Document Name', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Type', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold), textAlign: pw.TextAlign.center)),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Remarks', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold))),
+                    ],
+                  ),
+                  ...List.generate(fileNames.length, (index) {
+                      String fName = fileNames[index];
+                      String fileRemark = '';
+                      String currentFileType = legacyFileTypeStr.isNotEmpty ? legacyFileTypeStr : '[Original]';
+                      
+                      if (fName.contains('||')) {
+                        final typeParts = fName.split('||');
+                        fName = typeParts[0].trim();
+                        if (typeParts.length > 1) {
+                          final rest = typeParts[1];
+                          if (rest.contains('::')) {
+                            final rParts = rest.split('::');
+                            currentFileType = '[${rParts[0].trim()}]';
+                            fileRemark = rParts[1].trim();
+                          } else {
+                            currentFileType = '[${rest.trim()}]';
+                          }
+                        }
+                      } else if (fName.contains('::')) {
+                        final parts = fName.split('::');
+                        fName = parts[0].trim();
+                        if (parts.length > 1) {
+                          fileRemark = parts[1].trim();
+                        }
+                      }
+                      if (fileRemark.isEmpty && remarks.isNotEmpty) {
+                        fileRemark = remarks;
+                      }
+
+                      return pw.TableRow(
+                        children: [
+                          pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('${index + 1}', style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.center)),
+                          pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(fName.toUpperCase(), style: const pw.TextStyle(fontSize: 10))),
+                          pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(currentFileType, style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.center)),
+                          pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(fileRemark, style: const pw.TextStyle(fontSize: 10))),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+            ),
+            
+          ];
         },
       ),
     );

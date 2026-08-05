@@ -100,36 +100,64 @@ class BillingService {
     }
   }
 
-  static Map<String, String>? _clientPhoneCache;
-  static DateTime? _cacheTime;
+  static Map<String, Map<String, String>>? _clientDetailsCacheV2;
+  static DateTime? _cacheTimeV2;
 
-  Future<Map<String, String>> _getClientPhoneMap() async {
-    if (_clientPhoneCache != null && _cacheTime != null && DateTime.now().difference(_cacheTime!).inMinutes < 15) {
-      return _clientPhoneCache!;
+  Future<Map<String, Map<String, String>>> _getClientDetailsMap() async {
+    if (_clientDetailsCacheV2 != null && _cacheTimeV2 != null && DateTime.now().difference(_cacheTimeV2!).inMinutes < 15) {
+      return _clientDetailsCacheV2!;
     }
     try {
-      final req = ModelQueries.list(Clients.classType);
-      List<Clients> allClients = [];
-      var currentReq = req;
-      while(true) {
-        final res = await Amplify.API.query(request: currentReq).response;
-        allClients.addAll((res.data?.items ?? []).whereType<Clients>() ?? []);
-        if (res.data?.hasNextResult ?? false) {
-          currentReq = res.data!.requestForNextResult!;
+      _clientDetailsCacheV2 = {};
+      String? nextToken;
+      do {
+        final doc = '''
+          query ListClients(\$nextToken: String) {
+            listClients(nextToken: \$nextToken, limit: 1000) {
+              items {
+                name
+                phone
+                case_number
+                file_no
+                registration_number
+              }
+              nextToken
+            }
+          }
+        ''';
+        final req = GraphQLRequest<String>(
+          document: doc, 
+          variables: nextToken != null ? {'nextToken': nextToken} : {}
+        );
+        final res = await Amplify.API.query(request: req).response;
+        if (res.data != null) {
+          final data = jsonDecode(res.data!);
+          final items = data['listClients']?['items'] as List? ?? [];
+          for (var item in items) {
+            final name = item['name']?.toString();
+            if (name != null) {
+              String regNo = item['registration_number']?.toString() ?? item['case_number']?.toString() ?? '';
+              String fileNo = item['file_no']?.toString() ?? '';
+              if (regNo == fileNo && !regNo.startsWith('CUC-')) {
+                regNo = ''; // Don't show file no as reg no
+              }
+              _clientDetailsCacheV2![name] = {
+                'phone': item['phone']?.toString() ?? '',
+                'reg_no': regNo,
+              };
+            }
+          }
+          nextToken = data['listClients']?['nextToken']?.toString();
         } else {
           break;
         }
-      }
-      _clientPhoneCache = {};
-      for (var c in allClients) {
-        if (c.name != null && c.phone != null) {
-          _clientPhoneCache![c.name!] = c.phone!;
-        }
-      }
-      _cacheTime = DateTime.now();
-      return _clientPhoneCache!;
+      } while (nextToken != null);
+
+      _cacheTimeV2 = DateTime.now();
+      return _clientDetailsCacheV2!;
     } catch (e) {
-      return _clientPhoneCache ?? {};
+      print('Error fetching clients raw: $e');
+      return _clientDetailsCacheV2 ?? {};
     }
   }
 
@@ -159,7 +187,7 @@ class BillingService {
     // Sort descending by ID or date (using ID for now as original code used order by id)
     var allList = all.toList()..sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
 
-    final clientPhones = await _getClientPhoneMap();
+    final clientDetails = await _getClientDetailsMap();
 
     List<Billings> filtered = [];
     
@@ -207,7 +235,7 @@ class BillingService {
         final invNo = b.invoice_no?.toLowerCase() ?? '';
         final dataStr = b.data?.toLowerCase() ?? '';
         final amt = b.amount?.toLowerCase() ?? '';
-        final phone = clientPhones[b.client_name]?.toLowerCase() ?? '';
+        final phone = clientDetails[b.client_name]?['phone']?.toLowerCase() ?? '';
         if (!cName.contains(query) && 
             !invNo.contains(query) &&
             !dataStr.contains(query) &&
@@ -224,16 +252,18 @@ class BillingService {
       final map = m.toMap();
       map['created_at'] = m.created_at ?? m.createdAt?.toString();
       
-      String phone = clientPhones[m.client_name] ?? '';
+      String phone = clientDetails[m.client_name]?['phone'] ?? '';
+      String regNo = clientDetails[m.client_name]?['reg_no'] ?? '';
       String dataStr = map['data']?.toString() ?? '{}';
       try {
         var dataMap = jsonDecode(dataStr);
         if (dataMap is Map) {
           dataMap['client_phone'] = phone;
+          dataMap['client_reg_no'] = regNo;
           map['data'] = jsonEncode(dataMap);
         }
       } catch(_) {
-        map['data'] = jsonEncode({'client_phone': phone});
+        map['data'] = jsonEncode({'client_phone': phone, 'client_reg_no': regNo});
       }
       
       return Billing.fromMap(map);
@@ -388,7 +418,7 @@ class BillingService {
   }
 
   Future<List<Billing>> getClientLedger(String clientName) async {
-    var req = ModelQueries.list(Billings.classType, where: Billings.CLIENT_NAME.eq(clientName));
+    var req = ModelQueries.list(Billings.classType, where: Billings.CLIENT_NAME.contains(clientName));
     List<Billings> all = [];
     while (true) {
       final res = await Amplify.API.query(request: req).response;
@@ -400,6 +430,13 @@ class BillingService {
       }
     }
     
+    // Filter locally to ensure it's actually the same client (handling cases where name has suffixes)
+    final cNameLower = clientName.toLowerCase().trim();
+    all = all.where((b) {
+      final bNameLower = (b.client_name ?? '').toLowerCase().trim();
+      return bNameLower.startsWith(cNameLower) || cNameLower.startsWith(bNameLower) || bNameLower == cNameLower;
+    }).toList();
+
     var allList = all.toList()..sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
     return allList.map((b) => Billing.fromMap(b.toMap())).toList();
   }

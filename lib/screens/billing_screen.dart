@@ -1145,6 +1145,15 @@ class _BillingScreenState extends State<BillingScreen> {
             Text('Issued by: ${_getFullAuthorityName(b.authorities, b.invoiceNo)}', style: TextStyle(fontSize: 11, color: Colors.grey.shade400, fontWeight: FontWeight.w500)),
           ])),
 
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 80,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('REG NO', style: TextStyle(color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(b.data?['client_reg_no']?.toString().isNotEmpty == true ? b.data!['client_reg_no'].toString() : '-', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+            ]),
+          ),
           const SizedBox(width: 16),
           SizedBox(
             width: 90,
@@ -1249,6 +1258,10 @@ class _BillingScreenState extends State<BillingScreen> {
               style: TextStyle(fontSize: 13, color: Colors.blue.shade700, fontWeight: FontWeight.w600, decoration: TextDecoration.underline, decorationColor: Colors.blue.shade200)
             ),
           ),
+          if (b.data?['client_reg_no']?.toString().isNotEmpty == true) ...[
+            const SizedBox(height: 2),
+            Text('Reg No: ${b.data!['client_reg_no']}', style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+          ],
           const SizedBox(height: 2),
           Text('By: ${_getFullAuthorityName(b.authorities, b.invoiceNo)}', style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
           const SizedBox(height: 12),

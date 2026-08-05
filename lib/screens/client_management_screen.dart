@@ -11,6 +11,8 @@ import '../services/logging_service.dart';
 import '../services/billing_service.dart';
 import '../models/billing.dart';
 import 'client_files_dialog.dart';
+import 'client_merge_dialog.dart';
+import 'global_merge_dialog.dart';
 
 class ClientManagementScreen extends StatefulWidget {
   const ClientManagementScreen({super.key});
@@ -84,6 +86,28 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
         }
       }
 
+      final reqLogs = ModelQueries.list(amplify_models.ActivityLogs.classType, where: amplify_models.ActivityLogs.ACTION.eq('CLIENT_CREATED'));
+      final resLogs = await Amplify.API.query(request: reqLogs).response;
+      final logsList = resLogs.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
+
+      final reqUsers = ModelQueries.list(amplify_models.Users.classType);
+      final resUsers = await Amplify.API.query(request: reqUsers).response;
+      final usersList = resUsers.data?.items.whereType<amplify_models.Users>().toList() ?? [];
+
+      final Map<int, String> userNames = {};
+      for (var u in usersList) {
+        if (u.id != null) {
+          userNames[int.tryParse(u.id) ?? 0] = u.name ?? 'Unknown';
+        }
+      }
+
+      final Map<String, String> clientCreators = {};
+      for (var log in logsList) {
+        if (log.target_id != null && log.user_id != null) {
+          clientCreators[log.target_id!] = userNames[log.user_id!] ?? 'Unknown';
+        }
+      }
+
       clientsList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       if (!mounted) return;
       setState(() {
@@ -101,6 +125,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
           isContacted: m.is_contacted ?? false,
           balanceDue: m.balance_due,
           registrationNumber: m.case_number,
+          createdBy: clientCreators[m.id] ?? 'System/Legacy',
         )).toList();
         _applySort();
       });
@@ -108,6 +133,76 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
       _showError('Failed to fetch clients: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showMergeDialog(Client client) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      builder: (context) => ClientMergeDialog(
+        primaryClient: client,
+        allClients: _clients,
+        onMerged: () {
+          _fetchClients();
+        },
+      ),
+    );
+  }
+
+  void _showGlobalMergeDialog() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      builder: (context) => GlobalMergeDialog(
+        allClients: _clients,
+        onMerged: () {
+          _fetchClients();
+        },
+      ),
+    );
+  }
+
+  Future<void> _showClientWorksDialog(Client c) async {
+    try {
+      final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.CLIENT_NAME.contains(c.name));
+      final res = await Amplify.API.query(request: req).response;
+      var deals = res.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
+
+      final cNameLower = (c.name ?? '').toLowerCase().trim();
+      deals = deals.where((d) {
+        final dNameLower = (d.client_name ?? '').toLowerCase().trim();
+        return dNameLower.startsWith(cNameLower) || cNameLower.startsWith(dNameLower) || dNameLower == cNameLower;
+      }).toList();
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Works for ${c.name}'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: deals.isEmpty ? const Center(child: Text('No works found.')) : ListView.separated(
+              itemCount: deals.length,
+              separatorBuilder: (_, __) => const Divider(),
+              itemBuilder: (context, index) {
+                final d = deals[index];
+                return ListTile(
+                  title: Text(d.name ?? 'Unnamed Work', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('Stage: ${d.stage ?? "N/A"}  •  Type: ${d.work_type ?? "N/A"}'),
+                  trailing: Text('₹${d.amount ?? 0}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                );
+              }
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))
+          ],
+        ),
+      );
+    } catch (e) {
+      _showError('Failed to load works: $e');
     }
   }
 
@@ -568,6 +663,19 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                       _headerAction(Icons.download_rounded, 'Export to Excel', Colors.green, _exportToExcel),
                       const SizedBox(width: 16),
                       ElevatedButton.icon(
+                        onPressed: () => _showGlobalMergeDialog(),
+                        icon: const Icon(Icons.auto_fix_high),
+                        label: const Text('Merge All'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          elevation: 0,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
                         onPressed: () => _showClientForm(),
                         icon: const Icon(Icons.add),
                         label: const Text('Add Client'),
@@ -784,6 +892,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text('${c.typeOfWork ?? "No Type of Work"} • File: ${c.fileNo ?? "N/A"} • Reg No: ${c.registrationNumber ?? "N/A"}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                      const SizedBox(height: 4),
+                      Text('Created by: ${c.createdBy ?? "System/Legacy"}', style: TextStyle(color: Colors.blueGrey.shade400, fontSize: 11, fontWeight: FontWeight.w500)),
                     ],
                   ),
                 ),
@@ -817,6 +927,36 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.blueAccent,
                     side: BorderSide(color: Colors.blue.shade200),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _showClientBillsDialog(c),
+                  icon: const Icon(Icons.receipt_long_outlined, size: 16),
+                  label: const Text('Bills'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.teal,
+                    side: BorderSide(color: Colors.teal.shade200),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _showClientWorksDialog(c),
+                  icon: const Icon(Icons.work_outline, size: 16),
+                  label: const Text('Works'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.indigo,
+                    side: BorderSide(color: Colors.indigo.shade200),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _showMergeDialog(c),
+                  icon: const Icon(Icons.merge_type, size: 16),
+                  label: const Text('Merge'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.purple,
+                    side: BorderSide(color: Colors.purple.shade200),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),

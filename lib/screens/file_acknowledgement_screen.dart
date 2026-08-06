@@ -207,7 +207,7 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
     bool toIsCompany = senderIsCompany;
     
     String bodyText = action == 'Returned' 
-        ? 'We are hereby returning the below mentioned documents:' 
+        ? 'We hereby received the below mentioned documents:' 
         : 'The following documents are submitted herewith:';
 
     pw.MemoryImage? logoImage;
@@ -253,19 +253,7 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
                         pw.Text(DateFormat('dd/MM/yyyy').format(post.receivedDate), style: const pw.TextStyle(fontSize: 11)),
                       ],
                     ),
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.center,
-                      children: [
-                        pw.Text('Received By', style: const pw.TextStyle(fontSize: 11)),
-                        pw.SizedBox(height: 40),
-                        pw.Text(
-                          action == 'Received' 
-                              ? 'COCHIN UNITED CONSULTANCY' 
-                              : post.recipientName.split('\n').first.toUpperCase(), 
-                          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
-                        ),
-                      ],
-                    ),
+                    pw.SizedBox(),
                   ]
                 )
               ),

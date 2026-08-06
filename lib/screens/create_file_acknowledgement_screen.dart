@@ -498,7 +498,7 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
     bool toIsCompany = recipientIsCompany;
     
     String bodyText = action == 'Returned' 
-        ? 'We are hereby returning the below mentioned documents:' 
+        ? 'We hereby received the below mentioned documents:' 
         : 'The following documents are submitted herewith:';
 
     pw.MemoryImage? logoImage;
@@ -537,14 +537,7 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text('Receiver Signature', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
-                        pw.SizedBox(height: 40),
-                        pw.Text('(${toName.split('\n').first.trim()})', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                      ],
-                    ),
+                    pw.SizedBox(),
                     pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [

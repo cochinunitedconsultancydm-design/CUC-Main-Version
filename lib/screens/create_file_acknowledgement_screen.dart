@@ -44,6 +44,7 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
   final _titleController = TextEditingController();
   final _fromController = TextEditingController();
   final _toController = TextEditingController();
+  final _signatureController = TextEditingController();
   final _newFileController = TextEditingController();
   
   String _actionType = 'Received';
@@ -82,6 +83,7 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
     _titleController.addListener(() => setState(() {}));
     _fromController.addListener(() => setState(() {}));
     _toController.addListener(() => setState(() {}));
+    _signatureController.addListener(() => setState(() {}));
   }
   
   void _loadEditingPost() {
@@ -498,7 +500,7 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
     bool toIsCompany = recipientIsCompany;
     
     String bodyText = action == 'Returned' 
-        ? 'We hereby received the below mentioned documents:' 
+        ? 'We hereby acknowledge receipt of the below-mentioned documents:' 
         : 'The following documents are submitted herewith:';
 
     pw.MemoryImage? logoImage;
@@ -515,7 +517,7 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 30),
           buildBackground: (pw.Context context) {
-            if (logoImage != null) {
+            if (logoImage != null && action != 'Returned') {
               return pw.Center(
                 child: pw.Opacity(
                   opacity: 0.1,
@@ -543,7 +545,7 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
                       children: [
                         pw.Text('Authorized Signature', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
                         pw.SizedBox(height: 40),
-                        pw.Text('(${fromName.split('\n').first.trim()})', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                        pw.Text('(${_signatureController.text.trim().isNotEmpty ? _signatureController.text.trim() : fromName.split('\n').first.trim()})', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                       ],
                     ),
                   ],
@@ -558,31 +560,35 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
         },
         build: (pw.Context context) {
           return [
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                if (logoImage != null) pw.Image(logoImage, width: 90, height: 90) else pw.SizedBox(width: 90, height: 90),
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text(
-                      'COCHIN UNITED CONSULTANCY',
-                      style: pw.TextStyle(fontSize: 16, color: PdfColors.black, fontWeight: pw.FontWeight.bold),
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Text('4th Floor, Mather Square, C- Block,', style: const pw.TextStyle(fontSize: 8)),
-                    pw.Text('Near North Railway Station, Ernakulam, Kerala 682018', style: const pw.TextStyle(fontSize: 8)),
-                    pw.SizedBox(height: 2),
-                    pw.Text('email id: cochinunitedconsultancydm@gmail.com', style: const pw.TextStyle(fontSize: 8, color: PdfColors.blue700)),
-                    pw.Text('mob no: +91 8590290105', style: const pw.TextStyle(fontSize: 8)),
-                  ],
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 8),
-            pw.Divider(thickness: 0.5, color: PdfColors.grey400),
-            pw.SizedBox(height: 24),
+            if (action != 'Returned') ...[
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  if (logoImage != null) pw.Image(logoImage, width: 90, height: 90) else pw.SizedBox(width: 90, height: 90),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        'COCHIN UNITED CONSULTANCY',
+                        style: pw.TextStyle(fontSize: 16, color: PdfColors.black, fontWeight: pw.FontWeight.bold),
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text('4th Floor, Mather Square, C- Block,', style: const pw.TextStyle(fontSize: 8)),
+                      pw.Text('Near North Railway Station, Ernakulam, Kerala 682018', style: const pw.TextStyle(fontSize: 8)),
+                      pw.SizedBox(height: 2),
+                      pw.Text('email id: cochinunitedconsultancydm@gmail.com', style: const pw.TextStyle(fontSize: 8, color: PdfColors.blue700)),
+                      pw.Text('mob no: +91 8590290105', style: const pw.TextStyle(fontSize: 8)),
+                    ],
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 8),
+              pw.Divider(thickness: 0.5, color: PdfColors.grey400),
+              pw.SizedBox(height: 24),
+            ] else ...[
+              pw.SizedBox(height: 80),
+            ],
             
             pw.Padding(
               padding: const pw.EdgeInsets.symmetric(horizontal: 20),
@@ -1191,6 +1197,10 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
                       const Text('TO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54, letterSpacing: 1.0)),
                       const SizedBox(height: 8),
                       _buildUserAutocomplete(controller: _toController, hint: 'Received By', icon: Icons.person_outline),
+                      const SizedBox(height: 16),
+                      const Text('AUTHORIZED SIGNATURE NAME (OPTIONAL)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54, letterSpacing: 1.0)),
+                      const SizedBox(height: 8),
+                      _buildInputField(controller: _signatureController, hint: 'Default is From Name', icon: Icons.draw_outlined),
                       const SizedBox(height: 60),
                     ],
                   ),

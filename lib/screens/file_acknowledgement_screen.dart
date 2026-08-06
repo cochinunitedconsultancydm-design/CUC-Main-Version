@@ -207,7 +207,7 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
     bool toIsCompany = senderIsCompany;
     
     String bodyText = action == 'Returned' 
-        ? 'We hereby received the below mentioned documents:' 
+        ? 'We hereby acknowledge receipt of the below-mentioned documents:' 
         : 'The following documents are submitted herewith:';
 
     pw.MemoryImage? logoImage;
@@ -224,7 +224,7 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 30),
           buildBackground: (pw.Context context) {
-            if (logoImage != null) {
+            if (logoImage != null && action != 'Returned') {
               return pw.Center(
                 child: pw.Opacity(
                   opacity: 0.1,
@@ -266,38 +266,41 @@ class _FileAcknowledgementScreenState extends State<FileAcknowledgementScreen> {
         },
         build: (pw.Context context) {
           return [
-            // Letterhead Header
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                if (logoImage != null) pw.Image(logoImage, width: 90, height: 90) else pw.SizedBox(width: 90, height: 90),
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text(
-                      'COCHIN UNITED CONSULTANCY',
-                      style: pw.TextStyle(fontSize: 16, color: PdfColors.black, fontWeight: pw.FontWeight.bold),
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Text(
-                      '4th Floor, Mather Square, C- Block,',
-                      style: const pw.TextStyle(fontSize: 8),
-                    ),
-                    pw.Text(
-                      'Near North Railway Station, Ernakulam, Kerala 682018',
-                      style: const pw.TextStyle(fontSize: 8),
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Text('email id: cochinunitedconsultancydm@gmail.com', style: const pw.TextStyle(fontSize: 8, color: PdfColors.blue700)),
-                    pw.Text('mob no: +91 8590290105', style: const pw.TextStyle(fontSize: 8)),
-                  ],
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 8),
-            pw.Divider(thickness: 0.5, color: PdfColors.grey400),
-            pw.SizedBox(height: 24),
+            if (action != 'Returned') ...[
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  if (logoImage != null) pw.Image(logoImage, width: 90, height: 90) else pw.SizedBox(width: 90, height: 90),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        'COCHIN UNITED CONSULTANCY',
+                        style: pw.TextStyle(fontSize: 16, color: PdfColors.black, fontWeight: pw.FontWeight.bold),
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        '4th Floor, Mather Square, C- Block,',
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                      pw.Text(
+                        'Near North Railway Station, Ernakulam, Kerala 682018',
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text('email id: cochinunitedconsultancydm@gmail.com', style: const pw.TextStyle(fontSize: 8, color: PdfColors.blue700)),
+                      pw.Text('mob no: +91 8590290105', style: const pw.TextStyle(fontSize: 8)),
+                    ],
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 8),
+              pw.Divider(thickness: 0.5, color: PdfColors.grey400),
+              pw.SizedBox(height: 24),
+            ] else ...[
+              pw.SizedBox(height: 80),
+            ],
             
             // Acknowledgement Letter Content
             pw.Padding(

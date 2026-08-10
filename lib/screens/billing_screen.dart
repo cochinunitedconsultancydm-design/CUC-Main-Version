@@ -2049,7 +2049,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
               _buildField('Address', _clientAddress, 'Complete billing address...', lines: 3),
               const SizedBox(height: 20),
               if (isMobile) ...[
-                _buildField('Date', _date, 'dd/mm/yyyy'),
+                _buildField('Date', _date, 'dd/mm/yyyy', readOnly: true),
                 const SizedBox(height: 16),
                 _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy'),
                 const SizedBox(height: 16),
@@ -2060,7 +2060,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                 )),
               ] else Row(
                 children: [
-                  Expanded(child: _buildField('Date', _date, 'dd/mm/yyyy')),
+                  Expanded(child: _buildField('Date', _date, 'dd/mm/yyyy', readOnly: true)),
                   const SizedBox(width: 16),
                   Expanded(child: _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy')),
                   const SizedBox(width: 16),

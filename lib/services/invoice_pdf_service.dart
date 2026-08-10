@@ -18,6 +18,7 @@ class InvoicePdfService {
     required String amountInWords,
     String outstandingAmount = '',
     String advanceReceived = '',
+    String discount = '',
     String grandTotal = '',
     String balanceDue = '',
     List<String>? quotationTerms,
@@ -248,6 +249,22 @@ class InvoicePdfService {
                             ),
                           ],
                         ),
+                      if (discount.isNotEmpty && discount != '0' && discount != '0/-')
+                        pw.TableRow(
+                          children: [
+                            _cell('', border: false),
+                            pw.Container(
+                              alignment: pw.Alignment.centerRight,
+                              padding: const pw.EdgeInsets.all(5),
+                              child: pw.Text('DISCOUNT', style: pw.TextStyle(font: bodyBold, fontSize: 9, color: PdfColors.red600)),
+                            ),
+                            pw.Container(
+                              alignment: pw.Alignment.center,
+                              padding: const pw.EdgeInsets.all(5),
+                              child: pw.Text('-${discount.endsWith('/-') ? discount : '$discount/-'}', style: pw.TextStyle(font: bodyBold, fontSize: 9, color: PdfColors.red600)),
+                            ),
+                          ],
+                        ),
                       if (balanceDue.isNotEmpty && balanceDue != '0' && balanceDue != '0/-')
                         pw.TableRow(
                           children: [
@@ -440,6 +457,7 @@ class InvoicePdfService {
     required String amountInWords,
     String outstandingAmount = '',
     String advanceReceived = '',
+    String discount = '',
     String grandTotal = '',
     String balanceDue = '',
     List<String>? quotationTerms,
@@ -459,6 +477,7 @@ class InvoicePdfService {
         amountInWords: amountInWords,
         outstandingAmount: outstandingAmount,
         advanceReceived: advanceReceived,
+        discount: discount,
         grandTotal: grandTotal,
         balanceDue: balanceDue,
         quotationTerms: quotationTerms,

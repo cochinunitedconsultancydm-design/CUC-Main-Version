@@ -1978,11 +1978,12 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   Future<void> _duplicateBilling(Billing b) async {
     final auth = b.authorities ?? '';
     String nextNo = '';
-    
-    if (auth.isNotEmpty) {
-      final prefix = auth.split(' ').first;
-      final next = await BillingService().getNextInvoiceNo(prefix);
-      if (next != null) nextNo = next;
+    final prefix = b.type == 'QUOTATION' ? 'CC-' : 'AA-';
+    final next = await BillingService().getNextInvoiceNo(prefix);
+    if (next != null) {
+      nextNo = next;
+    } else {
+      nextNo = '${prefix}001';
     }
 
     final duplicated = Billing(

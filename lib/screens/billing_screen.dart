@@ -112,6 +112,35 @@ class _BillingScreenState extends State<BillingScreen> {
     return auth;
   }
 
+  String _getStaffPrefix(String? auth, [String? invNo]) {
+    if (auth == null || auth.isEmpty) {
+      if (invNo != null) {
+        auth = invNo.split(RegExp(r'[ \-]')).first;
+      } else {
+        return '-';
+      }
+    }
+    if (auth == 'CUC') return 'CUC';
+    if (auth == 'AA') return 'AA';
+    
+    final prefix = auth.split(RegExp(r'[ \-]')).first.toUpperCase();
+    final match = staffMapping.keys.firstWhere(
+      (k) {
+        final keyUp = k.toUpperCase();
+        final valUp = staffMapping[k]!.toUpperCase();
+        if (valUp == prefix) return true;
+        if (keyUp == prefix) return true;
+        if (prefix.length > 2 && keyUp.startsWith(prefix)) return true;
+        if (prefix.contains(keyUp)) return true;
+        return false;
+      }, 
+      orElse: () => ''
+    );
+    if (match.isNotEmpty) return staffMapping[match] ?? prefix;
+    
+    return prefix;
+  }
+
   Future<void> _fetchStats() async {
     try {
       final stats = await _billingService.fetchStats();
@@ -190,12 +219,14 @@ class _BillingScreenState extends State<BillingScreen> {
 
     bool isFullPayment = true;
     final receivedController = TextEditingController(text: currentBalance.toStringAsFixed(0));
+    String dialogDiscount = b.data?['discount']?.toString() ?? '0';
     double newBalance = 0;
 
     final ok = await showDialog<bool>(context: context, builder: (c) => StatefulBuilder(
       builder: (context, setState) {
         double receivedAmount = double.tryParse(receivedController.text) ?? 0;
-        newBalance = currentBalance - receivedAmount;
+        double discountAmount = double.tryParse(dialogDiscount) ?? 0;
+        newBalance = currentBalance - receivedAmount - discountAmount;
         if (newBalance < 0) newBalance = 0;
 
         return AlertDialog(
@@ -222,6 +253,17 @@ class _BillingScreenState extends State<BillingScreen> {
                 },
                 contentPadding: EdgeInsets.zero,
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: TextEditingController(text: dialogDiscount),
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Discount Allowed (₹)', border: OutlineInputBorder(), isDense: true),
+                onChanged: (val) {
+                  setState(() {
+                    dialogDiscount = val;
+                  });
+                },
+              ),
               if (!isFullPayment) ...[
                 const SizedBox(height: 12),
                 TextField(
@@ -235,8 +277,8 @@ class _BillingScreenState extends State<BillingScreen> {
                   onChanged: (val) => setState(() {}),
                 ),
                 const SizedBox(height: 12),
-                Text('Remaining Balance: ₹${NumberToWords.formatIndianCurrency(newBalance).replaceAll('/-', '')}', style: TextStyle(color: newBalance > 0 ? Colors.orange.shade700 : Colors.green.shade700, fontWeight: FontWeight.bold)),
-              ]
+              ] else const SizedBox(height: 12),
+              Text('Remaining Balance: ₹${NumberToWords.formatIndianCurrency(newBalance).replaceAll('/-', '')}', style: TextStyle(color: newBalance > 0 ? Colors.orange.shade700 : Colors.green.shade700, fontWeight: FontWeight.bold)),
             ],
           ),
           actions: [
@@ -250,22 +292,34 @@ class _BillingScreenState extends State<BillingScreen> {
     if (ok == true) {
       try {
         double newlyReceived = double.tryParse(receivedController.text) ?? 0;
-        if (newlyReceived <= 0) return;
+        double discountGiven = double.tryParse(dialogDiscount) ?? 0;
+        
+        if (newlyReceived <= 0 && discountGiven <= 0) return;
 
         // Log payment in accounting
-        await _logAccountingEntry(b, newlyReceived);
+        if (newlyReceived > 0) {
+          await _logAccountingEntry(b, newlyReceived);
+        }
 
         double totalReceived = previouslyReceived + newlyReceived;
-        double updatedBalance = grandTotal - totalReceived;
+        double updatedBalance = grandTotal - totalReceived - discountGiven;
         if (updatedBalance < 0) updatedBalance = 0;
 
         bool isPaid = updatedBalance <= 0;
+
+        final prefs = await SharedPreferences.getInstance();
+        final currentUserName = prefs.getString('user_name') ?? 'Unknown User';
 
         final d = Map<String, dynamic>.from(b.data ?? {});
         d['payment_received'] = isPaid;
         d['advance_received'] = NumberToWords.formatIndianCurrency(totalReceived);
         d['balance_due'] = updatedBalance > 0 ? NumberToWords.formatIndianCurrency(updatedBalance) : '0/-';
-        if (isPaid) d['payment_date'] = DateTime.now().toIso8601String();
+        if (isPaid) {
+          d['payment_date'] = DateTime.now().toIso8601String();
+          d['marked_paid_by'] = currentUserName;
+        }
+        if (newlyReceived > 0) d['payment_recorded_by'] = currentUserName;
+        if (discountGiven > 0) d['discount_given_by'] = currentUserName;
 
         await _billingService.updateBilling(b.id!, {
           'status': isPaid ? 'Received' : (totalReceived > 0 ? 'Part Payment' : 'Pending'),
@@ -531,11 +585,12 @@ class _BillingScreenState extends State<BillingScreen> {
   Future<void> _duplicateBilling(Billing b) async {
     final auth = b.authorities ?? '';
     String nextNo = '';
-    
-    if (auth.isNotEmpty) {
-      final prefix = auth.split(' ').first;
-      final next = await _billingService.getNextInvoiceNo(prefix);
-      if (next != null) nextNo = next;
+    final prefix = b.type == 'QUOTATION' ? 'CC-' : 'AA-';
+    final next = await _billingService.getNextInvoiceNo(prefix);
+    if (next != null) {
+      nextNo = next;
+    } else {
+      nextNo = '${prefix}001';
     }
 
     final duplicated = Billing(
@@ -560,11 +615,12 @@ class _BillingScreenState extends State<BillingScreen> {
   Future<void> _convertToInvoice(Billing b) async {
     final auth = b.authorities ?? '';
     String nextNo = '';
-    
-    if (auth.isNotEmpty) {
-      final prefix = auth.split(' ').first;
-      final next = await _billingService.getNextInvoiceNo(prefix);
-      if (next != null) nextNo = next;
+    final prefix = 'AA-';
+    final next = await _billingService.getNextInvoiceNo(prefix);
+    if (next != null) {
+      nextNo = next;
+    } else {
+      nextNo = '${prefix}001';
     }
 
     final converted = Billing(
@@ -1132,6 +1188,50 @@ class _BillingScreenState extends State<BillingScreen> {
                 const SizedBox(width: 8),
                 Text(b.category!, style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w500)),
               ],
+              if (b.authorities != null && b.authorities!.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                  child: Text(
+                    _getStaffPrefix(b.authorities, b.invoiceNo),
+                    style: const TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
+                  )
+                ),
+              ],
+              if (b.data != null && b.data!['edit_count'] != null && b.data!['edit_count'] > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                  child: Text(
+                    'Edited (${b.data!['edit_count']})',
+                    style: const TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
+                  )
+                ),
+              ],
+              if (b.data != null && b.data!['marked_paid_by'] != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                  child: Text(
+                    'Paid By: ${b.data!['marked_paid_by'].split(' ').first}',
+                    style: const TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
+                  )
+                ),
+              ],
+              if (b.data != null && b.data!['discount_given_by'] != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.pink.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                  child: Text(
+                    'Discount By: ${b.data!['discount_given_by'].split(' ').first}',
+                    style: const TextStyle(color: Colors.pink, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
+                  )
+                ),
+              ],
             ]),
             const SizedBox(height: 6),
             InkWell(
@@ -1375,7 +1475,7 @@ class InvoiceCreatorPage extends StatefulWidget {
 
 class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   late String _type, _category, _authorities, _status;
-  late TextEditingController _clientName, _clientAddress, _date, _invoiceNo, _outstanding, _advanceReceived, _deadlineDate, _approvedAmount;
+  late TextEditingController _clientName, _clientAddress, _date, _invoiceNo, _outstanding, _advanceReceived, _deadlineDate, _approvedAmount, _discount;
   late List<Map<String, dynamic>> _items;
   late List<TextEditingController> _itemDescControllers;
   late List<TextEditingController> _itemAmountControllers;
@@ -1400,11 +1500,12 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     _category = cats.contains(b?.category) ? b!.category! : cats.first;
     _clientName = TextEditingController(text: b?.clientName);
     _clientAddress = TextEditingController(text: b?.data?['client_address'] ?? '');
-    _date = TextEditingController(text: b?.date ?? DateFormat('dd/MM/yyyy').format(DateTime.now()));
+    _date = TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime.now()));
     _deadlineDate = TextEditingController(text: b?.data?['payment_deadline']?.toString() ?? '');
     _invoiceNo = TextEditingController(text: b?.invoiceNo);
     _outstanding = TextEditingController(text: b?.outstandingAmount);
     _advanceReceived = TextEditingController(text: b?.data?['advance_received']?.toString() ?? '');
+    _discount = TextEditingController(text: b?.data?['discount']?.toString() ?? '');
     _approvedAmount = TextEditingController(text: b?.data?['approved_amount']?.toString() ?? '');
     _authorities = b?.authorities ?? '';
     _items = List<Map<String, dynamic>>.from(b?.items?.map((e) => Map<String, dynamic>.from(e)) ?? [{'description': '', 'amount': '', 'isHeading': false}]);
@@ -1434,6 +1535,10 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       setState(() {});
     });
     _advanceReceived.addListener(() {
+      _calc();
+      setState(() {});
+    });
+    _discount.addListener(() {
       _calc();
       setState(() {});
     });
@@ -1581,14 +1686,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       });
       
       if (_authorities.isNotEmpty) {
-        final prefixMatch = _BillingScreenState.staffMapping.keys.firstWhere(
-          (k) => _authorities.toLowerCase().contains(k.toLowerCase()),
-          orElse: () => ''
-        );
-        final prefix = prefixMatch.isNotEmpty 
-            ? _BillingScreenState.staffMapping[prefixMatch]! 
-            : _authorities.split(' - ').first;
-        _generateInvoiceNo(prefix);
+        _generateInvoiceNo();
       }
     } catch (e) {
       debugPrint('StaffFetchErr: $e');
@@ -1604,6 +1702,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     _invoiceNo.dispose();
     _outstanding.dispose();
     _advanceReceived.dispose();
+    _discount.dispose();
     _approvedAmount.dispose();
     for (var c in _itemDescControllers) {
       c.dispose();
@@ -1646,19 +1745,21 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     }
   }
 
-  Future<void> _generateInvoiceNo(String prefix) async {
-    if (widget.billing != null || prefix.isEmpty) return;
+  Future<void> _generateInvoiceNo([bool force = false]) async {
+    if (widget.billing != null && !force) return;
     
     try {
+      final prefix = _type == 'QUOTATION' ? 'CC-' : 'AA-';
       final next = await _billingService.getNextInvoiceNo(prefix);
       if (next != null) {
         setState(() => _invoiceNo.text = next);
       } else {
-        setState(() => _invoiceNo.text = "$prefix-001");
+        setState(() => _invoiceNo.text = "${prefix}001");
       }
     } catch (e) { 
       debugPrint('GenErr: $e');
-      if (mounted) setState(() => _invoiceNo.text = "$prefix-001");
+      final prefix = _type == 'QUOTATION' ? 'CC-' : 'AA-';
+      if (mounted) setState(() => _invoiceNo.text = "${prefix}001");
     }
   }
 
@@ -1685,12 +1786,13 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     }
     double o = NumberToWords.parseCurrency(_outstanding.text);
     double adv = NumberToWords.parseCurrency(_advanceReceived.text);
+    double disc = NumberToWords.parseCurrency(_discount.text);
     double g = t + o;
     setState(() {
       _totalAmount = t > 0 ? NumberToWords.formatIndianCurrency(t) : '0/-';
       _amountInWords = t > 0 ? NumberToWords.convert(t.round()) : 'Zero';
       _grandTotal = g > t ? NumberToWords.formatIndianCurrency(g) : '';
-      _balanceDue = adv > 0 ? NumberToWords.formatIndianCurrency(g - adv) : '';
+      _balanceDue = (adv > 0 || disc > 0) ? NumberToWords.formatIndianCurrency(g - adv - disc) : '';
     });
   }
 
@@ -1721,6 +1823,15 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     }
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentUserName = prefs.getString('user_name') ?? 'Unknown User';
+
+      String? discountBy = widget.billing?.data?['discount_given_by'];
+      final currentDiscountText = widget.billing?.data?['discount']?.toString() ?? '';
+      if (_discount.text != currentDiscountText && _discount.text.isNotEmpty && _discount.text != '0' && _discount.text != '0/-') {
+         discountBy = currentUserName;
+      }
+
       final d = {
         'items': _items, 
         'outstanding_amount': _outstanding.text, 
@@ -1732,9 +1843,17 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         'quotation_terms': _quotationTerms,
         'payment_deadline': _deadlineDate.text,
         'approved_amount': _approvedAmount.text,
+        'discount': _discount.text,
+        if (discountBy != null) 'discount_given_by': discountBy,
         'payment_received': (NumberToWords.parseCurrency(_advanceReceived.text) > 0 && NumberToWords.parseCurrency(_advanceReceived.text) >= NumberToWords.parseCurrency(_grandTotal.isEmpty ? _totalAmount : _grandTotal)) || (widget.billing?.data?['payment_received'] == true), 
-        'payment_date': widget.billing?.data?['payment_date']
+        'payment_date': widget.billing?.data?['payment_date'],
+        'edit_count': (widget.billing?.data?['edit_count'] ?? 0) + (widget.billing != null && widget.billing!.id != null ? 1 : 0),
+        'marked_paid_by': widget.billing?.data?['marked_paid_by'],
       };
+      
+      if (d['payment_received'] == true && widget.billing?.data?['payment_received'] != true) {
+        d['marked_paid_by'] = currentUserName;
+      }
       
       dynamic savedId;
       if (widget.billing == null || widget.billing!.id == null) { 
@@ -1800,6 +1919,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       amountInWords: _amountInWords, 
       outstandingAmount: _outstanding.text, 
       advanceReceived: _advanceReceived.text,
+      discount: _discount.text,
       grandTotal: _grandTotal,
       balanceDue: _balanceDue,
       quotationTerms: _quotationTerms,
@@ -1886,6 +2006,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                       _type = v;
                       _quotationTerms = _getDefaultTerms(_category);
                       _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
+                      _generateInvoiceNo(true);
                     }
                   });
                 }),
@@ -1911,6 +2032,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                         _type = v;
                         _quotationTerms = _getDefaultTerms(_category);
                         _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
+                        _generateInvoiceNo(true);
                       }
                     });
                   })),
@@ -1931,9 +2053,9 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                 const SizedBox(height: 16),
                 _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy'),
                 const SizedBox(height: 16),
-                _buildField('Invoice No', _invoiceNo, 'e.g. A 001', suffix: IconButton(
+                _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: true, suffix: IconButton(
                   icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF2563EB)),
-                  onPressed: () => _generateInvoiceNo(_authorities),
+                  onPressed: () => _generateInvoiceNo(true),
                   tooltip: 'Regenerate sequence',
                 )),
               ] else Row(
@@ -1942,9 +2064,9 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                   const SizedBox(width: 16),
                   Expanded(child: _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy')),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildField('Invoice No', _invoiceNo, 'e.g. A 001', suffix: IconButton(
+                  Expanded(child: _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: true, suffix: IconButton(
                     icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF2563EB)),
-                    onPressed: () => _generateInvoiceNo(_authorities),
+                    onPressed: () => _generateInvoiceNo(true),
                     tooltip: 'Regenerate sequence',
                   ))),
                 ],
@@ -1952,14 +2074,6 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
               const SizedBox(height: 20),
               _buildSelector('STAFF', _authorities, _staffs, (v) { 
                 setState(() => _authorities = v); 
-                final matchKey = _BillingScreenState.staffMapping.keys.firstWhere(
-                  (k) => v.toLowerCase().contains(k.toLowerCase()),
-                  orElse: () => ''
-                );
-                final prefix = matchKey.isNotEmpty 
-                    ? _BillingScreenState.staffMapping[matchKey]! 
-                    : v.split(' - ').first;
-                _generateInvoiceNo(prefix); 
               }),
               
               const SizedBox(height: 32),
@@ -2022,6 +2136,8 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                   ],
                   const SizedBox(height: 16),
                   _buildField('Advance / Received', _advanceReceived, '0/-', onChanged: (_) => _calc(), isCurrency: true),
+                  const SizedBox(height: 16),
+                  _buildField('Discount', _discount, '0/-', onChanged: (_) => _calc(), isCurrency: true),
                   if (_balanceDue.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     _summaryRow('Balance Due', _balanceDue, isBold: true, color: Colors.orange.shade700),
@@ -2077,6 +2193,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                 amountInWords: _amountInWords, 
                 outstandingAmount: _outstanding.text, 
                 advanceReceived: _advanceReceived.text,
+                discount: _discount.text,
                 grandTotal: _grandTotal,
                 balanceDue: _balanceDue,
                 quotationTerms: _quotationTerms,
@@ -2132,7 +2249,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     }
   }
 
-  Widget _buildField(String label, TextEditingController controller, String hint, {int lines = 1, ValueChanged<String>? onChanged, bool isCurrency = false, Widget? suffix}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _buildField(String label, TextEditingController controller, String hint, {int lines = 1, ValueChanged<String>? onChanged, bool isCurrency = false, Widget? suffix, bool readOnly = false}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
     const SizedBox(height: 6),
     Focus(
@@ -2141,12 +2258,13 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       },
       child: TextField(
         controller: controller, maxLines: lines, onChanged: onChanged,
+        readOnly: readOnly,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: hint, 
           hintStyle: TextStyle(color: Colors.grey.shade300), 
           filled: true, 
-          fillColor: const Color(0xFFF8FAFC), 
+          fillColor: readOnly ? Colors.grey.shade100 : const Color(0xFFF8FAFC), 
           suffixIcon: suffix,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)), 
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)), 

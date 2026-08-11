@@ -1500,7 +1500,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     _category = cats.contains(b?.category) ? b!.category! : cats.first;
     _clientName = TextEditingController(text: b?.clientName);
     _clientAddress = TextEditingController(text: b?.data?['client_address'] ?? '');
-    _date = TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime.now()));
+    _date = TextEditingController(text: b?.date != null && b!.date!.isNotEmpty ? b.date : DateFormat('dd/MM/yyyy').format(DateTime.now()));
     _deadlineDate = TextEditingController(text: b?.data?['payment_deadline']?.toString() ?? '');
     _invoiceNo = TextEditingController(text: b?.invoiceNo);
     _outstanding = TextEditingController(text: b?.outstandingAmount);
@@ -1892,6 +1892,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           category: _category,
           authorities: _authorities,
           status: _status,
+          created_at: widget.billing?.createdAt,
           data: jsonEncode(d),
         );
         final res = await BackupAwareApi().update(updateBilling);

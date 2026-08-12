@@ -328,10 +328,19 @@ class BillingService {
         
         int comp = sortBy == 'Newest First' ? dateB.compareTo(dateA) : dateA.compareTo(dateB);
         if (comp == 0) {
-          // Fallback to invoiceNo comparison (e.g., 'B5049' vs 'B5045')
-          String invA = a.invoiceNo ?? '';
-          String invB = b.invoiceNo ?? '';
-          return sortBy == 'Newest First' ? invB.compareTo(invA) : invA.compareTo(invB);
+          // Fallback to true creation time!
+          DateTime createA = DateTime.fromMillisecondsSinceEpoch(0);
+          DateTime createB = DateTime.fromMillisecondsSinceEpoch(0);
+          try { if (a.createdAt != null) createA = DateTime.parse(a.createdAt!.toString()); } catch (_) {}
+          try { if (b.createdAt != null) createB = DateTime.parse(b.createdAt!.toString()); } catch (_) {}
+          
+          int createComp = sortBy == 'Newest First' ? createB.compareTo(createA) : createA.compareTo(createB);
+          if (createComp != 0) return createComp;
+
+          // Ultimate fallback to ID which is sequential
+          int idA = int.tryParse(a.id) ?? 0;
+          int idB = int.tryParse(b.id) ?? 0;
+          return sortBy == 'Newest First' ? idB.compareTo(idA) : idA.compareTo(idB);
         }
         return comp;
       }

@@ -1811,18 +1811,18 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     ];
   }
 
+  String _getPrefix() {
+    if (_category == 'Legal') {
+      return _type == 'QUOTATION' ? 'CLP-' : 'LLP-';
+    }
+    return _type == 'QUOTATION' ? 'CC-' : 'AA-';
+  }
+
   Future<void> _generateInvoiceNo([bool force = false]) async {
     if (widget.billing != null && !force) return;
     
-    String getPrefix() {
-      if (_category == 'Legal') {
-        return _type == 'QUOTATION' ? 'CLP-' : 'LLP-';
-      }
-      return _type == 'QUOTATION' ? 'CC-' : 'AA-';
-    }
-
     try {
-      final prefix = getPrefix();
+      final prefix = _getPrefix();
       final next = await _billingService.getNextInvoiceNo(prefix);
       if (next != null) {
         setState(() => _invoiceNo.text = next);
@@ -1831,7 +1831,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       }
     } catch (e) { 
       debugPrint('GenErr: $e');
-      final prefix = getPrefix();
+      final prefix = _getPrefix();
       if (mounted) setState(() => _invoiceNo.text = "${prefix}001");
     }
   }
@@ -1885,18 +1885,29 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
 
     final isDuplicate = await _isInvoiceNoDuplicate(_invoiceNo.text);
     if (isDuplicate) {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (c) => AlertDialog(
-          title: const Text('Duplicate Invoice Number'),
-          content: Text('An invoice with number "${_invoiceNo.text}" already exists. Save anyway?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-            ElevatedButton(onPressed: () => Navigator.pop(c, true), child: const Text('Save Anyway')),
-          ],
-        ),
-      );
-      if (confirm != true) return;
+      if (widget.billing == null) {
+        // If this is a new bill, auto-assign the next available number instead of failing
+        final newNo = await _billingService.getNextInvoiceNo(_getPrefix());
+        setState(() { _invoiceNo.text = newNo; });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Original invoice number was taken. Auto-assigned to $newNo'), 
+          backgroundColor: Colors.green
+        ));
+      } else {
+        // If editing an existing bill, warn them
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (c) => AlertDialog(
+            title: const Text('Duplicate Invoice Number'),
+            content: Text('An invoice with number "${_invoiceNo.text}" already exists. Save anyway?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+              ElevatedButton(onPressed: () => Navigator.pop(c, true), child: const Text('Save Anyway')),
+            ],
+          ),
+        );
+        if (confirm != true) return;
+      }
     }
 
     try {

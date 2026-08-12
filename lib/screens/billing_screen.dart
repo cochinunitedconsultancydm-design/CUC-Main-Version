@@ -2,6 +2,8 @@ import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:pdf/pdf.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
@@ -1499,6 +1501,50 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   
   
 
+  int _pdfBuildCount = 0;
+  Uint8List? _cachedPdf;
+  bool _isGeneratingPdf = false;
+
+  Future<Uint8List> _debouncedPdfBuild(PdfPageFormat format) async {
+    _pdfBuildCount++;
+    final currentCount = _pdfBuildCount;
+    
+    await Future.delayed(const Duration(milliseconds: 600));
+    
+    if (currentCount != _pdfBuildCount) {
+      if (_cachedPdf != null) return _cachedPdf!;
+      while (_isGeneratingPdf) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (_cachedPdf != null) return _cachedPdf!;
+      }
+    }
+    
+    _isGeneratingPdf = true;
+    final bytes = await InvoicePdfService.generateInvoicePdf(
+      type: _type, 
+      category: _category, 
+      clientName: _clientName.text, 
+      clientAddress: _clientAddress.text, 
+      date: _date.text, 
+      invoiceNo: _invoiceNo.text, 
+      authorities: _authorities, 
+      items: _items, 
+      totalAmount: _totalAmount, 
+      amountInWords: _amountInWords, 
+      outstandingAmount: _outstanding.text, 
+      advanceReceived: _advanceReceived.text,
+      discount: _discount.text,
+      grandTotal: _grandTotal,
+      balanceDue: _balanceDue,
+      quotationTerms: _quotationTerms,
+      isToSameAsClient: _isToSameAsClient,
+      customTo: _customToCtrl.text,
+    );
+    _cachedPdf = bytes;
+    _isGeneratingPdf = false;
+    return bytes;
+  }
+
   static const cats = ['Consultancy', 'Legal'];
 
   @override
@@ -2268,26 +2314,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           color: const Color(0xFFF1F5F9), 
           child: Center(
             child: PdfPreview(
-              build: (_) => InvoicePdfService.generateInvoicePdf(
-                type: _type, 
-                category: _category, 
-                clientName: _clientName.text, 
-                clientAddress: _clientAddress.text, 
-                date: _date.text, 
-                invoiceNo: _invoiceNo.text, 
-                authorities: _authorities, 
-                items: _items, 
-                totalAmount: _totalAmount, 
-                amountInWords: _amountInWords, 
-                outstandingAmount: _outstanding.text, 
-                advanceReceived: _advanceReceived.text,
-                discount: _discount.text,
-                grandTotal: _grandTotal,
-                balanceDue: _balanceDue,
-                quotationTerms: _quotationTerms,
-                isToSameAsClient: _isToSameAsClient,
-                customTo: _customToCtrl.text,
-              ),
+              build: (format) => _debouncedPdfBuild(format),
               canChangePageFormat: false, 
               canChangeOrientation: false, 
               canDebug: false, 

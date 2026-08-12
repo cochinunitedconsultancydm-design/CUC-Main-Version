@@ -1585,10 +1585,28 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
            _authorities = prefix; // Will be refined after _fetchStaffs
         }
       }
+      _fetchStaffs();
+      _fetchPastItems();
+      if (b != null) _fetchClientCompanies();
     }
-    _fetchStaffs();
-    _fetchPastItems();
   }
+
+    Future<void> _fetchClientCompanies() async {
+      if (_clientName.text.isEmpty) return;
+      try {
+        final clients = await ClientService().searchClients(_clientName.text);
+        if (clients.isNotEmpty) {
+          final c = clients.firstWhere((client) => client['name'] == _clientName.text, orElse: () => clients.first);
+          if (mounted) {
+            setState(() {
+              _selectedClientCompanies = (c['companies'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching client companies: $e');
+      }
+    }
 
   Future<void> _fetchPastItems() async {
     try {

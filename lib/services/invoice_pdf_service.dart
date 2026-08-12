@@ -85,7 +85,7 @@ class InvoicePdfService {
         build: (pw.Context context) {
           return pw.Stack(
             children: [
-              if (logoImage != null)
+              if (logoImage != null && !isLegal)
                 pw.Center(
                   child: pw.Opacity(
                     opacity: 0.1,
@@ -100,19 +100,14 @@ class InvoicePdfService {
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      if (logoImage != null) pw.Image(logoImage, width: 90, height: 90) else pw.SizedBox(width: 90, height: 90),
+                      if (logoImage != null && !isLegal) pw.Image(logoImage, width: 90, height: 90) else pw.SizedBox(width: 90, height: 90),
                       pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.end,
                         children: [
                           pw.Text(
-                            isLegal ? 'COCHIN UNITED ADVOCATES' : 'COCHIN UNITED CONSULTANCY',
+                            isLegal ? 'COCHIN UNITED LEGAL LLP' : 'COCHIN UNITED CONSULTANCY',
                             style: pw.TextStyle(font: headerFont, fontSize: 16, color: PdfColors.black),
                           ),
-                          if (isLegal)
-                            pw.Text(
-                              'AND LEGAL CONSULTANT',
-                              style: pw.TextStyle(font: headerFont, fontSize: 16, color: PdfColors.black),
-                            ),
                           pw.SizedBox(height: 2),
                           pw.Text(
                             isLegal ? '2ND FLOOR, AMRITA TOWER' : '4th Floor, Mather Square, C- Block,',

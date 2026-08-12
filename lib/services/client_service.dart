@@ -23,6 +23,7 @@ class ClientService {
         'email': c.email,
         'type_of_work': c.type_of_work,
         'balance_due': c.balance_due,
+        'companies': c.companies,
       }).toList();
     } catch (e) {
       safePrint('Error searchClients: $e');

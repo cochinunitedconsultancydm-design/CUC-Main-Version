@@ -1,6 +1,7 @@
 class ClientDocument {
   final String id;
   final String clientId;
+
   final String clientName;
   final String documentName;
   final String storagePath;

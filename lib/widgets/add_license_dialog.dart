@@ -4,9 +4,10 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
-import 'package:cuc_app/services/backup_aware_api.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import '../services/logging_service.dart';
+import 'package:cuc_app/services/backup_aware_api.dart';
 
 class AddLicenseDialog extends StatefulWidget {
   const AddLicenseDialog({super.key});
@@ -166,6 +167,13 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
           created_at: DateTime.now().toIso8601String(),
         );
         await BackupAwareApi().create(doc);
+        
+        await LoggingService().logAction(
+          action: 'FILE_UPLOADED',
+          targetType: 'Client',
+          targetId: matchedClient.name,
+          details: 'Uploaded document: $docName',
+        );
       }
 
       if (mounted) {

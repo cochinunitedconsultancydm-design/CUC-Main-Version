@@ -323,11 +323,13 @@ class InvoicePdfService {
                           pw.Text('Bank Details:', style: pw.TextStyle(font: bodyBold, fontSize: 8)),
                           pw.SizedBox(height: 4),
                           if (isLegal) ...[
+                            _bankRow('Name', ': Cochin United Legal LLP', bodyFont),
                             _bankRow('A/c no', ': 0522202100000749', bodyFont),
                             _bankRow('IFSC Code', ': PUNB0052220', bodyFont),
                             pw.Text('PUNJAB NATIONAL BANK', style: pw.TextStyle(font: bodyFont, fontSize: 7)),
                             pw.Text('Branch- Ernakulam (Market Road)', style: pw.TextStyle(font: bodyFont, fontSize: 7)),
                           ] else ...[
+                            _bankRow('Name', ': Cochin United Consultancy', bodyFont),
                             _bankRow('A/c No', ': 41731333716', bodyFont),
                             _bankRow('IFSC Code', ': SBIN0010564', bodyFont),
                             pw.Text('State Bank of India', style: pw.TextStyle(font: bodyFont, fontSize: 7)),
@@ -345,7 +347,7 @@ class InvoicePdfService {
                       pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.end,
                         children: [
-                          if (signImage != null)
+                          if (signImage != null && !isLegal)
                             pw.Container(
                               width: 150,
                               child: pw.Image(signImage, fit: pw.BoxFit.contain),

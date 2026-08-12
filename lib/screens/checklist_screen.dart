@@ -40,6 +40,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   TextEditingController? _staffTextController;
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
+  String _selectedTaskCategory = 'Applications & Verification';
 
   @override
   void initState() {
@@ -205,32 +206,133 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   }
 
   Widget _buildChecklistList(List<Checklist> tasks) {
-    if (tasks.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _handleRefresh,
-        child: ListView(
-          children: const [
-            SizedBox(height: 100),
-            Center(child: Text("No tasks for today.", style: TextStyle(color: Colors.grey))),
-          ],
-        ),
-      );
-    }
+    final appsTasks = tasks.where((t) => t.title.contains('[Applications & Verification]')).toList();
+    final casesTasks = tasks.where((t) => t.title.contains('[Cases & RTI]')).toList();
+    final billingTasks = tasks.where((t) => t.title.contains('[Billing]')).toList();
+    final followUpTasks = tasks.where((t) => t.title.contains('[Follow-ups]')).toList();
+    final otherTasks = tasks.where((t) => !t.title.contains('[Applications & Verification]') && !t.title.contains('[Cases & RTI]') && !t.title.contains('[Billing]') && !t.title.contains('[Follow-ups]')).toList();
 
     return RefreshIndicator(
       onRefresh: _handleRefresh,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: tasks.length,
-        itemBuilder: (context, index) {
-          final checklist = tasks[index];
-          return _buildChecklistCard(checklist);
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 900;
+          
+          Widget content;
+          if (isWide) {
+            content = Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildChecklistSection("Applications & Verification", appsTasks)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildChecklistSection("Cases & RTI", casesTasks)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildChecklistSection("Billing", billingTasks)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildChecklistSection("Follow-ups", followUpTasks)),
+              ],
+            );
+          } else {
+            content = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildChecklistSection("Applications & Verification", appsTasks),
+                const SizedBox(height: 16),
+                _buildChecklistSection("Cases & RTI", casesTasks),
+                const SizedBox(height: 16),
+                _buildChecklistSection("Billing", billingTasks),
+                const SizedBox(height: 16),
+                _buildChecklistSection("Follow-ups", followUpTasks),
+              ],
+            );
+          }
+
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                content,
+                if (otherTasks.isNotEmpty) ...[
+                  const SizedBox(height: 32),
+                  const Divider(),
+                  const SizedBox(height: 16),
+                  _buildChecklistSection("Other Tasks", otherTasks),
+                ],
+                const SizedBox(height: 100),
+              ],
+            ),
+          );
         },
       ),
     );
   }
 
-  Widget _buildChecklistCard(Checklist checklist) {
+  Widget _buildChecklistSection(String title, List<Checklist> sectionTasks) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${sectionTasks.length}',
+                  style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (sectionTasks.isEmpty)
+            Container(
+              height: 100,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid),
+              ),
+              child: Text(
+                "No tasks",
+                style: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.w500),
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: sectionTasks.length,
+              itemBuilder: (context, index) {
+                return _buildChecklistCard(sectionTasks[index], isCompact: true);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChecklistCard(Checklist checklist, {bool isCompact = false}) {
     Color statusColor = Colors.grey;
     switch (checklist.status) {
       case 'Completed': statusColor = Colors.green; break;
@@ -239,16 +341,24 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
       case 'Pending': statusColor = Colors.blue; break;
     }
 
-    String displayTitle = checklist.title;
+    String cleanTitle = checklist.title;
+    for (final cat in ['[Applications & Verification]', '[Cases & RTI]', '[Billing]', '[Follow-ups]']) {
+      if (cleanTitle.startsWith(cat)) {
+        cleanTitle = cleanTitle.substring(cat.length).trim();
+        break;
+      }
+    }
+
+    String displayTitle = cleanTitle;
     String? displayTime;
-    final timeMatch = RegExp(r'^\[(.*?)\]\s+(.*)$').firstMatch(checklist.title);
+    final timeMatch = RegExp(r'^\[(.*?)\]\s+(.*)$').firstMatch(cleanTitle);
     if (timeMatch != null) {
       displayTime = timeMatch.group(1);
       displayTitle = timeMatch.group(2)!;
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      margin: isCompact ? const EdgeInsets.only(bottom: 12) : const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -397,9 +507,17 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   }
 
   void _showChecklistDetails(Checklist checklist, Color statusColor) {
-    String displayTitle = checklist.title;
+    String cleanTitle = checklist.title;
+    for (final cat in ['[Applications & Verification]', '[Cases & RTI]', '[Billing]', '[Follow-ups]']) {
+      if (cleanTitle.startsWith(cat)) {
+        cleanTitle = cleanTitle.substring(cat.length).trim();
+        break;
+      }
+    }
+
+    String displayTitle = cleanTitle;
     String? displayTime;
-    final timeMatch = RegExp(r'^\[(.*?)\]\s+(.*)$').firstMatch(checklist.title);
+    final timeMatch = RegExp(r'^\[(.*?)\]\s+(.*)$').firstMatch(cleanTitle);
     if (timeMatch != null) {
       displayTime = timeMatch.group(1);
       displayTitle = timeMatch.group(2)!;
@@ -632,6 +750,21 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                       ],
                     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
                     const SizedBox(height: 32),
+                    DropdownButtonFormField<String>(
+                      value: _selectedTaskCategory,
+                      decoration: InputDecoration(
+                        labelText: 'Task Category',
+                        prefixIcon: const Icon(Icons.category, color: AppTheme.primaryColor),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                      ),
+                      items: ['Applications & Verification', 'Cases & RTI', 'Billing', 'Follow-ups'].map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontWeight: FontWeight.w500)))).toList(),
+                      onChanged: (v) => setDialogState(() => _selectedTaskCategory = v!),
+                    ).animate().fadeIn(delay: 50.ms, duration: 400.ms).slideX(begin: 0.05),
+                    const SizedBox(height: 20),
                     TextFormField(
                       controller: _titleController,
                       decoration: InputDecoration(
@@ -916,7 +1049,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
         }
 
         final checklist = Checklist(
-          title: '[${_selectedTime.format(context)}] ${_titleController.text}',
+          title: '[$_selectedTaskCategory] [${_selectedTime.format(context)}] ${_titleController.text}',
           description: _descController.text,
           responsibleId: respId,
           dealId: _selectedDealId,

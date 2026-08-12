@@ -12,6 +12,7 @@ import '../services/client_service.dart';
 import '../services/google_docs_service.dart';
 import 'google_docs_webview_screen.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import '../services/logging_service.dart';
 
 
 class DocumentListScreen extends StatefulWidget {
@@ -388,6 +389,13 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
           remarks: 'Google Doc',
         );
         await BackupAwareApi().create(newClientDoc);
+
+        await LoggingService().logAction(
+          action: 'FILE_UPLOADED',
+          targetType: 'Client',
+          targetId: selectedClient['name'],
+          details: 'Uploaded document: $docName',
+        );
       } catch (e) {
         debugPrint('Failed to update client docs: $e');
       }

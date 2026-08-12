@@ -35,6 +35,7 @@ class _BillingScreenState extends State<BillingScreen> {
   final _log = LoggingService();
 
   List<Billing> _billings = [];
+  bool _isAdmin = false;
   bool _isLoading = true;
   bool _isFetchingMore = false;
   final int _limit = 50;
@@ -70,8 +71,14 @@ class _BillingScreenState extends State<BillingScreen> {
 
   @override
   void initState() { 
-    super.initState(); 
+    super.initState();
+    _initRole();
     _fetchBillings(refresh: true); 
+  }
+
+  Future<void> _initRole() async {
+    final isAdmin = await AuthService().isAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
   }
 
   @override
@@ -1312,7 +1319,8 @@ class _BillingScreenState extends State<BillingScreen> {
                 ],
                 IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 22), tooltip: 'Duplicate'),
                 IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 28), tooltip: 'Edit'),
-                IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 24), tooltip: 'Delete'),
+                if (_isAdmin)
+                  IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 24), tooltip: 'Delete'),
               ]
             ),
           ),
@@ -1391,7 +1399,8 @@ class _BillingScreenState extends State<BillingScreen> {
                       ],
                       IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 20), tooltip: 'Duplicate', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 24), tooltip: 'Edit', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
-                      IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 20), tooltip: 'Delete', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
+                      if (_isAdmin)
+                        IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 20), tooltip: 'Delete', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                     ],
                   ),
                 ),
@@ -1748,8 +1757,15 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   Future<void> _generateInvoiceNo([bool force = false]) async {
     if (widget.billing != null && !force) return;
     
+    String getPrefix() {
+      if (_category == 'Legal') {
+        return _type == 'QUOTATION' ? 'CLP-' : 'CUL-';
+      }
+      return _type == 'QUOTATION' ? 'CC-' : 'AA-';
+    }
+
     try {
-      final prefix = _type == 'QUOTATION' ? 'CC-' : 'AA-';
+      final prefix = getPrefix();
       final next = await _billingService.getNextInvoiceNo(prefix);
       if (next != null) {
         setState(() => _invoiceNo.text = next);
@@ -1758,7 +1774,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       }
     } catch (e) { 
       debugPrint('GenErr: $e');
-      final prefix = _type == 'QUOTATION' ? 'CC-' : 'AA-';
+      final prefix = getPrefix();
       if (mounted) setState(() => _invoiceNo.text = "${prefix}001");
     }
   }
@@ -2019,10 +2035,13 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                 children: [
                   Expanded(child: _buildSelector('CATEGORY', _category, cats, (v) {
                     setState(() {
-                      _category = v;
-                      if (_type == 'QUOTATION') {
-                        _quotationTerms = _getDefaultTerms(_category);
-                        _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
+                      if (_category != v) {
+                        _category = v;
+                        if (_type == 'QUOTATION') {
+                          _quotationTerms = _getDefaultTerms(_category);
+                          _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
+                        }
+                        _generateInvoiceNo(true);
                       }
                     });
                   })),
@@ -2275,9 +2294,225 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     ),
   ]);
 
+  void _showQuickCreateClientDialog() {
+    final nameCtrl = TextEditingController(text: _clientName.text);
+    final emailCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final workCtrl = TextEditingController();
+    final fileNoCtrl = TextEditingController();
+    final fileDateCtrl = TextEditingController();
+    final dobCtrl = TextEditingController();
+    final careOfCtrl = TextEditingController();
+    final addressCtrl = TextEditingController();
+    bool isContacted = false;
+    bool isSaving = false;
+
+    Widget buildPremiumField(TextEditingController ctrl, String label, IconData icon, {int maxLines = 1}) {
+      return TextField(
+        controller: ctrl,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 20),
+          filled: true,
+          fillColor: const Color(0xFFF8FAFC),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFC5A028))),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+      );
+    }
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.3),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          insetPadding: const EdgeInsets.all(24),
+          child: SizedBox(
+            width: 550,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Premium Header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: const Color(0xFFC5A028).withValues(alpha: 0.1), shape: BoxShape.circle),
+                        child: const Icon(Icons.person_add_rounded, color: Color(0xFFC5A028), size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Create New Client', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                            Text('Add client details directly into the database', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8)),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Form Content
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        buildPremiumField(nameCtrl, 'Full Name', Icons.person_outline),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(child: buildPremiumField(phoneCtrl, 'Phone Number', Icons.phone_outlined)),
+                            const SizedBox(width: 16),
+                            Expanded(child: buildPremiumField(emailCtrl, 'Email Address', Icons.email_outlined)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        buildPremiumField(workCtrl, 'Type of Work', Icons.work_outline),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(child: buildPremiumField(fileNoCtrl, 'File No', Icons.folder_outlined)),
+                            const SizedBox(width: 16),
+                            Expanded(child: buildPremiumField(fileDateCtrl, 'File Date', Icons.calendar_today_outlined)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(child: buildPremiumField(dobCtrl, 'Date of Birth', Icons.cake_outlined)),
+                            const SizedBox(width: 16),
+                            Expanded(child: buildPremiumField(careOfCtrl, 'Managed By (C/O)', Icons.supervisor_account_outlined)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: CheckboxListTile(
+                            title: const Text('Client Contacted?', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF334155))),
+                            value: isContacted,
+                            activeColor: const Color(0xFFC5A028),
+                            onChanged: (val) => setDialogState(() => isContacted = val ?? false),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        buildPremiumField(addressCtrl, 'Full Address', Icons.location_on_outlined, maxLines: 3),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Actions
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          foregroundColor: const Color(0xFF64748B),
+                        ),
+                        child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: isSaving ? null : () async {
+                          if (nameCtrl.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name is required'), backgroundColor: Colors.redAccent));
+                            return;
+                          }
+                          setDialogState(() => isSaving = true);
+                          try {
+                            final newClient = Clients(
+                              name: nameCtrl.text,
+                              email: emailCtrl.text,
+                              phone: phoneCtrl.text,
+                              type_of_work: workCtrl.text,
+                              file_no: fileNoCtrl.text,
+                              file_date: fileDateCtrl.text,
+                              dob: dobCtrl.text,
+                              managed_by: careOfCtrl.text,
+                              is_contacted: isContacted,
+                              address: addressCtrl.text,
+                            );
+                            await BackupAwareApi().create(newClient);
+                            if (mounted) {
+                              setState(() {
+                                _clientName.text = newClient.name ?? '';
+                                _clientAddress.text = newClient.address ?? '';
+                              });
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client created successfully'), backgroundColor: Colors.green));
+                            }
+                          } catch (e) {
+                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
+                          } finally {
+                            if (mounted) setDialogState(() => isSaving = false);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFC5A028),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: isSaving 
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                            : const Text('Save Client', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildClientAutocomplete(bool isMobile) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Client Name', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('Client Name', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+          InkWell(
+            onTap: _showQuickCreateClientDialog,
+            child: const Text('+ New Client', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent)),
+          ),
+        ],
+      ),
       const SizedBox(height: 6),
       Autocomplete<Map<String, dynamic>>(
         displayStringForOption: (option) => option['name'],

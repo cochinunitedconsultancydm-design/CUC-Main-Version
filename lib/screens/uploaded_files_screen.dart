@@ -9,6 +9,7 @@ import '../theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import 'package:cuc_app/services/supabase_backup_service.dart';
 
 class UploadedFilesScreen extends StatefulWidget {
   const UploadedFilesScreen({super.key});
@@ -19,6 +20,7 @@ class UploadedFilesScreen extends StatefulWidget {
 
 class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
   List<ClientDocument> _documents = [];
+  Map<String, String> _documentUploaders = {};
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -61,6 +63,37 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
           })).toList();
           _isLoading = false;
         });
+      }
+
+      // Fetch logs and uploaders
+      try {
+        final logsReq = ModelQueries.list(ActivityLogs.classType, where: ActivityLogs.ACTION.eq('FILE_UPLOADED'));
+        final logsRes = await Amplify.API.query(request: logsReq).response;
+        final logs = (logsRes.data?.items ?? []).whereType<ActivityLogs>().toList();
+        
+        final userMap = await SupabaseBackupService().getUsernameToIdMap();
+        final idToNameMap = {for (var e in userMap.entries) e.value: e.key}; // Reverse map for quick lookup
+        
+        final uploaders = <String, String>{};
+        for (var log in logs) {
+          if (log.details != null && log.user_id != null) {
+            final docNameMatch = RegExp(r'Uploaded (?:document|file):\s*(.*?)(?:\s+for client|$)').firstMatch(log.details!);
+            if (docNameMatch != null) {
+               final docName = docNameMatch.group(1)?.trim();
+               if (docName != null) {
+                 uploaders[docName] = idToNameMap[log.user_id] ?? 'System';
+               }
+            }
+          }
+        }
+        
+        if (mounted) {
+          setState(() {
+            _documentUploaders = uploaders;
+          });
+        }
+      } catch (e) {
+        debugPrint('Error fetching logs for uploaders: $e');
       }
     } catch (e) {
       if (mounted) {
@@ -669,6 +702,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
               DataColumn(label: Text('Document', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
               DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
               DataColumn(label: Text('Verification Status', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
+              DataColumn(label: Text('Uploaded By', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
               DataColumn(label: Text('Remarks', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
               DataColumn(label: Text('Client Visible', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
               DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blueGrey))),
@@ -789,6 +823,19 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
                           fontWeight: FontWeight.w700, 
                           color: doc.verificationStatus == 'File OK' ? Colors.green.shade700 : (doc.verificationStatus == 'Rejected' ? Colors.red.shade700 : Colors.amber.shade700),
                         ),
+                      ),
+                    )
+                  ),
+                  DataCell(
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _documentUploaders[doc.documentName] ?? 'Unknown',
+                        style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.blue, fontSize: 12),
                       ),
                     )
                   ),

@@ -5,6 +5,18 @@ import 'package:printing/printing.dart';
 import 'package:flutter/foundation.dart';
 
 class InvoicePdfService {
+  static String _formatAmt(dynamic amt) {
+    if (amt == null) return '';
+    String str = amt.toString().trim();
+    if (str.isEmpty) return '';
+    if (str.endsWith('/-')) str = str.substring(0, str.length - 2);
+    str = str.replaceAll(RegExp(r'[^\d.]'), '');
+    if (str.isEmpty) return amt.toString();
+    double? val = double.tryParse(str);
+    if (val == null) return amt.toString();
+    return val.toStringAsFixed(2);
+  }
+
   static Future<Uint8List> generateInvoicePdf({
     required String type,
     required String category,
@@ -23,6 +35,8 @@ class InvoicePdfService {
     String balanceDue = '',
     List<String>? quotationTerms,
     bool isReceipt = false,
+    bool isToSameAsClient = true,
+    String customTo = '',
   }) async {
     // Fonts
     final headerFont = await PdfGoogleFonts.interBold();
@@ -37,7 +51,6 @@ class InvoicePdfService {
     );
 
     final isLegal = category == 'Legal';
-    final isDM = category == 'Digital Marketing';
 
     // Load assets safely
     pw.MemoryImage? logoImage;
@@ -92,8 +105,7 @@ class InvoicePdfService {
                         crossAxisAlignment: pw.CrossAxisAlignment.end,
                         children: [
                           pw.Text(
-                            isLegal ? 'COCHIN UNITED ADVOCATES' : 
-                            isDM ? 'AURORA - COCHIN UNITED CONSULTANCY' : 'COCHIN UNITED CONSULTANCY',
+                            isLegal ? 'COCHIN UNITED ADVOCATES' : 'COCHIN UNITED CONSULTANCY',
                             style: pw.TextStyle(font: headerFont, fontSize: 16, color: PdfColors.black),
                           ),
                           if (isLegal)
@@ -131,9 +143,20 @@ class InvoicePdfService {
                         children: [
                           pw.Text('TO', style: pw.TextStyle(font: bodyBold, fontSize: 7, color: PdfColors.grey700)),
                           pw.SizedBox(height: 2),
-                          pw.Text(clientName.toUpperCase(), style: pw.TextStyle(font: bodyBold, fontSize: 11)),
-                          if (clientAddress.isNotEmpty)
-                            pw.Container(width: 200, child: pw.Text(clientAddress, style: pw.TextStyle(font: bodyFont, fontSize: 8))),
+                          if (isToSameAsClient) ...[
+                            pw.Text(clientName.toUpperCase(), style: pw.TextStyle(font: bodyBold, fontSize: 11)),
+                            if (clientAddress.isNotEmpty)
+                              pw.Container(width: 200, child: pw.Text(clientAddress, style: pw.TextStyle(font: bodyFont, fontSize: 8))),
+                          ] else ...() {
+                            final lines = customTo.split('\n');
+                            final firstLine = lines.isNotEmpty ? lines.first : '';
+                            final rest = lines.length > 1 ? lines.sublist(1).join('\n') : '';
+                            return [
+                              pw.Text(firstLine.toUpperCase(), style: pw.TextStyle(font: bodyBold, fontSize: 11)),
+                              if (rest.isNotEmpty)
+                                pw.Container(width: 200, child: pw.Text(rest, style: pw.TextStyle(font: bodyFont, fontSize: 8))),
+                            ];
+                          }(),
                         ],
                       ),
                       pw.Column(
@@ -161,7 +184,7 @@ class InvoicePdfService {
                         children: [
                           _cell('Sl. No.', font: bodyBold, align: pw.Alignment.center),
                           _cell('PARTICULARS', font: bodyBold, align: pw.Alignment.center),
-                          _cell('AMOUNT', font: bodyBold, align: pw.Alignment.center),
+                          _cell('AMOUNT', font: bodyBold, align: pw.Alignment.centerRight),
                         ],
                       ),
                       ...() {
@@ -175,9 +198,8 @@ class InvoicePdfService {
                               _cell(item['description'].toString().toUpperCase(), 
                                     font: isHeading ? bodyBold : null, 
                                     align: isHeading ? pw.Alignment.center : pw.Alignment.centerLeft),
-                              _cell(isHeading ? '' : 
-                                  (item['amount'].toString().endsWith('/-') ? item['amount'].toString() : '${item['amount']}/-'), 
-                                  align: pw.Alignment.center),
+                              _cell(isHeading ? '' : _formatAmt(item['amount']), 
+                                    align: pw.Alignment.centerRight),
                             ],
                           );
                         }).toList();
@@ -192,10 +214,10 @@ class InvoicePdfService {
                             child: pw.Text('SUBTOTAL', style: pw.TextStyle(font: bodyBold, fontSize: 9)),
                           ),
                           pw.Container(
-                            alignment: pw.Alignment.center,
+                            alignment: pw.Alignment.centerRight,
                             padding: const pw.EdgeInsets.all(5),
                             decoration: const pw.BoxDecoration(color: PdfColors.grey100),
-                            child: pw.Text(totalAmount.endsWith('/-') ? totalAmount : '$totalAmount/-', style: pw.TextStyle(font: bodyBold, fontSize: 9)),
+                            child: pw.Text(_formatAmt(totalAmount), style: pw.TextStyle(font: bodyBold, fontSize: 9)),
                           ),
                         ],
                       ),
@@ -209,9 +231,9 @@ class InvoicePdfService {
                               child: pw.Text('OUTSTANDING', style: pw.TextStyle(font: bodyBold, fontSize: 9)),
                             ),
                             pw.Container(
-                              alignment: pw.Alignment.center,
+                              alignment: pw.Alignment.centerRight,
                               padding: const pw.EdgeInsets.all(5),
-                              child: pw.Text(outstandingAmount.endsWith('/-') ? outstandingAmount : '$outstandingAmount/-', style: pw.TextStyle(font: bodyBold, fontSize: 9)),
+                              child: pw.Text(_formatAmt(outstandingAmount), style: pw.TextStyle(font: bodyBold, fontSize: 9)),
                             ),
                           ],
                         ),
@@ -226,10 +248,10 @@ class InvoicePdfService {
                               child: pw.Text('GRAND TOTAL', style: pw.TextStyle(font: bodyBold, fontSize: 9)),
                             ),
                             pw.Container(
-                              alignment: pw.Alignment.center,
+                              alignment: pw.Alignment.centerRight,
                               padding: const pw.EdgeInsets.all(5),
                               decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-                              child: pw.Text(grandTotal.endsWith('/-') ? grandTotal : '$grandTotal/-', style: pw.TextStyle(font: bodyBold, fontSize: 9)),
+                              child: pw.Text(_formatAmt(grandTotal), style: pw.TextStyle(font: bodyBold, fontSize: 9)),
                             ),
                           ],
                         ),
@@ -243,9 +265,9 @@ class InvoicePdfService {
                               child: pw.Text('ADVANCE RECEIVED', style: pw.TextStyle(font: bodyBold, fontSize: 9)),
                             ),
                             pw.Container(
-                              alignment: pw.Alignment.center,
+                              alignment: pw.Alignment.centerRight,
                               padding: const pw.EdgeInsets.all(5),
-                              child: pw.Text(advanceReceived.endsWith('/-') ? advanceReceived : '$advanceReceived/-', style: pw.TextStyle(font: bodyBold, fontSize: 9)),
+                              child: pw.Text(_formatAmt(advanceReceived), style: pw.TextStyle(font: bodyBold, fontSize: 9)),
                             ),
                           ],
                         ),
@@ -259,9 +281,9 @@ class InvoicePdfService {
                               child: pw.Text('DISCOUNT', style: pw.TextStyle(font: bodyBold, fontSize: 9, color: PdfColors.red600)),
                             ),
                             pw.Container(
-                              alignment: pw.Alignment.center,
+                              alignment: pw.Alignment.centerRight,
                               padding: const pw.EdgeInsets.all(5),
-                              child: pw.Text('-${discount.endsWith('/-') ? discount : '$discount/-'}', style: pw.TextStyle(font: bodyBold, fontSize: 9, color: PdfColors.red600)),
+                              child: pw.Text('-' + _formatAmt(discount), style: pw.TextStyle(font: bodyBold, fontSize: 9, color: PdfColors.red600)),
                             ),
                           ],
                         ),
@@ -276,10 +298,10 @@ class InvoicePdfService {
                               child: pw.Text('BALANCE DUE', style: pw.TextStyle(font: bodyBold, fontSize: 9)),
                             ),
                             pw.Container(
-                              alignment: pw.Alignment.center,
+                              alignment: pw.Alignment.centerRight,
                               padding: const pw.EdgeInsets.all(5),
                               decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-                              child: pw.Text(balanceDue.endsWith('/-') ? balanceDue : '$balanceDue/-', style: pw.TextStyle(font: bodyBold, fontSize: 9)),
+                              child: pw.Text(_formatAmt(balanceDue), style: pw.TextStyle(font: bodyBold, fontSize: 9)),
                             ),
                           ],
                         ),
@@ -400,16 +422,8 @@ class InvoicePdfService {
   );
 
   static pw.Widget _quotationNotes(pw.Font f, pw.Font fb, String category, List<String>? customTerms, String type) {
-    final bool isDM = category == 'Digital Marketing';
     
-    final defaultNotes = isDM ? [
-      'This quotation is not comprehensive. Inspection charges, additional consultation, statutory fees, and any additional work required as per instructions from authorities are excluded from this quotation and will be charged separately, if required.',
-      'Any increase in platform charges, subscription fees, or additional expenses related to digital tools during the project period must be borne by you.',
-      'We are not liable for delays caused by social media platform outages, algorithmic changes, technical glitches, policy updates, or any external factors beyond our control.',
-      'If additional resources, materials, or approvals are required for content creation or ad campaigns, your timely cooperation is essential. Any extra costs incurred—including paid assets, ad budgets, or third-party service fees—must be reimbursed by you.',
-      'Please provide prompt approvals for content, artwork, ad copies, and share required credentials (logins, OTPs, verification codes) on time to avoid delays.',
-      'In case of any misunderstanding, miscommunication, or unethical behavior from our team, please contact our Client Relationship Manager immediately.',
-    ] : [
+    final defaultNotes = [
       'This quotation is not comprehensive. Inspection charges, additional consultation, statutory fees, and any additional work required as per instructions from authorities are excluded from this quotation and will be charged separately, if required.',
       'Any increase in government fees or additional expenses during the application process must be borne by you.',
       'We are not liable for delays caused by changes in government regulations, system failures, network issues, or unforeseen circumstances beyond our control.',
@@ -464,6 +478,8 @@ class InvoicePdfService {
     String balanceDue = '',
     List<String>? quotationTerms,
     bool isReceipt = false,
+    bool isToSameAsClient = true,
+    String customTo = '',
   }) async {
     try {
       final pdfBytes = await generateInvoicePdf(
@@ -484,6 +500,8 @@ class InvoicePdfService {
         balanceDue: balanceDue,
         quotationTerms: quotationTerms,
         isReceipt: isReceipt,
+        isToSameAsClient: isToSameAsClient,
+        customTo: customTo,
       );
       await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdfBytes);
     } catch (e) {

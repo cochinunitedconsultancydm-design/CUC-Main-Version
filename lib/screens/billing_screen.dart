@@ -1313,7 +1313,6 @@ class _BillingScreenState extends State<BillingScreen> {
                 if (!isPaid) IconButton(onPressed: () => _setPaymentDeadlineDialog(context, b), icon: const Icon(Icons.schedule_rounded, color: Colors.redAccent), tooltip: 'Set Deadline'),
                 if (isPaid) IconButton(onPressed: () => _generateReceipt(b), icon: const Icon(Icons.receipt_rounded, color: Colors.teal), tooltip: 'Generate Receipt'),
                 if (b.type == 'QUOTATION') ...[
-                  IconButton(onPressed: () => _convertToInvoice(b), icon: const Icon(Icons.transform_rounded, color: Colors.deepPurple), tooltip: 'Convert to Invoice'),
                   IconButton(onPressed: () => _markInterested(b), icon: Icon(Icons.check_circle_outline_rounded, color: b.status == 'Interested' ? Colors.teal : Colors.grey.shade400, size: 22), tooltip: 'Interested'),
                   IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.cancel_outlined, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 22), tooltip: 'Not Interested'),
                 ],
@@ -1393,7 +1392,6 @@ class _BillingScreenState extends State<BillingScreen> {
                       if (!isPaid) IconButton(onPressed: () => _setPaymentDeadlineDialog(context, b), icon: const Icon(Icons.schedule_rounded, color: Colors.redAccent, size: 20), tooltip: 'Set Deadline', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       if (isPaid) IconButton(onPressed: () => _generateReceipt(b), icon: const Icon(Icons.receipt_rounded, color: Colors.teal, size: 20), tooltip: 'Receipt', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       if (b.type == 'QUOTATION') ...[
-                        IconButton(onPressed: () => _convertToInvoice(b), icon: const Icon(Icons.transform_rounded, color: Colors.deepPurple, size: 20), tooltip: 'Convert', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                         IconButton(onPressed: () => _markInterested(b), icon: Icon(Icons.check_circle_outline_rounded, color: b.status == 'Interested' ? Colors.teal : Colors.grey.shade400, size: 18), tooltip: 'Interested', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                         IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.cancel_outlined, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 18), tooltip: 'Not Interested', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       ],
@@ -1485,6 +1483,9 @@ class InvoiceCreatorPage extends StatefulWidget {
 class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   late String _type, _category, _authorities, _status;
   late TextEditingController _clientName, _clientAddress, _date, _invoiceNo, _outstanding, _advanceReceived, _deadlineDate, _approvedAmount, _discount;
+  bool _isToSameAsClient = true;
+  late TextEditingController _customToCtrl;
+  List<String> _selectedClientCompanies = [];
   late List<Map<String, dynamic>> _items;
   late List<TextEditingController> _itemDescControllers;
   late List<TextEditingController> _itemAmountControllers;
@@ -1498,7 +1499,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   
   
 
-  static const cats = ['Consultancy', 'Legal', 'Digital Marketing'];
+  static const cats = ['Consultancy', 'Legal'];
 
   @override
   void initState() {
@@ -1509,6 +1510,9 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     _category = cats.contains(b?.category) ? b!.category! : cats.first;
     _clientName = TextEditingController(text: b?.clientName);
     _clientAddress = TextEditingController(text: b?.data?['client_address'] ?? '');
+    _isToSameAsClient = b?.data?['is_to_same_as_client'] ?? true;
+    _customToCtrl = TextEditingController(text: b?.data?['custom_to'] ?? '');
+    _customToCtrl.addListener(() => setState(() {}));
     _date = TextEditingController(text: b?.date != null && b!.date!.isNotEmpty ? b.date : DateFormat('dd/MM/yyyy').format(DateTime.now()));
     _deadlineDate = TextEditingController(text: b?.data?['payment_deadline']?.toString() ?? '');
     _invoiceNo = TextEditingController(text: b?.invoiceNo);
@@ -1731,27 +1735,16 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         'For any clarifications or queries regarding the bill, or to report an error or omission, please contact us at cochinunitedconsultancydm@gmail.com',
       ];
     }
-    if (category == 'Digital Marketing') {
-      return [
-        'The validity of this quotation is only for one month from the date of issue.',
-        'This quotation is not comprehensive. Inspection charges, additional consultation, statutory fees, and any additional work required as per instructions from authorities are excluded from this quotation and will be charged separately, if required.',
-        'Any increase in platform charges, subscription fees, or additional expenses related to digital tools during the project period must be borne by you.',
-        'We are not liable for delays caused by social media platform outages, algorithmic changes, technical glitches, policy updates, or any external factors beyond our control.',
-        'If additional resources, materials, or approvals are required for content creation or ad campaigns, your timely cooperation is essential. Any extra costs incurred—including paid assets, ad budgets, or third-party service fees—must be reimbursed by you.',
-        'Please provide prompt approvals for content, artwork, ad copies, and share required credentials (logins, OTPs, verification codes) on time to avoid delays.',
-        'In case of any misunderstanding, miscommunication, or unethical behavior from our team, please contact our Client Relationship Manager immediately.',
-      ];
-    } else {
-      return [
-        'The validity of this quotation is only for one month from the date of issue.',
-        'This quotation is not comprehensive. Inspection charges, additional consultation, statutory fees, and any additional work required as per instructions from authorities are excluded from this quotation and will be charged separately, if required.',
-        'Any increase in government fees or additional expenses during the application process must be borne by you.',
-        'We are not liable for delays caused by changes in government regulations, system failures, network issues, or unforeseen circumstances beyond our control.',
-        'If additional documents or steps are required, your cooperation and support will be necessary, and any extra expenses incurred must be reimbursed by you.',
-        'Please regularly follow up on the application process and promptly share any required OTPs.',
-        'In case of any unethical practices or misbehavior by our staff, please contact our Client Relationship Manager immediately.',
-      ];
-    }
+    
+    return [
+      'The validity of this quotation is only for one month from the date of issue.',
+      'This quotation is not comprehensive. Inspection charges, additional consultation, statutory fees, and any additional work required as per instructions from authorities are excluded from this quotation and will be charged separately, if required.',
+      'Any increase in government fees or additional expenses during the application process must be borne by you.',
+      'We are not liable for delays caused by changes in government regulations, system failures, network issues, or unforeseen circumstances beyond our control.',
+      'If additional documents or steps are required, your cooperation and support will be necessary, and any extra expenses incurred must be reimbursed by you.',
+      'Please regularly follow up on the application process and promptly share any required OTPs.',
+      'In case of any unethical practices or misbehavior by our staff, please contact our Client Relationship Manager immediately.',
+    ];
   }
 
   Future<void> _generateInvoiceNo([bool force = false]) async {
@@ -1759,7 +1752,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     
     String getPrefix() {
       if (_category == 'Legal') {
-        return _type == 'QUOTATION' ? 'CLP-' : 'CUL-';
+        return _type == 'QUOTATION' ? 'CLP-' : 'LLP-';
       }
       return _type == 'QUOTATION' ? 'CC-' : 'AA-';
     }
@@ -1817,6 +1810,10 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   }
 
   Future<void> _save() async {
+    if (_clientName.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a client first'), backgroundColor: Colors.orange));
+      return;
+    }
     if (_invoiceNo.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice number is required'), backgroundColor: Colors.orange));
       return;
@@ -1856,6 +1853,8 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         'balance_due': _balanceDue,
         'advance_received': _advanceReceived.text,
         'client_address': _clientAddress.text, 
+        'is_to_same_as_client': _isToSameAsClient,
+        'custom_to': _customToCtrl.text,
         'quotation_terms': _quotationTerms,
         'payment_deadline': _deadlineDate.text,
         'approved_amount': _approvedAmount.text,
@@ -1929,9 +1928,14 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   Future<void> _print() async {
     _calc();
     await InvoicePdfService.printInvoice(
-      type: _type, category: _category, clientName: _clientName.text, 
-      clientAddress: _clientAddress.text, date: _date.text, invoiceNo: _invoiceNo.text, 
-      authorities: _authorities, items: _items, 
+      type: _type, 
+      category: _category, 
+      clientName: _clientName.text, 
+      clientAddress: _clientAddress.text, 
+      date: _date.text, 
+      invoiceNo: _invoiceNo.text, 
+      authorities: _authorities, 
+      items: _items, 
       totalAmount: _totalAmount, 
       amountInWords: _amountInWords, 
       outstandingAmount: _outstanding.text, 
@@ -1940,6 +1944,8 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       grandTotal: _grandTotal,
       balanceDue: _balanceDue,
       quotationTerms: _quotationTerms,
+      isToSameAsClient: _isToSameAsClient,
+      customTo: _customToCtrl.text,
     );
   }
 
@@ -2041,7 +2047,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                           _quotationTerms = _getDefaultTerms(_category);
                           _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
                         }
-                        _generateInvoiceNo(true);
+                        if (widget.billing == null) _generateInvoiceNo(true);
                       }
                     });
                   })),
@@ -2052,7 +2058,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                         _type = v;
                         _quotationTerms = _getDefaultTerms(_category);
                         _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
-                        _generateInvoiceNo(true);
+                        if (widget.billing == null) _generateInvoiceNo(true);
                       }
                     });
                   })),
@@ -2067,13 +2073,57 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
               _buildClientAutocomplete(isMobile),
               const SizedBox(height: 12),
               _buildField('Address', _clientAddress, 'Complete billing address...', lines: 3),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Switch(
+                    value: _isToSameAsClient,
+                    onChanged: (v) => setState(() => _isToSameAsClient = v),
+                    activeColor: const Color(0xFF2563EB),
+                  ),
+                  const Expanded(child: Text('Use Client Name & Address for "TO"', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B)))),
+                ],
+              ),
+              if (_selectedClientCompanies.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text('Or Select Company:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _selectedClientCompanies.map((comp) {
+                    String cName = comp;
+                    String cAddr = '';
+                    if (comp.contains('|||')) {
+                      final parts = comp.split('|||');
+                      cName = parts[0];
+                      if (parts.length > 1) cAddr = parts[1];
+                    }
+                    return ActionChip(
+                      label: Text(cName, style: const TextStyle(fontSize: 12)),
+                      backgroundColor: Colors.white,
+                      side: BorderSide(color: Colors.grey.shade300),
+                      onPressed: () {
+                        setState(() {
+                          _isToSameAsClient = false;
+                          _customToCtrl.text = cAddr.isNotEmpty ? '$cName\n$cAddr' : cName;
+                        });
+                      }
+                    );
+                  }).toList(),
+                ),
+              ],
+              if (!_isToSameAsClient) ...[
+                const SizedBox(height: 12),
+                _buildField('Custom "TO" Details', _customToCtrl, 'First line bold (Name)\nOther lines normal (Address)', lines: 4),
+              ],
               const SizedBox(height: 20),
               if (isMobile) ...[
                 _buildField('Date', _date, 'dd/mm/yyyy', readOnly: true),
                 const SizedBox(height: 16),
                 _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy'),
                 const SizedBox(height: 16),
-                _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: true, suffix: IconButton(
+                _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: false, suffix: IconButton(
                   icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF2563EB)),
                   onPressed: () => _generateInvoiceNo(true),
                   tooltip: 'Regenerate sequence',
@@ -2084,7 +2134,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                   const SizedBox(width: 16),
                   Expanded(child: _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy')),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: true, suffix: IconButton(
+                  Expanded(child: _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: false, suffix: IconButton(
                     icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF2563EB)),
                     onPressed: () => _generateInvoiceNo(true),
                     tooltip: 'Regenerate sequence',
@@ -2217,6 +2267,8 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                 grandTotal: _grandTotal,
                 balanceDue: _balanceDue,
                 quotationTerms: _quotationTerms,
+                isToSameAsClient: _isToSameAsClient,
+                customTo: _customToCtrl.text,
               ),
               canChangePageFormat: false, 
               canChangeOrientation: false, 
@@ -2306,6 +2358,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     final addressCtrl = TextEditingController();
     bool isContacted = false;
     bool isSaving = false;
+    List<Map<String, TextEditingController>> companyControllers = [];
 
     Widget buildPremiumField(TextEditingController ctrl, String label, IconData icon, {int maxLines = 1}) {
       return TextField(
@@ -2319,7 +2372,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           fillColor: const Color(0xFFF8FAFC),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFC5A028))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFC5A028)),),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
       );
@@ -2424,6 +2477,44 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                         ),
                         const SizedBox(height: 16),
                         buildPremiumField(addressCtrl, 'Full Address', Icons.location_on_outlined, maxLines: 3),
+                        const SizedBox(height: 16),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Companies', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                        ),
+                        const SizedBox(height: 8),
+                        ...companyControllers.asMap().entries.map((e) {
+                          int idx = e.key;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    children: [
+                                      buildPremiumField(e.value['name']!, 'Company Name', Icons.business),
+                                      const SizedBox(height: 8),
+                                      buildPremiumField(e.value['address']!, 'Company Address', Icons.location_on_outlined, maxLines: 2),
+                                    ]
+                                  )
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                  onPressed: () => setDialogState(() => companyControllers.removeAt(idx)),
+                                )
+                              ]
+                            )
+                          );
+                        }),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => setDialogState(() => companyControllers.add({'name': TextEditingController(), 'address': TextEditingController()})),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Add Company', style: TextStyle(fontSize: 13)),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -2463,6 +2554,11 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                               managed_by: careOfCtrl.text,
                               is_contacted: isContacted,
                               address: addressCtrl.text,
+                              companies: companyControllers.map((c) {
+                                final name = c['name']!.text.trim();
+                                final addr = c['address']!.text.trim();
+                                return '$name|||$addr';
+                              }).where((c) => !c.startsWith('|||')).toList(),
                             );
                             await BackupAwareApi().create(newClient);
                             if (mounted) {
@@ -2501,6 +2597,75 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     );
   }
 
+  void _showClientSelectionDialog() async {
+    final clients = await ClientService().getAllClients();
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        String searchQuery = '';
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final filtered = clients.where((c) => (c['name'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase())).toList();
+            
+            return AlertDialog(
+              title: const Text('Select Client', style: TextStyle(fontWeight: FontWeight.bold)),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 400,
+                child: Column(
+                  children: [
+                    TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search clients...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onChanged: (v) {
+                        setDialogState(() => searchQuery = v);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, idx) {
+                          final c = filtered[idx];
+                          return ListTile(
+                            title: Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text(c['phone'] ?? ''),
+                            onTap: () {
+                              setState(() {
+                                _clientName.text = c['name'] ?? '';
+                                _clientAddress.text = c['address'] ?? '';
+                                _outstanding.text = c['balance_due']?.toString() ?? '';
+                                _selectedClientCompanies = (c['companies'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+                                _calc();
+                              });
+                              Navigator.pop(context);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
+
   Widget _buildClientAutocomplete(bool isMobile) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(
@@ -2514,71 +2679,33 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         ],
       ),
       const SizedBox(height: 6),
-      Autocomplete<Map<String, dynamic>>(
-        displayStringForOption: (option) => option['name'],
-        optionsBuilder: (textEditingValue) async {
-          if (textEditingValue.text.isEmpty) return const Iterable.empty();
-          return await ClientService().searchClients(textEditingValue.text);
-        },
-        onSelected: (option) {
-          setState(() {
-            _clientName.text = option['name'];
-            _clientAddress.text = option['address'];
-            _outstanding.text = option['balance_due'] ?? '';
-            _calc();
-          });
-        },
-        fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-          // Sync internal controller with autocomplete controller
-          if (controller.text.isEmpty && _clientName.text.isNotEmpty) {
-            controller.text = _clientName.text;
-          }
-          controller.addListener(() {
-            _clientName.text = controller.text;
-            setState(() {});
-          });
-          
-          return TextField(
-            controller: controller,
-            focusNode: focusNode,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              hintText: 'Start typing client name...',
-              hintStyle: TextStyle(color: Colors.grey.shade300),
-              filled: true,
-              fillColor: const Color(0xFFF8FAFC),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB))),
-            ),
-          );
-        },
-        optionsViewBuilder: (context, onSelected, options) {
-          return Align(
-            alignment: Alignment.topLeft,
-            child: Material(
-              elevation: 4.0,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: isMobile ? MediaQuery.of(context).size.width - 32 : 412, // Match field width approximately
-                constraints: const BoxConstraints(maxHeight: 200),
-                child: ListView.builder(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  itemCount: options.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    final option = options.elementAt(index);
-                    return ListTile(
-                      title: Text(option['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      subtitle: Text(option['address'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
-                      onTap: () => onSelected(option),
-                    );
-                  },
+      InkWell(
+        onTap: _showClientSelectionDialog,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            border: Border.all(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  _clientName.text.isEmpty ? 'Select a client...' : _clientName.text,
+                  style: TextStyle(
+                    fontSize: 14, 
+                    fontWeight: FontWeight.w500,
+                    color: _clientName.text.isEmpty ? Colors.grey.shade400 : Colors.black87,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ),
-          );
-        },
+              Icon(Icons.arrow_drop_down, color: Colors.grey.shade500),
+            ],
+          ),
+        ),
       ),
     ]);
   }

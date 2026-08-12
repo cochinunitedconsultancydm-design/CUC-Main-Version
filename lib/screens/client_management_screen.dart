@@ -280,6 +280,16 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     final careOfController = TextEditingController(text: client?.managedBy);
     final addressController = TextEditingController(text: client?.address);
     bool isContacted = client?.isContacted ?? false;
+    List<Map<String, TextEditingController>> companyControllers = (client?.companies ?? []).map((c) {
+      String name = c;
+      String address = '';
+      if (c.contains('|||')) {
+        final parts = c.split('|||');
+        name = parts[0];
+        if (parts.length > 1) address = parts[1];
+      }
+      return {'name': TextEditingController(text: name), 'address': TextEditingController(text: address)};
+    }).toList();
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -431,6 +441,49 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     ),
                     const SizedBox(height: 20),
                     _buildFormField(addressController, 'Full Address', Icons.location_on, false, maxLines: 2),
+                    const SizedBox(height: 20),
+                    const Text('Companies', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                    const SizedBox(height: 12),
+                    ...companyControllers.asMap().entries.map((e) {
+                      int idx = e.key;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  _buildFormField(e.value['name']!, 'Company Name', Icons.business, false),
+                                  const SizedBox(height: 8),
+                                  _buildFormField(e.value['address']!, 'Company Address', Icons.location_on, false, maxLines: 2),
+                                ]
+                              )
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                              onPressed: () {
+                                setModalState(() {
+                                  companyControllers.removeAt(idx);
+                                });
+                              }
+                            )
+                          ]
+                        )
+                      );
+                    }),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          setModalState(() {
+                            companyControllers.add({'name': TextEditingController(), 'address': TextEditingController()});
+                          });
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Company'),
+                      ),
+                    ),
                     const SizedBox(height: 40),
                     ElevatedButton(
                       onPressed: () async {
@@ -491,6 +544,11 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                           managedBy: careOfController.text,
                           balanceDue: client?.balanceDue,
                           registrationNumber: client?.registrationNumber,
+                          companies: companyControllers.map((c) {
+                            final name = c['name']!.text.trim();
+                            final addr = c['address']!.text.trim();
+                            return '$name|||$addr';
+                          }).where((c) => !c.startsWith('|||')).toList(),
                         );
                         try {
                           if (client == null) {
@@ -518,6 +576,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               dob: newClient.dob,
                               managed_by: newClient.managedBy,
                               case_number: newRegNo,
+                              companies: newClient.companies,
                             );
                             await BackupAwareApi().create(model);
                           } else {
@@ -534,6 +593,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               dob: newClient.dob,
                               managed_by: newClient.managedBy,
                               case_number: newClient.registrationNumber,
+                              companies: newClient.companies,
                             );
                             await BackupAwareApi().update(model);
                           }

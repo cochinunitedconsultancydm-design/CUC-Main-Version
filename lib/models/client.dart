@@ -13,6 +13,7 @@ class Client {
   final String? managedBy;
   final int reviewRating;
   final String? balanceDue;
+  final List<String>? companies;
   final String? registrationNumber;
   final String? createdBy;
 
@@ -31,6 +32,7 @@ class Client {
     this.managedBy,
     this.reviewRating = 0,
     this.balanceDue,
+    this.companies,
     this.registrationNumber,
     this.createdBy,
   });

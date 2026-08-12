@@ -393,19 +393,29 @@ class BillingService {
       }
     }
     
-    final matching = all.where((b) => b.invoice_no != null && b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
-    matching.sort((a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
-    
-    if (matching.isNotEmpty) {
-      final last = matching.first.invoice_no!;
-      final match = RegExp(r'(\d+)$').firstMatch(last);
-      if (match != null) {
-        final numStr = match.group(1)!;
-        final num = int.parse(numStr) + 1;
-        return last.substring(0, last.length - numStr.length) + num.toString().padLeft(numStr.length, '0');
+    final matching = all.where((b) => b.invoice_no != null && 
+b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
+      
+      int maxNum = 0;
+      String? bestLast;
+      for (var b in matching) {
+        final match = RegExp(r'(\d+)$').firstMatch(b.invoice_no!.trim());
+        if (match != null) {
+          final num = int.tryParse(match.group(1)!);
+          if (num != null && num > maxNum) {
+            maxNum = num;
+            bestLast = b.invoice_no!.trim();
+          }
+        }
       }
-    }
-    return null;
+
+      if (bestLast != null) {
+        final match = RegExp(r'(\d+)$').firstMatch(bestLast);
+        final numStr = match!.group(1)!;
+        final num = maxNum + 1;
+        return bestLast.substring(0, bestLast.length - numStr.length) + num.toString().padLeft(numStr.length, '0');
+      }
+      return null;
   }
 
   Future<String?> getClientPhone(String clientName) async {

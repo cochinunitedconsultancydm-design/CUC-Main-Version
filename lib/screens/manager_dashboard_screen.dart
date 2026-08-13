@@ -51,6 +51,7 @@ import 'document_list_screen.dart';
 import 'verification_history_view.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import '../services/attendance_service.dart';
+import 'package:cuc_app/services/birthday_service.dart';
 
 class ManagerDashboardScreen extends StatefulWidget {
   const ManagerDashboardScreen({super.key});
@@ -115,8 +116,14 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     
     NotificationService().checkAndSendFrequentReminders();
     _checkTodayChecklists();
+    
+    // Check and show staff birthdays after a short delay so the dashboard can load first
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        BirthdayService.checkAndShowBirthdays(context);
+      }
+    });
   }
-
   Future<void> _checkTodayChecklists() async {
     final id = await AuthService().getUserId();
     if (id != null) {

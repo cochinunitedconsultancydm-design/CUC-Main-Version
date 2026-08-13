@@ -9,6 +9,7 @@ class Client {
   final String? dob;
   final String? fileNo;
   final String? fileDate;
+
   final bool isContacted;
   final String? managedBy;
   final int reviewRating;
@@ -16,6 +17,8 @@ class Client {
   final List<String>? companies;
   final String? registrationNumber;
   final String? createdBy;
+  final String? bankAccountDetails;
+  final List<String>? customFields;
 
   Client({
     this.id,
@@ -35,6 +38,8 @@ class Client {
     this.companies,
     this.registrationNumber,
     this.createdBy,
+    this.bankAccountDetails,
+    this.customFields,
   });
 
   factory Client.fromMap(Map<String, dynamic> map) {
@@ -54,6 +59,8 @@ class Client {
       reviewRating: map['review_rating'] ?? 0,
       balanceDue: map['balance_due'],
       registrationNumber: map['registration_number'],
+      bankAccountDetails: map['bank_account_details'],
+      customFields: (map['custom_fields'] as List?)?.map((e) => e.toString()).toList(),
     );
   }
 
@@ -74,6 +81,8 @@ class Client {
       'review_rating': reviewRating,
       'balance_due': balanceDue,
       'registration_number': registrationNumber,
+      'bank_account_details': bankAccountDetails,
+      'custom_fields': customFields,
     };
   }
 }

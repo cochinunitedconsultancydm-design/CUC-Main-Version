@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
@@ -111,22 +112,33 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
       clientsList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       if (!mounted) return;
       setState(() {
-        _clients = clientsList.map((m) => Client(
-          id: m.id,
-          name: m.name ?? '',
-          email: m.email,
-          phone: m.phone,
-          address: (m.address?.trim().toLowerCase() == 'false') ? '' : m.address,
-          typeOfWork: m.type_of_work,
-          caseNumber: m.case_number,
-          dob: m.dob,
-          fileNo: m.file_no,
-          fileDate: m.file_date,
-          isContacted: m.is_contacted ?? false,
-          balanceDue: m.balance_due,
-          registrationNumber: m.case_number,
-          createdBy: clientCreators[m.id] ?? 'System/Legacy',
-        )).toList();
+        _clients = clientsList.map((m) {
+          final rawCompanies = m.companies ?? [];
+          final actualCompanies = rawCompanies.where((c) => !c.startsWith('BANK_ACCOUNT|||') && !c.startsWith('CUSTOM_FIELD|||')).toList();
+          final bankAccounts = rawCompanies.where((c) => c.startsWith('BANK_ACCOUNT|||'));
+          final bankAccount = bankAccounts.isNotEmpty ? bankAccounts.first.split('|||').last : null;
+          final customFields = rawCompanies.where((c) => c.startsWith('CUSTOM_FIELD|||')).map((c) => c.replaceFirst('CUSTOM_FIELD|||', '')).toList();
+          
+          return Client(
+            id: m.id,
+            name: m.name ?? '',
+            email: m.email,
+            phone: m.phone,
+            address: (m.address?.trim().toLowerCase() == 'false') ? '' : m.address,
+            typeOfWork: m.type_of_work,
+            caseNumber: m.case_number,
+            dob: m.dob,
+            fileNo: m.file_no,
+            fileDate: m.file_date,
+            isContacted: m.is_contacted ?? false,
+            balanceDue: m.balance_due,
+            bankAccountDetails: bankAccount,
+            customFields: customFields.isNotEmpty ? customFields : null,
+            companies: actualCompanies.isNotEmpty ? actualCompanies : null,
+            registrationNumber: m.registration_number,
+            createdBy: clientCreators[m.id] ?? 'System/Legacy',
+          );
+        }).toList();
         _applySort();
       });
     } catch (e) {
@@ -134,6 +146,39 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<List<String>> _fetchAdditionalFileNumbers(Client c) async {
+    List<String> files = [];
+    try {
+      // Fetch Works / Deals
+      final reqWorks = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.CLIENT_NAME.contains(c.name));
+      final resWorks = await Amplify.API.query(request: reqWorks).response;
+      final deals = resWorks.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
+      for (var d in deals) {
+        if (d.register_no != null && d.register_no!.trim().isNotEmpty && d.register_no!.toLowerCase() != 'null') {
+          files.add('Work (${d.work_type ?? "N/A"}): ${d.register_no}');
+        }
+      }
+
+      // Fetch Client Licenses
+      if (c.id != null) {
+        int? cid = int.tryParse(c.id.toString());
+        if (cid != null) {
+          final reqLic = ModelQueries.list(amplify_models.ClientLicenses.classType, where: amplify_models.ClientLicenses.CLIENT_ID.eq(cid));
+          final resLic = await Amplify.API.query(request: reqLic).response;
+          final licenses = resLic.data?.items.whereType<amplify_models.ClientLicenses>().toList() ?? [];
+          for (var l in licenses) {
+            if (l.file_no != null && l.file_no!.trim().isNotEmpty && l.file_no!.toLowerCase() != 'null') {
+              files.add('License: ${l.file_no}');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching additional file numbers: $e');
+    }
+    return files.toSet().toList(); // Remove duplicates if any
   }
 
   void _showMergeDialog(Client client) {
@@ -178,27 +223,176 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
       if (!mounted) return;
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Works for ${c.name}'),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 400,
-            child: deals.isEmpty ? const Center(child: Text('No works found.')) : ListView.separated(
-              itemCount: deals.length,
-              separatorBuilder: (_, __) => const Divider(),
-              itemBuilder: (context, index) {
-                final d = deals[index];
-                return ListTile(
-                  title: Text(d.name ?? 'Unnamed Work', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Stage: ${d.stage ?? "N/A"}  •  Type: ${d.work_type ?? "N/A"}'),
-                  trailing: Text('₹${d.amount ?? 0}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                );
-              }
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Colors.grey.shade50,
+          elevation: 12,
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            width: 700,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+                            child: const Icon(Icons.work, color: AppTheme.primaryColor, size: 24),
+                          ),
+                          const SizedBox(width: 16),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Client Works', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: -0.5, color: Colors.black87)),
+                              Text(c.name, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Material(
+                        color: Colors.grey.shade100,
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          icon: Icon(Icons.close, color: Colors.grey.shade700),
+                          onPressed: () => Navigator.pop(context),
+                          splashRadius: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Content
+                Flexible(
+                  child: deals.isEmpty 
+                    ? Padding(
+                        padding: const EdgeInsets.all(40),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.folder_off_outlined, size: 64, color: Colors.grey.shade300),
+                              const SizedBox(height: 16),
+                              Text('No works found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+                              const SizedBox(height: 8),
+                              Text('There are no active or past works for this client.', style: TextStyle(color: Colors.grey.shade500)),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(24),
+                        shrinkWrap: true,
+                        itemCount: deals.length,
+                        itemBuilder: (context, index) {
+                          final d = deals[index];
+                          final hasFileNo = d.register_no != null && d.register_no!.trim().isNotEmpty && d.register_no != 'null';
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.grey.shade200),
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(d.name ?? 'Unnamed Work', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+                                        const SizedBox(height: 12),
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.blue.shade100)),
+                                              child: Text('Stage: ${d.stage ?? "N/A"}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade700)),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                              decoration: BoxDecoration(color: Colors.purple.shade50, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.purple.shade100)),
+                                              child: Text('Type: ${d.work_type ?? "N/A"}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple.shade700)),
+                                            ),
+                                            if (hasFileNo)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.orange.shade100)),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.file_copy_outlined, size: 12, color: Colors.orange.shade700),
+                                                    const SizedBox(width: 4),
+                                                    Text('File/Reg No: ${d.register_no}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade700)),
+                                                  ],
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (d.amount != null) ...[
+                                    const SizedBox(width: 16),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12)),
+                                      child: Column(
+                                        children: [
+                                          Text('₹${d.amount}', style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.bold, fontSize: 16)),
+                                          Text('Amount', style: TextStyle(color: Colors.green.shade600, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                      ),
+                ),
+                
+                // Footer
+                if (deals.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        FilledButton.tonal(
+                          onPressed: () => Navigator.pop(context),
+                          style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                          child: const Text('Close', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))
-          ],
         ),
       );
     } catch (e) {
@@ -279,6 +473,30 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     final dobController = TextEditingController(text: client?.dob);
     final careOfController = TextEditingController(text: client?.managedBy);
     final addressController = TextEditingController(text: client?.address);
+    
+    String accNo = '';
+    String holderName = '';
+    String ifsc = '';
+    String branch = '';
+    if (client?.bankAccountDetails != null && client!.bankAccountDetails!.isNotEmpty) {
+      if (client.bankAccountDetails!.startsWith('{')) {
+        try {
+          final map = jsonDecode(client.bankAccountDetails!);
+          accNo = map['accNo'] ?? '';
+          holderName = map['holderName'] ?? '';
+          ifsc = map['ifsc'] ?? '';
+          branch = map['branch'] ?? '';
+        } catch (_) {}
+      } else {
+        accNo = client.bankAccountDetails!;
+      }
+    }
+    
+    final accNoController = TextEditingController(text: accNo);
+    final holderNameController = TextEditingController(text: holderName);
+    final ifscController = TextEditingController(text: ifsc);
+    final branchController = TextEditingController(text: branch);
+
     bool isContacted = client?.isContacted ?? false;
     List<Map<String, TextEditingController>> companyControllers = (client?.companies ?? []).map((c) {
       String name = c;
@@ -289,6 +507,16 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
         if (parts.length > 1) address = parts[1];
       }
       return {'name': TextEditingController(text: name), 'address': TextEditingController(text: address)};
+    }).toList();
+    List<Map<String, TextEditingController>> customFieldControllers = (client?.customFields ?? []).map((c) {
+      String hd = c;
+      String val = '';
+      if (c.contains('|||')) {
+        final parts = c.split('|||');
+        hd = parts[0];
+        if (parts.length > 1) val = parts[1];
+      }
+      return {'heading': TextEditingController(text: hd), 'value': TextEditingController(text: val)};
     }).toList();
     final formKey = GlobalKey<FormState>();
 
@@ -442,6 +670,24 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     const SizedBox(height: 20),
                     _buildFormField(addressController, 'Full Address', Icons.location_on, false, maxLines: 2),
                     const SizedBox(height: 20),
+                    const Text('Bank Account Details', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: _buildFormField(accNoController, 'Account No', Icons.numbers, false)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildFormField(holderNameController, 'Holder Name', Icons.person, false)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: _buildFormField(ifscController, 'IFSC Code', Icons.code, false)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildFormField(branchController, 'Branch', Icons.account_balance, false)),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                     const Text('Companies', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
                     const SizedBox(height: 12),
                     ...companyControllers.asMap().entries.map((e) {
@@ -482,6 +728,49 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                         },
                         icon: const Icon(Icons.add),
                         label: const Text('Add Company'),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Additional Custom Data', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                    const SizedBox(height: 12),
+                    ...customFieldControllers.asMap().entries.map((e) {
+                      int idx = e.key;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  _buildFormField(e.value['heading']!, 'Heading / Title', Icons.title, false),
+                                  const SizedBox(height: 8),
+                                  _buildFormField(e.value['value']!, 'Value', Icons.description, false, maxLines: 2),
+                                ]
+                              )
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                              onPressed: () {
+                                setModalState(() {
+                                  customFieldControllers.removeAt(idx);
+                                });
+                              }
+                            )
+                          ]
+                        )
+                      );
+                    }),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          setModalState(() {
+                            customFieldControllers.add({'heading': TextEditingController(), 'value': TextEditingController()});
+                          });
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Custom Field'),
                       ),
                     ),
                     const SizedBox(height: 40),
@@ -530,6 +819,15 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                           }
                         }
 
+                        final bankDetailsJson = (accNoController.text.trim().isEmpty && holderNameController.text.trim().isEmpty && ifscController.text.trim().isEmpty && branchController.text.trim().isEmpty) 
+                            ? '' 
+                            : jsonEncode({
+                                'accNo': accNoController.text.trim(),
+                                'holderName': holderNameController.text.trim(),
+                                'ifsc': ifscController.text.trim(),
+                                'branch': branchController.text.trim(),
+                              });
+
                         final newClient = Client(
                           id: client?.id,
                           name: nameController.text,
@@ -543,11 +841,17 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                           dob: dobController.text,
                           managedBy: careOfController.text,
                           balanceDue: client?.balanceDue,
+                          bankAccountDetails: bankDetailsJson,
                           registrationNumber: client?.registrationNumber,
                           companies: companyControllers.map((c) {
                             final name = c['name']!.text.trim();
                             final addr = c['address']!.text.trim();
                             return '$name|||$addr';
+                          }).where((c) => !c.startsWith('|||')).toList(),
+                          customFields: customFieldControllers.map((c) {
+                            final hd = c['heading']!.text.trim();
+                            final val = c['value']!.text.trim();
+                            return '$hd|||$val';
                           }).where((c) => !c.startsWith('|||')).toList(),
                         );
                         try {
@@ -576,7 +880,11 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               dob: newClient.dob,
                               managed_by: newClient.managedBy,
                               case_number: newRegNo,
-                              companies: newClient.companies,
+                              companies: [
+                                ...newClient.companies ?? [],
+                                if (newClient.bankAccountDetails?.isNotEmpty == true) 'BANK_ACCOUNT|||${newClient.bankAccountDetails}',
+                                ...?(newClient.customFields?.map((f) => 'CUSTOM_FIELD|||$f')),
+                              ],
                             );
                             await BackupAwareApi().create(model);
                           } else {
@@ -593,7 +901,11 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               dob: newClient.dob,
                               managed_by: newClient.managedBy,
                               case_number: newClient.registrationNumber,
-                              companies: newClient.companies,
+                              companies: [
+                                ...newClient.companies ?? [],
+                                if (newClient.bankAccountDetails?.isNotEmpty == true) 'BANK_ACCOUNT|||${newClient.bankAccountDetails}',
+                                ...?(newClient.customFields?.map((f) => 'CUSTOM_FIELD|||$f')),
+                              ],
                             );
                             await BackupAwareApi().update(model);
                           }
@@ -880,184 +1192,349 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
 
   Widget _buildClientCard(Client c, bool isWide) {
     return Card(
-      elevation: 4,
+      elevation: 2,
       shadowColor: Colors.black.withValues(alpha: 0.05),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: Colors.grey.shade100)),
-      child: Padding(
-        padding: EdgeInsets.all(isWide ? 24 : 16),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  child: Text(c.name.isNotEmpty ? c.name[0].toUpperCase() : '?', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: AppTheme.primaryColor)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade100)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _showClientDetailsDialog(c, isWide),
+        child: Padding(
+          padding: EdgeInsets.all(isWide ? 20 : 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                child: Text(c.name.isNotEmpty ? c.name[0].toUpperCase() : '?', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppTheme.primaryColor)),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(c.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isWide ? 18 : 16), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Text('${c.typeOfWork ?? "No Type"} • Reg: ${c.registrationNumber ?? "N/A"}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(c.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isWide ? 18 : 16), maxLines: 2, overflow: TextOverflow.ellipsis),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          if (c.isContacted)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.green.shade200)),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.check_circle, size: 14, color: Colors.green),
-                                  SizedBox(width: 4),
-                                  Text("Contacted", style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ),
-                          GestureDetector(
-                            onTap: () => _showClientBillsDialog(c),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0" ? Colors.orange.shade50 : Colors.grey.shade50,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0" ? Colors.orange.shade200 : Colors.grey.shade200),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.account_balance_wallet_outlined, size: 14, color: c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0" ? Colors.orange.shade800 : Colors.grey.shade600),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    "Due: ${c.balanceDue ?? '0/-'}",
-                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0" ? Colors.orange.shade800 : Colors.grey.shade600),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text('${c.typeOfWork ?? "No Type of Work"} • File: ${c.fileNo ?? "N/A"} • Reg No: ${c.registrationNumber ?? "N/A"}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-                      const SizedBox(height: 4),
-                      Text('Created by: ${c.createdBy ?? "System/Legacy"}', style: TextStyle(color: Colors.blueGrey.shade400, fontSize: 11, fontWeight: FontWeight.w500)),
-                    ],
-                  ),
+              ),
+              if (c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0") ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(12)),
+                  child: Text("Due: ${c.balanceDue}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade800)),
                 ),
               ],
-            ),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 24,
-              runSpacing: 16,
-              children: [
-                _buildInfoPill(Icons.email_outlined, c.email?.isNotEmpty == true ? c.email! : 'No Email', isWide),
-                _buildInfoPill(Icons.phone_outlined, c.phone?.isNotEmpty == true ? c.phone! : 'No Phone', isWide),
-                _buildInfoPill(Icons.calendar_today_outlined, 'File Date: ${c.fileDate?.isNotEmpty == true ? c.fileDate! : 'N/A'}', isWide),
-                _buildInfoPill(Icons.cake_outlined, 'DOB: ${c.dob?.isNotEmpty == true ? c.dob! : 'N/A'}', isWide),
-                _buildInfoPill(Icons.location_on_outlined, c.address?.isNotEmpty == true ? c.address! : 'No Address', isWide),
-                _buildInfoPill(Icons.supervised_user_circle_outlined, 'Care Of: ${c.managedBy?.isNotEmpty == true ? c.managedBy! : 'N/A'}', isWide),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => _showClientFilesDialog(c),
-                  icon: const Icon(Icons.folder_shared, size: 16),
-                  label: const Text('Files Vault'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.blueAccent,
-                    side: BorderSide(color: Colors.blue.shade200),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _showClientBillsDialog(c),
-                  icon: const Icon(Icons.receipt_long_outlined, size: 16),
-                  label: const Text('Bills'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.teal,
-                    side: BorderSide(color: Colors.teal.shade200),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _showClientWorksDialog(c),
-                  icon: const Icon(Icons.work_outline, size: 16),
-                  label: const Text('Works'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.indigo,
-                    side: BorderSide(color: Colors.indigo.shade200),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _showMergeDialog(c),
-                  icon: const Icon(Icons.merge_type, size: 16),
-                  label: const Text('Merge'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.purple,
-                    side: BorderSide(color: Colors.purple.shade200),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _showClientForm(c),
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text('Edit Profile'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primaryColor,
-                    side: const BorderSide(color: AppTheme.primaryColor),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _deleteClient(c.id.toString()),
-                  icon: const Icon(Icons.delete_outline, size: 16),
-                  label: const Text('Delete'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: BorderSide(color: Colors.red.shade200),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ],
-            ),
-          ],
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: Colors.grey),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildInfoPill(IconData icon, String text, bool isWide) {
-    return SizedBox(
-      width: isWide ? 220 : double.infinity,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+  void _showClientDetailsDialog(Client c, bool isWide) {
+    String bankText = 'No Bank Details';
+    if (c.bankAccountDetails != null && c.bankAccountDetails!.trim().isNotEmpty) {
+      if (c.bankAccountDetails!.startsWith('{')) {
+        try {
+          final map = jsonDecode(c.bankAccountDetails!);
+          final parts = <String>[];
+          if (map['accNo']?.isNotEmpty == true) parts.add('Acc: ${map['accNo']}');
+          if (map['holderName']?.isNotEmpty == true) parts.add('Name: ${map['holderName']}');
+          if (map['ifsc']?.isNotEmpty == true) parts.add('IFSC: ${map['ifsc']}');
+          if (map['branch']?.isNotEmpty == true) parts.add('Branch: ${map['branch']}');
+          if (parts.isNotEmpty) bankText = parts.join(' | ');
+        } catch (_) {}
+      } else {
+        bankText = c.bankAccountDetails!;
+      }
+    }
+
+    List<String> actualCompanies = c.companies ?? [];
+    List<String> customFields = [];
+    
+    // Also include custom fields if they exist natively in the model
+    if (c.customFields != null) {
+      for (var cf in c.customFields!) {
+        // cf might be "Key|||Value" or just "Key: Value"
+        if (cf.contains('|||')) {
+          final parts = cf.split('|||');
+          if (parts.length >= 2) customFields.add('${parts[0]}: ${parts[1]}');
+        } else {
+          customFields.add(cf.replaceAll('|||', ' - '));
+        }
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.grey.shade50,
+        elevation: 12,
+        clipBehavior: Clip.antiAlias,
+        child: SizedBox(
+          width: isWide ? 650 : double.infinity,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Premium Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 4))],
+                            ),
+                            child: CircleAvatar(
+                              radius: 28,
+                              backgroundColor: AppTheme.primaryColor,
+                              child: Text(c.name.isNotEmpty ? c.name[0].toUpperCase() : '?', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: Colors.white)),
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(c.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22, color: Colors.black87, letterSpacing: -0.5)),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(Icons.info_outline, size: 14, color: Colors.grey.shade500),
+                                    const SizedBox(width: 4),
+                                    Text('Created by: ${c.createdBy ?? "System/Legacy"}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w500)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Material(
+                      color: Colors.grey.shade100,
+                      shape: const CircleBorder(),
+                      child: IconButton(
+                        icon: Icon(Icons.close, color: Colors.grey.shade700),
+                        onPressed: () => Navigator.pop(ctx),
+                        splashRadius: 24,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Scrollable Content
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionCard('Basic Information', Icons.person_outline, [
+                        _buildSimpleDetailRow(Icons.email_outlined, 'Email', c.email),
+                        _buildSimpleDetailRow(Icons.phone_outlined, 'Phone', c.phone),
+                        _buildSimpleDetailRow(Icons.cake_outlined, 'DOB', c.dob),
+                        _buildSimpleDetailRow(Icons.location_on_outlined, 'Address', c.address),
+                      ]),
+                      const SizedBox(height: 20),
+                      
+                      _buildSectionCard('Work Details', Icons.work_outline, [
+                        _buildSimpleDetailRow(Icons.work_outline, 'Type of Work', c.typeOfWork),
+                        _buildSimpleDetailRow(Icons.balance, 'Case Number', c.caseNumber),
+                        _buildSimpleDetailRow(Icons.folder_outlined, 'Primary File No', c.fileNo),
+                        _buildSimpleDetailRow(Icons.calendar_today_outlined, 'File Date', c.fileDate),
+                        _buildSimpleDetailRow(Icons.receipt_outlined, 'Reg No', c.registrationNumber),
+                        _buildSimpleDetailRow(Icons.account_balance_wallet, 'Balance Due', c.balanceDue, isHighlight: true),
+                        _buildSimpleDetailRow(Icons.supervised_user_circle_outlined, 'Care Of', c.managedBy),
+                        _buildSimpleDetailRow(Icons.contact_phone_outlined, 'Contacted', c.isContacted ? "Yes" : "No"),
+                        _buildSimpleDetailRow(Icons.star_outline, 'Review Rating', c.reviewRating > 0 ? '${c.reviewRating} Stars' : null),
+                        
+                        FutureBuilder<List<String>>(
+                          future: _fetchAdditionalFileNumbers(c),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Padding(
+                                padding: EdgeInsets.only(bottom: 16),
+                                child: Row(
+                                  children: [
+                                    SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                                    SizedBox(width: 12),
+                                    Text('Loading related file numbers...', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                                  ],
+                                ),
+                              );
+                            }
+                            if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox.shrink();
+                            
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: snapshot.data!.map((fileItem) {
+                                return _buildSimpleDetailRow(Icons.file_copy_outlined, 'Related File No', fileItem, isHighlight: false, customColor: Colors.blue.shade700);
+                              }).toList(),
+                            );
+                          },
+                        ),
+                      ]),
+                      
+                      if (bankText != 'No Bank Details' || actualCompanies.isNotEmpty || customFields.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        _buildSectionCard('Additional Details', Icons.info_outline, [
+                          if (c.bankAccountDetails != null && c.bankAccountDetails!.trim().isNotEmpty && c.bankAccountDetails!.startsWith('{')) 
+                            ...() {
+                              try {
+                                final map = jsonDecode(c.bankAccountDetails!);
+                                return [
+                                  if (map['accNo']?.isNotEmpty == true) _buildSimpleDetailRow(Icons.numbers, 'Account No', map['accNo']),
+                                  if (map['holderName']?.isNotEmpty == true) _buildSimpleDetailRow(Icons.person, 'Holder Name', map['holderName']),
+                                  if (map['ifsc']?.isNotEmpty == true) _buildSimpleDetailRow(Icons.code, 'IFSC Code', map['ifsc']),
+                                  if (map['branch']?.isNotEmpty == true) _buildSimpleDetailRow(Icons.account_balance, 'Branch', map['branch']),
+                                ];
+                              } catch (_) {
+                                return [_buildSimpleDetailRow(Icons.account_balance_outlined, 'Bank Account', bankText)];
+                              }
+                            }()
+                          else if (bankText != 'No Bank Details') 
+                            _buildSimpleDetailRow(Icons.account_balance_outlined, 'Bank Account', bankText),
+                            
+                          for (var comp in actualCompanies) _buildSimpleDetailRow(Icons.business, 'Company', comp),
+                          
+                          for (var cf in customFields) 
+                            _buildSimpleDetailRow(Icons.label_outline, cf.contains(':') ? cf.split(':').first.trim() : 'Custom Data', cf.contains(':') ? cf.substring(cf.indexOf(':') + 1).trim() : cf),
+                        ]),
+                      ],
+                      
+                      const SizedBox(height: 32),
+                      const Text('Quick Actions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87, letterSpacing: -0.3)),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          runSpacing: 12,
+                          children: [
+                            _buildPremiumActionCard(ctx, Icons.edit, 'Edit Profile', () => _showClientForm(c), AppTheme.primaryColor),
+                            _buildPremiumActionCard(ctx, Icons.folder_shared, 'Files Vault', () => _showClientFilesDialog(c), Colors.blue.shade700),
+                            _buildPremiumActionCard(ctx, Icons.receipt_long, 'Bills', () => _showClientBillsDialog(c), Colors.teal.shade700),
+                            _buildPremiumActionCard(ctx, Icons.work, 'Works', () => _showClientWorksDialog(c), Colors.indigo.shade700),
+                            _buildPremiumActionCard(ctx, Icons.delete_outline, 'Delete', () => _deleteClient(c.id.toString()), Colors.red.shade700),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumActionCard(BuildContext ctx, IconData icon, String label, VoidCallback onTap, Color color) {
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () { Navigator.pop(ctx); onTap(); },
+        hoverColor: color.withValues(alpha: 0.15),
+        splashColor: color.withValues(alpha: 0.2),
+        child: Container(
+          width: 90,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 28, color: color),
+              const SizedBox(height: 10),
+              Text(
+                label, 
+                textAlign: TextAlign.center, 
+                maxLines: 1, 
+                overflow: TextOverflow.ellipsis, 
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color.withAlpha(220)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionCard(String title, IconData icon, List<Widget> children) {
+    final validChildren = children.where((w) => w is! SizedBox || (w as SizedBox).width != 0.0 && (w as SizedBox).height != 0.0).toList();
+    if (validChildren.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: AppTheme.mutedTextColor),
-          const SizedBox(width: 8),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                child: Icon(icon, size: 18, color: AppTheme.primaryColor),
+              ),
+              const SizedBox(width: 12),
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87, letterSpacing: -0.3)),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ...validChildren,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimpleDetailRow(IconData icon, String label, String? value, {bool isHighlight = false, Color? customColor}) {
+    if (value == null || value.trim().isEmpty || value.trim().toLowerCase() == 'false' || value.trim().toLowerCase() == 'null') return const SizedBox.shrink();
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: isHighlight ? Colors.orange.shade700 : (customColor ?? Colors.blueGrey.shade300)),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 140,
+            child: Text(label, style: TextStyle(fontWeight: FontWeight.w500, color: Colors.grey.shade600, fontSize: 14)),
+          ),
           Expanded(
-            child: Text(text, style: const TextStyle(fontSize: 13, color: AppTheme.textColor), maxLines: 1, overflow: TextOverflow.ellipsis),
+            child: isHighlight
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(8)),
+                    child: Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade800, fontSize: 14)),
+                  )
+                : Text(value, style: TextStyle(color: customColor ?? Colors.black87, fontSize: 15, fontWeight: FontWeight.w500)),
           ),
         ],
       ),
@@ -1096,59 +1573,160 @@ class _ClientBillsDialogState extends State<_ClientBillsDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        width: 600,
-        padding: const EdgeInsets.all(24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: Colors.grey.shade50,
+      elevation: 12,
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        width: 700,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(child: Text('${widget.client.name} - Ledger', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (_isLoading)
-              const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
-            else if (_bills.isEmpty)
-              const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('No bills found for this client.', style: TextStyle(color: Colors.grey))))
-            else
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 400),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _bills.length,
-                  itemBuilder: (context, index) {
-                    final b = _bills[index];
-                    final isPaid = b.status == 'Received';
-                    return Card(
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-                          child: const Icon(Icons.receipt_long_rounded, color: AppTheme.primaryColor, size: 20),
+            // Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+                          child: const Icon(Icons.receipt_long, color: AppTheme.primaryColor, size: 24),
                         ),
-                        title: Text('Invoice: ${b.invoiceNo ?? 'N/A'} - ₹${b.amount ?? '0'}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text('${b.type ?? 'N/A'} • ${b.date ?? 'N/A'}'),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isPaid ? Colors.green.shade50 : Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: isPaid ? Colors.green.shade200 : Colors.orange.shade200),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Client Ledger', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: -0.5, color: Colors.black87)),
+                              Text(widget.client.name, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
+                            ],
                           ),
-                          child: Text(isPaid ? 'Paid' : 'Pending', style: TextStyle(color: isPaid ? Colors.green : Colors.orange.shade800, fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
+                      ],
+                    ),
+                  ),
+                  Material(
+                    color: Colors.grey.shade100,
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      icon: Icon(Icons.close, color: Colors.grey.shade700),
+                      onPressed: () => Navigator.pop(context),
+                      splashRadius: 24,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Content
+            Flexible(
+              child: _isLoading
+                ? const Padding(
+                    padding: EdgeInsets.all(48),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : _bills.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.all(40),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey.shade300),
+                              const SizedBox(height: 16),
+                              Text('No bills found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+                              const SizedBox(height: 8),
+                              Text('This client currently has no ledger history.', style: TextStyle(color: Colors.grey.shade500)),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(24),
+                        shrinkWrap: true,
+                        itemCount: _bills.length,
+                        itemBuilder: (context, index) {
+                          final b = _bills[index];
+                          final isPaid = b.status == 'Received';
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.grey.shade200),
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 24,
+                                    backgroundColor: (isPaid ? Colors.green : Colors.orange).withValues(alpha: 0.1),
+                                    child: Icon(isPaid ? Icons.check_circle : Icons.pending_actions, color: isPaid ? Colors.green : Colors.orange, size: 24),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Invoice: ${b.invoiceNo ?? 'N/A'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+                                        const SizedBox(height: 4),
+                                        Text('${b.type ?? 'N/A'} • ${b.date ?? 'N/A'}', style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text('₹${b.amount ?? '0'}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isPaid ? Colors.green.shade700 : Colors.black87)),
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: isPaid ? Colors.green.shade50 : Colors.orange.shade50,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: isPaid ? Colors.green.shade200 : Colors.orange.shade200),
+                                        ),
+                                        child: Text(isPaid ? 'Paid' : 'Pending', style: TextStyle(color: isPaid ? Colors.green.shade700 : Colors.orange.shade800, fontSize: 12, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
+            ),
+            
+            // Footer
+            if (!_isLoading && _bills.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    FilledButton.tonal(
+                      onPressed: () => Navigator.pop(context),
+                      style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                      child: const Text('Close', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ),
               ),
           ],

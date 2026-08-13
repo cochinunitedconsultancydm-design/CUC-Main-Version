@@ -42,7 +42,10 @@ class Clients extends amplify_core.Model {
   final bool? _is_contacted;
   final String? _managed_by;
   final String? _balance_due;
+  final String? _registration_number;
+  final String? _bank_account_details;
   final List<String>? _companies;
+  final List<String>? _custom_fields;
   final amplify_core.TemporalDateTime? _createdAt;
   final amplify_core.TemporalDateTime? _updatedAt;
 
@@ -115,21 +118,28 @@ class Clients extends amplify_core.Model {
     return _balance_due;
   }
   
-  amplify_core.TemporalDateTime? get createdAt {
-    return _createdAt;
+  String? get registration_number {
+    return _registration_number;
   }
   
   List<String>? get companies {
     return _companies;
   }
   
+  String? get bank_account_details => _bank_account_details;
+  List<String>? get custom_fields => _custom_fields;
+  
+  amplify_core.TemporalDateTime? get createdAt {
+    return _createdAt;
+  }
+  
   amplify_core.TemporalDateTime? get updatedAt {
     return _updatedAt;
   }
   
-  const Clients._internal({required this.id, name, email, phone, address, created_at, type_of_work, case_number, dob, review_rating, file_no, file_date, is_contacted, managed_by, balance_due, List<String>? companies, createdAt, updatedAt}): _name = name, _email = email, _phone = phone, _address = address, _created_at = created_at, _type_of_work = type_of_work, _case_number = case_number, _dob = dob, _review_rating = review_rating, _file_no = file_no, _file_date = file_date, _is_contacted = is_contacted, _managed_by = managed_by, _balance_due = balance_due, _companies = companies, _createdAt = createdAt, _updatedAt = updatedAt;
+  const Clients._internal({required this.id, name, email, phone, address, created_at, type_of_work, case_number, dob, review_rating, file_no, file_date, is_contacted, managed_by, balance_due, registration_number, bank_account_details, List<String>? companies, List<String>? custom_fields, createdAt, updatedAt}): _name = name, _email = email, _phone = phone, _address = address, _created_at = created_at, _type_of_work = type_of_work, _case_number = case_number, _dob = dob, _review_rating = review_rating, _file_no = file_no, _file_date = file_date, _is_contacted = is_contacted, _managed_by = managed_by, _balance_due = balance_due, _registration_number = registration_number, _bank_account_details = bank_account_details, _companies = companies, _custom_fields = custom_fields, _createdAt = createdAt, _updatedAt = updatedAt;
   
-  factory Clients({String? id, String? name, String? email, String? phone, String? address, String? created_at, String? type_of_work, String? case_number, String? dob, int? review_rating, String? file_no, String? file_date, bool? is_contacted, String? managed_by, String? balance_due, List<String>? companies}) {
+  factory Clients({String? id, String? name, String? email, String? phone, String? address, String? created_at, String? type_of_work, String? case_number, String? dob, int? review_rating, String? file_no, String? file_date, bool? is_contacted, String? managed_by, String? balance_due, String? registration_number, String? bank_account_details, List<String>? companies, List<String>? custom_fields}) {
     return Clients._internal(
       id: id == null ? amplify_core.UUID.getUUID() : id,
       name: name,
@@ -146,7 +156,10 @@ class Clients extends amplify_core.Model {
       is_contacted: is_contacted,
       managed_by: managed_by,
       balance_due: balance_due,
-      companies: companies != null ? List<String>.unmodifiable(companies) : companies);
+      registration_number: registration_number,
+      bank_account_details: bank_account_details,
+      companies: companies != null ? List<String>.unmodifiable(companies) : companies,
+      custom_fields: custom_fields != null ? List<String>.unmodifiable(custom_fields) : custom_fields);
   }
   
   bool equals(Object other) {
@@ -172,6 +185,7 @@ class Clients extends amplify_core.Model {
       _is_contacted == other._is_contacted &&
       _managed_by == other._managed_by &&
         _balance_due == other._balance_due &&
+        _registration_number == other._registration_number &&
         DeepCollectionEquality().equals(_companies, other._companies);
   }
   
@@ -198,6 +212,7 @@ class Clients extends amplify_core.Model {
     buffer.write("is_contacted=" + (_is_contacted != null ? _is_contacted.toString() : "null") + ", ");
     buffer.write("managed_by=" + "$_managed_by" + ", ");
     buffer.write("balance_due=" + "$_balance_due" + ", ");
+    buffer.write("registration_number=" + "$_registration_number" + ", ");
     buffer.write("companies=" + (_companies != null ? _companies!.toString() : "null") + ", ");
     buffer.write("createdAt=" + (_createdAt != null ? _createdAt.format() : "null") + ", ");
     buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt.format() : "null"));
@@ -206,7 +221,7 @@ class Clients extends amplify_core.Model {
     return buffer.toString();
   }
   
-  Clients copyWith({String? name, String? email, String? phone, String? address, String? created_at, String? type_of_work, String? case_number, String? dob, int? review_rating, String? file_no, String? file_date, bool? is_contacted, String? managed_by, String? balance_due, List<String>? companies}) {
+  Clients copyWith({String? name, String? email, String? phone, String? address, String? created_at, String? type_of_work, String? case_number, String? dob, int? review_rating, String? file_no, String? file_date, bool? is_contacted, String? managed_by, String? balance_due, String? registration_number, String? bank_account_details, List<String>? companies, List<String>? custom_fields}) {
     return Clients._internal(
       id: id,
       name: name ?? this.name,
@@ -223,7 +238,10 @@ class Clients extends amplify_core.Model {
       is_contacted: is_contacted ?? this.is_contacted,
       managed_by: managed_by ?? this.managed_by,
       balance_due: balance_due ?? this.balance_due,
-      companies: companies ?? this.companies);
+      registration_number: registration_number ?? this.registration_number,
+      bank_account_details: bank_account_details ?? this.bank_account_details,
+      companies: companies ?? this.companies,
+      custom_fields: custom_fields ?? this.custom_fields);
   }
   
   Clients copyWithModelFieldValues({
@@ -240,7 +258,8 @@ class Clients extends amplify_core.Model {
     ModelFieldValue<String?>? file_date,
     ModelFieldValue<bool?>? is_contacted,
     ModelFieldValue<String?>? managed_by,
-    ModelFieldValue<String?>? balance_due
+    ModelFieldValue<String?>? balance_due,
+    ModelFieldValue<String?>? registration_number
   }) {
     return Clients._internal(
       id: id,
@@ -257,7 +276,8 @@ class Clients extends amplify_core.Model {
       file_date: file_date == null ? this.file_date : file_date.value,
       is_contacted: is_contacted == null ? this.is_contacted : is_contacted.value,
       managed_by: managed_by == null ? this.managed_by : managed_by.value,
-      balance_due: balance_due == null ? this.balance_due : balance_due.value
+      balance_due: balance_due == null ? this.balance_due : balance_due.value,
+      registration_number: registration_number == null ? this.registration_number : registration_number.value
     );
   }
   
@@ -277,12 +297,15 @@ class Clients extends amplify_core.Model {
       _is_contacted = json['is_contacted'],
       _managed_by = json['managed_by'],
       _balance_due = json['balance_due'],
+      _registration_number = json['registration_number'],
+      _bank_account_details = null,
+      _custom_fields = null,
       _companies = json['companies']?.cast<String>(),
       _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
       _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
   
   Map<String, dynamic> toJson() => {
-    'id': id, 'name': _name, 'email': _email, 'phone': _phone, 'address': _address, 'created_at': _created_at, 'type_of_work': _type_of_work, 'case_number': _case_number, 'dob': _dob, 'review_rating': _review_rating, 'file_no': _file_no, 'file_date': _file_date, 'is_contacted': _is_contacted, 'managed_by': _managed_by, 'balance_due': _balance_due,
+    'id': id, 'name': _name, 'email': _email, 'phone': _phone, 'address': _address, 'created_at': _created_at, 'type_of_work': _type_of_work, 'case_number': _case_number, 'dob': _dob, 'review_rating': _review_rating, 'file_no': _file_no, 'file_date': _file_date, 'is_contacted': _is_contacted, 'managed_by': _managed_by, 'balance_due': _balance_due, 'registration_number': _registration_number,
       'companies': _companies, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
   };
   
@@ -302,6 +325,8 @@ class Clients extends amplify_core.Model {
     'is_contacted': _is_contacted,
     'managed_by': _managed_by,
     'balance_due': _balance_due,
+    'registration_number': _registration_number,
+    'companies': _companies,
     'createdAt': _createdAt,
     'updatedAt': _updatedAt
   };
@@ -322,6 +347,8 @@ class Clients extends amplify_core.Model {
   static final IS_CONTACTED = amplify_core.QueryField(fieldName: "is_contacted");
   static final MANAGED_BY = amplify_core.QueryField(fieldName: "managed_by");
   static final BALANCE_DUE = amplify_core.QueryField(fieldName: "balance_due");
+  static final REGISTRATION_NUMBER = amplify_core.QueryField(fieldName: "registration_number");
+  static final COMPANIES = amplify_core.QueryField(fieldName: "companies");
   static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
     modelSchemaDefinition.name = "Clients";
     modelSchemaDefinition.pluralName = "Clients";
@@ -425,6 +452,19 @@ class Clients extends amplify_core.Model {
       key: Clients.BALANCE_DUE,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: Clients.REGISTRATION_NUMBER,
+      isRequired: false,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
+      key: Clients.COMPANIES,
+      isRequired: false,
+      isArray: true,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.collection, ofModelName: amplify_core.ModelFieldTypeEnum.string.name)
     ));
     
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(

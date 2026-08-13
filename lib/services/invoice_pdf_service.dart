@@ -118,8 +118,8 @@ class InvoicePdfService {
                             style: pw.TextStyle(font: bodyFont, fontSize: 8),
                           ),
                           pw.SizedBox(height: 2),
-                          pw.Text('email id: cochinunitedconsultancydm@gmail.com', style: pw.TextStyle(font: bodyFont, fontSize: 8, color: PdfColors.blue700)),
-                          pw.Text('mob no: +91 8590290105', style: pw.TextStyle(font: bodyFont, fontSize: 8)),
+                          pw.Text('email id: ${isLegal ? 'cochinunitedlegalllp@gmail.com' : 'cochinunitedconsultancydm@gmail.com'}', style: pw.TextStyle(font: bodyFont, fontSize: 8, color: PdfColors.blue700)),
+
                         ],
                       ),
                     ],
@@ -318,7 +318,7 @@ class InvoicePdfService {
                       child: pw.Padding(
                         padding: const pw.EdgeInsets.only(top: 10),
                         child: pw.Text(
-                          'For any clarifications or queries regarding the bill, or to report an error or omission, please contact us at cochinunitedconsultancydm@gmail.com',
+                          'For any clarifications or queries regarding the bill, or to report an error or omission, please contact us at ${isLegal ? 'cochinunitedlegalllp@gmail.com' : 'cochinunitedconsultancydm@gmail.com'}',
                           style: pw.TextStyle(font: bodyFont, fontSize: 7, fontStyle: pw.FontStyle.italic),
                         ),
                       ),

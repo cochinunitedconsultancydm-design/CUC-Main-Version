@@ -1,4 +1,4 @@
-﻿import 'package:amplify_api/amplify_api.dart';
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -1577,6 +1577,13 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
 
     // Initialize quotation terms
     _quotationTerms = List<String>.from(b?.data?['quotation_terms'] ?? _getDefaultTerms(_category));
+    if (_category == 'Legal') {
+      for (int i = 0; i < _quotationTerms.length; i++) {
+        if (_quotationTerms[i].contains('cochinunitedconsultancydm@gmail.com')) {
+          _quotationTerms[i] = _quotationTerms[i].replaceAll('cochinunitedconsultancydm@gmail.com', 'cochinunitedlegalllp@gmail.com');
+        }
+      }
+    }
     _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
 
     // Initialize item controllers
@@ -1796,7 +1803,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   List<String> _getDefaultTerms(String category) {
     if (_type == 'INVOICE') {
       return [
-        'For any clarifications or queries regarding the bill, or to report an error or omission, please contact us at cochinunitedconsultancydm@gmail.com',
+        'For any clarifications or queries regarding the bill, or to report an error or omission, please contact us at ${_category == 'Legal' ? 'cochinunitedlegalllp@gmail.com' : 'cochinunitedconsultancydm@gmail.com'}',
       ];
     }
     

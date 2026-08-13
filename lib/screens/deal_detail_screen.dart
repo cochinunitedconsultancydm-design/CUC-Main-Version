@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/deal.dart';
 import '../models/billing.dart';
@@ -43,6 +43,7 @@ class _DealDetailScreenState extends State<DealDetailScreen>
   late TextEditingController _companyController;
   late TextEditingController _contactController;
   late TextEditingController _workTypeController;
+  String _selectedCategory = 'General';
   late TextEditingController _descriptionController;
 
   // Stage Specific Controllers
@@ -99,7 +100,21 @@ class _DealDetailScreenState extends State<DealDetailScreen>
     _clientController = TextEditingController(text: d?.clientName);
     _companyController = TextEditingController(text: d?.company);
     _contactController = TextEditingController(text: d?.contactInfo);
-    _workTypeController = TextEditingController(text: d?.workType);
+    String currentType = d?.workType ?? '';
+    String currentCategory = 'General';
+    if (currentType.toLowerCase().startsWith('legal')) {
+      currentCategory = 'Legal';
+      if (currentType.length > 5 && currentType.contains('-')) {
+        currentType = currentType.replaceFirst(RegExp(r'(?i)legal\s*-\s*'), '').trim();
+      } else {
+        currentType = currentType.replaceFirst(RegExp(r'(?i)legal\s*'), '').trim();
+      }
+    } else if (currentType.toLowerCase().startsWith('consultancy')) {
+      currentCategory = 'Consultancy';
+      currentType = currentType.replaceFirst(RegExp(r'(?i)consultancy\s*-?\s*'), '').trim();
+    }
+    _workTypeController = TextEditingController(text: currentType);
+    _selectedCategory = currentCategory;
     
     // Parse out verification blocks from description to display comments cleanly
     _currentDescription = d?.description;
@@ -213,7 +228,7 @@ class _DealDetailScreenState extends State<DealDetailScreen>
         clientName: _clientController.text,
         company: _companyController.text,
         contactInfo: _contactController.text,
-        workType: _workTypeController.text,
+        workType: _selectedCategory == 'General' ? _workTypeController.text : _workTypeController.text.isEmpty ? _selectedCategory : '$_selectedCategory - ${_workTypeController.text}',
         description: newDesc,
         stage: newStage,
         priority: _priority,
@@ -323,7 +338,7 @@ final dLink = "";
         clientName: _clientController.text,
         company: _companyController.text,
         contactInfo: _contactController.text,
-        workType: _workTypeController.text,
+        workType: _selectedCategory == 'General' ? _workTypeController.text : _workTypeController.text.isEmpty ? _selectedCategory : '$_selectedCategory - ${_workTypeController.text}',
         description: newDesc,
         stage: 'Verification',
         priority: _priority,
@@ -426,7 +441,7 @@ final dLink = "";
         clientName: _clientController.text,
         company: _companyController.text,
         contactInfo: _contactController.text,
-        workType: _workTypeController.text,
+        workType: _selectedCategory == 'General' ? _workTypeController.text : _workTypeController.text.isEmpty ? _selectedCategory : '$_selectedCategory - ${_workTypeController.text}',
         description: finalDesc,
         stage: 'Invoice',
         priority: _priority,
@@ -982,7 +997,7 @@ final dLink = "";
         clientName: _clientController.text,
         company: _companyController.text,
         contactInfo: _contactController.text,
-        workType: _workTypeController.text,
+        workType: _selectedCategory == 'General' ? _workTypeController.text : _workTypeController.text.isEmpty ? _selectedCategory : '$_selectedCategory - ${_workTypeController.text}',
         description: () {
           String finalDesc = _descriptionController.text;
           final originalDesc = _currentDescription ?? '';
@@ -4231,7 +4246,7 @@ final dLink = "";
                     style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(
                       hintText: '0',
-                      prefixText: '₹ ',
+                      prefixText: 'â‚¹ ',
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -4258,6 +4273,43 @@ final dLink = "";
             ),
           );
         }),
+      ],
+    );
+  }
+
+  Widget _buildCategoryDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.class_outlined, size: 20, color: AppTheme.primaryColor),
+            const SizedBox(width: 8),
+            Text('Category', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey.shade700)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedCategory,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+          ),
+          items: ['General', 'Legal', 'Consultancy'].map((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value, style: const TextStyle(fontSize: 15)),
+            );
+          }).toList(),
+          onChanged: (newValue) {
+            setState(() {
+              _selectedCategory = newValue!;
+            });
+          },
+        ),
       ],
     );
   }
@@ -4291,7 +4343,7 @@ final dLink = "";
             prefixIcon: icon != null
                 ? Icon(icon, size: 18, color: Colors.grey)
                 : null,
-            prefixText: isCurrency ? '₹ ' : null,
+            prefixText: isCurrency ? 'â‚¹ ' : null,
             prefixStyle: const TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.black,
@@ -5988,3 +6040,4 @@ class VerificationDetails {
     return VerificationDetails(cleanDescription: desc);
   }
 }
+

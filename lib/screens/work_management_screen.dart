@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -680,7 +680,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                     Expanded(
                       flex: 1,
                       child: Text(
-                        '₹${NumberFormat('#,##,###').format(deal.amount)}',
+                        'â‚¹${NumberFormat('#,##,###').format(deal.amount)}',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF00C16C)),
                       ),
                     ),
@@ -847,7 +847,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
 
   Widget _buildDaysColumn(Deal deal) {
     if (deal.createdAt == null) {
-      return Text('—', style: TextStyle(color: Colors.grey.shade400, fontSize: 13));
+      return Text('â€”', style: TextStyle(color: Colors.grey.shade400, fontSize: 13));
     }
     final days = DateTime.now().difference(deal.createdAt!).inDays;
     final Color bgColor;
@@ -948,3 +948,4 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
     );
   }
 }
+

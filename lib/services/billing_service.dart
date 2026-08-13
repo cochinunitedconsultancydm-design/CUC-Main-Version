@@ -1,4 +1,4 @@
-import 'package:amplify_api/amplify_api.dart';
+﻿import 'package:amplify_api/amplify_api.dart';
 import 'dart:convert';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:intl/intl.dart';
@@ -297,52 +297,64 @@ class BillingService {
       }).toList();
     }
 
+    int compareByDate(Billing a, Billing b, bool descending) {
+      DateTime dateA = DateTime.fromMillisecondsSinceEpoch(0);
+      DateTime dateB = DateTime.fromMillisecondsSinceEpoch(0);
+      
+      // Use INVOICE DATE exclusively for chronological sorting
+      if (a.date != null && a.date!.isNotEmpty) {
+        try {
+          var dateStr = a.date!.replaceAll('-', '/');
+          final p = dateStr.split('/');
+          if (p.length == 3) dateA = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
+        } catch (_) {}
+      }
+      if (dateA.millisecondsSinceEpoch == 0 && a.createdAt != null) {
+        try { dateA = DateTime.parse(a.createdAt!); } catch (_) {}
+      }
+
+      if (b.date != null && b.date!.isNotEmpty) {
+        try {
+          var dateStr = b.date!.replaceAll('-', '/');
+          final p = dateStr.split('/');
+          if (p.length == 3) dateB = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
+        } catch (_) {}
+      }
+      if (dateB.millisecondsSinceEpoch == 0 && b.createdAt != null) {
+        try { dateB = DateTime.parse(b.createdAt!); } catch (_) {}
+      }
+      
+      int comp = descending ? dateB.compareTo(dateA) : dateA.compareTo(dateB);
+      if (comp == 0) {
+        // Fallback to true creation time!
+        DateTime createA = DateTime.fromMillisecondsSinceEpoch(0);
+        DateTime createB = DateTime.fromMillisecondsSinceEpoch(0);
+        try { if (a.createdAt != null) createA = DateTime.parse(a.createdAt!.toString()); } catch (_) {}
+        try { if (b.createdAt != null) createB = DateTime.parse(b.createdAt!.toString()); } catch (_) {}
+        
+        int createComp = descending ? createB.compareTo(createA) : createA.compareTo(createB);
+        if (createComp != 0) return createComp;
+
+        // Ultimate fallback to ID which is sequential
+        int idA = int.tryParse(a.id) ?? 0;
+        int idB = int.tryParse(b.id) ?? 0;
+        return descending ? idB.compareTo(idA) : idA.compareTo(idB);
+      }
+      return comp;
+    }
+
     // Apply sorting
     billings.sort((a, b) {
       if (sortBy == 'Newest First' || sortBy == 'Oldest First') {
-        DateTime dateA = DateTime.fromMillisecondsSinceEpoch(0);
-        DateTime dateB = DateTime.fromMillisecondsSinceEpoch(0);
-        
-        // Use INVOICE DATE exclusively for chronological sorting
-        if (a.date != null && a.date!.isNotEmpty) {
-          try {
-            var dateStr = a.date!.replaceAll('-', '/');
-            final p = dateStr.split('/');
-            if (p.length == 3) dateA = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
-          } catch (_) {}
-        }
-        if (dateA.millisecondsSinceEpoch == 0 && a.createdAt != null) {
-          try { dateA = DateTime.parse(a.createdAt!); } catch (_) {}
-        }
-
-        if (b.date != null && b.date!.isNotEmpty) {
-          try {
-            var dateStr = b.date!.replaceAll('-', '/');
-            final p = dateStr.split('/');
-            if (p.length == 3) dateB = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
-          } catch (_) {}
-        }
-        if (dateB.millisecondsSinceEpoch == 0 && b.createdAt != null) {
-          try { dateB = DateTime.parse(b.createdAt!); } catch (_) {}
-        }
-        
-        int comp = sortBy == 'Newest First' ? dateB.compareTo(dateA) : dateA.compareTo(dateB);
-        if (comp == 0) {
-          // Fallback to true creation time!
-          DateTime createA = DateTime.fromMillisecondsSinceEpoch(0);
-          DateTime createB = DateTime.fromMillisecondsSinceEpoch(0);
-          try { if (a.createdAt != null) createA = DateTime.parse(a.createdAt!.toString()); } catch (_) {}
-          try { if (b.createdAt != null) createB = DateTime.parse(b.createdAt!.toString()); } catch (_) {}
-          
-          int createComp = sortBy == 'Newest First' ? createB.compareTo(createA) : createA.compareTo(createB);
-          if (createComp != 0) return createComp;
-
-          // Ultimate fallback to ID which is sequential
-          int idA = int.tryParse(a.id) ?? 0;
-          int idB = int.tryParse(b.id) ?? 0;
-          return sortBy == 'Newest First' ? idB.compareTo(idA) : idA.compareTo(idB);
-        }
-        return comp;
+        return compareByDate(a, b, sortBy == 'Newest First');
+      }
+      else if (sortBy == 'Legal First') {
+        if (a.category == b.category) return compareByDate(a, b, true);
+        return a.category == 'Legal' ? -1 : 1;
+      }
+      else if (sortBy == 'Consultancy First') {
+        if (a.category == b.category) return compareByDate(a, b, true);
+        return a.category == 'Consultancy' ? -1 : 1;
       }
       else if (sortBy == 'Highest Amount' || sortBy == 'Lowest Amount') {
         double amtA = NumberToWords.parseCurrency(a.amount ?? '0');
@@ -485,3 +497,4 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
     }
   }
 }
+

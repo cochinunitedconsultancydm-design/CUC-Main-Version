@@ -342,7 +342,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
     }
 
     String cleanTitle = checklist.title;
-    for (final cat in ['[Applications & Verification]', '[Cases & RTI]', '[Billing]', '[Follow-ups]']) {
+    for (final cat in ['[Applications & Verification]', '[Cases & RTI]', '[Billing]', '[Follow-ups]', '[Other]']) {
       if (cleanTitle.startsWith(cat)) {
         cleanTitle = cleanTitle.substring(cat.length).trim();
         break;
@@ -508,7 +508,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
 
   void _showChecklistDetails(Checklist checklist, Color statusColor) {
     String cleanTitle = checklist.title;
-    for (final cat in ['[Applications & Verification]', '[Cases & RTI]', '[Billing]', '[Follow-ups]']) {
+    for (final cat in ['[Applications & Verification]', '[Cases & RTI]', '[Billing]', '[Follow-ups]', '[Other]']) {
       if (cleanTitle.startsWith(cat)) {
         cleanTitle = cleanTitle.substring(cat.length).trim();
         break;
@@ -761,7 +761,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
                         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
                       ),
-                      items: ['Applications & Verification', 'Cases & RTI', 'Billing', 'Follow-ups'].map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontWeight: FontWeight.w500)))).toList(),
+                      items: ['Applications & Verification', 'Cases & RTI', 'Billing', 'Follow-ups', 'Other'].map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontWeight: FontWeight.w500)))).toList(),
                       onChanged: (v) => setDialogState(() => _selectedTaskCategory = v!),
                     ).animate().fadeIn(delay: 50.ms, duration: 400.ms).slideX(begin: 0.05),
                     const SizedBox(height: 20),

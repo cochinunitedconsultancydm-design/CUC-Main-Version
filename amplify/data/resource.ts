@@ -89,7 +89,9 @@ const schema = a.schema({
     managed_by: a.string(),
     balance_due: a.string(),
     registration_number: a.string(),
+    bank_account_details: a.string(),
     companies: a.string().array(),
+    custom_fields: a.string().array(),
   }).authorization((allow) => [allow.authenticated()]),
   Tasks: a.model({
     id: a.id().required(),

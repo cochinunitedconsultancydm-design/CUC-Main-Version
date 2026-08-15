@@ -25,6 +25,8 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
   final _fileNoController = TextEditingController();
   final _workTypeController = TextEditingController();
   
+  String _selectedCategory = 'General';
+  
   bool _isLoading = false;
   List<Client> _clients = [];
   Client? _selectedClient;
@@ -167,7 +169,11 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
         company: _selectedClient!.id.toString(), // Using company field to store Client ID safely
         pipeline: 'Work File',
         stage: 'Active',
-        work_type: _workTypeController.text.trim(),
+        work_type: _selectedCategory == 'General' 
+            ? _workTypeController.text.trim() 
+            : _workTypeController.text.trim().isEmpty 
+                ? _selectedCategory 
+                : '$_selectedCategory - ${_workTypeController.text.trim()}',
         drive_link: _googleDocsController.text.trim(),
         register_no: _fileNoController.text.trim(),
         files_received: filesJson,
@@ -238,6 +244,28 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
                 ),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                decoration: InputDecoration(
+                  labelText: 'Category',
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                ),
+                items: ['General', 'Legal', 'Consultancy'].map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (newValue) {
+                  setState(() {
+                    _selectedCategory = newValue!;
+                  });
+                },
               ),
               const SizedBox(height: 16),
               TextField(

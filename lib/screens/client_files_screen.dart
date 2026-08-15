@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
@@ -22,6 +22,7 @@ class ClientFilesScreen extends StatefulWidget {
 
 class _ClientFilesScreenState extends State<ClientFilesScreen> {
   final _searchController = TextEditingController();
+  String _sortOption = 'Newest First';
   List<amplify_models.Deals> _workFiles = [];
   List<amplify_models.Deals> _filtered = [];
   bool _isLoading = true;
@@ -97,51 +98,89 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
   Future<void> _editWorkFile(amplify_models.Deals workFile) async {
     final nameController = TextEditingController(text: workFile.name);
     final fileNoController = TextEditingController(text: workFile.register_no);
-    final typeController = TextEditingController(text: workFile.work_type);
+    
+    String currentType = workFile.work_type ?? '';
+    String currentCategory = 'General';
+    if (currentType.toLowerCase().startsWith('legal')) {
+      currentCategory = 'Legal';
+      if (currentType.length > 5 && currentType.contains('-')) {
+        currentType = currentType.replaceFirst(RegExp(r'(?i)legal\s*-\s*'), '').trim();
+      } else {
+        currentType = currentType.replaceFirst(RegExp(r'(?i)legal\s*'), '').trim();
+      }
+    } else if (currentType.toLowerCase().startsWith('consultancy')) {
+      currentCategory = 'Consultancy';
+      currentType = currentType.replaceFirst(RegExp(r'(?i)consultancy\s*-?\s*'), '').trim();
+    }
+    
+    final typeController = TextEditingController(text: currentType);
+    String selectedCategory = currentCategory;
 
     final updated = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Work File'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: fileNoController,
-                decoration: const InputDecoration(labelText: 'File No', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: typeController,
-                decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
-              ),
-            ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: const Text('Edit Work File'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: fileNoController,
+                  decoration: const InputDecoration(labelText: 'File No', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedCategory,
+                  decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                  items: ['General', 'Legal', 'Consultancy'].map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (newValue) {
+                    setStateDialog(() {
+                      selectedCategory = newValue!;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: typeController,
+                  decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save', style: TextStyle(color: Colors.white)),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
 
     if (updated == true) {
       setState(() => _isLoading = true);
       try {
+        String finalType = typeController.text.trim();
+        if (selectedCategory != 'General') {
+            finalType = finalType.isEmpty ? selectedCategory : '$selectedCategory - $finalType';
+        }
         final newDeal = workFile.copyWith(
           name: nameController.text.trim(),
           register_no: fileNoController.text.trim(),
-          work_type: typeController.text.trim(),
+          work_type: finalType,
         );
         await BackupAwareApi().update(newDeal);
         if (mounted) {
@@ -166,19 +205,48 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
     }
   }
 
-  void _filterWorkFiles(String query) {
-    if (query.isEmpty) {
-      setState(() => _filtered = _workFiles);
-      return;
+  void _applyFilterAndSort() {
+    List<amplify_models.Deals> list = List.from(_workFiles);
+
+    if (_sortOption == 'Legal Only') {
+      list = list.where((w) => (w.work_type ?? '').toLowerCase().contains('legal')).toList();
+    } else if (_sortOption == 'Consultancy Only') {
+      list = list.where((w) => (w.work_type ?? '').toLowerCase().contains('consultancy')).toList();
     }
-    
-    final lower = query.toLowerCase();
-    setState(() {
-      _filtered = _workFiles.where((w) => 
+
+    final lower = _searchController.text.toLowerCase();
+    if (lower.isNotEmpty) {
+      list = list.where((w) => 
         (w.name?.toLowerCase().contains(lower) ?? false) || 
         (w.client_name?.toLowerCase().contains(lower) ?? false)
       ).toList();
+    }
+
+    if (_sortOption == 'Newest First' || _sortOption == 'Legal Only' || _sortOption == 'Consultancy Only') {
+      list.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime(2000)).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime(2000)));
+    } else if (_sortOption == 'Oldest First') {
+      list.sort((a, b) => (a.createdAt?.getDateTimeInUtc() ?? DateTime(2000)).compareTo(b.createdAt?.getDateTimeInUtc() ?? DateTime(2000)));
+    } else if (_sortOption == 'A-Z') {
+      list.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+    } else if (_sortOption == 'Z-A') {
+      list.sort((a, b) => (b.name ?? '').compareTo(a.name ?? ''));
+    } else if (_sortOption == 'Highest Amount') {
+      list.sort((a, b) => (b.amount ?? 0.0).compareTo(a.amount ?? 0.0));
+    } else if (_sortOption == 'Lowest Amount') {
+      list.sort((a, b) => (a.amount ?? 0.0).compareTo(b.amount ?? 0.0));
+    } else if (_sortOption == 'Invoice No (A-Z)') {
+      list.sort((a, b) => (a.register_no ?? '').compareTo(b.register_no ?? ''));
+    } else if (_sortOption == 'Invoice No (Z-A)') {
+      list.sort((a, b) => (b.register_no ?? '').compareTo(a.register_no ?? ''));
+    }
+
+    setState(() {
+      _filtered = list;
     });
+  }
+
+  void _filterWorkFiles(String query) {
+    _applyFilterAndSort();
   }
 
   void _showCreateDialog() {
@@ -244,6 +312,41 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _sortOption,
+                      icon: const Icon(Icons.sort_rounded, color: AppTheme.primaryColor),
+                      style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _sortOption = newValue;
+                          });
+                          _applyFilterAndSort();
+                        }
+                      },
+                      items: <String>[
+                        'Newest First', 'Oldest First', 'A-Z', 'Z-A', 
+                        'Highest Amount', 'Lowest Amount', 
+                        'Invoice No (A-Z)', 'Invoice No (Z-A)',
+                        'Legal Only', 'Consultancy Only'
+                      ].map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
                 IconButton(
                   onPressed: _fetchWorkFiles,
                   icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor),
@@ -274,7 +377,7 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                             maxCrossAxisExtent: 400,
                             crossAxisSpacing: 16,
                             mainAxisSpacing: 16,
-                            mainAxisExtent: 200,
+                            mainAxisExtent: 230,
                           ),
                           itemCount: _filtered.length,
                           itemBuilder: (context, index) {
@@ -1183,3 +1286,4 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
     );
   }
 }
+

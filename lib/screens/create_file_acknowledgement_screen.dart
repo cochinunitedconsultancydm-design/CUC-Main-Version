@@ -578,7 +578,7 @@ class _CreateFileAcknowledgementScreenState extends State<CreateFileAcknowledgem
                       pw.Text('Near North Railway Station, Ernakulam, Kerala 682018', style: const pw.TextStyle(fontSize: 8)),
                       pw.SizedBox(height: 2),
                       pw.Text('email id: cochinunitedconsultancydm@gmail.com', style: const pw.TextStyle(fontSize: 8, color: PdfColors.blue700)),
-                      pw.Text('mob no: +91 8590290105', style: const pw.TextStyle(fontSize: 8)),
+
                     ],
                   ),
                 ],

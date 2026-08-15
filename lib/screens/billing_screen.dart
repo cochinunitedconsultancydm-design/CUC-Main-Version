@@ -927,7 +927,7 @@ class _BillingScreenState extends State<BillingScreen> {
                           child: DropdownButton<String>(
                             value: _sortBy,
                             icon: const Icon(Icons.sort_rounded, size: 20, color: Colors.blue),
-                            items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)']
+                            items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal First', 'Consultancy First']
                               .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
                             onChanged: (v) {
                               if (v != null) {
@@ -1088,7 +1088,7 @@ class _BillingScreenState extends State<BillingScreen> {
                           value: _sortBy,
                           isExpanded: true,
                           icon: const Icon(Icons.sort_rounded, size: 20, color: Colors.blue),
-                          items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)']
+                          items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal First', 'Consultancy First']
                             .map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)))).toList(),
                           onChanged: (v) {
                             if (v != null) {
@@ -1888,9 +1888,9 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       if (widget.billing == null) {
         // If this is a new bill, auto-assign the next available number instead of failing
         final newNo = await _billingService.getNextInvoiceNo(_getPrefix());
-        setState(() { _invoiceNo.text = newNo; });
+        setState(() { _invoiceNo.text = newNo ?? ''; });
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Original invoice number was taken. Auto-assigned to $newNo'), 
+          content: Text('Original invoice number was taken. Auto-assigned to ${newNo ?? ''}'), 
           backgroundColor: Colors.green
         ));
       } else {
@@ -2952,3 +2952,4 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     ),
   );
 }
+

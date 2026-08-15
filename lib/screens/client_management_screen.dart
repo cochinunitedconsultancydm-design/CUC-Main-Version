@@ -1,5 +1,6 @@
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
@@ -13,6 +14,8 @@ import '../models/billing.dart';
 import 'client_files_dialog.dart';
 import 'client_merge_dialog.dart';
 import 'global_merge_dialog.dart';
+import '../models/deal.dart';
+import 'deal_detail_screen.dart';
 
 class ClientManagementScreen extends StatefulWidget {
   const ClientManagementScreen({super.key});
@@ -165,40 +168,242 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
 
   Future<void> _showClientWorksDialog(Client c) async {
     try {
-      final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.CLIENT_NAME.contains(c.name));
+      // Fetch all deals with a high limit to avoid pagination missing the client's works
+      final req = ModelQueries.list(amplify_models.Deals.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var deals = res.data?.items.whereType<amplify_models.Deals>().toList() ?? [];
 
       final cNameLower = (c.name ?? '').toLowerCase().trim();
+      final cIdStr = c.id?.toString();
+      
       deals = deals.where((d) {
         final dNameLower = (d.client_name ?? '').toLowerCase().trim();
-        return dNameLower.startsWith(cNameLower) || cNameLower.startsWith(dNameLower) || dNameLower == cNameLower;
+        final dIdStr = d.client_id?.toString();
+        
+        // Match by ID first, then fallback to flexible Name matching
+        if (cIdStr != null && dIdStr != null && cIdStr == dIdStr) return true;
+        if (cNameLower.isEmpty) return false;
+        
+        return dNameLower == cNameLower || 
+               dNameLower.startsWith(cNameLower) || 
+               cNameLower.startsWith(dNameLower);
       }).toList();
 
       if (!mounted) return;
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Works for ${c.name}'),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 400,
-            child: deals.isEmpty ? const Center(child: Text('No works found.')) : ListView.separated(
-              itemCount: deals.length,
-              separatorBuilder: (_, __) => const Divider(),
-              itemBuilder: (context, index) {
-                final d = deals[index];
-                return ListTile(
-                  title: Text(d.name ?? 'Unnamed Work', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Stage: ${d.stage ?? "N/A"}  •  Type: ${d.work_type ?? "N/A"}'),
-                  trailing: Text('₹${d.amount ?? 0}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                );
-              }
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 650,
+            constraints: const BoxConstraints(maxHeight: 700),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 30, offset: const Offset(0, 15)),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.8)]),
+                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                        child: const Icon(Icons.work_history_rounded, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Works for ${c.name}',
+                              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'Manage deals and tasks for this client',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))],
+                        ),
+                        child: Text('${deals.length} Total', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ),
+                // Content
+                Flexible(
+                  child: deals.isEmpty 
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
+                              child: Icon(Icons.inbox_rounded, size: 64, color: Colors.grey.shade400),
+                            ),
+                            const SizedBox(height: 20),
+                            Text('No Works Found', style: TextStyle(fontSize: 20, color: Colors.grey.shade800, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 8),
+                            Text('Get started by adding a new work for this client.', style: TextStyle(color: Colors.grey.shade600)),
+                          ].animate(interval: 50.ms).fadeIn(duration: 400.ms).slideY(begin: 0.2),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(24),
+                        itemCount: deals.length,
+                        itemBuilder: (context, index) {
+                          final d = deals[index];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.grey.shade200),
+                              boxShadow: [
+                                BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))
+                              ]
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => DealDetailScreen(deal: Deal.fromMap(d.toJson()))),
+                                  ).then((_) => _showClientWorksDialog(c));
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(20.0),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                                        child: Icon(Icons.assignment_turned_in_rounded, color: AppTheme.primaryColor),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(d.name ?? 'Unnamed Work', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: Colors.black87)),
+                                            const SizedBox(height: 12),
+                                            Wrap(
+                                              spacing: 8,
+                                              runSpacing: 8,
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                  decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                                                  child: Text('Stage: ${d.stage ?? "N/A"}', style: const TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.w600)),
+                                                ),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                  decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                                                  child: Text('Type: ${d.work_type ?? "N/A"}', style: const TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.w600)),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          const Text('Amount', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w600)),
+                                          const SizedBox(height: 4),
+                                          Text('₹${d.amount ?? 0}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w900, fontSize: 18)),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ).animate().fadeIn(delay: (index * 40).ms, duration: 400.ms).slideX(begin: 0.1, curve: Curves.easeOut);
+                        }
+                      ),
+                ),
+                // Footer
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
+                    border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context), 
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text('Close', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700, fontSize: 15)),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DealDetailScreen(
+                                deal: Deal(
+                                  name: 'New Work for ${c.name}',
+                                  clientName: c.name,
+                                  clientId: c.id,
+                                  contactInfo: c.phone,
+                                  company: c.companies != null && c.companies!.isNotEmpty ? c.companies!.first : null,
+                                  workType: c.typeOfWork,
+                                  stage: 'Lead',
+                                ),
+                              ),
+                            ),
+                          ).then((_) => _showClientWorksDialog(c));
+                        },
+                        icon: const Icon(Icons.add_rounded, size: 22, color: Colors.white),
+                        label: const Text('Add Work', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor, 
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))
-          ],
         ),
       );
     } catch (e) {
@@ -275,9 +480,21 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     final phoneController = TextEditingController(text: client?.phone);
     final workController = TextEditingController(text: client?.typeOfWork);
     final fileNoController = TextEditingController(text: client?.fileNo);
-    final fileDateController = TextEditingController(text: client?.fileDate);
+    final fileDateController = TextEditingController(text: client?.fileDate ?? DateFormat('dd/MM/yyyy').format(DateTime.now()));
     final dobController = TextEditingController(text: client?.dob);
     final careOfController = TextEditingController(text: client?.managedBy);
+
+    Future<void> pickDate(BuildContext ctx, TextEditingController controller) async {
+      final date = await showDatePicker(
+        context: ctx,
+        initialDate: DateTime.now(),
+        firstDate: DateTime(1900),
+        lastDate: DateTime(2100),
+      );
+      if (date != null) {
+        controller.text = DateFormat('dd/MM/yyyy').format(date);
+      }
+    }
     final addressController = TextEditingController(text: client?.address);
     bool isContacted = client?.isContacted ?? false;
     List<Map<String, TextEditingController>> companyControllers = (client?.companies ?? []).map((c) {
@@ -378,15 +595,15 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     const SizedBox(height: 20),
                     isWide ? Row(
                       children: [
-                        Expanded(child: _buildFormField(fileDateController, 'File Date', Icons.calendar_today, false)),
+                        Expanded(child: _buildFormField(fileDateController, 'File Date', Icons.calendar_today, false, onTap: () => pickDate(context, fileDateController))),
                         const SizedBox(width: 20),
-                        Expanded(child: _buildFormField(dobController, 'Date of Birth', Icons.cake, false)),
+                        Expanded(child: _buildFormField(dobController, 'Date of Birth', Icons.cake, false, onTap: () => pickDate(context, dobController))),
                       ],
                     ) : Column(
                       children: [
-                        _buildFormField(fileDateController, 'File Date', Icons.calendar_today, false),
+                        _buildFormField(fileDateController, 'File Date', Icons.calendar_today, false, onTap: () => pickDate(context, fileDateController)),
                         const SizedBox(height: 20),
-                        _buildFormField(dobController, 'Date of Birth', Icons.cake, false),
+                        _buildFormField(dobController, 'Date of Birth', Icons.cake, false, onTap: () => pickDate(context, dobController)),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -634,10 +851,12 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     );
   }
 
-  Widget _buildFormField(TextEditingController controller, String label, IconData icon, bool required, {int maxLines = 1}) {
+  Widget _buildFormField(TextEditingController controller, String label, IconData icon, bool required, {int maxLines = 1, VoidCallback? onTap}) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
+      readOnly: onTap != null,
+      onTap: onTap,
       decoration: InputDecoration(
         labelText: label,
         filled: true,
@@ -952,8 +1171,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text('${c.typeOfWork ?? "No Type of Work"} • File: ${c.fileNo ?? "N/A"} • Reg No: ${c.registrationNumber ?? "N/A"}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-                      const SizedBox(height: 4),
-                      Text('Created by: ${c.createdBy ?? "System/Legacy"}', style: TextStyle(color: Colors.blueGrey.shade400, fontSize: 11, fontWeight: FontWeight.w500)),
+
                     ],
                   ),
                 ),

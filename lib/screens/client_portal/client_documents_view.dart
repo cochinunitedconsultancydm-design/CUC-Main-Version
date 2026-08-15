@@ -1,3 +1,4 @@
+import '../../services/supabase_backup_service.dart';
 import 'package:flutter/material.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_api/amplify_api.dart';
@@ -135,6 +136,10 @@ class _ClientDocumentsViewState extends State<ClientDocumentsView> {
           localFile: AWSFile.fromPath(file.path),
           path: StoragePath.fromString(path),
         ).result;
+        try {
+          final bytes = await File(file.path).readAsBytes();
+          SupabaseBackupService().backupFileInBackground(path, bytes);
+        } catch (_) {}
         
         final newDoc = ClientDocuments(
           client_id: clientId,

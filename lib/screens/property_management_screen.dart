@@ -1,3 +1,5 @@
+import 'dart:io';
+import '../services/supabase_backup_service.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -955,6 +957,10 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
               localFile: localFile,
               path: StoragePath.fromString(key),
             ).result;
+        try {
+          final bytes = await File(path).readAsBytes();
+          SupabaseBackupService().backupFileInBackground(key, bytes);
+        } catch (_) {}
             
             setState(() {
               _uploadedPhotos.add(key);

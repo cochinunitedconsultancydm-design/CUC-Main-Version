@@ -1,3 +1,4 @@
+import '../services/supabase_backup_service.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
@@ -323,6 +324,10 @@ class _SopScreenState extends State<SopScreen> {
                                           localFile: AWSFile.fromPath(file.path),
                                           path: StoragePath.fromString('public/$s3Key'),
                                         ).result;
+        try {
+          final bytes = await File(file.path).readAsBytes();
+          SupabaseBackupService().backupFileInBackground('public/$s3Key', bytes);
+        } catch (_) {}
                                         
                                         final urlResult = await Amplify.Storage.getUrl(
                                           path: StoragePath.fromString('public/$s3Key'),

@@ -260,14 +260,38 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                         }
                         
                         if (_sortOption == 'Newest First') {
-                          list.sort((a, b) => (b.createdAt ?? DateTime(2000)).compareTo(a.createdAt ?? DateTime(2000)));
-                        } else if (_sortOption == 'Oldest First') {
-                          list.sort((a, b) => (a.createdAt ?? DateTime(2000)).compareTo(b.createdAt ?? DateTime(2000)));
-                        } else if (_sortOption == 'A-Z') {
-                          list.sort((a, b) => a.name.compareTo(b.name));
-                        } else if (_sortOption == 'Z-A') {
-                          list.sort((a, b) => b.name.compareTo(a.name));
-                        }
+                            list.sort((a, b) => (b.createdAt ?? DateTime(2000)).compareTo(a.createdAt ?? DateTime(2000)));
+                          } else if (_sortOption == 'Oldest First') {
+                            list.sort((a, b) => (a.createdAt ?? DateTime(2000)).compareTo(b.createdAt ?? DateTime(2000)));
+                          } else if (_sortOption == 'A-Z') {
+                            list.sort((a, b) => a.name.compareTo(b.name));
+                          } else if (_sortOption == 'Z-A') {
+                            list.sort((a, b) => b.name.compareTo(a.name));
+                          } else if (_sortOption == 'Highest Amount') {
+                            list.sort((a, b) => (b.amount ?? 0.0).compareTo(a.amount ?? 0.0));
+                          } else if (_sortOption == 'Lowest Amount') {
+                            list.sort((a, b) => (a.amount ?? 0.0).compareTo(b.amount ?? 0.0));
+                          } else if (_sortOption == 'Invoice No (A-Z)') {
+                            list.sort((a, b) => (a.registerNo ?? '').compareTo(b.registerNo ?? ''));
+                          } else if (_sortOption == 'Invoice No (Z-A)') {
+                            list.sort((a, b) => (b.registerNo ?? '').compareTo(a.registerNo ?? ''));
+                          } else if (_sortOption == 'Legal First') {
+                            list.sort((a, b) {
+                              bool aLegal = (a.workType ?? '').toLowerCase().contains('legal');
+                              bool bLegal = (b.workType ?? '').toLowerCase().contains('legal');
+                              if (aLegal && !bLegal) return -1;
+                              if (!aLegal && bLegal) return 1;
+                              return (b.createdAt ?? DateTime(2000)).compareTo(a.createdAt ?? DateTime(2000));
+                            });
+                          } else if (_sortOption == 'Consultancy First') {
+                            list.sort((a, b) {
+                              bool aCons = (a.workType ?? '').toLowerCase().contains('consultancy');
+                              bool bCons = (b.workType ?? '').toLowerCase().contains('consultancy');
+                              if (aCons && !bCons) return -1;
+                              if (!aCons && bCons) return 1;
+                              return (b.createdAt ?? DateTime(2000)).compareTo(a.createdAt ?? DateTime(2000));
+                            });
+                          }
 
                         return list.isEmpty
                             ? _buildEmptyState()
@@ -414,7 +438,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
             child: Icon(Icons.sort_rounded, color: Colors.grey.shade700, size: 20),
           ),
           isExpanded: false,
-          items: ['Newest First', 'Oldest First', 'A-Z', 'Z-A']
+          items: ['Newest First', 'Oldest First', 'A-Z', 'Z-A', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal First', 'Consultancy First']
               .map((String value) {
             return DropdownMenuItem<String>(
               value: value,
@@ -680,7 +704,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                     Expanded(
                       flex: 1,
                       child: Text(
-                        '₹${NumberFormat('#,##,###').format(deal.amount)}',
+                        'â‚¹${NumberFormat('#,##,###').format(deal.amount)}',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF00C16C)),
                       ),
                     ),
@@ -691,10 +715,10 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                           CircleAvatar(
                             radius: 12,
                             backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.1),
-                            child: Text(deal.responsibleName?[0].toUpperCase() ?? '?', style: const TextStyle(fontSize: 10, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+                            child: Text((deal.responsibleName != null && deal.responsibleName!.isNotEmpty) ? deal.responsibleName![0].toUpperCase() : '?', style: const TextStyle(fontSize: 10, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
                           ),
                           const SizedBox(width: 8),
-                          Expanded(child: Text(deal.responsibleName?.split(' ')[0] ?? 'N/A', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+                          Expanded(child: Text((deal.responsibleName?.isNotEmpty == true) ? deal.responsibleName!.split(' ')[0] : 'N/A', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
                         ],
                       ),
                     ),
@@ -847,7 +871,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
 
   Widget _buildDaysColumn(Deal deal) {
     if (deal.createdAt == null) {
-      return Text('—', style: TextStyle(color: Colors.grey.shade400, fontSize: 13));
+      return Text('â€”', style: TextStyle(color: Colors.grey.shade400, fontSize: 13));
     }
     final days = DateTime.now().difference(deal.createdAt!).inDays;
     final Color bgColor;
@@ -948,3 +972,6 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
     );
   }
 }
+
+
+

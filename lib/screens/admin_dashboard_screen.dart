@@ -12,6 +12,7 @@ import 'service_management_screen.dart';
 import 'staff_management_screen.dart';
 import 'monitor_screen.dart';
 import '../services/notification_service.dart';
+import '../services/supabase_backup_service.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/premium_app_bar.dart';
 import 'file_acknowledgement_screen.dart';
@@ -733,6 +734,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             onPressed: _runBackup,
             icon: const Icon(Icons.download_rounded),
             label: const Text('Download Full Backup'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Starting S3 file sync in background. Check console for progress.')),
+              );
+              SupabaseBackupService().syncMissingFiles();
+            },
+            icon: const Icon(Icons.cloud_sync_rounded),
+            label: const Text('Sync S3 Files to Supabase'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
             ),

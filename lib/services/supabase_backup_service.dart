@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_api/amplify_api.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 /// Lightweight Supabase backup service.
 /// Mirrors critical DynamoDB data to Supabase for disaster recovery.
@@ -111,14 +114,20 @@ class SupabaseBackupService {
         cleanData['password'] = 'managed_by_cognito';
       }
 
-      // Convert ID to int if it's a numeric string (Supabase uses int IDs)
+      // Convert ID to int if it's a numeric string (Supabase uses int IDs for some tables)
       if (cleanData['id'] != null) {
         final idVal = int.tryParse(cleanData['id'].toString());
         if (idVal != null) {
           cleanData['id'] = idVal;
         } else {
-          // If it's a UUID, remove it so Supabase can auto-generate an integer ID
-          cleanData.remove('id');
+          // Keep UUIDs for tables that use UUID primary keys.
+          // Drop UUIDs for tables like Notifications, ActivityLogs that use BIGSERIAL integer IDs.
+          final uuidTables = ['Deals', 'Tasks', 'Clients', 'Contacts', 'ClientLicenses', 'LicenseTypes', 'DealActivities', 'Billings'];
+          if (uuidTables.contains(modelName)) {
+            cleanData['id'] = cleanData['id'].toString();
+          } else {
+            cleanData.remove('id');
+          }
         }
       }
 
@@ -173,7 +182,12 @@ class SupabaseBackupService {
           if (idVal != null) {
             clean['id'] = idVal;
           } else {
-            clean.remove('id');
+            final uuidTables = ['Deals', 'Tasks', 'Clients', 'Contacts', 'ClientLicenses', 'LicenseTypes', 'DealActivities', 'Billings'];
+            if (uuidTables.contains(modelName)) {
+              clean['id'] = clean['id'].toString();
+            } else {
+              clean.remove('id');
+            }
           }
         }
         return clean;
@@ -411,5 +425,82 @@ class SupabaseBackupService {
       debugPrint('Supabase getUserId error: $e');
     }
     return null;
+  }
+
+  /// Backup a file to Supabase Storage.
+  Future<bool> backupFile(String key, Uint8List bytes) async {
+    try {
+      final url = '$_supabaseUrl/storage/v1/object/cuc-backups/$key';
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'apikey': _supabaseKey,
+          'Authorization': 'Bearer $_supabaseKey',
+          'Content-Type': 'application/octet-stream',
+          'x-upsert': 'true',
+        },
+        body: bytes,
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('Supabase backup: Uploaded file $key');
+        return true;
+      }
+      debugPrint('Supabase backup file failed: ${response.statusCode} - ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('Supabase backup file error: $e');
+      return false;
+    }
+  }
+
+  /// Fire-and-forget file backup.
+  void backupFileInBackground(String key, Uint8List bytes) {
+    Future.microtask(() async {
+      await backupFile(key, bytes);
+    });
+  }
+
+  /// Sync missing files from S3 to Supabase Storage.
+  Future<void> syncMissingFiles() async {
+    try {
+      debugPrint('Starting S3 to Supabase file sync...');
+      final result = await Amplify.Storage.list(path: const StoragePath.fromString('public/')).result;
+      int syncedCount = 0;
+
+      for (final item in result.items) {
+        // Check if file already exists in Supabase
+        final checkUrl = '$_supabaseUrl/storage/v1/object/info/cuc-backups/${item.path}';
+        final checkRes = await http.get(Uri.parse(checkUrl), headers: _headers);
+
+        if (checkRes.statusCode == 200) {
+          continue; // File exists
+        }
+
+        // Doesn't exist, download from S3
+        debugPrint('Downloading missing file from S3: ${item.path}');
+        final tempDir = await getTemporaryDirectory();
+        final localFile = File('${tempDir.path}/${item.path.replaceAll('/', '_')}');
+        
+        await Amplify.Storage.downloadFile(
+          path: StoragePath.fromString(item.path),
+          localFile: AWSFile.fromPath(localFile.path),
+        ).result;
+
+        // Upload to Supabase
+        final bytes = await localFile.readAsBytes();
+        final success = await backupFile(item.path, bytes);
+        if (success) {
+          syncedCount++;
+        }
+
+        // Cleanup temp file
+        if (await localFile.exists()) {
+          await localFile.delete();
+        }
+      }
+      debugPrint('Finished file sync. Uploaded $syncedCount missing files.');
+    } catch (e) {
+      debugPrint('Error syncing missing files: $e');
+    }
   }
 }

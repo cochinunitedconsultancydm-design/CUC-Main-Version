@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -505,6 +506,10 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                                 localFile: AWSFile.fromPath(result.files.single.path!),
                                 path: StoragePath.fromString(path),
                               ).result;
+        try {
+          final bytes = await File(result.files.single.path!).readAsBytes();
+          SupabaseBackupService().backupFileInBackground(path, bytes);
+        } catch (_) {}
                               
                               setUploadState(() { controller.text = path; });
                             }

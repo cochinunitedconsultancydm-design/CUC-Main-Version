@@ -1,3 +1,4 @@
+import '../services/supabase_backup_service.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -272,59 +273,70 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
       FilePickerResult? result = await FilePicker.pickFiles(
         type: category == 'voice' ? FileType.any : FileType.custom,
         allowedExtensions: category == 'voice' ? null : ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx', 'mp3', 'wav', 'm4a', 'aac', 'ogg'],
+        allowMultiple: true,
       );
 
-      if (result != null && result.files.single.path != null) {
-        final filePath = result.files.single.path!;
-        String fileName = result.files.single.name;
+      if (result != null && result.files.isNotEmpty) {
+        final displayFileName = result.files.length == 1 ? result.files.first.name : '${result.files.length} files';
         
         // Show dialog to collect og_copy and remarks
-        final details = await _showUploadDetailsDialog(fileName, isVoiceNote: category == 'voice');
+        final details = await _showUploadDetailsDialog(displayFileName, isVoiceNote: category == 'voice');
         if (details == null) return; // User cancelled
-        
-        if (category == 'voice' && details['name'] != null && details['name']!.trim().isNotEmpty) {
-           final extension = fileName.contains('.') ? '.${fileName.split('.').last}' : '';
-           fileName = '${details['name']!.trim()}$extension';
-        }
         
         setState(() => _isLoading = true);
         
-        String path;
-        if (category == 'work') {
-          if (_currentWorkFolder == null) {
-            setState(() => _isLoading = false);
-            return; 
+        for (var pickedFile in result.files) {
+          if (pickedFile.path == null) continue;
+          final filePath = pickedFile.path!;
+          String fileName = pickedFile.name;
+          
+          if (category == 'voice' && details['name'] != null && details['name']!.trim().isNotEmpty) {
+             final extension = fileName.contains('.') ? '.${fileName.split('.').last}' : '';
+             final suffix = result.files.length > 1 ? ' (${result.files.indexOf(pickedFile) + 1})' : '';
+             fileName = '${details['name']!.trim()}$suffix$extension';
           }
-          path = 'public/${widget.client.id}/work/$_currentWorkFolder/$fileName';
-        } else {
-          path = 'public/${widget.client.id}/$category/$fileName';
+          
+          String path;
+          if (category == 'work') {
+            if (_currentWorkFolder == null) {
+              continue; 
+            }
+            path = 'public/${widget.client.id}/work/$_currentWorkFolder/$fileName';
+          } else {
+            path = 'public/${widget.client.id}/$category/$fileName';
+          }
+          
+          // Read file bytes and upload
+          final file = File(filePath);
+          
+          await Amplify.Storage.uploadFile(
+            localFile: AWSFile.fromPath(file.path),
+            path: StoragePath.fromString(path),
+          ).result;
+          try {
+            final bytes = await File(file.path).readAsBytes();
+            SupabaseBackupService().backupFileInBackground(path, bytes);
+          } catch (_) {}
+          
+          // Record in client_documents table
+          try {
+            final newDoc = amplify_models.ClientDocuments(
+              client_id: widget.client.id.toString(),
+              client_name: widget.client.name,
+              document_name: fileName,
+              storage_path: path,
+              og_copy: details['og_copy'],
+              remarks: details['remarks'],
+            );
+            await BackupAwareApi().create(newDoc);
+          } catch (dbError) {
+            debugPrint('Failed to log document to DB: $dbError');
+          }
+          
+          await _logUpload(category, fileName);
         }
-        
-        // Read file bytes and upload
-        final file = File(filePath);
-        
-        await Amplify.Storage.uploadFile(
-          localFile: AWSFile.fromPath(file.path),
-          path: StoragePath.fromString(path),
-        ).result;
-        
-        // Record in client_documents table
-        try {
-          final newDoc = amplify_models.ClientDocuments(
-            client_id: widget.client.id.toString(),
-            client_name: widget.client.name,
-            document_name: fileName,
-            storage_path: path,
-            og_copy: details['og_copy'],
-            remarks: details['remarks'],
-          );
-          await BackupAwareApi().create(newDoc);
-        } catch (dbError) {
-          debugPrint('Failed to log document to DB: $dbError');
-        }
-        
-        await _logUpload(category, fileName);
         await _loadFiles();
+        setState(() => _isLoading = false);
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.redAccent));

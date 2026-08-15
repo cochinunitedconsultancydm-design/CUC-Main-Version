@@ -1,3 +1,4 @@
+import '../services/supabase_backup_service.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
@@ -158,6 +159,10 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
           localFile: AWSFile.fromPath(_selectedFile!.path),
           path: StoragePath.fromString(path),
         ).result;
+        try {
+          final bytes = await File(_selectedFile!.path).readAsBytes();
+          SupabaseBackupService().backupFileInBackground(path, bytes);
+        } catch (_) {}
         
         final doc = ClientDocuments(
           client_id: _selectedClientId.toString(),

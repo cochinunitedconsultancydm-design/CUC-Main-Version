@@ -1,3 +1,4 @@
+import '../services/supabase_backup_service.dart';
 import 'dart:io';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_api/amplify_api.dart';
@@ -72,6 +73,10 @@ class OfficeLocationService {
         localFile: localFile,
         path: StoragePath.fromString(key),
       ).result;
+        try {
+          final bytes = await File(file.path!).readAsBytes();
+          SupabaseBackupService().backupFileInBackground(key, bytes);
+        } catch (_) {}
       return key;
     } catch (e) {
       safePrint('Error uploading image: $e');

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:convert';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
@@ -589,6 +590,10 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                                 localFile: AWSFile.fromPath(result.files.single.path!),
                                 path: StoragePath.fromString(path),
                               ).result;
+        try {
+          final bytes = await File(result.files.single.path!).readAsBytes();
+          SupabaseBackupService().backupFileInBackground(path, bytes);
+        } catch (_) {}
                               
                               setUploadState(() { controller.text = path; });
                             }

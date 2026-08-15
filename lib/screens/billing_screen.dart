@@ -928,7 +928,11 @@ class _BillingScreenState extends State<BillingScreen> {
                             value: _sortBy,
                             icon: const Icon(Icons.sort_rounded, size: 20, color: Colors.blue),
 <<<<<<< HEAD
+<<<<<<< HEAD
                             items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal First', 'Consultancy First']
+=======
+                            items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal Only', 'Consultancy Only']
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
 =======
                             items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal Only', 'Consultancy Only']
 >>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
@@ -1093,7 +1097,11 @@ class _BillingScreenState extends State<BillingScreen> {
                           isExpanded: true,
                           icon: const Icon(Icons.sort_rounded, size: 20, color: Colors.blue),
 <<<<<<< HEAD
+<<<<<<< HEAD
                           items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal First', 'Consultancy First']
+=======
+                          items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal Only', 'Consultancy Only']
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
 =======
                           items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal Only', 'Consultancy Only']
 >>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
@@ -2969,6 +2977,10 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
 =======
 
 >>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd

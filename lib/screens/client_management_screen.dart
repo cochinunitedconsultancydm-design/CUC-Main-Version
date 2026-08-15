@@ -240,6 +240,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
         builder: (context) => Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
 <<<<<<< HEAD
+<<<<<<< HEAD
           backgroundColor: Colors.transparent,
           child: Container(
             width: 650,
@@ -297,6 +298,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                   ),
                 ),
 =======
+=======
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
           backgroundColor: Colors.grey.shade50,
           elevation: 12,
           clipBehavior: Clip.antiAlias,
@@ -346,11 +349,15 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                   ),
                 ),
                 
+<<<<<<< HEAD
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
+=======
 >>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
                 // Content
                 Flexible(
                   child: deals.isEmpty 
                     ? Padding(
+<<<<<<< HEAD
 <<<<<<< HEAD
                         padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
                         child: Column(
@@ -367,6 +374,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                             Text('Get started by adding a new work for this client.', style: TextStyle(color: Colors.grey.shade600)),
                           ].animate(interval: 50.ms).fadeIn(duration: 400.ms).slideY(begin: 0.2),
 =======
+=======
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
                         padding: const EdgeInsets.all(40),
                         child: Center(
                           child: Column(
@@ -379,21 +388,30 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               Text('There are no active or past works for this client.', style: TextStyle(color: Colors.grey.shade500)),
                             ],
                           ),
+<<<<<<< HEAD
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
+=======
 >>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
                         ),
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.all(24),
 <<<<<<< HEAD
+<<<<<<< HEAD
                         itemCount: deals.length,
                         itemBuilder: (context, index) {
                           final d = deals[index];
 =======
+=======
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
                         shrinkWrap: true,
                         itemCount: deals.length,
                         itemBuilder: (context, index) {
                           final d = deals[index];
                           final hasFileNo = d.register_no != null && d.register_no!.trim().isNotEmpty && d.register_no != 'null';
+<<<<<<< HEAD
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
+=======
 >>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
                           return Container(
                             margin: const EdgeInsets.only(bottom: 16),
@@ -401,6 +419,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: Colors.grey.shade200),
+<<<<<<< HEAD
 <<<<<<< HEAD
                               boxShadow: [
                                 BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))
@@ -523,6 +542,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                   ),
                 ),
 =======
+=======
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
                               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
                             ),
                             child: Padding(
@@ -608,6 +629,9 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                       ],
                     ),
                   ),
+<<<<<<< HEAD
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
+=======
 >>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
               ],
             ),
@@ -1452,6 +1476,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                   ],
                 ),
 <<<<<<< HEAD
+<<<<<<< HEAD
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -1513,6 +1538,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     ],
                   ),
 =======
+=======
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
               ),
               if (c.balanceDue != null && c.balanceDue != "0/-" && c.balanceDue != "0") ...[
                 const SizedBox(width: 8),
@@ -1520,6 +1547,9 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(12)),
                   child: Text("Due: ${c.balanceDue}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade800)),
+<<<<<<< HEAD
+>>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
+=======
 >>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
                 ),
               ],

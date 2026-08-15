@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -973,11 +973,5 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
   }
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 
 
-=======
->>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
-=======
->>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd

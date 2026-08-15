@@ -244,7 +244,7 @@ class _BillingScreenState extends State<BillingScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Outstanding Balance: â‚¹${NumberToWords.formatIndianCurrency(currentBalance).replaceAll('/-', '')}'),
+              Text('Outstanding Balance: ₹${NumberToWords.formatIndianCurrency(currentBalance).replaceAll('/-', '')}'),
               const SizedBox(height: 16),
               SwitchListTile(
                 title: const Text('Full Payment Received?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
@@ -266,7 +266,7 @@ class _BillingScreenState extends State<BillingScreen> {
               TextField(
                 controller: TextEditingController(text: dialogDiscount),
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Discount Allowed (â‚¹)', border: OutlineInputBorder(), isDense: true),
+                decoration: const InputDecoration(labelText: 'Discount Allowed (₹)', border: OutlineInputBorder(), isDense: true),
                 onChanged: (val) {
                   setState(() {
                     dialogDiscount = val;
@@ -279,7 +279,7 @@ class _BillingScreenState extends State<BillingScreen> {
                   controller: receivedController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    labelText: 'Amount Received (â‚¹)',
+                    labelText: 'Amount Received (₹)',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
@@ -287,7 +287,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 ),
                 const SizedBox(height: 12),
               ] else const SizedBox(height: 12),
-              Text('Remaining Balance: â‚¹${NumberToWords.formatIndianCurrency(newBalance).replaceAll('/-', '')}', style: TextStyle(color: newBalance > 0 ? Colors.orange.shade700 : Colors.green.shade700, fontWeight: FontWeight.bold)),
+              Text('Remaining Balance: ₹${NumberToWords.formatIndianCurrency(newBalance).replaceAll('/-', '')}', style: TextStyle(color: newBalance > 0 ? Colors.orange.shade700 : Colors.green.shade700, fontWeight: FontWeight.bold)),
             ],
           ),
           actions: [
@@ -342,7 +342,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
         _fetchBillings(refresh: true); 
         _msg('Payment recorded successfully', true);
-        await _log.logAction(action: 'INVOICE_PAYMENT', targetType: 'Invoice', targetId: b.invoiceNo ?? '', details: 'Recorded payment of â‚¹$newlyReceived');
+        await _log.logAction(action: 'INVOICE_PAYMENT', targetType: 'Invoice', targetId: b.invoiceNo ?? '', details: 'Recorded payment of ₹$newlyReceived');
       } catch (e) { 
         _msg('Failed: $e', false); 
       }
@@ -517,7 +517,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   labelText: 'Approved Amount',
-                  prefixText: 'â‚¹ ',
+                  prefixText: '₹ ',
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
@@ -541,7 +541,7 @@ class _BillingScreenState extends State<BillingScreen> {
                   controller: partPaymentController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    labelText: 'Part Payment (â‚¹)',
+                    labelText: 'Part Payment (₹)',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
@@ -659,7 +659,7 @@ class _BillingScreenState extends State<BillingScreen> {
         return;
       }
       final typeStr = b.type == 'QUOTATION' ? 'Quotation' : 'Invoice';
-      final text = "Hello ${b.clientName},\n\nPlease find your $typeStr (${b.invoiceNo}) for â‚¹${b.amount} attached.\n\nThank you,\nCochin United Consultancy";
+      final text = "Hello ${b.clientName},\n\nPlease find your $typeStr (${b.invoiceNo}) for ₹${b.amount} attached.\n\nThank you,\nCochin United Consultancy";
       final url = Uri.parse("https://wa.me/$phone?text=${Uri.encodeComponent(text)}");
       if (await canLaunchUrl(url)) {
         await launchUrl(url);
@@ -734,8 +734,8 @@ class _BillingScreenState extends State<BillingScreen> {
                     final b = items[index];
                     final isPaid = b.data?['payment_received'] == true;
                     return ListTile(
-                      title: Text('${b.invoiceNo ?? '-'}  â€¢  â‚¹${b.amount ?? '0'}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('${b.date ?? '-'}  â€¢  ${b.type ?? 'INVOICE'}'),
+                      title: Text('${b.invoiceNo ?? '-'}  •  ₹${b.amount ?? '0'}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('${b.date ?? '-'}  •  ${b.type ?? 'INVOICE'}'),
                       trailing: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -927,7 +927,7 @@ class _BillingScreenState extends State<BillingScreen> {
                           child: DropdownButton<String>(
                             value: _sortBy,
                             icon: const Icon(Icons.sort_rounded, size: 20, color: Colors.blue),
-                            items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal Only', 'Consultancy Only']
+                            items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal First', 'Consultancy First']
                               .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
                             onChanged: (v) {
                               if (v != null) {
@@ -1088,7 +1088,7 @@ class _BillingScreenState extends State<BillingScreen> {
                           value: _sortBy,
                           isExpanded: true,
                           icon: const Icon(Icons.sort_rounded, size: 20, color: Colors.blue),
-                          items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal Only', 'Consultancy Only']
+                          items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal First', 'Consultancy First']
                             .map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)))).toList(),
                           onChanged: (v) {
                             if (v != null) {
@@ -1469,7 +1469,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
 }
 
-// â”€â”€â”€ PREMIUM INVOICE CREATOR PAGE â”€â”€â”€
+// ─── PREMIUM INVOICE CREATOR PAGE ───
 class InvoiceCreatorPage extends StatefulWidget {
   final Billing? billing;
   final void Function(dynamic id) onSaved;
@@ -1577,13 +1577,6 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
 
     // Initialize quotation terms
     _quotationTerms = List<String>.from(b?.data?['quotation_terms'] ?? _getDefaultTerms(_category));
-    if (_category == 'Legal') {
-      for (int i = 0; i < _quotationTerms.length; i++) {
-        if (_quotationTerms[i].contains('cochinunitedconsultancydm@gmail.com')) {
-          _quotationTerms[i] = _quotationTerms[i].replaceAll('cochinunitedconsultancydm@gmail.com', 'cochinunitedlegalllp@gmail.com');
-        }
-      }
-    }
     _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
 
     // Initialize item controllers
@@ -1803,7 +1796,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   List<String> _getDefaultTerms(String category) {
     if (_type == 'INVOICE') {
       return [
-        'For any clarifications or queries regarding the bill, or to report an error or omission, please contact us at ${_category == 'Legal' ? 'cochinunitedlegalllp@gmail.com' : 'cochinunitedconsultancydm@gmail.com'}',
+        'For any clarifications or queries regarding the bill, or to report an error or omission, please contact us at cochinunitedconsultancydm@gmail.com',
       ];
     }
     
@@ -2881,7 +2874,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                     final option = options.elementAt(index);
                     return ListTile(
                       title: Text(option['description'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                      trailing: Text('â‚¹${option['amount'] ?? '0'}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      trailing: Text('₹${option['amount'] ?? '0'}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                       onTap: () => onSelected(option),
                     );
                   },
@@ -2936,7 +2929,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade100)),
     child: Row(
       children: [
-        const Text('â€¢', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey)),
+        const Text('•', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey)),
         const SizedBox(width: 12),
         Expanded(
           child: TextField(
@@ -2959,5 +2952,4 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     ),
   );
 }
-
 

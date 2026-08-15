@@ -8,6 +8,9 @@ import '../models/dsc_record.dart';
 import '../services/security_service.dart';
 
 class ExcelService {
+  /// Columns that must never appear in exports (case-insensitive check).
+  static const _sensitiveColumns = {'password', 'token', 'secret', 'api_key'};
+
   Future<String?> exportLicenses(List<ClientLicense> licenses) async {
     final excel = Excel.createExcel();
     final Sheet sheet = excel['Licenses'];
@@ -166,7 +169,7 @@ class ExcelService {
       final Sheet sheet = excel[tableName];
       if (rows.isNotEmpty) {
         // Header
-        final headers = rows.first.keys.toList();
+        final headers = rows.first.keys.where((h) => !_sensitiveColumns.contains(h.toLowerCase())).toList();
         sheet.appendRow(headers.map((h) => TextCellValue(h.toUpperCase().replaceAll('_', ' '))).toList());
         
         // Data

@@ -913,7 +913,12 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
 
         // File Item
         final f = files[index];
-        final decodedPath = Uri.decodeFull(f.path);
+        String decodedPath;
+        try {
+          decodedPath = Uri.decodeFull(f.path);
+        } catch (_) {
+          decodedPath = f.path;
+        }
         final itemName = decodedPath.split('/').last;
         
         final basePath = 'public/${widget.client.id}/$category/$itemName';

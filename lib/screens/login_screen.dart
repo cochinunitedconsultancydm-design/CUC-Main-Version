@@ -265,7 +265,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               onToggleVisibility: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                               validator: (value) {
                                 if (!_isClientLogin && (value == null || value.isEmpty)) return 'Please enter your password';
-                                if (!_isClientLogin && value!.length < 6) return 'Password must be at least 6 characters';
+                                if (!_isClientLogin && value!.length < 8) return 'Password must be at least 8 characters';
                                 return null;
                               },
                             ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),

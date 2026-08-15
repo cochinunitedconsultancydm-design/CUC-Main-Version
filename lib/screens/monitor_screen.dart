@@ -2,11 +2,10 @@ import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../theme.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
+import '../services/supabase_backup_service.dart';
 
 class MonitorScreen extends StatefulWidget {
   const MonitorScreen({super.key});
@@ -144,26 +143,16 @@ class _MonitorScreenState extends State<MonitorScreen> {
   }
 
   Future<Map<int, String>> _fetchSupabaseUserNames() async {
-    const supabaseUrl = 'https://bzxtgiqjgfojblezdubd.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6eHRnaXFqZ2ZvamJsZXpkdWJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3OTMxMzIsImV4cCI6MjA4MTM2OTEzMn0.E8IKI5PvnW9WoEX4EcXvcSVk0b74LGrrQhNhFX99Dxo';
+    // Use centralized SupabaseBackupService instead of duplicating credentials
     try {
-      final response = await http.get(
-        Uri.parse('$supabaseUrl/rest/v1/users?select=id,name,username'),
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': 'Bearer $supabaseKey',
-        },
-      ).timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        final Map<int, String> nameMap = {};
-        for (var u in data) {
-          final int? id = u['id'];
-          final String name = u['name'] ?? u['username'] ?? 'Unknown';
-          if (id != null) nameMap[id] = name;
-        }
-        return nameMap;
-      }
+      final map = await SupabaseBackupService().getUsernameToIdMap();
+      // getUsernameToIdMap returns Map<String, int> (username -> id)
+      // We need Map<int, String> (id -> name), so invert it
+      final Map<int, String> nameMap = {};
+      map.forEach((username, id) {
+        nameMap[id] = username;
+      });
+      return nameMap;
     } catch (e) {
       debugPrint('Supabase user names fetch error: $e');
     }

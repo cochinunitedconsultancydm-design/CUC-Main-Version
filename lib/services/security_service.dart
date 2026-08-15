@@ -57,12 +57,19 @@ class SecurityService {
     final storedHash = parts[1].trim();
     final computedHash = _sha256Hash(plainPassword, salt);
     
-    debugPrint('SECURITY DEBUG: PlainPassword="$plainPassword"');
-    debugPrint('SECURITY DEBUG: Salt="$salt"');
-    debugPrint('SECURITY DEBUG: StoredHash="$storedHash"');
-    debugPrint('SECURITY DEBUG: ComputedHash="$computedHash"');
-    
-    return computedHash == storedHash;
+    return _constantTimeEquals(computedHash, storedHash);
+  }
+
+  /// Constant-time string comparison to prevent timing attacks.
+  /// Unlike `==`, this does not short-circuit on the first mismatched byte,
+  /// making it resistant to side-channel timing analysis.
+  bool _constantTimeEquals(String a, String b) {
+    if (a.length != b.length) return false;
+    int result = 0;
+    for (int i = 0; i < a.length; i++) {
+      result |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return result == 0;
   }
 
   /// Checks if a stored password is still in legacy plaintext format.
@@ -183,8 +190,12 @@ class SecurityService {
     if (password == null || password.isEmpty) {
       return 'Password is required';
     }
-    if (password.length < 6) return 'Password must be at least 6 characters';
+    if (password.length < 8) return 'Password must be at least 8 characters';
     if (password.length > 128) return 'Password is too long';
+    if (!RegExp(r'[A-Z]').hasMatch(password)) return 'Password must contain an uppercase letter';
+    if (!RegExp(r'[a-z]').hasMatch(password)) return 'Password must contain a lowercase letter';
+    if (!RegExp(r'[0-9]').hasMatch(password)) return 'Password must contain a number';
+    if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(password)) return 'Password must contain a special character';
     return null;
   }
 

@@ -28,7 +28,7 @@ class AuthService {
         return false;
       }
 
-      debugPrint('Attempting Cognito login for: $username');
+      debugPrint('Attempting Cognito login...');
 
       final normalizedUser = username.toLowerCase().trim();
       final userPart = normalizedUser.contains('@') ? normalizedUser.split('@')[0] : normalizedUser;
@@ -112,7 +112,7 @@ class AuthService {
       }
 
       _security.clearFailedAttempts(username);
-      debugPrint('User authenticated: ${dbUser.id}, Role: ${dbUser.role}');
+      debugPrint('User authenticated successfully. Role: ${dbUser.role}');
       
       final res = dbUser; // for compatibility with existing code below
 
@@ -171,14 +171,14 @@ class AuthService {
         return false;
       }
 
-      debugPrint('Attempting Client login for: $phone');
+      debugPrint('Attempting Client login...');
 
       try {
         await Amplify.Auth.signOut();
       } catch (e) {}
 
-      final portalEmail = 'portal@cuc.local';
-      final portalPassword = 'CucPortalUser@2024';
+      const portalEmail = String.fromEnvironment('PORTAL_EMAIL', defaultValue: 'portal@cuc.local');
+      const portalPassword = String.fromEnvironment('PORTAL_PASSWORD', defaultValue: 'CucPortalUser@2024');
 
       bool isPortalSignedIn = false;
       
@@ -245,7 +245,7 @@ class AuthService {
       }).toList();
 
       if (clients.isEmpty) {
-        debugPrint('Client not found with phone $phone and dob $dob');
+        debugPrint('Client login failed: credentials not found');
         await Amplify.Auth.signOut();
         _security.recordFailedAttempt(phone);
         return false;
@@ -254,7 +254,7 @@ class AuthService {
       final client = clients.first;
 
       _security.clearFailedAttempts(phone);
-      debugPrint('Client authenticated: ${client.id}, Name: ${client.name}');
+      debugPrint('Client authenticated successfully');
 
       final prefs = await SharedPreferences.getInstance();
 

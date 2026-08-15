@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
@@ -86,7 +86,11 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Work file deleted successfully', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
         }
-        _fetchWorkFiles();
+        
+        setState(() {
+          _workFiles.removeWhere((w) => w.id == workFile.id);
+        });
+        _filterWorkFiles(_searchController.text);
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));

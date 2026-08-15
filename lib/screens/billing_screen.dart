@@ -927,15 +927,7 @@ class _BillingScreenState extends State<BillingScreen> {
                           child: DropdownButton<String>(
                             value: _sortBy,
                             icon: const Icon(Icons.sort_rounded, size: 20, color: Colors.blue),
-<<<<<<< HEAD
-<<<<<<< HEAD
-                            items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal First', 'Consultancy First']
-=======
                             items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal Only', 'Consultancy Only']
->>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
-=======
-                            items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal Only', 'Consultancy Only']
->>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
                               .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
                             onChanged: (v) {
                               if (v != null) {
@@ -1096,15 +1088,7 @@ class _BillingScreenState extends State<BillingScreen> {
                           value: _sortBy,
                           isExpanded: true,
                           icon: const Icon(Icons.sort_rounded, size: 20, color: Colors.blue),
-<<<<<<< HEAD
-<<<<<<< HEAD
-                          items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal First', 'Consultancy First']
-=======
                           items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal Only', 'Consultancy Only']
->>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
-=======
-                          items: ['Newest First', 'Oldest First', 'Highest Amount', 'Lowest Amount', 'Invoice No (A-Z)', 'Invoice No (Z-A)', 'Legal Only', 'Consultancy Only']
->>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
                             .map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)))).toList(),
                           onChanged: (v) {
                             if (v != null) {
@@ -2976,11 +2960,4 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   );
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 
->>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd
-=======
-
->>>>>>> cfeac8d1e8e813f769ee2f394331bdeedc2e53dd

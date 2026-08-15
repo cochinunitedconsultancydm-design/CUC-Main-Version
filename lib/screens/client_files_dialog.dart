@@ -290,7 +290,7 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
           final filePath = pickedFile.path!;
           String fileName = pickedFile.name;
           
-          if (category == 'voice' && details['name'] != null && details['name']!.trim().isNotEmpty) {
+          if (details['name'] != null && details['name']!.trim().isNotEmpty) {
              final extension = fileName.contains('.') ? '.${fileName.split('.').last}' : '';
              final suffix = result.files.length > 1 ? ' (${result.files.indexOf(pickedFile) + 1})' : '';
              fileName = '${details['name']!.trim()}$suffix$extension';
@@ -404,17 +404,15 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                 children: [
                   Text('File: $fileName', style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
-                  if (isVoiceNote) ...[
-                    const Text('Voice Note Name', style: TextStyle(fontWeight: FontWeight.w500)),
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g. Meeting Recording 1',
-                        isDense: true,
-                      ),
+                  const Text('Custom File Name (Optional)', style: TextStyle(fontWeight: FontWeight.w500)),
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. ${fileName.split('.').first}',
+                      isDense: true,
                     ),
-                    const SizedBox(height: 16),
-                  ],
+                  ),
+                  const SizedBox(height: 16),
                   if (!isVoiceNote) ...[
                     const Text('Document Type', style: TextStyle(fontWeight: FontWeight.w500)),
                     DropdownButton<String>(
@@ -476,6 +474,63 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
         );
       }
     );
+  }
+
+  Future<void> _renameFile(String category, String oldFileName, String actualPath) async {
+    final newNameCtrl = TextEditingController(text: oldFileName);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rename File'),
+        content: TextField(
+          controller: newNameCtrl,
+          decoration: const InputDecoration(hintText: 'New file name'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+            onPressed: () => Navigator.pop(context, newNameCtrl.text.trim()), 
+            child: const Text('Rename', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      )
+    );
+
+    if (newName == null || newName.isEmpty || newName == oldFileName) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final newPath = actualPath.replaceFirst(oldFileName, newName);
+      
+      await Amplify.Storage.copy(
+        source: StoragePath.fromString(actualPath),
+        destination: StoragePath.fromString(newPath),
+      ).result;
+      
+      await Amplify.Storage.remove(path: StoragePath.fromString(actualPath)).result;
+      
+      if (_dbDocs.containsKey(actualPath)) {
+        final doc = _dbDocs[actualPath]!;
+        final newDoc = amplify_models.ClientDocuments(
+          id: doc.id,
+          client_id: doc.client_id,
+          client_name: doc.client_name,
+          document_name: newName,
+          storage_path: newPath,
+          og_copy: doc.og_copy,
+          remarks: doc.remarks,
+        );
+        await BackupAwareApi().update(newDoc);
+      }
+      
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File renamed successfully!'), backgroundColor: Colors.green));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Rename failed: $e'), backgroundColor: Colors.redAccent));
+    }
+    
+    await _loadFiles();
+    setState(() => _isLoading = false);
   }
 
   Future<void> _deleteFile(String category, String fileName, {bool isFolder = false}) async {
@@ -929,6 +984,13 @@ class _ClientFilesDialogState extends State<ClientFilesDialog> {
                         onPressed: () => _downloadFile(category, itemName),
                         tooltip: "Download File",
                         style: IconButton.styleFrom(backgroundColor: Colors.grey.shade100),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 20),
+                        onPressed: () => _renameFile(category, itemName, actualPath),
+                        tooltip: "Rename File",
+                        style: IconButton.styleFrom(backgroundColor: Colors.blue.shade50),
                       ),
                       const SizedBox(width: 8),
                       IconButton(

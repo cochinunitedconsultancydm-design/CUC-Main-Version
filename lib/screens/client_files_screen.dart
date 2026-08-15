@@ -146,8 +146,17 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
         await BackupAwareApi().update(newDeal);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Work file updated successfully', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+          
+          // Update local state directly to avoid eventual consistency lag
+          setState(() {
+            final index = _workFiles.indexWhere((w) => w.id == newDeal.id);
+            if (index != -1) {
+              _workFiles[index] = newDeal;
+            }
+            _isLoading = false;
+          });
+          _filterWorkFiles(_searchController.text);
         }
-        _fetchWorkFiles();
       } catch (e) {
         if (mounted) {
           setState(() => _isLoading = false);

@@ -9,6 +9,7 @@ import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import '../services/logging_service.dart';
 class PropertyManagementScreen extends StatefulWidget {
   const PropertyManagementScreen({super.key});
 
@@ -394,6 +395,12 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
     setState(() => _isLoading = true);
     try {
       await BackupAwareApi().delete(property);
+      await LoggingService().logAction(
+        action: 'PROPERTY_DELETED',
+        targetType: 'Property',
+        targetId: property.id,
+        details: 'Deleted property: ${property.property_name}',
+      );
       _showSuccess('Property deleted successfully');
       _fetchProperties();
     } catch (e) {
@@ -1173,6 +1180,12 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
           photos: photos,
         );
         await BackupAwareApi().create(newProp);
+        await LoggingService().logAction(
+          action: 'PROPERTY_CREATED',
+          targetType: 'Property',
+          targetId: _nameCtrl.text.trim(),
+          details: 'Created property: ${_nameCtrl.text.trim()}',
+        );
       } else {
         final updated = widget.property!.copyWith(
           property_name: _nameCtrl.text.trim(),
@@ -1202,6 +1215,12 @@ class _EditPropertyFormState extends State<_EditPropertyForm> {
           photos: photos,
         );
         await BackupAwareApi().update(updated);
+        await LoggingService().logAction(
+          action: 'PROPERTY_UPDATED',
+          targetType: 'Property',
+          targetId: updated.id,
+          details: 'Updated property: ${_nameCtrl.text.trim()}',
+        );
       }
       widget.onSaved();
     } catch (e) {

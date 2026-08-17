@@ -5,7 +5,7 @@ import 'dart:convert';
 import '../theme.dart';
 import '../widgets/premium_app_bar.dart';
 import '../services/supabase_backup_service.dart';
-
+import '../services/logging_service.dart';
 class ContactBookScreen extends StatefulWidget {
   const ContactBookScreen({super.key});
 
@@ -147,6 +147,13 @@ class _ContactBookScreenState extends State<ContactBookScreen> {
       }
       
       SupabaseBackupService().deleteRecord('Contacts', id);
+      
+      await LoggingService().logAction(
+        action: 'CONTACT_DELETED',
+        targetType: 'Contact',
+        targetId: id,
+        details: 'Deleted contact: ${contact['name']}',
+      );
       
       _fetchContacts();
       if (mounted) {
@@ -488,6 +495,13 @@ class _ContactDialogState extends State<_ContactDialog> {
         'created_at': now,
       };
       SupabaseBackupService().backupRecord('Contacts', backupData);
+      
+      await LoggingService().logAction(
+        action: widget.contact == null ? 'CONTACT_CREATED' : 'CONTACT_UPDATED',
+        targetType: 'Contact',
+        targetId: widget.contact == null ? backupData['name'] : backupData['id'],
+        details: widget.contact == null ? 'Created contact: ${backupData['name']}' : 'Updated contact: ${backupData['name']}',
+      );
       
       widget.onSave();
       if (mounted) Navigator.pop(context);

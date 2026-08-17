@@ -5,6 +5,7 @@ import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import '../models/inward_post_model.dart';
 import '../services/inward_post_service.dart';
+import '../services/logging_service.dart';
 import 'package:intl/intl.dart';
 
 class InwardPostScreen extends StatefulWidget {
@@ -93,6 +94,13 @@ class _InwardPostScreenState extends State<InwardPostScreen> {
 
     await InwardPostService.addPost(newPost);
     
+    await LoggingService().logAction(
+      action: 'INWARD_POST_CREATED',
+      targetType: 'Inward Post',
+      targetId: newPost.id,
+      details: 'Logged inward post from ${_senderController.text.trim()} to ${_recipientController.text.trim()}',
+    );
+    
     setState(() {
       _senderController.clear();
       _recipientController.clear();
@@ -111,6 +119,14 @@ class _InwardPostScreenState extends State<InwardPostScreen> {
 
   Future<void> _confirmReceipt(InwardPost post) async {
     await InwardPostService.updatePostStatus(post.id, PostStatus.confirmedReceived);
+    
+    await LoggingService().logAction(
+      action: 'INWARD_POST_CONFIRMED',
+      targetType: 'Inward Post',
+      targetId: post.id,
+      details: 'Confirmed receipt of inward post from ${post.senderName}',
+    );
+    
     await _loadPosts();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

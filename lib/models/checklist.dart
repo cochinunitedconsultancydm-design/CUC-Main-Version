@@ -18,6 +18,8 @@ class Checklist {
   // Connected Work
   final dynamic dealId;
   final String? dealName;
+  
+  final String priority;
 
   Checklist({
     this.id,
@@ -35,6 +37,7 @@ class Checklist {
     this.responsibleName,
     this.dealId,
     this.dealName,
+    this.priority = 'Medium',
   });
 
   factory Checklist.fromMap(Map<String, dynamic> map) {
@@ -42,6 +45,17 @@ class Checklist {
     dynamic parsedDealId;
     String? parsedDealName;
     String cleanDesc = rawDesc;
+    String parsedPriority = 'Medium';
+
+    final priorityRegExp = RegExp(
+      r'\[PRIORITY\]\s*(High|Medium|Low)',
+      caseSensitive: false,
+    );
+    final priorityMatch = priorityRegExp.firstMatch(rawDesc);
+    if (priorityMatch != null) {
+      parsedPriority = priorityMatch.group(1) ?? 'Medium';
+      cleanDesc = cleanDesc.replaceAll(priorityMatch.group(0)!, '').trim();
+    }
 
     final regExp = RegExp(
       r'\[CONNECTED_WORK\]\s*\n\s*DealId:\s*(\d+)\s*\n\s*DealName:\s*(.*?)$',
@@ -49,13 +63,13 @@ class Checklist {
       caseSensitive: false,
     );
 
-    final match = regExp.firstMatch(rawDesc);
+    final match = regExp.firstMatch(cleanDesc);
     if (match != null) {
       parsedDealId = match.group(1);
       parsedDealName = match.group(2)?.trim();
-      final index = rawDesc.indexOf('[CONNECTED_WORK]');
+      final index = cleanDesc.indexOf('[CONNECTED_WORK]');
       if (index != -1) {
-        cleanDesc = rawDesc.substring(0, index).trim();
+        cleanDesc = cleanDesc.substring(0, index).trim();
       }
     }
 
@@ -75,6 +89,7 @@ class Checklist {
       responsibleName: map['responsible_name'],
       dealId: parsedDealId,
       dealName: parsedDealName,
+      priority: parsedPriority,
     );
   }
 

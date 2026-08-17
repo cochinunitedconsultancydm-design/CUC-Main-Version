@@ -6,6 +6,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import '../theme.dart';
 import '../models/OfficeLocations.dart';
 import '../services/office_location_service.dart';
+import '../services/logging_service.dart';
 import 'add_office_location_screen.dart';
 
 class OfficeDetailsScreen extends StatefulWidget {
@@ -87,6 +88,12 @@ class _OfficeDetailsScreenState extends State<OfficeDetailsScreen> {
     if (confirm == true) {
       final success = await _service.deleteLocation(location);
       if (success && mounted) {
+        await LoggingService().logAction(
+          action: 'OFFICE_LOCATION_DELETED',
+          targetType: 'Office Location',
+          targetId: location.id,
+          details: 'Deleted office location: ${location.name}',
+        );
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Office location deleted successfully')));
         _fetchLocations();
       }

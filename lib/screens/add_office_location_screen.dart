@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import '../theme.dart';
 import '../models/OfficeLocations.dart';
 import '../services/office_location_service.dart';
+import '../services/logging_service.dart';
 
 class AddOfficeLocationScreen extends StatefulWidget {
   final OfficeLocations? existingLocation;
@@ -168,6 +169,12 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
 
       final success = isEditing ? await _service.updateLocation(location) : await _service.createLocation(location);
       if (success && mounted) {
+        await LoggingService().logAction(
+          action: isEditing ? 'OFFICE_LOCATION_UPDATED' : 'OFFICE_LOCATION_CREATED',
+          targetType: 'Office Location',
+          targetId: isEditing ? widget.existingLocation!.id : _nameController.text.trim(),
+          details: isEditing ? 'Updated office location: ${_nameController.text.trim()}' : 'Created office location: ${_nameController.text.trim()}',
+        );
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEditing ? 'Office Location updated successfully!' : 'Office Location saved successfully!')));
       } else if (mounted) {

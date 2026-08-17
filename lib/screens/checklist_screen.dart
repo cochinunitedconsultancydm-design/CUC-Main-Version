@@ -8,6 +8,7 @@ import '../services/deal_service.dart';
 import '../models/deal.dart';
 import '../services/supabase_backup_service.dart';
 import '../theme.dart';
+import '../services/logging_service.dart';
 import '../widgets/premium_app_bar.dart';
 class ChecklistScreen extends StatefulWidget {
   const ChecklistScreen({super.key});
@@ -40,7 +41,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   TextEditingController? _staffTextController;
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
-  String _selectedTaskCategory = 'Applications & Verification';
+  String _selectedPriority = 'Medium';
 
   @override
   void initState() {
@@ -206,129 +207,47 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   }
 
   Widget _buildChecklistList(List<Checklist> tasks) {
-    final appsTasks = tasks.where((t) => t.title.contains('[Applications & Verification]')).toList();
-    final casesTasks = tasks.where((t) => t.title.contains('[Cases & RTI]')).toList();
-    final billingTasks = tasks.where((t) => t.title.contains('[Billing]')).toList();
-    final followUpTasks = tasks.where((t) => t.title.contains('[Follow-ups]')).toList();
-    final otherTasks = tasks.where((t) => !t.title.contains('[Applications & Verification]') && !t.title.contains('[Cases & RTI]') && !t.title.contains('[Billing]') && !t.title.contains('[Follow-ups]')).toList();
+    // Sort tasks by priority: High > Medium > Low
+    int getPriorityWeight(String p) {
+      if (p == 'High') return 3;
+      if (p == 'Medium') return 2;
+      if (p == 'Low') return 1;
+      return 0;
+    }
+    
+    final sortedTasks = List<Checklist>.from(tasks)..sort((a, b) {
+      int weightA = getPriorityWeight(a.priority);
+      int weightB = getPriorityWeight(b.priority);
+      if (weightA != weightB) return weightB.compareTo(weightA);
+      
+      // Secondary sort: Pending first, then Completed
+      int statusWeightA = a.status == 'Pending' ? 1 : 0;
+      int statusWeightB = b.status == 'Pending' ? 1 : 0;
+      if (statusWeightA != statusWeightB) return statusWeightB.compareTo(statusWeightA);
+      
+      return (b.createdAt ?? '').compareTo(a.createdAt ?? '');
+    });
 
     return RefreshIndicator(
       onRefresh: _handleRefresh,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 900;
-          
-          Widget content;
-          if (isWide) {
-            content = Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: _buildChecklistSection("Applications & Verification", appsTasks)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildChecklistSection("Cases & RTI", casesTasks)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildChecklistSection("Billing", billingTasks)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildChecklistSection("Follow-ups", followUpTasks)),
-              ],
-            );
-          } else {
-            content = Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildChecklistSection("Applications & Verification", appsTasks),
-                const SizedBox(height: 16),
-                _buildChecklistSection("Cases & RTI", casesTasks),
-                const SizedBox(height: 16),
-                _buildChecklistSection("Billing", billingTasks),
-                const SizedBox(height: 16),
-                _buildChecklistSection("Follow-ups", followUpTasks),
-              ],
-            );
-          }
-
-          return SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                content,
-                if (otherTasks.isNotEmpty) ...[
-                  const SizedBox(height: 32),
-                  const Divider(),
+      child: sortedTasks.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.assignment_turned_in_outlined, size: 80, color: Colors.grey.shade300),
                   const SizedBox(height: 16),
-                  _buildChecklistSection("Other Tasks", otherTasks),
+                  Text("No tasks for today!", style: TextStyle(color: Colors.grey.shade500, fontSize: 18, fontWeight: FontWeight.bold)),
                 ],
-                const SizedBox(height: 100),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildChecklistSection(String title, List<Checklist> sectionTasks) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${sectionTasks.length}',
-                  style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (sectionTasks.isEmpty)
-            Container(
-              height: 100,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid),
-              ),
-              child: Text(
-                "No tasks",
-                style: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.w500),
               ),
             )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.zero,
-              itemCount: sectionTasks.length,
+          : ListView.builder(
+              padding: const EdgeInsets.all(24).copyWith(bottom: 100),
+              itemCount: sortedTasks.length,
               itemBuilder: (context, index) {
-                return _buildChecklistCard(sectionTasks[index], isCompact: true);
+                return _buildChecklistCard(sortedTasks[index], isCompact: false);
               },
             ),
-        ],
-      ),
     );
   }
 
@@ -357,10 +276,15 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
       displayTitle = timeMatch.group(2)!;
     }
 
+    Color bgColor = Colors.white;
+    if (checklist.priority == 'High') bgColor = Colors.red.shade50;
+    else if (checklist.priority == 'Medium') bgColor = Colors.orange.shade50;
+    else if (checklist.priority == 'Low') bgColor = Colors.green.shade50;
+
     return Container(
       margin: isCompact ? const EdgeInsets.only(bottom: 12) : const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bgColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 16, offset: const Offset(0, 8)),
@@ -410,17 +334,45 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                                 ),
                               ),
                               const SizedBox(width: 16),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: statusColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: statusColor.withValues(alpha: 0.2)),
-                                ),
-                                child: Text(
-                                  checklist.status,
-                                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
-                                ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: statusColor.withValues(alpha: 0.2)),
+                                    ),
+                                    child: Text(
+                                      checklist.status,
+                                      style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: (checklist.priority == 'High' ? Colors.red : (checklist.priority == 'Medium' ? Colors.orange : Colors.green)).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.flag, size: 12, color: checklist.priority == 'High' ? Colors.red : (checklist.priority == 'Medium' ? Colors.orange : Colors.green)),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          checklist.priority,
+                                          style: TextStyle(
+                                            color: checklist.priority == 'High' ? Colors.red : (checklist.priority == 'Medium' ? Colors.orange : Colors.green),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -688,6 +640,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
               setState(() => _isLoading = true);
               try {
                 await _checklistService.deleteChecklist(checklist.id!);
+                await LoggingService().logAction(
+                  action: 'TASK_DELETED',
+                  targetType: 'Checklist Task',
+                  targetId: checklist.id,
+                  details: 'Deleted task: ${checklist.title}',
+                );
                 await _fetchChecklists();
               } catch(e) {
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -751,19 +709,28 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
                     const SizedBox(height: 32),
                     DropdownButtonFormField<String>(
-                      value: _selectedTaskCategory,
+                      value: _selectedPriority,
                       decoration: InputDecoration(
-                        labelText: 'Task Category',
-                        prefixIcon: const Icon(Icons.category, color: AppTheme.primaryColor),
+                        labelText: 'Priority',
+                        prefixIcon: Icon(
+                          Icons.flag, 
+                          color: _selectedPriority == 'High' ? Colors.red : (_selectedPriority == 'Medium' ? Colors.orange : Colors.green),
+                        ),
                         filled: true,
                         fillColor: Colors.grey.shade50,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
                         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
                       ),
-                      items: ['Applications & Verification', 'Cases & RTI', 'Billing', 'Follow-ups', 'Other'].map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontWeight: FontWeight.w500)))).toList(),
-                      onChanged: (v) => setDialogState(() => _selectedTaskCategory = v!),
-                    ).animate().fadeIn(delay: 50.ms, duration: 400.ms).slideX(begin: 0.05),
+                      items: ['High', 'Medium', 'Low'].map((t) => DropdownMenuItem(
+                        value: t, 
+                        child: Text(t, style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: t == 'High' ? Colors.red : (t == 'Medium' ? Colors.orange : Colors.green)
+                        )),
+                      )).toList(),
+                      onChanged: (v) => setDialogState(() => _selectedPriority = v!),
+                    ).animate().fadeIn(delay: 75.ms, duration: 400.ms).slideX(begin: 0.05),
                     const SizedBox(height: 20),
                     TextFormField(
                       controller: _titleController,
@@ -1049,14 +1016,20 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
         }
 
         final checklist = Checklist(
-          title: '[$_selectedTaskCategory] [${_selectedTime.format(context)}] ${_titleController.text}',
-          description: _descController.text,
+          title: '[${_selectedTime.format(context)}] ${_titleController.text}',
+          description: '${_descController.text}\n[PRIORITY] $_selectedPriority'.trim(),
           responsibleId: respId,
           dealId: _selectedDealId,
           dealName: dealName,
           dueDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
         );
         await _checklistService.createChecklist(checklist);
+        await LoggingService().logAction(
+          action: 'TASK_CREATED',
+          targetType: 'Checklist Task',
+          targetId: checklist.title,
+          details: 'Assigned task to ID: $respId',
+        );
       }
       
       _titleController.clear();
@@ -1154,6 +1127,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                     reason: !isComplete ? controller.text : null,
                     newDueDate: isPostponed ? DateFormat('yyyy-MM-dd').format(selectedDate) : null,
                     reassignToManager: isPostponed && giveToManager,
+                  );
+                  await LoggingService().logAction(
+                    action: 'TASK_UPDATED',
+                    targetType: 'Checklist Task',
+                    targetId: checklist.id,
+                    details: 'Task marked as $status: ${checklist.title}',
                   );
                   await _fetchChecklists();
                 } catch (e) {

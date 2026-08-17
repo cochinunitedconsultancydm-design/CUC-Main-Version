@@ -9,6 +9,7 @@ import '../models/company_bill.dart';
 import '../services/auth_service.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
+import '../services/logging_service.dart';
 import '../widgets/premium_app_bar.dart';
 class CompanyBillManagementScreen extends StatefulWidget {
   const CompanyBillManagementScreen({super.key});
@@ -452,6 +453,12 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                               );
                               final req = ModelMutations.create(model);
                               await BackupAwareApi().create(model);
+                              await LoggingService().logAction(
+                                action: 'COMPANY_BILL_CREATED',
+                                targetType: 'Company Bill',
+                                targetId: newBill.title,
+                                details: 'Created ${isIncoming ? "income" : "expense"}: ${newBill.title}',
+                              );
                             } else {
                               final model = amplify_models.CompanyBills(
                                 id: newBill.id,
@@ -466,6 +473,12 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                               );
                               final req = ModelMutations.update(model);
                               await BackupAwareApi().update(model);
+                              await LoggingService().logAction(
+                                action: 'COMPANY_BILL_UPDATED',
+                                targetType: 'Company Bill',
+                                targetId: newBill.id,
+                                details: 'Updated bill: ${newBill.title}',
+                              );
                             }
                             
                             // Link and update the Billing page if an invoice number was provided

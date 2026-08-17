@@ -10,6 +10,7 @@ import '../models/ModelProvider.dart' as amplify_models;
 import 'dart:convert';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import '../services/logging_service.dart';
 
 class ServiceManagementScreen extends StatefulWidget {
   const ServiceManagementScreen({super.key});
@@ -169,6 +170,12 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
             })
           );
           await BackupAwareApi().create(newService);
+          await LoggingService().logAction(
+            action: 'SERVICE_IMPORTED',
+            targetType: 'Service',
+            targetId: title,
+            details: 'Imported service: $title',
+          );
           imported++;
         } catch (e) {
           debugPrint('Failed to import ${file.path}: $e');
@@ -277,6 +284,12 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                               service_id: 1,
                             );
                             await BackupAwareApi().create(newService);
+                            await LoggingService().logAction(
+                              action: 'SERVICE_CREATED',
+                              targetType: 'Service',
+                              targetId: titleController.text.trim(),
+                              details: 'Created service: ${titleController.text.trim()}',
+                            );
                             if (mounted) Navigator.pop(context);
                             _fetchServices();
                             _showSuccess('Service created successfully');
@@ -665,6 +678,12 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                   amplify_models.ServiceContent.classType,
                   amplify_models.ServiceContentModelIdentifier(id: service.id.toString())
                 );
+                await LoggingService().logAction(
+                  action: 'SERVICE_DELETED',
+                  targetType: 'Service',
+                  targetId: service.id.toString(),
+                  details: 'Deleted service: ${service.title}',
+                );
                 if (mounted) Navigator.pop(context);
                 _fetchServices();
                 _showSuccess('Service deleted');
@@ -792,6 +811,12 @@ class _EditServiceFormState extends State<_EditServiceForm> {
       );
       
       await BackupAwareApi().update(updatedService);
+      await LoggingService().logAction(
+        action: 'SERVICE_UPDATED',
+        targetType: 'Service',
+        targetId: widget.service.id.toString(),
+        details: 'Updated service: ${_titleController.text.trim()}',
+      );
       
       widget.onSaved();
     } catch (e) {

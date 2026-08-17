@@ -1489,6 +1489,8 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   bool _isToSameAsClient = true;
   late TextEditingController _customToCtrl;
   List<String> _selectedClientCompanies = [];
+  List<Deals> _clientDeals = [];
+  String? _selectedDealId;
   late List<Map<String, dynamic>> _items;
   late List<TextEditingController> _itemDescControllers;
   late List<TextEditingController> _itemAmountControllers;
@@ -1624,6 +1626,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       _amountInWords = b.amountInWords;
       _grandTotal = b.grandTotal;
       _balanceDue = b.data?['balance_due']?.toString() ?? '';
+      _selectedDealId = b.data?['workfile_id']?.toString();
       
       // Resolve staff name from prefix if it's old/placeholder
       if (_authorities.isEmpty || _authorities.length <= 2) {
@@ -1638,7 +1641,33 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     }
   }
 
+  Future<void> _fetchClientDeals() async {
+    if (_clientName.text.isEmpty) {
+      if (mounted) setState(() { _clientDeals = []; _selectedDealId = null; });
+      return;
+    }
+    try {
+      final req = ModelQueries.list(Deals.classType, where: Deals.CLIENT_NAME.eq(_clientName.text));
+      final res = await Amplify.API.query(request: req).response;
+      if (mounted) {
+        setState(() {
+          _clientDeals = res.data?.items.whereType<Deals>().toList() ?? [];
+          if (_clientDeals.length == 1) {
+            _selectedDealId = _clientDeals.first.id;
+          } else if (_clientDeals.isNotEmpty && !_clientDeals.any((d) => d.id == _selectedDealId)) {
+            _selectedDealId = null;
+          } else if (_clientDeals.isEmpty) {
+            _selectedDealId = null;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching client deals: $e');
+    }
+  }
+
     Future<void> _fetchClientCompanies() async {
+      _fetchClientDeals();
       if (_clientName.text.isEmpty) return;
       try {
         final clients = await ClientService().searchClients(_clientName.text);
@@ -1879,6 +1908,15 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a client first'), backgroundColor: Colors.orange));
       return;
     }
+
+    if (_type != 'QUOTATION' && _selectedDealId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please select a Work File before creating an invoice. If the client has no Work Files, please create one first.'), 
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
     if (_invoiceNo.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice number is required'), backgroundColor: Colors.orange));
       return;
@@ -1935,6 +1973,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         'payment_deadline': _deadlineDate.text,
         'approved_amount': _approvedAmount.text,
         'discount': _discount.text,
+        'workfile_id': _selectedDealId,
         if (discountBy != null) 'discount_given_by': discountBy,
         'payment_received': (NumberToWords.parseCurrency(_advanceReceived.text) > 0 && NumberToWords.parseCurrency(_advanceReceived.text) >= NumberToWords.parseCurrency(_grandTotal.isEmpty ? _totalAmount : _grandTotal)) || (widget.billing?.data?['payment_received'] == true), 
         'payment_date': widget.billing?.data?['payment_date'],
@@ -2031,6 +2070,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isMobile = constraints.maxWidth < 950;
+        final bool canPrint = _type == 'QUOTATION' || _selectedDealId != null;
         
         final formPanel = Container(
           width: isMobile ? double.infinity : 460,
@@ -2058,7 +2098,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                         children: [
                         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 13))),
                         ElevatedButton.icon(onPressed: _save, icon: const Icon(Icons.save_rounded, size: 14), label: const Text('Save', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
-                        ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 14), label: const Text('Print', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
+                        if (canPrint) ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 14), label: const Text('Print', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
                       ]),
                     ],
                   )
@@ -2079,7 +2119,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                         children: [
                         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 13))),
                         ElevatedButton.icon(onPressed: _save, icon: const Icon(Icons.save_rounded, size: 14), label: const Text('Save', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
-                        ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 14), label: const Text('Print', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
+                        if (canPrint) ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 14), label: const Text('Print', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
                       ]),
                     ],
                   ),
@@ -2150,6 +2190,30 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
               const SizedBox(height: 20),
               _sectionTitle('Client Details'),
               _buildClientAutocomplete(isMobile),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                value: _clientDeals.any((d) => d.id == _selectedDealId) ? _selectedDealId : null,
+                decoration: InputDecoration(
+                  labelText: _type == 'QUOTATION' ? 'Select Work File (Optional)' : 'Select Work File (Required for Invoice)',
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB))),
+                ),
+                items: _clientDeals.map((deal) {
+                  return DropdownMenuItem<String>(
+                    value: deal.id,
+                    child: Text(
+                      '${deal.name ?? 'Unnamed Deal'}${deal.register_no != null && deal.register_no!.isNotEmpty ? ' (File No: ${deal.register_no})' : ''}', 
+                      overflow: TextOverflow.ellipsis
+                    ),
+                  );
+                }).toList(),
+                onChanged: (val) => setState(() => _selectedDealId = val),
+                icon: const Icon(Icons.work_outline_rounded, color: Color(0xFF64748B)),
+              ),
               const SizedBox(height: 12),
               _buildField('Address', _clientAddress, 'Complete billing address...', lines: 3),
               const SizedBox(height: 12),
@@ -2300,15 +2364,19 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                 ? Column(
                     children: [
                       SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _save, style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Save Progress'))),
-                      const SizedBox(height: 12),
-                      SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 18), label: const Text('Finalize & Print'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
+                      if (canPrint) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 18), label: const Text('Finalize & Print'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
+                      ]
                     ],
                   )
                 : Row(
                     children: [
                       Expanded(child: SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _save, style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Save Progress')))),
-                      const SizedBox(width: 16),
-                      Expanded(child: SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 18), label: const Text('Finalize & Print'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)))))),
+                      if (canPrint) ...[
+                        const SizedBox(width: 16),
+                        Expanded(child: SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 18), label: const Text('Finalize & Print'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)))))),
+                      ]
                     ],
                   ),
             ),
@@ -2618,6 +2686,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                                 _clientName.text = newClient.name ?? '';
                                 _clientAddress.text = newClient.address ?? '';
                               });
+                              _fetchClientDeals();
                               Navigator.pop(ctx);
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client created successfully'), backgroundColor: Colors.green));
                             }
@@ -2696,6 +2765,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                                 _selectedClientCompanies = (c['companies'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
                                 _calc();
                               });
+                              _fetchClientDeals();
                               Navigator.pop(context);
                             },
                           );

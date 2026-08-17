@@ -12,6 +12,7 @@ import 'create_work_file_dialog.dart';
 import '../models/client.dart';
 import 'client_files_dialog.dart';
 import '../services/logging_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ClientFilesScreen extends StatefulWidget {
   const ClientFilesScreen({super.key});
@@ -124,50 +125,104 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setStateDialog) => AlertDialog(
-          title: const Text('Edit Work File'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+          actionsPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: fileNoController,
-                  decoration: const InputDecoration(labelText: 'File No', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedCategory,
-                  decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
-                  items: ['General', 'Legal', 'Consultancy'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (newValue) {
-                    setStateDialog(() {
-                      selectedCategory = newValue!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: typeController,
-                  decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
-                ),
-              ],
+                child: const Icon(Icons.edit_document, color: AppTheme.primaryColor, size: 24),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(child: Text('Edit Work File', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: -0.5))),
+            ],
+          ),
+          content: SizedBox(
+            width: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Work Name',
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: fileNoController,
+                    decoration: InputDecoration(
+                      labelText: 'File No',
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    decoration: InputDecoration(
+                      labelText: 'Category',
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                    ),
+                    items: ['General', 'Legal', 'Consultancy'].map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    onChanged: (newValue) {
+                      setStateDialog(() {
+                        selectedCategory = newValue!;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: typeController,
+                    decoration: InputDecoration(
+                      labelText: 'Type of Work',
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false), 
+              child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))
+            ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Save', style: TextStyle(color: Colors.white)),
+              child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -187,6 +242,14 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
           work_type: finalType,
         );
         await BackupAwareApi().update(newDeal);
+        
+        await LoggingService().logAction(
+          action: 'WORK_FILE_UPDATED',
+          targetType: 'WorkFile',
+          targetId: newDeal.name,
+          details: 'Updated Work File details for ${newDeal.name}',
+        );
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Work file updated successfully', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
           
@@ -859,78 +922,158 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
     );
   }
 
-  void _addSubWork() {
-    List<amplify_models.Deals> availableForSub = widget.allWorkFiles.where((w) => 
-      w.id != _currentWorkFile.id && 
-      w.contact_status != _currentWorkFile.id
-    ).toList();
-    List<amplify_models.Deals> filteredForSearch = List.from(availableForSub);
+  Future<void> _addSubWork() async {
+    List<amplify_models.Users> staffList = [];
+    try {
+      final req = ModelQueries.list(amplify_models.Users.classType, limit: 1000);
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data != null) {
+        final List<amplify_models.Users> fetched = res.data!.items.whereType<amplify_models.Users>().toList();
+        final List<amplify_models.Users> deduplicated = [];
+        for (var staff in fetched) {
+          final name = (staff.name ?? staff.username ?? 'Unknown').trim();
+          if (name == 'Unknown' || name.isEmpty) continue;
+          
+          bool isDuplicate = false;
+          for (int i = 0; i < deduplicated.length; i++) {
+            final existingName = (deduplicated[i].name ?? deduplicated[i].username ?? '').trim();
+            final n1 = name.toLowerCase();
+            final n2 = existingName.toLowerCase();
+            
+            if (n1.startsWith(n2) || n2.startsWith(n1)) {
+              isDuplicate = true;
+              if (name.length > existingName.length) {
+                deduplicated[i] = staff;
+              }
+              break;
+            }
+          }
+          if (!isDuplicate) deduplicated.add(staff);
+        }
+        staffList = deduplicated;
+        staffList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+      }
+    } catch (e) {
+      debugPrint('Error fetching staff: $e');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error loading staff.')));
+      return;
+    }
+
+    if (!mounted) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final currentUserName = prefs.getString('current_user_name') ?? 'Unknown';
 
     showDialog(
       context: context,
       builder: (context) {
+        final nameCtrl = TextEditingController();
+        final typeCtrl = TextEditingController();
+        amplify_models.Users? selectedStaff;
+        DateTime? selectedDeadline;
+        bool isSaving = false;
+
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Select Sub Work'),
+              title: const Text('Create Sub Work'),
               content: SizedBox(
                 width: 400,
-                height: 400,
-                child: Column(
-                  children: [
-                    TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Search by name or client...',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: nameCtrl,
+                        decoration: const InputDecoration(labelText: 'Work Name', border: OutlineInputBorder()),
                       ),
-                      onChanged: (val) {
-                        final lower = val.toLowerCase();
-                        setDialogState(() {
-                          filteredForSearch = availableForSub.where((w) => 
-                            (w.name?.toLowerCase().contains(lower) ?? false) || 
-                            (w.client_name?.toLowerCase().contains(lower) ?? false)
-                          ).toList();
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: filteredForSearch.length,
-                        itemBuilder: (context, index) {
-                          final wf = filteredForSearch[index];
-                          return ListTile(
-                            leading: const Icon(Icons.folder, color: AppTheme.primaryColor),
-                            title: Text(wf.name ?? 'Untitled'),
-                            subtitle: Text('Client: ${wf.client_name ?? "Unknown"}'),
-                            onTap: () async {
-                              Navigator.pop(context);
-                              setState(() => _isUploading = true);
-                              try {
-                                final updatedWF = wf.copyWith(contact_status: _currentWorkFile.id);
-                                await BackupAwareApi().update(updatedWF);
-                                setState(() {
-                                  _subWorks.add(updatedWF);
-                                });
-                                widget.onUpdate();
-                                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sub work added successfully!')));
-                              } catch (e) {
-                                debugPrint('Error adding sub work: $e');
-                                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error adding sub work: $e')));
-                              } finally {
-                                if (mounted) setState(() => _isUploading = false);
-                              }
-                            },
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: typeCtrl,
+                        decoration: const InputDecoration(labelText: 'Work Type', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<amplify_models.Users>(
+                        decoration: const InputDecoration(labelText: 'Assign To', border: OutlineInputBorder()),
+                        value: selectedStaff,
+                        items: staffList.map((s) => DropdownMenuItem(value: s, child: Text(s.name ?? s.username ?? 'Unknown'))).toList(),
+                        onChanged: (val) => setDialogState(() => selectedStaff = val),
+                      ),
+                      const SizedBox(height: 16),
+                      ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                          side: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        title: Text(selectedDeadline == null ? 'Select Deadline' : 'Deadline: ${selectedDeadline!.toLocal().toString().split(' ')[0]}'),
+                        trailing: const Icon(Icons.calendar_today),
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(const Duration(days: 3650)),
                           );
+                          if (date != null) setDialogState(() => selectedDeadline = date);
                         },
                       ),
-                    ),
-                  ],
+                      if (isSaving) const Padding(padding: EdgeInsets.only(top: 16), child: Center(child: CircularProgressIndicator())),
+                    ],
+                  ),
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: isSaving ? null : () async {
+                    if (nameCtrl.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Work name is required')));
+                      return;
+                    }
+                    setDialogState(() => isSaving = true);
+                    try {
+                      final newSubWork = amplify_models.Deals(
+                        name: nameCtrl.text.trim(),
+                        client_name: _currentWorkFile.client_name,
+                        company: _currentWorkFile.company,
+                        pipeline: 'Sub Work',
+                        contact_status: _currentWorkFile.id,
+                        stage: 'Active',
+                        work_type: typeCtrl.text.trim(),
+                        responsible_id: selectedStaff != null ? int.tryParse(selectedStaff!.id) : null,
+                        responsible_name: selectedStaff?.name ?? selectedStaff?.username,
+                        closed_at: selectedDeadline?.toIso8601String(),
+                        referred_by: currentUserName,
+                        created_at: DateTime.now().toIso8601String(),
+                        updated_at: DateTime.now().toIso8601String(),
+                      );
+                      
+                      await BackupAwareApi().create(newSubWork);
+                      
+                      await LoggingService().logAction(
+                        action: 'SUB_WORK_CREATED',
+                        targetType: 'WorkFile',
+                        targetId: newSubWork.name,
+                        details: 'Created Sub Work "${newSubWork.name}" for parent "${_currentWorkFile.name}"',
+                      );
+
+                      if (mounted) {
+                        setState(() {
+                          _subWorks.add(newSubWork);
+                        });
+                        widget.onUpdate();
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sub work created successfully!')));
+                      }
+                    } catch (e) {
+                      debugPrint('Error creating sub work: $e');
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    } finally {
+                      setDialogState(() => isSaving = false);
+                    }
+                  },
+                  child: const Text('Create'),
+                ),
               ],
             );
           }

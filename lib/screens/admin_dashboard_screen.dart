@@ -144,7 +144,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         }
       }
 
-      final activityRes = billingsList.take(5).toList();
+      final reqLogs = ModelQueries.list(ActivityLogs.classType, limit: 100);
+      final resLogs = await Amplify.API.query(request: reqLogs).response;
+      final fetchedLogs = (resLogs.data?.items ?? []).whereType<ActivityLogs>().toList();
+      
+      fetchedLogs.sort((a, b) {
+        final aTime = a.createdAt?.getDateTimeInUtc() ?? (a.created_at != null ? DateTime.tryParse(a.created_at!) : null) ?? DateTime(2000);
+        final bTime = b.createdAt?.getDateTimeInUtc() ?? (b.created_at != null ? DateTime.tryParse(b.created_at!) : null) ?? DateTime(2000);
+        return bTime.compareTo(aTime);
+      });
+      final recentLogs = fetchedLogs.take(5).toList();
+
+      Map<int, String> nameMap = {};
+      try {
+        final map = await SupabaseBackupService().getUsernameToIdMap();
+        map.forEach((username, id) {
+          nameMap[id] = username;
+        });
+      } catch (_) {}
+
       final billingRes = billingsList.take(50).toList();
 
       setState(() {
@@ -153,12 +171,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           'activeLicenses': licensesCountRes.length.toString(),
           'monthlyRevenue': '₹${NumberFormat('#,##,###').format(totalRevenue)}',
         };
-        _recentActivity = activityRes.map((b) => {
-            'id': b.id,
-            'invoice_no': b.invoice_no,
-            'client_name': b.client_name,
-            'created_at': b.createdAt?.toString(),
-            'type': b.type
+        _recentActivity = recentLogs.map((r) {
+          final userName = nameMap[r.user_id] ?? 'System';
+          final displayTime = r.createdAt?.getDateTimeInUtc().toLocal().toIso8601String() ?? r.created_at;
+          return {
+            'action': r.action ?? '',
+            'target_type': r.target_type ?? '',
+            'details': r.details ?? '',
+            'created_at': displayTime,
+            'user_name': userName
+          };
         }).toList();
         _globalBillings = billingRes.map((b) => {
             'id': b.id,
@@ -875,16 +897,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Recent System Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Recent System Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                TextButton(
+                  onPressed: () => setState(() => _selectedIndex = 1),
+                  child: const Text('View All Logs', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
             const SizedBox(height: 20),
             _recentActivity.isEmpty 
               ? const Center(child: Padding(padding: EdgeInsets.all(40), child: Text('No recent activity', style: TextStyle(color: AppTheme.mutedTextColor))))
               : Column(
                   children: _recentActivity.map((log) {
-                    final userName = (log['users'] as Map<String, dynamic>?)?['name'] ?? 'System';
-                    final date = log['created_at'] != null ? DateFormat('hh:mm a • dd MMM').format(DateTime.parse(log['created_at'].toString())) : '-';
-                    final isQuote = log['type'] == 'QUOTATION';
-                    final accentColor = isQuote ? Colors.purple : AppTheme.primaryColor;
+                    final userName = log['user_name'] ?? 'System';
+                    DateTime? parsedDate;
+                    if (log['created_at'] != null) {
+                      try {
+                        parsedDate = DateTime.parse(log['created_at'].toString()).toLocal();
+                      } catch (_) {}
+                    }
+                    final date = parsedDate != null ? DateFormat('hh:mm a • dd MMM').format(parsedDate) : '-';
+                    
+                    Color actionColor = AppTheme.primaryColor;
+                    if (log['action'].toString().contains('DELETE')) actionColor = Colors.red;
+                    if (log['action'].toString().contains('CREATE')) actionColor = Colors.green;
                     
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -897,18 +936,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          decoration: BoxDecoration(border: Border(left: BorderSide(color: accentColor, width: 4))),
+                          decoration: BoxDecoration(border: Border(left: BorderSide(color: actionColor, width: 4))),
                           child: ListTile(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                             leading: Container(
                               padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(color: accentColor.withAlpha(25), borderRadius: BorderRadius.circular(8)),
-                              child: Icon(isQuote ? Icons.request_quote_rounded : Icons.receipt_long_rounded, color: accentColor, size: 20),
+                              decoration: BoxDecoration(color: actionColor.withAlpha(25), borderRadius: BorderRadius.circular(8)),
+                              child: Icon(Icons.info_outline_rounded, color: actionColor, size: 20),
                             ),
-                            title: Text('New ${log['type']} for ${log['client_name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                            title: Text('$userName • ${log['action']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                             subtitle: Padding(
                               padding: const EdgeInsets.only(top: 4.0),
-                              child: Text('Inv: ${log['invoice_no']} \n$date', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                              child: Text('${log['details']} \n$date', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                             ),
                             trailing: Container(
                               padding: const EdgeInsets.all(6),
@@ -916,7 +955,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               child: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey, size: 12),
                             ),
                             onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Activity: New ${log['type']} for ${log['client_name']}')));
+                              setState(() => _selectedIndex = 1);
                             },
                           ),
                         ),

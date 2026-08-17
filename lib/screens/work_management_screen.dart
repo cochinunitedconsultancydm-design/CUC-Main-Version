@@ -704,7 +704,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                     Expanded(
                       flex: 1,
                       child: Text(
-                        'â‚¹${NumberFormat('#,##,###').format(deal.amount)}',
+                        '₹${NumberFormat('#,##,###').format(deal.amount)}',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF00C16C)),
                       ),
                     ),

@@ -37,7 +37,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       // 0. Fetch Clients to map client_id to name
       final clientReq = ModelQueries.list(Clients.classType, limit: 10000);
       final clientRes = await Amplify.API.query(request: clientReq).response;
-      final clientsMap = { for (var c in (clientRes.data?.items ?? []).whereType<Clients>() ?? []) c.id.toString(): c.name ?? 'Unknown' };
+      final clientsMap = { for (var c in (clientRes.data?.items ?? []).whereType<Clients>()) c.id.toString(): c.name ?? 'Unknown' };
 
       // 1. Fetch Tasks (Overdue or Due in next 7 days)
       final tReq = ModelQueries.list(Tasks.classType, where: Tasks.STATUS.ne('Completed'));

@@ -1747,12 +1747,8 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                 }
               }
 
-              final paymentLogs = filteredLogs.where((l) => l.action == 'INVOICE_PAYMENT').toList();
-              for (var log in paymentLogs) {
-                if (log.details != null) {
-                  totalBillAmountReceived += _parseCurrency(log.details);
-                }
-              }
+              // Calculate received amount directly from the bills to match Created and Pending exactly
+              totalBillAmountReceived = totalBillAmountCreated - totalPending;
 
               // Calculate Best Performer
               Map<String, int> staffScores = {};
@@ -2105,12 +2101,8 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
               }
             }
 
-            final staffPaymentLogs = userLogs.where((l) => l.action == 'INVOICE_PAYMENT').toList();
-            for (var log in staffPaymentLogs) {
-              if (log.details != null) {
-                staffAmountReceived += _parseCurrency(log.details);
-              }
-            }
+            // Calculate received amount directly from the bills to match Created and Pending exactly
+            staffAmountReceived = staffAmountCreated - staffPending;
 
             return Dialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),

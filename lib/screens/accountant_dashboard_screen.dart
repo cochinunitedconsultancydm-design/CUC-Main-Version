@@ -164,6 +164,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isWide = constraints.maxWidth > 800;
+        final bool isMobile = constraints.maxWidth < 600;
 
         Widget mainContent = _isLoading 
             ? const Center(child: CircularProgressIndicator())
@@ -174,7 +175,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  _buildGreeting(isWide),
+                  _buildGreeting(isWide, isMobile),
                   const SizedBox(height: 24),
                   
                   _buildWelcomeBanner(isWide),
@@ -183,14 +184,14 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: isWide ? 3 : 2,
+                    crossAxisCount: isWide ? 3 : (isMobile ? 1 : 2),
                     mainAxisSpacing: isWide ? 24 : 12,
                     crossAxisSpacing: isWide ? 24 : 12,
-                    childAspectRatio: isWide ? 1.4 : 1.1,
+                    childAspectRatio: isMobile ? 2.5 : (isWide ? 1.4 : 1.1),
                     children: [
-                      _buildStatCard('Total Revenue', '₹${NumberFormat("#,##,###").format(_stats["totalRevenue"])}', 'Overall earnings', Icons.account_balance_wallet_rounded, Colors.green, isWide),
-                      _buildStatCard('Total Expenses', '₹${NumberFormat("#,##,###").format(_stats["totalExpenses"])}', 'Company payables', Icons.outbound_rounded, Colors.orange, isWide),
-                      _buildStatCard('Outstanding', '₹${NumberFormat("#,##,###").format(_stats["outstandingBalance"])}', 'Pending from clients', Icons.pending_actions_rounded, Colors.blue, isWide),
+                      _buildStatCard('Total Revenue', '₹${NumberFormat("#,##,###").format(_stats["totalRevenue"])}', 'Overall earnings', Icons.account_balance_wallet_rounded, Colors.green, isWide, isMobile),
+                      _buildStatCard('Total Expenses', '₹${NumberFormat("#,##,###").format(_stats["totalExpenses"])}', 'Company payables', Icons.outbound_rounded, Colors.orange, isWide, isMobile),
+                      _buildStatCard('Outstanding', '₹${NumberFormat("#,##,###").format(_stats["outstandingBalance"])}', 'Pending from clients', Icons.pending_actions_rounded, Colors.blue, isWide, isMobile),
                     ].animate(interval: 100.ms).fadeIn(duration: 500.ms).slideY(begin: 0.1),
                   ),
                   
@@ -219,7 +220,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: isWide ? 4 : 2,
+                    crossAxisCount: isWide ? 4 : (isMobile ? 2 : 3),
                     mainAxisSpacing: isWide ? 16 : 12,
                     crossAxisSpacing: isWide ? 16 : 12,
                     childAspectRatio: isWide ? 1.5 : 1.3,
@@ -283,63 +284,31 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
     );
   }
 
-  Widget _buildGreeting(bool isWide) {
+   Widget _buildGreeting(bool isWide, [bool isMobile = false]) {
     final hour = DateTime.now().hour;
-    String greeting = 'Good Morning';
-    if (hour >= 12 && hour < 17) {
-      greeting = 'Good Afternoon';
-    } else if (hour >= 17) greeting = 'Good Evening';
+    String greeting = 'Good Evening';
+    if (hour < 12) greeting = 'Good Morning';
+    else if (hour < 17) greeting = 'Good Afternoon';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$greeting, $_userName',
-                    style: TextStyle(
-                      fontSize: isWide ? 32 : 24, 
-                      fontWeight: FontWeight.w900, 
-                      letterSpacing: -1.5, 
-                      color: const Color(0xFF0F172A)
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.2),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Here is the financial overview for Cochin United.',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 15, fontWeight: FontWeight.w500),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ).animate().fadeIn(delay: 200.ms),
-                ],
-              ),
-            ),
-            if (isWide) Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
-              ),
-              child: Row(
-                children: [
+            Text('$greeting, ${_userName.split(' ').first} 👋', style: TextStyle(fontSize: isMobile ? 24 : 32, fontWeight: FontWeight.bold, letterSpacing: -1)),
+            Text('Manage finances, billing, and accounting', style: TextStyle(color: AppTheme.mutedTextColor, fontSize: isMobile ? 12 : 14)),
+          ],
+        ),
+        if (!isMobile) Row(
+            children: [
                   const Icon(Icons.calendar_today_rounded, size: 16, color: AppTheme.primaryColor),
                   const SizedBox(width: 10),
                   Text(
                     DateFormat('EEEE, d MMM').format(DateTime.now()),
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
                   ),
-                ],
-              ),
-            ).animate().fadeIn(delay: 400.ms).slideX(begin: 0.2),
-          ],
+            ]
         ),
       ],
     );
@@ -417,7 +386,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
     ).animate().fadeIn().slideY(begin: -0.1);
   }
 
-  Widget _buildStatCard(String title, String value, String sub, IconData icon, Color color, bool isWide) {
+  Widget _buildStatCard(String title, dynamic value, String subtitle, IconData icon, Color color, bool isWide, [bool isMobile = false]) {
     return Container(
       padding: EdgeInsets.all(isWide ? 24 : 16),
       decoration: BoxDecoration(
@@ -442,7 +411,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
           ),
           const SizedBox(height: 4),
           Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isWide ? 14 : 11, color: AppTheme.textColor)),
-          if (isWide) Text(sub, style: const TextStyle(fontSize: 11, color: AppTheme.mutedTextColor)),
+          if (isWide) Text(subtitle, style: const TextStyle(fontSize: 11, color: AppTheme.mutedTextColor)),
         ],
       ),
     );

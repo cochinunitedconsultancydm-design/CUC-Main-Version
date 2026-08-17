@@ -279,16 +279,16 @@ class _HRDashboardScreenState extends State<HRDashboardScreen> {
     );
   }
 
-  Widget _buildMainBody(bool isWide) {
+  Widget _buildMainBody(bool isWide, bool isMobile) {
     switch (_selectedIndex) {
-      case 0: return _buildDashboardHome(isWide);
+      case 0: return _buildDashboardHome(isWide, isMobile);
       case 1: return const StaffManagementScreen();
       case 2: return const StaffChatListScreen();
       default: return const Center(child: Text('Page not found'));
     }
   }
 
-  Widget _buildDashboardHome(bool isWide) {
+  Widget _buildDashboardHome(bool isWide, bool isMobile) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -297,7 +297,7 @@ class _HRDashboardScreenState extends State<HRDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildGreeting(isWide),
+            _buildGreeting(isWide, isMobile),
             const SizedBox(height: 24),
             
             _buildWelcomeBanner(isWide),
@@ -306,10 +306,10 @@ class _HRDashboardScreenState extends State<HRDashboardScreen> {
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: isWide ? 3 : 2,
+              crossAxisCount: isWide ? 3 : (isMobile ? 1 : 2),
               mainAxisSpacing: isWide ? 24 : 12,
               crossAxisSpacing: isWide ? 24 : 12,
-              childAspectRatio: isWide ? 1.4 : 1.1,
+              childAspectRatio: isMobile ? 2.5 : (isWide ? 1.4 : 1.1),
               children: [
                 _buildStatCard('Total Staff', _stats["totalStaff"].toString(), 'Active employees', Icons.people_alt_rounded, Colors.blue, isWide, onTap: () {
                   _showStaffDetails('Total Staff', _staffList);
@@ -334,7 +334,7 @@ class _HRDashboardScreenState extends State<HRDashboardScreen> {
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: isWide ? 4 : 2,
+              crossAxisCount: isWide ? 4 : (isMobile ? 2 : 3),
               mainAxisSpacing: isWide ? 16 : 12,
               crossAxisSpacing: isWide ? 16 : 12,
               childAspectRatio: isWide ? 1.5 : 1.3,
@@ -424,7 +424,8 @@ class _HRDashboardScreenState extends State<HRDashboardScreen> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool isWide = constraints.maxWidth > 800;
+        final bool isWide = constraints.maxWidth > 900;
+        final bool isMobile = constraints.maxWidth < 600;
 
         return Scaffold(
           backgroundColor: const Color(0xFFF8FAFB),
@@ -447,7 +448,7 @@ class _HRDashboardScreenState extends State<HRDashboardScreen> {
                   padding: EdgeInsets.all(isWide ? 32 : 16),
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
-                    child: _buildMainBody(isWide),
+                    child: _buildMainBody(isWide, isMobile),
                   ),
                 ),
               ),
@@ -458,7 +459,7 @@ class _HRDashboardScreenState extends State<HRDashboardScreen> {
     );
   }
 
-  Widget _buildGreeting(bool isWide) {
+  Widget _buildGreeting(bool isWide, bool isMobile) {
     final hour = DateTime.now().hour;
     String greeting = 'Good Evening';
     if (hour < 12) greeting = 'Good Morning';

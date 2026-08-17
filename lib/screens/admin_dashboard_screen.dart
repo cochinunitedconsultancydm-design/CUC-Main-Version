@@ -335,6 +335,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isWide = constraints.maxWidth > 900;
+        final bool isMobile = constraints.maxWidth < 600;
         
         return PopScope(
           canPop: _selectedIndex == 0,
@@ -373,7 +374,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ? const Center(child: CircularProgressIndicator())
                             : AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 300),
-                                child: _buildMainAdminContent(isWide),
+                                child: _buildMainAdminContent(isWide, isMobile),
                               ),
                         ),
                       ],
@@ -550,14 +551,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildMainAdminContent(bool isWide) {
+  Widget _buildMainAdminContent(bool isWide, bool isMobile) {
     switch (_selectedIndex) {
-      case 0: return _buildAdminView(isWide);
+      case 0: return _buildAdminView(isWide, isMobile);
       case 1: return const MonitorScreen();
       case 2: return const StaffManagementScreen();
       case 3: return const ServiceManagementScreen();
       case 4: return _buildBackupView();
-      case 5: return _buildHealthView(isWide);
+      case 5: return _buildHealthView(isWide, isMobile);
 
       case 8: return const TravelLogScreen();
       case 12: return const ChecklistScreen();
@@ -576,7 +577,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  Widget _buildHealthView(bool isWide) {
+  Widget _buildHealthView(bool isWide, bool isMobile) {
     return FutureBuilder<Map<String, dynamic>>(
       future: _fetchSystemMetrics(),
       builder: (context, snapshot) {
@@ -594,10 +595,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             
             Expanded(
               child: GridView.count(
-                crossAxisCount: isWide ? 4 : 2,
+                crossAxisCount: isWide ? 4 : (isMobile ? 1 : 2),
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 1.5,
+                childAspectRatio: isMobile ? 2.5 : 1.5,
                 children: [
                   _healthCard('DB Sync', metrics['syncStatus'], Icons.cloud_done_rounded, metrics['syncStatus'] == 'Healthy' ? Colors.green : Colors.red),
                   _healthCard('Connection', metrics['connection'], Icons.lan_rounded, Colors.blue),
@@ -791,7 +792,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
 
 
-  Widget _buildAdminView(bool isWide) {
+  Widget _buildAdminView(bool isWide, bool isMobile) {
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -802,14 +803,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: isWide ? 3 : 2,
-            mainAxisSpacing: isWide ? 24 : 12,
-            crossAxisSpacing: isWide ? 24 : 12,
-            childAspectRatio: isWide ? 1.4 : 1.1,
+            crossAxisCount: isWide ? 4 : (isMobile ? 1 : 2),
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            childAspectRatio: isMobile ? 3.0 : 1.5,
             children: [
-              _buildStatCard('Total Clients', _adminStats['totalClients'], '+12%', Icons.people_rounded, Colors.blue, isWide),
-              _buildStatCard('Active Licenses', _adminStats['activeLicenses'], '+5%', Icons.verified_user_rounded, Colors.purple, isWide),
-              _buildStatCard('Total Revenue', _adminStats['monthlyRevenue'], '+24%', Icons.account_balance_wallet_rounded, Colors.green, isWide),
+              _buildStatCard('Total Clients', _adminStats['totalClients'], '+12%', Icons.people_rounded, Colors.blue, isWide, isMobile),
+              _buildStatCard('Active Licenses', _adminStats['activeLicenses'], '+5%', Icons.verified_user_rounded, Colors.purple, isWide, isMobile),
+              _buildStatCard('Total Revenue', _adminStats['monthlyRevenue'], '+24%', Icons.account_balance_wallet_rounded, Colors.green, isWide, isMobile),
+              _buildStatCard('System Alerts', _adminStats['systemAlerts'], 'Critical', Icons.warning_rounded, Colors.red, isWide, isMobile),
             ].animate(interval: 100.ms).fadeIn().slideY(begin: 0.1),
           ),
           const SizedBox(height: 32),
@@ -1130,7 +1132,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     ).animate().fadeIn().slideY(begin: -0.1);
   }
 
-  Widget _buildStatCard(String title, String value, String trend, IconData icon, Color color, bool isWide) {
+  Widget _buildStatCard(String title, dynamic value, String trend, IconData icon, Color color, bool isWide, [bool isMobile = false]) {
     return Container(
       padding: EdgeInsets.all(isWide ? 24 : 16),
       decoration: BoxDecoration(

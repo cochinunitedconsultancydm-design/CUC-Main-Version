@@ -1011,29 +1011,30 @@ class _BillingScreenState extends State<BillingScreen> {
                 ]),
               ]),
               const SizedBox(height: 16),
-              Row(children: [
-                Expanded(
-                  child: Container(
-                    height: 45,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _statusFilter,
-                        isExpanded: true,
-                        items: ['All', 'Paid', 'Pending', 'Overdue', 'Interested', 'Not Interested'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
-                        onChanged: (v) {
-                          if (v != null) {
-                            setState(() => _statusFilter = v);
-                            _fetchBillings(refresh: true);
-                          }
-                        },
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Container(
+                      height: 45,
+                      width: isMobile ? double.infinity : 200,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _statusFilter,
+                          isExpanded: true,
+                          items: ['All', 'Paid', 'Pending', 'Overdue', 'Interested', 'Not Interested'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setState(() => _statusFilter = v);
+                              _fetchBillings(refresh: true);
+                            }
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _actionBtn(Icons.date_range_rounded, 'Filter by Date', _startDate != null ? Colors.blue : Colors.grey, () async {
+                    _actionBtn(Icons.date_range_rounded, 'Filter by Date', _startDate != null ? Colors.blue : Colors.grey, () async {
                    final picked = await showDateRangePicker(
                      context: context,
                      firstDate: DateTime(2020),
@@ -2051,11 +2052,12 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                         const Text('Billing', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
                       ]),
                       const SizedBox(height: 16),
-                      Row(children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
                         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 13))),
-                        const SizedBox(width: 8),
                         ElevatedButton.icon(onPressed: _save, icon: const Icon(Icons.save_rounded, size: 14), label: const Text('Save', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
-                        const SizedBox(width: 8),
                         ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 14), label: const Text('Print', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
                       ]),
                     ],
@@ -2070,11 +2072,13 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                         const SizedBox(width: 12),
                         const Text('Billing', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
                       ]),
-                      Row(children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.end,
+                        children: [
                         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 13))),
-                        const SizedBox(width: 8),
                         ElevatedButton.icon(onPressed: _save, icon: const Icon(Icons.save_rounded, size: 14), label: const Text('Save', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
-                        const SizedBox(width: 8),
                         ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 14), label: const Text('Print', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
                       ]),
                     ],
@@ -2198,22 +2202,14 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                 const SizedBox(height: 16),
                 _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy'),
                 const SizedBox(height: 16),
-                _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: false, suffix: IconButton(
-                  icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF2563EB)),
-                  onPressed: () => _generateInvoiceNo(true),
-                  tooltip: 'Regenerate sequence',
-                )),
+                _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: true),
               ] else Row(
                 children: [
                   Expanded(child: _buildField('Date', _date, 'dd/mm/yyyy', readOnly: true)),
                   const SizedBox(width: 16),
                   Expanded(child: _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy')),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: false, suffix: IconButton(
-                    icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF2563EB)),
-                    onPressed: () => _generateInvoiceNo(true),
-                    tooltip: 'Regenerate sequence',
-                  ))),
+                  Expanded(child: _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: true)),
                 ],
               ),
               const SizedBox(height: 20),

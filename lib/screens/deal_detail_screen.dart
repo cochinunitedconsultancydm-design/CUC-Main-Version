@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/deal.dart';
 import '../models/billing.dart';
@@ -4246,7 +4246,7 @@ final dLink = "";
                     style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(
                       hintText: '0',
-                      prefixText: 'â‚¹ ',
+                      prefixText: '₹ ',
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -4343,7 +4343,7 @@ final dLink = "";
             prefixIcon: icon != null
                 ? Icon(icon, size: 18, color: Colors.grey)
                 : null,
-            prefixText: isCurrency ? 'â‚¹ ' : null,
+            prefixText: isCurrency ? '₹ ' : null,
             prefixStyle: const TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.black,

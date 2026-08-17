@@ -507,6 +507,19 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
       }
       return {'name': TextEditingController(text: name), 'address': TextEditingController(text: address)};
     }).toList();
+
+    List<Map<String, TextEditingController>> customFieldControllers = (client?.customFields ?? []).map((c) {
+      String name = '';
+      String value = '';
+      if (c.contains(':')) {
+        final parts = c.split(':');
+        name = parts.first.trim();
+        if (parts.length > 1) value = parts.sublist(1).join(':').trim();
+      } else {
+        name = c;
+      }
+      return {'name': TextEditingController(text: name), 'value': TextEditingController(text: value)};
+    }).toList();
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -701,6 +714,49 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                         label: const Text('Add Company'),
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    const Text('Custom Fields', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                    const SizedBox(height: 12),
+                    ...customFieldControllers.asMap().entries.map((e) {
+                      int idx = e.key;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  _buildFormField(e.value['name']!, 'Field Name (e.g. GSTIN)', Icons.label_outline, false),
+                                  const SizedBox(height: 8),
+                                  _buildFormField(e.value['value']!, 'Field Value', Icons.text_fields, false),
+                                ]
+                              )
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                              onPressed: () {
+                                setModalState(() {
+                                  customFieldControllers.removeAt(idx);
+                                });
+                              }
+                            )
+                          ]
+                        )
+                      );
+                    }),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          setModalState(() {
+                            customFieldControllers.add({'name': TextEditingController(), 'value': TextEditingController()});
+                          });
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Custom Field'),
+                      ),
+                    ),
                     const SizedBox(height: 40),
                     ElevatedButton(
                       onPressed: () async {
@@ -766,6 +822,12 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                             final addr = c['address']!.text.trim();
                             return '$name|||$addr';
                           }).where((c) => !c.startsWith('|||')).toList(),
+                          customFields: customFieldControllers.map((c) {
+                            final name = c['name']!.text.trim();
+                            final val = c['value']!.text.trim();
+                            if (name.isEmpty && val.isEmpty) return '';
+                            return '$name: $val';
+                          }).where((c) => c.isNotEmpty && c != ': ').toList(),
                         );
                         try {
                           if (client == null) {
@@ -794,6 +856,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               managed_by: newClient.managedBy,
                               case_number: newRegNo,
                               companies: newClient.companies,
+                              custom_fields: newClient.customFields,
                             );
                             await BackupAwareApi().create(model);
                           } else {
@@ -811,6 +874,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               managed_by: newClient.managedBy,
                               case_number: newClient.registrationNumber,
                               companies: newClient.companies,
+                              custom_fields: newClient.customFields,
                             );
                             await BackupAwareApi().update(model);
                           }
@@ -1007,27 +1071,25 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                 ),
               ).animate().fadeIn().slideX(begin: 0.1),
               const SizedBox(height: 16),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _showClientForm(),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add Client'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                        elevation: 0,
-                      ),
+                  ElevatedButton.icon(
+                    onPressed: () => _showClientForm(),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Client'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      elevation: 0,
                     ),
                   ),
-                  const SizedBox(width: 12),
                   _buildSortDropdown(),
-                  const SizedBox(width: 12),
                   _headerAction(Icons.refresh_rounded, 'Refresh', AppTheme.primaryColor, _fetchClients),
-                  const SizedBox(width: 8),
                   _headerAction(Icons.download_rounded, 'Export', Colors.green, _exportToExcel),
                 ],
               ).animate().fadeIn().slideY(begin: 0.1),

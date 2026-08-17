@@ -1017,7 +1017,7 @@ class _BillingScreenState extends State<BillingScreen> {
                   children: [
                     Container(
                       height: 45,
-                      width: isMobile ? double.infinity : 200,
+                      width: MediaQuery.of(context).size.width < 600 ? double.infinity : 200,
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
                       child: DropdownButtonHideUnderline(

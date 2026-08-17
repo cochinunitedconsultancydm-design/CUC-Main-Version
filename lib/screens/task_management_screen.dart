@@ -172,7 +172,11 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     try {
       final req = ModelQueries.list(amplify_models.Tasks.classType);
       final res = await Amplify.API.query(request: req).response;
-      var tasks = (res.data?.items ?? []).whereType<amplify_models.Tasks>().toList() ?? [];
+      var tasks = (res.data?.items ?? []).whereType<amplify_models.Tasks>().toList();
+      tasks = tasks.where((t) {
+        final title = (t.title ?? '').toLowerCase();
+        return title.startsWith('[delivery]') || title.startsWith('[pickup]') || title.startsWith('[visit]');
+      }).toList();
       
       tasks.sort((a, b) {
         final dateA = a.createdAt?.getDateTimeInUtc() ?? DateTime(2000);
@@ -671,7 +675,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                     ElevatedButton.icon(
                       onPressed: () => _showTaskDialog(),
                       icon: const Icon(Icons.add_task),
-                      label: const Text('Assign Delivery/Pickup'),
+                      label: const FittedBox(fit: BoxFit.scaleDown, child: Text('Assign Delivery/Pickup')),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
                         foregroundColor: Colors.white,
@@ -698,7 +702,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                   child: ElevatedButton.icon(
                     onPressed: () => _showTaskDialog(),
                     icon: const Icon(Icons.add_task),
-                    label: const Text('Assign Delivery/Pickup'),
+                    label: const FittedBox(fit: BoxFit.scaleDown, child: Text('Assign Delivery/Pickup')),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.white,

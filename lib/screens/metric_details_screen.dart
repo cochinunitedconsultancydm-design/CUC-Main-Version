@@ -8,6 +8,7 @@ class MetricDetailsScreen extends StatefulWidget {
   final List<amplify_models.ActivityLogs> logs;
   final Map<String, int> usernameToIdMap;
   final List<Map<String, dynamic>> staffList;
+  final List<amplify_models.Billings>? billings;
 
   const MetricDetailsScreen({
     super.key,
@@ -15,6 +16,7 @@ class MetricDetailsScreen extends StatefulWidget {
     required this.logs,
     required this.usernameToIdMap,
     required this.staffList,
+    this.billings,
   });
 
   @override
@@ -61,6 +63,23 @@ class _MetricDetailsScreenState extends State<MetricDetailsScreen> {
       return keyOrEmail;
     }
     return 'Unknown';
+  }
+
+  /// Whether we should render a rich billing view instead of generic log list.
+  bool get _isBillingView {
+    final t = widget.title.toLowerCase();
+    return widget.billings != null &&
+        (t.contains('pending') || t.contains('bill') || t.contains('invoice') ||
+         t.contains('payment') || t.contains('quotation') || t.contains('amount'));
+  }
+
+  /// Look up the Billing record that matches a log's target_id (invoice_no).
+  amplify_models.Billings? _findBilling(amplify_models.ActivityLogs log) {
+    if (widget.billings == null || log.target_id == null) return null;
+    return widget.billings!.cast<amplify_models.Billings?>().firstWhere(
+      (b) => b?.invoice_no == log.target_id,
+      orElse: () => null,
+    );
   }
 
   @override
@@ -175,8 +194,143 @@ class _MetricDetailsScreenState extends State<MetricDetailsScreen> {
                                    log.createdAt?.getDateTimeInUtc().toLocal() ?? DateTime.now();
                       final timeStr = DateFormat('MMM dd, yyyy - hh:mm a').format(time);
                       final userName = _getUserName(log);
-                      final details = log.details ?? log.target_id ?? 'Action Recorded';
 
+                      if (_isBillingView) {
+                        final billing = _findBilling(log);
+                        final invoiceNo = billing?.invoice_no ?? log.target_id ?? '-';
+                        final clientName = billing?.client_name ?? '-';
+                        final amount = billing?.amount ?? '0';
+                        final status = billing?.status ?? 'Pending';
+                        final billDate = billing?.date ?? '';
+                        final category = billing?.category ?? '';
+                        final type = billing?.type ?? '';
+
+                        final isPending = status.toLowerCase() == 'pending' || status.toLowerCase() == 'unpaid';
+                        final statusColor = isPending ? Colors.red : Colors.green;
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                            ],
+                            border: Border.all(color: Colors.grey.shade100),
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Left side: Invoice details
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Invoice No + Status chip
+                                    Row(
+                                      children: [
+                                        Icon(Icons.receipt_long, color: AppTheme.primaryColor, size: 20),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            invoiceNo,
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: statusColor.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: Text(
+                                            status.toUpperCase(),
+                                            style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    // Client name
+                                    Row(
+                                      children: [
+                                        Icon(Icons.person_outline, size: 15, color: Colors.grey.shade600),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            clientName,
+                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    // Amount
+                                    Row(
+                                      children: [
+                                        Icon(Icons.currency_rupee, size: 15, color: Colors.grey.shade600),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          amount,
+                                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: isPending ? Colors.red.shade700 : Colors.green.shade700),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    // Bottom chips: Type, Category, Staff
+                                    Wrap(
+                                      spacing: 10,
+                                      runSpacing: 4,
+                                      children: [
+                                        if (type.isNotEmpty)
+                                          _infoChip(Icons.category_outlined, type),
+                                        if (category.isNotEmpty)
+                                          _infoChip(Icons.label_outline, category),
+                                        _infoChip(Icons.person, userName),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Right side: Deadline date
+                              if (billDate.isNotEmpty) ...[
+                                const SizedBox(width: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.orange.shade200),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.event, size: 18, color: Colors.orange.shade700),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'DUE',
+                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.orange.shade700, letterSpacing: 1),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        billDate,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade900),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      }
+
+                      // ── Default generic log view ──
+                      final details = log.details ?? log.target_id ?? 'Action Recorded';
                       return Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -215,6 +369,17 @@ class _MetricDetailsScreenState extends State<MetricDetailsScreen> {
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+  Widget _infoChip(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: Colors.grey.shade500),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+      ],
     );
   }
 }

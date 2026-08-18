@@ -2193,6 +2193,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
           logs: logs,
           usernameToIdMap: _usernameToIdMap,
           staffList: _staff,
+          billings: _overallBillings,
         ),
       ),
     );

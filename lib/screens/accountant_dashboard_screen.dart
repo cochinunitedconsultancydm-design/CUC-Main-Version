@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import '../widgets/premium_app_bar.dart';
+import '../widgets/startup_task_popup.dart';
 
 class AccountantDashboardScreen extends StatefulWidget {
   final bool hideScaffold;
@@ -48,6 +49,10 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
       if (id != null) {
         NotificationService().startRealtimeListener(id);
       }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      StartupTaskPopup.checkAndShow(context);
     });
   }
 

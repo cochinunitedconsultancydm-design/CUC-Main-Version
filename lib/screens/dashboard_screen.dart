@@ -55,6 +55,7 @@ import 'travel_log_screen.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import 'file_acknowledgement_screen.dart';
 import 'package:cuc_app/services/birthday_service.dart';
+import '../widgets/startup_task_popup.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -122,6 +123,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     NotificationService().checkAndSendFrequentReminders();
     _checkTodayChecklists();
     _fetchAttendanceStatus();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      StartupTaskPopup.checkAndShow(context);
+    });
     
     // Check and show staff birthdays after a short delay so the dashboard can load first
     Future.delayed(const Duration(seconds: 2), () {

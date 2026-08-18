@@ -21,6 +21,7 @@ import 'dart:async';
 
 import '../services/attendance_service.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import '../widgets/startup_task_popup.dart';
 
 class DeliveryDashboardScreen extends StatefulWidget {
   const DeliveryDashboardScreen({super.key});
@@ -57,7 +58,9 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
     });
     _fetchAttendanceStatus();
 
-
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      StartupTaskPopup.checkAndShow(context);
+    });
   }
 
   @override

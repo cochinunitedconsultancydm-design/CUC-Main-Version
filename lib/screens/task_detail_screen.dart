@@ -447,7 +447,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                                   : 'In Progress')),
                                     ),
                                   ),
-                                  if (isInProgress) ...[
+                                  if (isInProgress && widget.task.assignedTo?.toString() == widget.currentUserId?.toString()) ...[
                                     const SizedBox(height: 16),
                                     OutlinedButton.icon(
                                       onPressed: () async {

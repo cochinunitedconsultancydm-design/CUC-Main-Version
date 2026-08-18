@@ -16,6 +16,7 @@ import 'staff_management_screen.dart';
 import 'staff_chat_list_screen.dart';
 import '../services/backup_aware_api.dart';
 import 'hr_attendance_chart_screen.dart';
+import '../widgets/startup_task_popup.dart';
 
 class HRDashboardScreen extends StatefulWidget {
   const HRDashboardScreen({super.key});
@@ -47,6 +48,10 @@ class _HRDashboardScreenState extends State<HRDashboardScreen> {
       if (id != null) {
         NotificationService().startRealtimeListener(id);
       }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      StartupTaskPopup.checkAndShow(context);
     });
   }
 

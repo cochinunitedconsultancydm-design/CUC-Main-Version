@@ -52,6 +52,7 @@ import 'verification_history_view.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import '../services/attendance_service.dart';
 import 'package:cuc_app/services/birthday_service.dart';
+import '../widgets/startup_task_popup.dart';
 
 class ManagerDashboardScreen extends StatefulWidget {
   const ManagerDashboardScreen({super.key});
@@ -122,6 +123,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       if (mounted) {
         BirthdayService.checkAndShowBirthdays(context);
       }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      StartupTaskPopup.checkAndShow(context);
     });
   }
   Future<void> _checkTodayChecklists() async {

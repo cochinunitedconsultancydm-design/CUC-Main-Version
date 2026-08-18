@@ -110,7 +110,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
           ? amplify_models.ActivityLogs.USER_ID.eq(int.tryParse(_selectedUserId.toString()) ?? 0)
           : null;
           
-      final req = ModelQueries.list(amplify_models.ActivityLogs.classType, where: whereClause, limit: 200);
+      final req = ModelQueries.list(amplify_models.ActivityLogs.classType, where: whereClause, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final fetchedLogs = (res.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList() ?? [];
       
@@ -166,7 +166,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
           ? amplify_models.UserSessions.USER_ID.eq(int.tryParse(_selectedUserId.toString()) ?? 0)
           : null;
           
-      final req = ModelQueries.list(amplify_models.UserSessions.classType, where: whereClause, limit: 100);
+      final req = ModelQueries.list(amplify_models.UserSessions.classType, where: whereClause, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final fetchedSessions = (res.data?.items ?? []).whereType<amplify_models.UserSessions>().toList() ?? [];
       

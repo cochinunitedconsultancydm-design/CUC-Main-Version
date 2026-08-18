@@ -156,7 +156,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         }
       }
 
-      final reqLogs = ModelQueries.list(ActivityLogs.classType, limit: 100);
+      final reqLogs = ModelQueries.list(ActivityLogs.classType, limit: 10000);
       final resLogs = await Amplify.API.query(request: reqLogs).response;
       final fetchedLogs = (resLogs.data?.items ?? []).whereType<ActivityLogs>().toList();
       

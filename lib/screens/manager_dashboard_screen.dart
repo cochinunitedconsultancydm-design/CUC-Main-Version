@@ -1159,7 +1159,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _fetchAuditLogs() async {
-    final req = ModelQueries.list(amplify_models.ActivityLogs.classType, limit: 200);
+    final req = ModelQueries.list(amplify_models.ActivityLogs.classType, limit: 10000);
     final res = await Amplify.API.query(request: req).response;
     final allLogs = (res.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList() ?? [];
     allLogs.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));

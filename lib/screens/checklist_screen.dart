@@ -54,7 +54,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   int? _selectedDealId;
   TextEditingController? _staffTextController;
   Checklist? _editingChecklist;
-  bool _sortDelegatedByStaff = false;
+  String? _selectedStaffSort;
 
   @override
   void initState() {
@@ -228,7 +228,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   }
 
   Widget _buildChecklistList(List<Checklist> tasks, {bool showSortToggle = false}) {
-    // Sort tasks by priority: High > Medium > Low
     int getPriorityWeight(String p) {
       if (p == 'High') return 3;
       if (p == 'Medium') return 2;
@@ -236,18 +235,46 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
       return 0;
     }
     
-    final sortedTasks = List<Checklist>.from(tasks)..sort((a, b) {
-      if (showSortToggle && _sortDelegatedByStaff) {
-        String staffA = a.responsibleName ?? 'Unknown';
-        String staffB = b.responsibleName ?? 'Unknown';
-        if (staffA != staffB) return staffA.compareTo(staffB);
+    int getTimeWeight(String title) {
+      String cleanTitle = title;
+      for (final cat in ['[Applications & Verification]', '[Cases & RTI]', '[Billing]', '[Follow-ups]', '[Other]']) {
+        if (cleanTitle.startsWith(cat)) {
+          cleanTitle = cleanTitle.substring(cat.length).trim();
+          break;
+        }
       }
+      final timeMatch = RegExp(r'^\[(.*?)\]').firstMatch(cleanTitle);
+      if (timeMatch != null) {
+        try {
+          final t = DateFormat('h:mm a').parse(timeMatch.group(1)!);
+          return t.hour * 60 + t.minute;
+        } catch(e) {}
+      }
+      return 9999;
+    }
+    
+    // FILTER TASKS
+    Iterable<Checklist> filteredTasks = tasks;
+    if (showSortToggle && _selectedStaffSort != null) {
+      filteredTasks = tasks.where((t) {
+        final respUser = _users.firstWhere((u) => u['id']?.toString() == t.responsibleId?.toString(), orElse: () => {});
+        String staff = respUser.isNotEmpty ? respUser['name'].toString() : (t.responsibleName ?? 'Unknown');
+        return staff == _selectedStaffSort;
+      });
+    }
 
+    final sortedTasks = List<Checklist>.from(filteredTasks)..sort((a, b) {
+      // Primary sort: Priority
       int weightA = getPriorityWeight(a.priority);
       int weightB = getPriorityWeight(b.priority);
       if (weightA != weightB) return weightB.compareTo(weightA);
       
-      // Secondary sort: Pending first, then Completed
+      // Secondary sort: Time
+      int timeA = getTimeWeight(a.title);
+      int timeB = getTimeWeight(b.title);
+      if (timeA != timeB) return timeA.compareTo(timeB);
+      
+      // Tertiary sort: Pending first, then Completed
       int statusWeightA = a.status == 'Pending' ? 1 : 0;
       int statusWeightB = b.status == 'Pending' ? 1 : 0;
       if (statusWeightA != statusWeightB) return statusWeightB.compareTo(statusWeightA);
@@ -278,6 +305,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
     );
 
     if (showSortToggle) {
+      final staffNames = tasks.map((t) {
+        final respUser = _users.firstWhere((u) => u['id']?.toString() == t.responsibleId?.toString(), orElse: () => {});
+        return respUser.isNotEmpty ? respUser['name'].toString() : (t.responsibleName ?? 'Unknown');
+      }).toSet().toList()..sort();
       return Column(
         children: [
           Padding(
@@ -285,16 +316,33 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text("Sort by Staff Name", style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
-                const SizedBox(width: 8),
-                Switch(
-                  value: _sortDelegatedByStaff,
-                  activeColor: AppTheme.primaryColor,
-                  onChanged: (val) {
-                    setState(() {
-                      _sortDelegatedByStaff = val;
-                    });
-                  },
+                Text("Filter by Staff:", style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+                const SizedBox(width: 12),
+                Container(
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedStaffSort,
+                      hint: const Text("All Staff", style: TextStyle(fontSize: 14)),
+                      icon: const Icon(Icons.arrow_drop_down, size: 20),
+                      style: const TextStyle(fontSize: 14, color: AppTheme.textColor, fontWeight: FontWeight.w500),
+                      items: [
+                        const DropdownMenuItem<String>(value: null, child: Text("All Staff")),
+                        ...staffNames.map((name) => DropdownMenuItem(value: name, child: Text(name))),
+                      ],
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedStaffSort = val;
+                        });
+                      },
+                    ),
+                  ),
                 ),
               ],
             ),

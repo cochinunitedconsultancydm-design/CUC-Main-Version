@@ -28,6 +28,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
   String _searchQuery = '';
   String _sortOption = 'Newest First';
   bool _showOnlyMyWorks = false;
+  String? _selectedStaffFilter;
   int? _currentUserId;
   bool _isManagerOrAdmin = false;
   StreamSubscription? _dealsSubscription;
@@ -254,6 +255,16 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                           }
                         }
                         
+                        if (_selectedStaffFilter != null) {
+                          list = list.where((d) {
+                            if (d.responsibleName == null || d.responsibleName!.trim().isEmpty) return false;
+                            final firstWord = d.responsibleName!.trim().split(' ').first;
+                            if (firstWord.isEmpty) return false;
+                            final formattedFirstWord = firstWord[0].toUpperCase() + firstWord.substring(1).toLowerCase();
+                            return formattedFirstWord == _selectedStaffFilter;
+                          }).toList();
+                        }
+                        
                         if (_searchQuery.isNotEmpty) {
                           list = list.where((d) => 
                               d.name.toLowerCase().contains(_searchQuery.toLowerCase()) || 
@@ -297,7 +308,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
 
                         return list.isEmpty
                             ? _buildEmptyState()
-                            : _buildPremiumListView(MediaQuery.of(context).size.width > 1100);
+                            : _buildPremiumListView(list, MediaQuery.of(context).size.width > 1100);
                       }(),
               ),
             ),
@@ -487,6 +498,20 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
   }
 
   Widget _buildMyWorksToggle() {
+    final staffNames = _allDeals
+        .map((d) => d.responsibleName)
+        .where((name) => name != null && name.trim().isNotEmpty)
+        .map((name) {
+          final trimmed = name!.trim();
+          final firstWord = trimmed.split(' ').first;
+          if (firstWord.isEmpty) return '';
+          return firstWord[0].toUpperCase() + firstWord.substring(1).toLowerCase();
+        })
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
     return Row(
       children: [
         FilterChip(
@@ -516,7 +541,37 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           showCheckmark: false,
-          onSelected: (val) => setState(() => _showOnlyMyWorks = val),
+          onSelected: (val) => setState(() {
+            _showOnlyMyWorks = val;
+            if (val) _selectedStaffFilter = null;
+          }),
+        ),
+        const SizedBox(width: 16),
+        Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedStaffFilter,
+              hint: Text("Filter by Staff", style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+              icon: Icon(Icons.arrow_drop_down, color: Colors.grey.shade700),
+              items: [
+                const DropdownMenuItem<String>(value: null, child: Text("All Staff")),
+                ...staffNames.map((name) => DropdownMenuItem(value: name, child: Text(name))),
+              ],
+              onChanged: (val) {
+                setState(() {
+                  _selectedStaffFilter = val;
+                  if (val != null) _showOnlyMyWorks = false;
+                });
+              },
+            ),
+          ),
         ),
         if (_showOnlyMyWorks) ...[
           const SizedBox(width: 12),
@@ -529,20 +584,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
     );
   }
 
-  Widget _buildPremiumListView(bool isWide) {
-    var deals = _allDeals;
-    if (widget.showOnlyVerification) {
-      deals = deals.where((d) => d.stage.toLowerCase() == 'verification').toList();
-    }
-    if (_showOnlyMyWorks && _currentUserId != null) {
-      deals = deals.where((d) => d.responsibleId?.toString() == _currentUserId.toString()).toList();
-    }
-    
-    final filteredDeals = deals.where((d) => 
-      d.name.toLowerCase().contains(_searchQuery.toLowerCase()) || 
-      (d.clientName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false)
-    ).toList();
-
+  Widget _buildPremiumListView(List<Deal> deals, bool isWide) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: isWide ? 32 : 16),
       child: Column(
@@ -551,9 +593,9 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.only(top: 12, bottom: 32),
-              itemCount: filteredDeals.length,
+              itemCount: deals.length,
               itemBuilder: (context, index) {
-                return _buildDealRow(filteredDeals[index], index, isWide);
+                return _buildDealRow(deals[index], index, isWide);
               },
             ),
           ),

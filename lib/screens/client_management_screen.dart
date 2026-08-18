@@ -16,6 +16,7 @@ import 'client_merge_dialog.dart';
 import 'global_merge_dialog.dart';
 import '../models/deal.dart';
 import 'deal_detail_screen.dart';
+import '../services/auth_service.dart';
 
 class ClientManagementScreen extends StatefulWidget {
   const ClientManagementScreen({super.key});
@@ -26,8 +27,10 @@ class ClientManagementScreen extends StatefulWidget {
 
 class _ClientManagementScreenState extends State<ClientManagementScreen> {
   final _excel = ExcelService();
+  final _auth = AuthService();
   List<Client> _clients = [];
   bool _isLoading = true;
+  bool _isAdmin = false;
   String _searchTerm = '';
   String _currentSort = 'Name (A-Z)';
 
@@ -60,6 +63,9 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
   Future<void> _fetchClients() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
+    
+    _isAdmin = await _auth.isAdmin();
+    
     try {
       final req = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
@@ -1310,16 +1316,17 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
-                OutlinedButton.icon(
-                  onPressed: () => _deleteClient(c.id.toString()),
-                  icon: const Icon(Icons.delete_outline, size: 16),
-                  label: const Text('Delete'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: BorderSide(color: Colors.red.shade200),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                if (_isAdmin)
+                  OutlinedButton.icon(
+                    onPressed: () => _deleteClient(c.id.toString()),
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    label: const Text('Delete'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      side: BorderSide(color: Colors.red.shade200),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
-                ),
               ],
             ),
           ],

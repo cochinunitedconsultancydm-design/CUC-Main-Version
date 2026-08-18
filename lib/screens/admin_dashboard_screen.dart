@@ -37,6 +37,7 @@ import 'office_details_screen.dart';
 import '../utils/number_to_words.dart';
 import '../services/checklist_service.dart';
 import '../widgets/startup_task_popup.dart';
+import '../services/auto_backup_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -70,6 +71,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     
     NotificationService().checkAndSendFrequentReminders();
     _checkTodayChecklists();
+
+    // Silent auto-backup (runs once per 24 hours)
+    AutoBackupService().runIfNeeded();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       StartupTaskPopup.checkAndShow(context);

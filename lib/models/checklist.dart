@@ -10,6 +10,8 @@ class Checklist {
   final String? dueDate;
   final String? createdAt;
   final String? updatedAt;
+  final String? startTime;
+  final String? endTime;
 
   // Joined fields
   final String? managerName;
@@ -33,6 +35,8 @@ class Checklist {
     this.dueDate,
     this.createdAt,
     this.updatedAt,
+    this.startTime,
+    this.endTime,
     this.managerName,
     this.responsibleName,
     this.dealId,
@@ -55,6 +59,20 @@ class Checklist {
     if (priorityMatch != null) {
       parsedPriority = priorityMatch.group(1) ?? 'Medium';
       cleanDesc = cleanDesc.replaceAll(priorityMatch.group(0)!, '').trim();
+    }
+
+    String? parsedStartTime;
+    final startMatch = RegExp(r'\[START_TIME\]\s*(.*?)(?=\n|\[|$)', caseSensitive: false).firstMatch(cleanDesc);
+    if (startMatch != null) {
+      parsedStartTime = startMatch.group(1)?.trim();
+      cleanDesc = cleanDesc.replaceAll(startMatch.group(0)!, '').trim();
+    }
+
+    String? parsedEndTime;
+    final endMatch = RegExp(r'\[END_TIME\]\s*(.*?)(?=\n|\[|$)', caseSensitive: false).firstMatch(cleanDesc);
+    if (endMatch != null) {
+      parsedEndTime = endMatch.group(1)?.trim();
+      cleanDesc = cleanDesc.replaceAll(endMatch.group(0)!, '').trim();
     }
 
     final regExp = RegExp(
@@ -90,6 +108,8 @@ class Checklist {
       dealId: parsedDealId,
       dealName: parsedDealName,
       priority: parsedPriority,
+      startTime: parsedStartTime,
+      endTime: parsedEndTime,
     );
   }
 
@@ -100,14 +120,19 @@ class Checklist {
       if (index != -1) {
         finalDesc = finalDesc.substring(0, index).trim();
       }
-      finalDesc =
-          "$finalDesc\n\n[CONNECTED_WORK]\nDealId: $dealId\nDealName: $dealName";
+      finalDesc = "$finalDesc\n\n[CONNECTED_WORK]\nDealId: $dealId\nDealName: $dealName";
+    }
+    if (startTime != null) {
+      finalDesc = "$finalDesc\n[START_TIME] $startTime";
+    }
+    if (endTime != null) {
+      finalDesc = "$finalDesc\n[END_TIME] $endTime";
     }
 
     return {
       if (id != null) 'id': id,
       'title': title,
-      'description': finalDesc,
+      'description': finalDesc.trim(),
       'manager_id': managerId,
       'responsible_id': responsibleId,
       'status': status,

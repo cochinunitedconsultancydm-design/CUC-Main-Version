@@ -138,12 +138,23 @@ class ChecklistService {
         respId = c.manager_id;
       }
 
+      String currentDesc = c.description ?? '';
+      
+      if (status == 'In Progress' && !currentDesc.contains('[START_TIME]')) {
+        currentDesc += '\n[START_TIME] ${DateTime.now().toIso8601String()}';
+      }
+      if (status == 'Completed' && !currentDesc.contains('[END_TIME]')) {
+        currentDesc += '\n[END_TIME] ${DateTime.now().toIso8601String()}';
+      }
+      currentDesc = currentDesc.trim();
+
       final updated = c.copyWith(
         status: status,
         remarks: remarks,
         reason: reason,
         due_date: newDueDate,
         responsible_id: respId,
+        description: currentDesc,
       );
       
       await BackupAwareApi().update(updated);

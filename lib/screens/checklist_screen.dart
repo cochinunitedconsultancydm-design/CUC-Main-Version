@@ -56,6 +56,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   TextEditingController? _staffTextController;
   Checklist? _editingChecklist;
   String? _selectedStaffSort;
+  String? _selectedStatusSort;
 
   @override
   void initState() {
@@ -257,11 +258,14 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
     // FILTER TASKS
     Iterable<Checklist> filteredTasks = tasks;
     if (showSortToggle && _selectedStaffSort != null) {
-      filteredTasks = tasks.where((t) {
+      filteredTasks = filteredTasks.where((t) {
         final respUser = _users.firstWhere((u) => u['id']?.toString() == t.responsibleId?.toString(), orElse: () => {});
         String staff = respUser.isNotEmpty ? respUser['name'].toString() : (t.responsibleName ?? 'Unknown');
         return staff == _selectedStaffSort;
       });
+    }
+    if (_selectedStatusSort != null && _selectedStatusSort != 'All Status') {
+      filteredTasks = filteredTasks.where((t) => t.status == _selectedStatusSort);
     }
 
     final sortedTasks = List<Checklist>.from(filteredTasks)..sort((a, b) {
@@ -341,6 +345,39 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                   minimumSize: const Size(0, 36),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Text("Status:", style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 8),
+              Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedStatusSort,
+                    hint: const Text("All Status", style: TextStyle(fontSize: 14)),
+                    icon: const Icon(Icons.arrow_drop_down, size: 20),
+                    style: const TextStyle(fontSize: 14, color: AppTheme.textColor, fontWeight: FontWeight.w500),
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text("All Status")),
+                      DropdownMenuItem(value: "Pending", child: Text("Pending")),
+                      DropdownMenuItem(value: "In Progress", child: Text("In Progress")),
+                      DropdownMenuItem(value: "Completed", child: Text("Completed")),
+                      DropdownMenuItem(value: "Postponed", child: Text("Postponed")),
+                      DropdownMenuItem(value: "Not Completed", child: Text("Not Completed")),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedStatusSort = val;
+                      });
+                    },
+                  ),
                 ),
               ),
               if (showSortToggle) ...[
@@ -553,7 +590,40 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                               ),
                             ],
                           ),
-                          if (checklist.status != 'Pending') ...[
+                          if (checklist.startTime != null || checklist.endTime != null) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 4,
+                              children: [
+                                if (checklist.startTime != null)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.play_circle_outline, size: 14, color: Colors.blue.shade600),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        "Started: ${DateFormat('MMM d, h:mm a').format(DateTime.parse(checklist.startTime!).toLocal())}",
+                                        style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                if (checklist.endTime != null)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.check_circle_outline, size: 14, color: Colors.green.shade600),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        "Ended: ${DateFormat('MMM d, h:mm a').format(DateTime.parse(checklist.endTime!).toLocal())}",
+                                        style: TextStyle(fontSize: 12, color: Colors.green.shade700, fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                          ],
+                          if ((checklist.remarks != null && checklist.remarks!.isNotEmpty) || (checklist.reason != null && checklist.reason!.isNotEmpty) || checklist.status != 'Pending') ...[
                             const SizedBox(height: 12),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -562,16 +632,47 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: Colors.grey.shade200),
                               ),
-                              child: Row(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.info_outline, size: 14, color: Colors.grey.shade600),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      checklist.status == 'Completed' ? "Remarks: ${checklist.remarks ?? 'N/A'}" : "Reason: ${checklist.reason ?? 'N/A'}",
-                                      style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: Colors.grey.shade700),
+                                  if (checklist.remarks != null && checklist.remarks!.isNotEmpty)
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(Icons.info_outline, size: 14, color: Colors.grey.shade600),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text("Remarks: ${checklist.remarks}", style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: Colors.grey.shade700)),
+                                        ),
+                                      ],
                                     ),
-                                  ),
+                                  if (checklist.remarks != null && checklist.remarks!.isNotEmpty && checklist.reason != null && checklist.reason!.isNotEmpty)
+                                    const SizedBox(height: 6),
+                                  if (checklist.reason != null && checklist.reason!.isNotEmpty)
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(Icons.help_outline, size: 14, color: Colors.grey.shade600),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text("Reason: ${checklist.reason}", style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: Colors.grey.shade700)),
+                                        ),
+                                      ],
+                                    ),
+                                  if ((checklist.remarks == null || checklist.remarks!.isEmpty) && (checklist.reason == null || checklist.reason!.isEmpty) && checklist.status != 'Pending' && checklist.status != 'In Progress')
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(Icons.info_outline, size: 14, color: Colors.grey.shade600),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            checklist.status == 'Completed' ? "Remarks: N/A" : "Reason: N/A",
+                                            style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: Colors.grey.shade700),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                 ],
                               ),
                             ),
@@ -763,6 +864,47 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                             ),
                             const SizedBox(width: 8),
                             Text(displayTime, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                          ],
+                        ),
+                      ],
+                      if (checklist.startTime != null || checklist.endTime != null) ...[
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 16,
+                          runSpacing: 8,
+                          children: [
+                            if (checklist.startTime != null)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), shape: BoxShape.circle),
+                                    child: const Icon(Icons.play_circle_outline, size: 14, color: Colors.blue),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "Started: ${DateFormat('MMM d, h:mm a').format(DateTime.parse(checklist.startTime!).toLocal())}",
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                                  ),
+                                ],
+                              ),
+                            if (checklist.endTime != null)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
+                                    child: const Icon(Icons.check_circle_outline, size: 14, color: Colors.green),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "Ended: ${DateFormat('MMM d, h:mm a').format(DateTime.parse(checklist.endTime!).toLocal())}",
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
                       ],
@@ -1560,9 +1702,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   }
 
   void _showStatusDialog(Checklist checklist, String status) {
-    final controller = TextEditingController();
     final isComplete = status == 'Completed';
     final isPostponed = status == 'Postponed';
+    final controller = TextEditingController(text: isComplete ? (checklist.remarks ?? '') : (checklist.reason ?? ''));
     
     DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
     bool giveToManager = false;

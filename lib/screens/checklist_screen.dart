@@ -12,6 +12,19 @@ import '../services/logging_service.dart';
 import '../widgets/premium_app_bar.dart';
 import '../widgets/slide_to_action.dart';
 
+class _TaskDraft {
+  final TextEditingController titleController = TextEditingController();
+  final TextEditingController descController = TextEditingController();
+  String priority = 'Medium';
+  DateTime date = DateTime.now();
+  TimeOfDay time = TimeOfDay.now();
+
+  void dispose() {
+    titleController.dispose();
+    descController.dispose();
+  }
+}
+
 class ChecklistScreen extends StatefulWidget {
   const ChecklistScreen({super.key});
 
@@ -36,14 +49,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   
   // Create Checklist Form
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descController = TextEditingController();
+  List<_TaskDraft> _taskDrafts = [_TaskDraft()];
   List<Map<String, dynamic>> _selectedStaff = [];
   int? _selectedDealId;
   TextEditingController? _staffTextController;
-  DateTime _selectedDate = DateTime.now();
-  TimeOfDay _selectedTime = TimeOfDay.now();
-  String _selectedPriority = 'Medium';
   Checklist? _editingChecklist;
   bool _sortDelegatedByStaff = false;
 
@@ -56,6 +65,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   @override
   void dispose() {
     _tabController?.dispose();
+    for (var draft in _taskDrafts) {
+      draft.dispose();
+    }
     super.dispose();
   }
 
@@ -192,13 +204,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           _editingChecklist = null;
-          _titleController.clear();
-          _descController.clear();
+          for (var draft in _taskDrafts) draft.dispose();
+          _taskDrafts = [_TaskDraft()];
           _selectedStaff.clear();
           _selectedDealId = null;
-          _selectedDate = DateTime.now();
-          _selectedTime = TimeOfDay.now();
-          _selectedPriority = 'Medium';
           showDialog(
             context: context,
             builder: (context) => StatefulBuilder(
@@ -578,28 +587,30 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                         onPressed: () {
                           Navigator.pop(context);
                           _editingChecklist = checklist;
-                          _titleController.text = checklist.title.replaceAll(RegExp(r'^\[.*?\]\s+'), '');
+                          for (var draft in _taskDrafts) draft.dispose();
+                          _taskDrafts = [_TaskDraft()];
+                          _taskDrafts[0].titleController.text = checklist.title.replaceAll(RegExp(r'^\[.*?\]\s+'), '');
                           final descLines = (checklist.description ?? '').split('\n');
                           if (descLines.isNotEmpty && descLines.last.startsWith('[PRIORITY]')) {
-                            _selectedPriority = descLines.last.replaceFirst('[PRIORITY]', '').trim();
-                            _descController.text = descLines.sublist(0, descLines.length - 1).join('\n');
+                            _taskDrafts[0].priority = descLines.last.replaceFirst('[PRIORITY]', '').trim();
+                            _taskDrafts[0].descController.text = descLines.sublist(0, descLines.length - 1).join('\n');
                           } else {
-                            _descController.text = checklist.description ?? '';
-                            _selectedPriority = checklist.priority;
+                            _taskDrafts[0].descController.text = checklist.description ?? '';
+                            _taskDrafts[0].priority = checklist.priority;
                           }
                           
                           final timeMatch = RegExp(r'^\[(.*?)\]').firstMatch(checklist.title);
                           if (timeMatch != null) {
                             try {
                               final t = DateFormat('h:mm a').parse(timeMatch.group(1)!);
-                              _selectedTime = TimeOfDay.fromDateTime(t);
+                              _taskDrafts[0].time = TimeOfDay.fromDateTime(t);
                             } catch(e) {}
                           }
                           
                           _selectedDealId = checklist.dealId;
                           if (checklist.dueDate != null) {
                             try {
-                              _selectedDate = DateTime.parse(checklist.dueDate!);
+                              _taskDrafts[0].date = DateTime.parse(checklist.dueDate!);
                             } catch(e) {}
                           }
                           
@@ -1011,104 +1022,8 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                       ],
                     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
                     const SizedBox(height: 32),
-                    DropdownButtonFormField<String>(
-                      value: _selectedPriority,
-                      decoration: InputDecoration(
-                        labelText: 'Priority',
-                        prefixIcon: Icon(
-                          Icons.flag, 
-                          color: _selectedPriority == 'High' ? Colors.red : (_selectedPriority == 'Medium' ? Colors.orange : Colors.green),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
-                      ),
-                      items: ['High', 'Medium', 'Low'].map((t) => DropdownMenuItem(
-                        value: t, 
-                        child: Text(t, style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: t == 'High' ? Colors.red : (t == 'Medium' ? Colors.orange : Colors.green)
-                        )),
-                      )).toList(),
-                      onChanged: (v) => setDialogState(() => _selectedPriority = v!),
-                    ).animate().fadeIn(delay: 75.ms, duration: 400.ms).slideX(begin: 0.05),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: InputDecoration(
-                        labelText: "Task Title",
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
-                        prefixIcon: const Icon(Icons.title, color: AppTheme.primaryColor),
-                      ),
-                      validator: (v) => v == null || v.isEmpty ? "Please enter a title" : null,
-                    ).animate().fadeIn(delay: 100.ms, duration: 400.ms).slideX(begin: 0.05),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _descController,
-                      decoration: InputDecoration(
-                        labelText: "Description (Optional)",
-                        alignLabelWithHint: true,
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
-                        prefixIcon: const Padding(
-                          padding: EdgeInsets.only(bottom: 48),
-                          child: Icon(Icons.description, color: AppTheme.primaryColor),
-                        ),
-                      ),
-                      maxLines: 3,
-                    ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideX(begin: 0.05),
-                    const SizedBox(height: 20),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text("Task Date", style: TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text(DateFormat('dd MMM yyyy').format(_selectedDate), style: const TextStyle(fontSize: 16)),
-                      trailing: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                        child: const Icon(Icons.calendar_month, color: AppTheme.primaryColor),
-                      ),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _selectedDate,
-                          firstDate: DateTime.now().subtract(const Duration(days: 30)),
-                          lastDate: DateTime.now().add(const Duration(days: 365)),
-                        );
-                        if (picked != null) {
-                          setDialogState(() => _selectedDate = picked);
-                        }
-                      },
-                    ).animate().fadeIn(delay: 250.ms, duration: 400.ms).slideX(begin: 0.05),
-                    const SizedBox(height: 20),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text("Task Time", style: TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text(_selectedTime.format(context), style: const TextStyle(fontSize: 16)),
-                      trailing: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                        child: const Icon(Icons.access_time, color: AppTheme.primaryColor),
-                      ),
-                      onTap: () async {
-                        final picked = await showTimePicker(
-                          context: context,
-                          initialTime: _selectedTime,
-                        );
-                        if (picked != null) {
-                          setDialogState(() => _selectedTime = picked);
-                        }
-                      },
-                    ).animate().fadeIn(delay: 300.ms, duration: 400.ms).slideX(begin: 0.05),
-                    const SizedBox(height: 20),
+                    
+                    // Assign To (Staff)
                     LayoutBuilder(
                       builder: (context, constraints) {
                         return Column(
@@ -1182,9 +1097,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                                     prefixIcon: const Icon(Icons.person, color: AppTheme.primaryColor),
                                     suffixIcon: const Icon(Icons.search, color: Colors.grey),
                                   ),
-                                  onChanged: (val) {
-                                    // if (val.isEmpty) setDialogState(() => _selectedResponsibleId = null);
-                                  },
                                 );
                               },
                               optionsViewBuilder: (context, onSelected, options) {
@@ -1215,8 +1127,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                           ],
                         );
                       }
-                    ).animate().fadeIn(delay: 300.ms, duration: 400.ms).slideX(begin: 0.05),
+                    ).animate().fadeIn(delay: 100.ms, duration: 400.ms).slideX(begin: 0.05),
                     const SizedBox(height: 20),
+                    
+                    // Deal
                     LayoutBuilder(
                       builder: (context, constraints) {
                         return Autocomplete<Deal>(
@@ -1271,7 +1185,172 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                           },
                         );
                       }
-                    ).animate().fadeIn(delay: 400.ms, duration: 400.ms).slideX(begin: 0.05),
+                    ).animate().fadeIn(delay: 150.ms, duration: 400.ms).slideX(begin: 0.05),
+                    const SizedBox(height: 32),
+                    
+                    // Tasks
+                    ..._taskDrafts.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final draft = entry.value;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 24),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text("Task ${index + 1}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                if (_taskDrafts.length > 1 && _editingChecklist == null)
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        draft.dispose();
+                                        _taskDrafts.removeAt(index);
+                                      });
+                                    },
+                                    constraints: const BoxConstraints(),
+                                    padding: EdgeInsets.zero,
+                                    splashRadius: 20,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            DropdownButtonFormField<String>(
+                              value: draft.priority,
+                              decoration: InputDecoration(
+                                labelText: 'Priority',
+                                prefixIcon: Icon(
+                                  Icons.flag, 
+                                  color: draft.priority == 'High' ? Colors.red : (draft.priority == 'Medium' ? Colors.orange : Colors.green),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                              ),
+                              items: ['High', 'Medium', 'Low'].map((t) => DropdownMenuItem(
+                                value: t, 
+                                child: Text(t, style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: t == 'High' ? Colors.red : (t == 'Medium' ? Colors.orange : Colors.green)
+                                )),
+                              )).toList(),
+                              onChanged: (v) => setDialogState(() => draft.priority = v!),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: draft.titleController,
+                              decoration: InputDecoration(
+                                labelText: "Task Title",
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                                prefixIcon: const Icon(Icons.title, color: AppTheme.primaryColor),
+                              ),
+                              validator: (v) => v == null || v.isEmpty ? "Please enter a title" : null,
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: draft.descController,
+                              decoration: InputDecoration(
+                                labelText: "Description (Optional)",
+                                alignLabelWithHint: true,
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                                prefixIcon: const Padding(
+                                  padding: EdgeInsets.only(bottom: 48),
+                                  child: Icon(Icons.description, color: AppTheme.primaryColor),
+                                ),
+                              ),
+                              maxLines: 3,
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: const Text("Date", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                    subtitle: Text(DateFormat('dd MMM').format(draft.date), style: const TextStyle(fontSize: 14)),
+                                    trailing: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                                      child: const Icon(Icons.calendar_month, color: AppTheme.primaryColor, size: 18),
+                                    ),
+                                    onTap: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: draft.date,
+                                        firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                                      );
+                                      if (picked != null) {
+                                        setDialogState(() => draft.date = picked);
+                                      }
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: const Text("Time", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                    subtitle: Text(draft.time.format(context), style: const TextStyle(fontSize: 14)),
+                                    trailing: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                                      child: const Icon(Icons.access_time, color: AppTheme.primaryColor, size: 18),
+                                    ),
+                                    onTap: () async {
+                                      final picked = await showTimePicker(
+                                        context: context,
+                                        initialTime: draft.time,
+                                      );
+                                      if (picked != null) {
+                                        setDialogState(() => draft.time = picked);
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.05);
+                    }).toList(),
+                    
+                    if (_editingChecklist == null)
+                      TextButton.icon(
+                        onPressed: () {
+                          setDialogState(() {
+                            _taskDrafts.add(_TaskDraft());
+                          });
+                        },
+                        icon: const Icon(Icons.add_circle_outline, color: AppTheme.primaryColor),
+                        label: const Text("Add Another Task", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                          )
+                        ),
+                      ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05),
+
                     const SizedBox(height: 40),
                     ElevatedButton(
                       onPressed: _submitForm,
@@ -1284,7 +1363,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       child: Text(_editingChecklist == null ? "Assign Task to Staff" : "Update Task", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ).animate().fadeIn(delay: 400.ms, duration: 400.ms).scale(begin: const Offset(0.95, 0.95)),
+                    ).animate().fadeIn(delay: 200.ms, duration: 400.ms).scale(begin: const Offset(0.95, 0.95)),
                   ],
                 ),
               ),
@@ -1310,8 +1389,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
         dealName = _deals.firstWhere((d) => d.id == _selectedDealId).name;
       }
       
-      if (_editingChecklist != null) {
+      if (_editingChecklist != null && _taskDrafts.isNotEmpty) {
         // Update existing task
+        final draft = _taskDrafts[0];
         final staff = _selectedStaff.first;
         int? respId;
         if (staff['id'] is int) {
@@ -1320,16 +1400,18 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
           respId = int.tryParse(staff['id'].toString());
         }
 
+        final timeString = draft.time.format(context);
+        final dateString = DateFormat('yyyy-MM-dd').format(draft.date);
         final updatedChecklist = Checklist(
           id: _editingChecklist!.id,
-          title: '[${_selectedTime.format(context)}] ${_titleController.text}',
-          description: '${_descController.text}\n[PRIORITY] $_selectedPriority'.trim(),
+          title: '[$timeString] ${draft.titleController.text.trim()}',
+          description: '${draft.descController.text}\n[PRIORITY] ${draft.priority}'.trim(),
           responsibleId: respId,
           managerId: _editingChecklist!.managerId,
           status: _editingChecklist!.status,
           dealId: _selectedDealId,
           dealName: dealName,
-          dueDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
+          dueDate: dateString,
         );
 
         await _checklistService.updateChecklist(updatedChecklist);
@@ -1341,53 +1423,64 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
         );
       } else {
         // Create new tasks
-        for (final staff in _selectedStaff) {
-          int? respId;
-          if (staff['id'] is int) {
-            respId = staff['id'];
-          } else if (staff['id'] != null) {
-            respId = int.tryParse(staff['id'].toString());
-          }
+        for (final draft in _taskDrafts) {
+          if (draft.titleController.text.trim().isEmpty) continue;
+          final timeString = draft.time.format(context);
+          final dateString = DateFormat('yyyy-MM-dd').format(draft.date);
 
-          final checklist = Checklist(
-            title: '[${_selectedTime.format(context)}] ${_titleController.text}',
-            description: '${_descController.text}\n[PRIORITY] $_selectedPriority'.trim(),
-            responsibleId: respId,
-            dealId: _selectedDealId,
-            dealName: dealName,
-            dueDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
-          );
-          await _checklistService.createChecklist(checklist);
-          await LoggingService().logAction(
-            action: 'TASK_CREATED',
-            targetType: 'Checklist Task',
-            targetId: checklist.title,
-            details: 'Assigned task to ID: $respId',
-          );
+          for (final staff in _selectedStaff) {
+            int? respId;
+            if (staff['id'] is int) {
+              respId = staff['id'];
+            } else if (staff['id'] != null) {
+              respId = int.tryParse(staff['id'].toString());
+            }
+
+            final checklist = Checklist(
+              title: '[$timeString] ${draft.titleController.text.trim()}',
+              description: '${draft.descController.text}\n[PRIORITY] ${draft.priority}'.trim(),
+              responsibleId: respId,
+              dealId: _selectedDealId,
+              dealName: dealName,
+              dueDate: dateString,
+            );
+            await _checklistService.createChecklist(checklist);
+            await LoggingService().logAction(
+              action: 'TASK_CREATED',
+              targetType: 'Checklist Task',
+              targetId: checklist.title,
+              details: 'Assigned task to ID: $respId',
+            );
+          }
         }
       }
       
-      _titleController.clear();
-      _descController.clear();
       setState(() {
+        for (var draft in _taskDrafts) {
+          draft.dispose();
+        }
+        _taskDrafts = [_TaskDraft()];
         _selectedStaff.clear();
         _selectedDealId = null;
-        _selectedDate = DateTime.now();
-        _selectedTime = TimeOfDay.now();
       });
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_editingChecklist == null ? "Task assigned successfully!" : "Task updated successfully!")),
-      );
-      
-      Navigator.pop(context); // Close the dialog
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_editingChecklist == null ? "Tasks assigned successfully!" : "Task updated successfully!")),
+        );
+        Navigator.pop(context); // Close the dialog
+      }
       await _fetchChecklists();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

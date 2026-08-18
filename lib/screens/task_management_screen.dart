@@ -392,7 +392,12 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                             ],
                           ),
                           const SizedBox(height: 16),
-                          _buildPremiumTextField(titleCtrl, 'Subject / Reference (e.g. Doc Pickup)', Icons.title_rounded),
+                          _buildPremiumTextField(
+                            titleCtrl, 
+                            task == null ? 'Subjects / References (One per line)' : 'Subject / Reference (e.g. Doc Pickup)', 
+                            Icons.title_rounded,
+                            maxLines: task == null ? 3 : 1
+                          ),
                           const SizedBox(height: 16),
                           _buildPremiumTextField(descCtrl, 'Instructions / Remarks', Icons.description_outlined, maxLines: 3),
                           const SizedBox(height: 16),
@@ -549,33 +554,37 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                               return;
                             }
                             try {
-                              final finalTitle = '[$selectedTaskType]${needsReturn ? ' [Requires Return]' : ''} ${titleCtrl.text}'.trim();
-                              
                               if (task == null) {
-                                final newTask = amplify_models.Tasks(
-                                  title: finalTitle,
-                                  description: descCtrl.text,
-                                  assigned_to: int.tryParse(assignedTo.toString()),
-                                  assigned_by: int.tryParse(_currentUserId.toString()),
-                                  due_date: dueDate?.toIso8601String(),
-                                  location: locCtrl.text.isEmpty ? null : locCtrl.text,
-                                  client_name: clientCtrl.text.isEmpty ? null : clientCtrl.text,
-                                  phone_number: phoneCtrl.text.isEmpty ? null : phoneCtrl.text,
-                                  status: 'Pending',
-                                );
-                                final res = await BackupAwareApi().create(newTask);
-                                final newId = res.data?.id;
-                                
-                                if (newId != null) {
-                                  await NotificationService().notifyStakeholders(
-                                    taskId: newId,
-                                    title: 'New Delivery/Pickup/Visit Assigned',
-                                    message: '"$finalTitle" has been created and assigned.',
-                                    type: 'assignment',
+                                final lines = titleCtrl.text.split('\n').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                                for (final line in lines) {
+                                  final finalTitle = '[$selectedTaskType]${needsReturn ? ' [Requires Return]' : ''} $line'.trim();
+                                  
+                                  final newTask = amplify_models.Tasks(
+                                    title: finalTitle,
+                                    description: descCtrl.text,
+                                    assigned_to: int.tryParse(assignedTo.toString()),
+                                    assigned_by: int.tryParse(_currentUserId.toString()),
+                                    due_date: dueDate?.toIso8601String(),
+                                    location: locCtrl.text.isEmpty ? null : locCtrl.text,
+                                    client_name: clientCtrl.text.isEmpty ? null : clientCtrl.text,
+                                    phone_number: phoneCtrl.text.isEmpty ? null : phoneCtrl.text,
+                                    status: 'Pending',
                                   );
+                                  final res = await BackupAwareApi().create(newTask);
+                                  final newId = res.data?.id;
+                                  
+                                  if (newId != null) {
+                                    await NotificationService().notifyStakeholders(
+                                      taskId: newId,
+                                      title: 'New Delivery/Pickup/Visit Assigned',
+                                      message: '"$finalTitle" has been created and assigned.',
+                                      type: 'assignment',
+                                    );
+                                  }
+                                  await LoggingService().logAction(action: 'TASK_CREATED', targetType: 'Task', targetId: finalTitle, details: 'Assigned to ID: $assignedTo');
                                 }
-                                await LoggingService().logAction(action: 'TASK_CREATED', targetType: 'Task', targetId: finalTitle, details: 'Assigned to ID: $assignedTo');
                               } else {
+                                final finalTitle = '[$selectedTaskType]${needsReturn ? ' [Requires Return]' : ''} ${titleCtrl.text}'.trim();
                                 final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(task.id.toString()));
                                 final res = await Amplify.API.query(request: req).response;
                                 if (res.data?.items.isNotEmpty == true) {

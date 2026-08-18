@@ -1501,9 +1501,12 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   String _totalAmount = '0/-', _amountInWords = 'Zero', _grandTotal = '', _balanceDue = '';
   final _log = LoggingService();
   final _billingService = BillingService();
+  bool _isAdmin = false;
   
-  
-
+  Future<void> _initRole() async {
+    final isAdmin = await AuthService().isAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
+  }
   int _pdfBuildCount = 0;
   Uint8List? _cachedPdf;
   bool _isGeneratingPdf = false;
@@ -1553,6 +1556,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   @override
   void initState() {
     super.initState();
+    _initRole();
     final b = widget.billing;
     _type = b?.type ?? 'INVOICE';
     _status = b?.status ?? 'Pending';
@@ -2266,14 +2270,14 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                 const SizedBox(height: 16),
                 _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy'),
                 const SizedBox(height: 16),
-                _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: true),
+                _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: !_isAdmin),
               ] else Row(
                 children: [
                   Expanded(child: _buildField('Date', _date, 'dd/mm/yyyy', readOnly: true)),
                   const SizedBox(width: 16),
                   Expanded(child: _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy')),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: true)),
+                  Expanded(child: _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: !_isAdmin)),
                 ],
               ),
               const SizedBox(height: 20),

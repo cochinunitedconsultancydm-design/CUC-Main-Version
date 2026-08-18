@@ -26,6 +26,7 @@ import 'reminder_calendar_screen.dart';
 import 'sop_screen.dart';
 import 'contact_book_screen.dart';
 import '../widgets/upcoming_reminders_widget.dart';
+import 'billing_screen.dart';
 import '../services/checklist_service.dart';
 
 import 'travel_log_screen.dart';
@@ -463,6 +464,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _sidebarItem(12, Icons.playlist_add_check_rounded, 'Today\'s Checklist', isWide),
                 _sidebarItem(17, Icons.calendar_month_rounded, 'Reminder Calendar', isWide),
                 _sidebarItem(11, Icons.account_balance_wallet_rounded, 'Accounting & Pay', isWide),
+                _sidebarItem(28, Icons.receipt_long_rounded, 'Billing / Invoices', isWide),
                 _sidebarItem(1, Icons.security_rounded, 'Security & Audit', isWide),
                 _sidebarItem(24, Icons.folder_shared_rounded, 'Work File', isWide),
                 _sidebarItem(25, Icons.contacts_rounded, 'Contact Book', isWide),
@@ -606,6 +608,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 26: return const HelpAndQueriesManagementScreen();
       case 23: return const SopScreen();
       case 27: return const OfficeDetailsScreen();
+      case 28: return const BillingScreen();
       default: return _buildPlaceholderView('Coming Soon');
     }
   }
@@ -946,9 +949,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          decoration: BoxDecoration(border: Border(left: BorderSide(color: actionColor, width: 4))),
-                          child: ListTile(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Container(
+                            decoration: BoxDecoration(border: Border(left: BorderSide(color: actionColor, width: 4))),
+                            child: ListTile(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                             leading: Container(
                               padding: const EdgeInsets.all(10),
@@ -969,6 +974,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               setState(() => _selectedIndex = 1);
                             },
                           ),
+                        ),
                         ),
                       ),
                     ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.1);
@@ -1230,7 +1236,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           SizedBox(height: isWide ? 24 : 16),
           Text(title, style: TextStyle(color: AppTheme.mutedTextColor, fontSize: isWide ? 14 : 11, fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
-          Text(value, style: TextStyle(color: AppTheme.textColor, fontSize: isWide ? 28 : 20, fontWeight: FontWeight.bold, letterSpacing: -1)),
+          Text(value?.toString() ?? '-', style: TextStyle(color: AppTheme.textColor, fontSize: isWide ? 28 : 20, fontWeight: FontWeight.bold, letterSpacing: -1)),
         ],
       ),
     );

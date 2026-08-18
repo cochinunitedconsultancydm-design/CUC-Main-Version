@@ -365,12 +365,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                     icon: const Icon(Icons.arrow_drop_down, size: 20),
                     style: const TextStyle(fontSize: 14, color: AppTheme.textColor, fontWeight: FontWeight.w500),
                     items: const [
-                      DropdownMenuItem(value: null, child: Text("All Status")),
-                      DropdownMenuItem(value: "Pending", child: Text("Pending")),
-                      DropdownMenuItem(value: "In Progress", child: Text("In Progress")),
-                      DropdownMenuItem(value: "Completed", child: Text("Completed")),
-                      DropdownMenuItem(value: "Postponed", child: Text("Postponed")),
-                      DropdownMenuItem(value: "Not Completed", child: Text("Not Completed")),
+                      DropdownMenuItem<String>(value: null, child: Text("All Status")),
+                      DropdownMenuItem<String>(value: "Pending", child: Text("Pending")),
+                      DropdownMenuItem<String>(value: "In Progress", child: Text("In Progress")),
+                      DropdownMenuItem<String>(value: "Completed", child: Text("Completed")),
+                      DropdownMenuItem<String>(value: "Postponed", child: Text("Postponed")),
+                      DropdownMenuItem<String>(value: "Not Completed", child: Text("Not Completed")),
                     ],
                     onChanged: (val) {
                       setState(() {

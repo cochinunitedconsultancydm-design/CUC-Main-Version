@@ -105,13 +105,13 @@ class _DealDetailScreenState extends State<DealDetailScreen>
     if (currentType.toLowerCase().startsWith('legal')) {
       currentCategory = 'Legal';
       if (currentType.length > 5 && currentType.contains('-')) {
-        currentType = currentType.replaceFirst(RegExp(r'(?i)legal\s*-\s*'), '').trim();
+        currentType = currentType.replaceFirst(RegExp(r'legal\s*-\s*', caseSensitive: false), '').trim();
       } else {
-        currentType = currentType.replaceFirst(RegExp(r'(?i)legal\s*'), '').trim();
+        currentType = currentType.replaceFirst(RegExp(r'legal\s*', caseSensitive: false), '').trim();
       }
     } else if (currentType.toLowerCase().startsWith('consultancy')) {
       currentCategory = 'Consultancy';
-      currentType = currentType.replaceFirst(RegExp(r'(?i)consultancy\s*-?\s*'), '').trim();
+      currentType = currentType.replaceFirst(RegExp(r'consultancy\s*-?\s*', caseSensitive: false), '').trim();
     }
     _workTypeController = TextEditingController(text: currentType);
     _selectedCategory = currentCategory;

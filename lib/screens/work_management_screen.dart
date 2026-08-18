@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../models/deal.dart';
 import '../models/deal_activity.dart';
 import '../services/deal_service.dart';
+import '../services/auth_service.dart';
 import 'deal_detail_screen.dart';
 import 'google_docs_webview_screen.dart';
 import 'package:intl/intl.dart';
@@ -28,6 +29,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
   String _sortOption = 'Newest First';
   bool _showOnlyMyWorks = false;
   int? _currentUserId;
+  bool _isManagerOrAdmin = false;
   StreamSubscription? _dealsSubscription;
 
   @override

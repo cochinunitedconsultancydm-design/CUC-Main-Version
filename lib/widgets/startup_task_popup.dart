@@ -58,10 +58,29 @@ class StartupTaskPopup {
         });
       }).toList();
 
+      int getPriorityWeight(String? desc) {
+        if (desc == null) return 1;
+        final match = RegExp(r'\[PRIORITY\]\s*(High|Medium|Low)', caseSensitive: false).firstMatch(desc);
+        if (match != null) {
+          final p = match.group(1)?.toLowerCase();
+          if (p == 'high') return 3;
+          if (p == 'medium') return 2;
+          if (p == 'low') return 1;
+        }
+        return 1; // Default to Low if not specified
+      }
+
       parsedTasks.sort((a, b) {
-        final dateA = a.createdAt ?? DateTime(2000);
-        final dateB = b.createdAt ?? DateTime(2000);
-        return dateB.compareTo(dateA);
+        final pA = getPriorityWeight(a.description);
+        final pB = getPriorityWeight(b.description);
+        
+        if (pA != pB) {
+          return pB.compareTo(pA); // Descending priority
+        }
+        
+        final dateA = a.createdAt != null ? DateTime.tryParse(a.createdAt!) ?? DateTime(2000) : DateTime(2000);
+        final dateB = b.createdAt != null ? DateTime.tryParse(b.createdAt!) ?? DateTime(2000) : DateTime(2000);
+        return dateB.compareTo(dateA); // Descending time
       });
 
       if (context.mounted) {
@@ -127,6 +146,18 @@ class _TaskDialog extends StatelessWidget {
                 separatorBuilder: (context, index) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final t = tasks[index];
+                  
+                  String priority = 'Low';
+                  Color priorityColor = Colors.green;
+                  if (t.description != null) {
+                    final match = RegExp(r'\[PRIORITY\]\s*(High|Medium|Low)', caseSensitive: false).firstMatch(t.description!);
+                    if (match != null) {
+                      final p = match.group(1)?.toLowerCase();
+                      if (p == 'high') { priority = 'High'; priorityColor = Colors.red; }
+                      else if (p == 'medium') { priority = 'Medium'; priorityColor = Colors.orange; }
+                    }
+                  }
+
                   return Card(
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -147,20 +178,47 @@ class _TaskDialog extends StatelessWidget {
                             Text('Client: ${t.clientName}', style: TextStyle(color: Colors.grey.shade700)),
                           ],
                           const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppTheme.getStatusColor(t.status).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              t.status ?? 'Unknown',
-                              style: TextStyle(
-                                color: AppTheme.getStatusColor(t.status),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(t.status).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  t.status ?? 'Unknown',
+                                  style: TextStyle(
+                                    color: _getStatusColor(t.status),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: priorityColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.flag, size: 12, color: priorityColor),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      priority,
+                                      style: TextStyle(
+                                        color: priorityColor,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -188,5 +246,14 @@ class _TaskDialog extends StatelessWidget {
         ),
       ).animate().fadeIn(duration: 300.ms).scale(begin: const Offset(0.95, 0.95)),
     );
+  }
+
+  Color _getStatusColor(String? status) {
+    if (status == null) return Colors.grey;
+    final lower = status.toLowerCase();
+    if (lower.contains('progress') || lower.contains('picked')) return Colors.blue;
+    if (lower.contains('completed')) return Colors.green;
+    if (lower.contains('adjourned')) return Colors.orange;
+    return Colors.grey;
   }
 }

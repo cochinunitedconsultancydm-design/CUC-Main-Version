@@ -233,6 +233,31 @@ class ChecklistService {
     }
   }
 
+  Future<void> updateChecklist(old.Checklist checklist) async {
+    try {
+      final req = ModelQueries.get(Checklists.classType, ChecklistsModelIdentifier(id: checklist.id.toString()));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data == null) throw Exception("Checklist not found");
+      
+      final c = res.data!;
+      final updated = c.copyWith(
+        title: checklist.title,
+        description: checklist.description,
+        responsible_id: checklist.responsibleId,
+        manager_id: checklist.managerId,
+        status: checklist.status,
+        remarks: checklist.remarks,
+        reason: checklist.reason,
+        due_date: checklist.dueDate,
+      );
+      
+      await BackupAwareApi().update(updated);
+    } catch (e) {
+      safePrint('Error updateChecklist: $e');
+      rethrow;
+    }
+  }
+
   Future<void> deleteChecklist(dynamic id) async {
     try {
       await BackupAwareApi().deleteById(Checklists.classType, ChecklistsModelIdentifier(id: id.toString())

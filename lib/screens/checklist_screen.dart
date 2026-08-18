@@ -11,6 +11,7 @@ import '../theme.dart';
 import '../services/logging_service.dart';
 import '../widgets/premium_app_bar.dart';
 import '../widgets/slide_to_action.dart';
+import '../services/excel_service.dart';
 
 class _TaskDraft {
   final TextEditingController titleController = TextEditingController();
@@ -264,20 +265,22 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
     }
 
     final sortedTasks = List<Checklist>.from(filteredTasks)..sort((a, b) {
-      // Primary sort: Priority
+      // Primary sort: Completed at the bottom
+      bool isCompletedA = a.status == 'Completed';
+      bool isCompletedB = b.status == 'Completed';
+      if (isCompletedA != isCompletedB) {
+        return isCompletedA ? 1 : -1;
+      }
+
+      // Secondary sort: Priority
       int weightA = getPriorityWeight(a.priority);
       int weightB = getPriorityWeight(b.priority);
       if (weightA != weightB) return weightB.compareTo(weightA);
       
-      // Secondary sort: Time
+      // Tertiary sort: Time
       int timeA = getTimeWeight(a.title);
       int timeB = getTimeWeight(b.title);
       if (timeA != timeB) return timeA.compareTo(timeB);
-      
-      // Tertiary sort: Pending first, then Completed
-      int statusWeightA = a.status == 'Pending' ? 1 : 0;
-      int statusWeightB = b.status == 'Pending' ? 1 : 0;
-      if (statusWeightA != statusWeightB) return statusWeightB.compareTo(statusWeightA);
       
       return (b.createdAt ?? '').compareTo(a.createdAt ?? '');
     });
@@ -304,18 +307,44 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
             ),
     );
 
-    if (showSortToggle) {
-      final staffNames = tasks.map((t) {
-        final respUser = _users.firstWhere((u) => u['id']?.toString() == t.responsibleId?.toString(), orElse: () => {});
-        return respUser.isNotEmpty ? respUser['name'].toString() : (t.responsibleName ?? 'Unknown');
-      }).toSet().toList()..sort();
-      return Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
+    final staffNames = tasks.map((t) {
+      final respUser = _users.firstWhere((u) => u['id']?.toString() == t.responsibleId?.toString(), orElse: () => {});
+      return respUser.isNotEmpty ? respUser['name'].toString() : (t.responsibleName ?? 'Unknown');
+    }).toSet().toList()..sort();
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () async {
+                  try {
+                    final tabName = _tabController?.index == 0 ? "My Tasks" : _tabController?.index == 1 ? "Delegated Tasks" : "All Tasks";
+                    final excelService = ExcelService();
+                    final path = await excelService.exportTasks(sortedTasks, tabName, _users);
+                    if (mounted && path != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported to $path', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+                    }
+                  }
+                },
+                icon: const Icon(Icons.download, size: 18),
+                label: const Text("Export"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade600,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  minimumSize: const Size(0, 36),
+                ),
+              ),
+              if (showSortToggle) ...[
+                const SizedBox(width: 16),
                 Text("Filter by Staff:", style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
                 const SizedBox(width: 12),
                 Container(
@@ -345,14 +374,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                   ),
                 ),
               ],
-            ),
+            ],
           ),
-          Expanded(child: listWidget),
-        ],
-      );
-    }
-    
-    return listWidget;
+        ),
+        Expanded(child: listWidget),
+      ],
+    );
   }
 
   Widget _buildChecklistCard(Checklist checklist, {bool isCompact = false}) {

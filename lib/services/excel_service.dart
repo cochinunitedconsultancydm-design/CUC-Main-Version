@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:excel/excel.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import '../models/client_license.dart';
 import '../models/billing.dart';
 import '../models/dsc_record.dart';
+import '../models/checklist.dart';
 import '../services/security_service.dart';
 
 class ExcelService {
@@ -41,12 +43,18 @@ class ExcelService {
     }
 
     // Save file
-    final directory = await getApplicationDocumentsDirectory();
     final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-    final path = '${directory.path}/CUC_Licenses_$timestamp.xlsx';
-    final file = File(path);
-    await file.writeAsBytes(excel.encode()!);
-    return path;
+    final fileName = 'CUC_Licenses_$timestamp.xlsx';
+    if (kIsWeb) {
+      excel.save(fileName: fileName);
+      return 'Downloaded as $fileName';
+    } else {
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}/$fileName';
+      final file = File(path);
+      await file.writeAsBytes(excel.encode()!);
+      return path;
+    }
   }
 
   Future<String?> exportBillings(List<Billing> billings) async {
@@ -79,12 +87,18 @@ class ExcelService {
     }
 
     // Save file
-    final directory = await getApplicationDocumentsDirectory();
     final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-    final path = '${directory.path}/CUC_Billings_$timestamp.xlsx';
-    final file = File(path);
-    await file.writeAsBytes(excel.encode()!);
-    return path;
+    final fileName = 'CUC_Billings_$timestamp.xlsx';
+    if (kIsWeb) {
+      excel.save(fileName: fileName);
+      return 'Downloaded as $fileName';
+    } else {
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}/$fileName';
+      final file = File(path);
+      await file.writeAsBytes(excel.encode()!);
+      return path;
+    }
   }
 
   Future<String?> exportClients(List<Map<String, dynamic>> clients) async {
@@ -119,12 +133,18 @@ class ExcelService {
     }
 
     // Save file
-    final directory = await getApplicationDocumentsDirectory();
     final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-    final path = '${directory.path}/CUC_Clients_$timestamp.xlsx';
-    final file = File(path);
-    await file.writeAsBytes(excel.encode()!);
-    return path;
+    final fileName = 'CUC_Clients_$timestamp.xlsx';
+    if (kIsWeb) {
+      excel.save(fileName: fileName);
+      return 'Downloaded as $fileName';
+    } else {
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}/$fileName';
+      final file = File(path);
+      await file.writeAsBytes(excel.encode()!);
+      return path;
+    }
   }
 
   Future<String?> exportDsc(List<DscRecord> records) async {
@@ -153,12 +173,18 @@ class ExcelService {
     }
 
     // Save file
-    final directory = await getApplicationDocumentsDirectory();
     final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-    final path = '${directory.path}/CUC_DSC_$timestamp.xlsx';
-    final file = File(path);
-    await file.writeAsBytes(excel.encode()!);
-    return path;
+    final fileName = 'CUC_DSC_$timestamp.xlsx';
+    if (kIsWeb) {
+      excel.save(fileName: fileName);
+      return 'Downloaded as $fileName';
+    } else {
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}/$fileName';
+      final file = File(path);
+      await file.writeAsBytes(excel.encode()!);
+      return path;
+    }
   }
 
   Future<String?> generateFullBackup(Map<String, List<Map<String, dynamic>>> data) async {
@@ -182,12 +208,18 @@ class ExcelService {
     });
 
     // Save file
-    final directory = await getApplicationDocumentsDirectory();
     final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-    final path = '${directory.path}/CUC_FullBackup_$timestamp.xlsx';
-    final file = File(path);
-    await file.writeAsBytes(excel.encode()!);
-    return path;
+    final fileName = 'CUC_FullBackup_$timestamp.xlsx';
+    if (kIsWeb) {
+      excel.save(fileName: fileName);
+      return 'Downloaded as $fileName';
+    } else {
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}/$fileName';
+      final file = File(path);
+      await file.writeAsBytes(excel.encode()!);
+      return path;
+    }
   }
 
   Future<String?> exportFinancialReport({
@@ -233,11 +265,73 @@ class ExcelService {
     }
 
     // Save file
-    final directory = await getApplicationDocumentsDirectory();
     final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-    final path = '${directory.path}/CUC_Financial_Report_$timestamp.xlsx';
-    final file = File(path);
-    await file.writeAsBytes(excel.encode()!);
-    return path;
+    final fileName = 'CUC_Financial_Report_$timestamp.xlsx';
+    if (kIsWeb) {
+      excel.save(fileName: fileName);
+      return 'Downloaded as $fileName';
+    } else {
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}/$fileName';
+      final file = File(path);
+      await file.writeAsBytes(excel.encode()!);
+      return path;
+    }
+  }
+
+  Future<String?> exportTasks(List<Checklist> tasks, String title, List<Map<String, dynamic>> users) async {
+    final excel = Excel.createExcel();
+    final Sheet sheet = excel['Tasks'];
+    excel.delete('Sheet1');
+
+    // Header
+    sheet.appendRow([
+      TextCellValue('Title'),
+      TextCellValue('Description'),
+      TextCellValue('Status'),
+      TextCellValue('Priority'),
+      TextCellValue('Due Date'),
+      TextCellValue('Assigned To'),
+      TextCellValue('Created By'),
+      TextCellValue('Remarks'),
+      TextCellValue('Reason'),
+    ]);
+
+    // Data
+    for (final t in tasks) {
+      final respUser = users.firstWhere((u) => u['id']?.toString() == t.responsibleId?.toString(), orElse: () => {});
+      final mgrUser = users.firstWhere((u) => u['id']?.toString() == t.managerId?.toString(), orElse: () => {});
+      
+      final rName = respUser.isNotEmpty ? respUser['name']?.toString() : (t.responsibleName ?? '-');
+      final mName = mgrUser.isNotEmpty ? mgrUser['name']?.toString() : (t.managerName ?? '-');
+
+      sheet.appendRow([
+        TextCellValue(t.title),
+        TextCellValue(t.description ?? ''),
+        TextCellValue(t.status),
+        TextCellValue(t.priority),
+        TextCellValue(t.dueDate ?? ''),
+        TextCellValue(rName ?? '-'),
+        TextCellValue(mName ?? '-'),
+        TextCellValue(t.remarks ?? ''),
+        TextCellValue(t.reason ?? ''),
+      ]);
+    }
+
+    // Save file
+    final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    final safeTitle = title.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+    final fileName = 'CUC_${safeTitle}_$timestamp.xlsx';
+    
+    if (kIsWeb) {
+      excel.save(fileName: fileName);
+      return 'Downloaded as $fileName';
+    } else {
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}/$fileName';
+      final file = File(path);
+      await file.writeAsBytes(excel.encode()!);
+      return path;
+    }
   }
 }

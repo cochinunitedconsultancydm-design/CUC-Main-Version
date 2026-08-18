@@ -1,8 +1,10 @@
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../main.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../models/task.dart';
 import '../theme.dart';
@@ -10,6 +12,15 @@ import '../screens/task_detail_screen.dart';
 
 class StartupTaskPopup {
   static bool _hasShownThisSession = false;
+
+  static void scheduleReminder(Duration duration) {
+    Timer(duration, () {
+      _hasShownThisSession = false;
+      if (navigatorKey.currentContext != null) {
+        checkAndShow(navigatorKey.currentContext!);
+      }
+    });
+  }
 
   static Future<void> checkAndShow(BuildContext context) async {
     if (_hasShownThisSession) return;
@@ -241,6 +252,32 @@ class _TaskDialog extends StatelessWidget {
                   );
                 },
               ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    StartupTaskPopup.scheduleReminder(const Duration(hours: 1));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('We will remind you again in 1 hour!')),
+                    );
+                  },
+                  icon: const Icon(Icons.timer_outlined, size: 18, color: Colors.orange),
+                  label: const Text('Remind me in 1 hour', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Close'),
+                ),
+              ],
             ),
           ],
         ),

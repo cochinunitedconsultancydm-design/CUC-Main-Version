@@ -23,6 +23,7 @@ import 'services/time_tracking_service.dart';
 
 
 final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 String? _amplifyStartupError;
 
 Future<void> main() async {
@@ -142,6 +143,7 @@ class _MyAppState extends State<MyApp> with WindowListener, WidgetsBindingObserv
       onPointerHover: (_) => TimeTrackingService.instance.registerActivity(),
       onPointerSignal: (_) => TimeTrackingService.instance.registerActivity(),
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         title: 'Cochin United',
         debugShowCheckedModeBanner: false,
         scaffoldMessengerKey: _scaffoldMessengerKey,

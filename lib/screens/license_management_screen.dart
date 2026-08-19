@@ -38,7 +38,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     12: 'DSC',
   };
 
-  final Map<int, List<LicenseBilling>> _billings = {};
+  final Map<String, List<LicenseBilling>> _billings = {};
   bool _isLoading = true;
   String _searchTerm = '';
   String _filterType = 'All';
@@ -288,7 +288,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
           final type = _licenseTypes.firstWhere((t) => t['id'].toString() == row.license_type_id.toString(), orElse: () => <String, dynamic>{'name': null});
           
           return ClientLicense(
-            id: int.tryParse(row.id), // Dynamic -> int for legacy compatibility
+            id: row.id.toString(), // ID is a UUID string or legacy int
             clientId: row.client_id,
             clientName: client.name,
             licenseTypeId: row.license_type_id,
@@ -309,9 +309,9 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     }
   }
 
-  Future<void> _fetchDetails(int licenseId) async {
+  Future<void> _fetchDetails(String licenseId) async {
     try {
-      final req = ModelQueries.list(amplify_models.LicenseBilling.classType, where: amplify_models.LicenseBilling.CLIENT_LICENSE_ID.eq(licenseId.toString()), limit: 10000);
+      final req = ModelQueries.list(amplify_models.LicenseBilling.classType, where: amplify_models.LicenseBilling.CLIENT_LICENSE_ID.eq(int.tryParse(licenseId) ?? 0), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final billingList = (res.data?.items ?? []).whereType<amplify_models.LicenseBilling>().toList() ?? [];
       
@@ -444,7 +444,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     }
   }
 
-  Future<void> _deleteLicense(int id) async {
+  Future<void> _deleteLicense(String id) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -463,7 +463,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
 
     if (confirmed == true) {
       try {
-        await BackupAwareApi().deleteById(amplify_models.ClientLicenses.classType, amplify_models.ClientLicensesModelIdentifier(id: id.toString()));
+        await BackupAwareApi().deleteById(amplify_models.ClientLicenses.classType, amplify_models.ClientLicensesModelIdentifier(id: id));
         _fetchLicenses();
         _showSuccess('License deleted successfully');
       } catch (e) {
@@ -564,7 +564,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     );
   }
 
-  void _showBillingForm(int licenseId) {
+  void _showBillingForm(String licenseId) {
     final amount = TextEditingController();
     final invNo = TextEditingController();
     String status = 'Paid';
@@ -653,7 +653,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                 setModalState(() => isSaving = true);
                 try {
                   final newBilling = amplify_models.LicenseBilling(
-                    client_license_id: licenseId,
+                    client_license_id: int.tryParse(licenseId) ?? 0,
                     amount: amtVal,
                     invoice_no: invNo.text.trim(),
                     payment_status: status,
@@ -770,7 +770,15 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
               onPressed: () async {
                 try {
                   if (license == null) {
+                    int maxId = 0;
+                    for (var l in _licenses) {
+                      int currentId = int.tryParse(l.id ?? '') ?? 0;
+                      if (currentId > maxId) maxId = currentId;
+                    }
+                    String nextId = (maxId + 1).toString();
+
                     final newLic = amplify_models.ClientLicenses(
+                      id: nextId,
                       manual_client_name: clientNameController.text,
                       license_type_id: selectedTypeId,
                       file_no: fileNoController.text,

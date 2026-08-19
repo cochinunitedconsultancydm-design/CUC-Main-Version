@@ -1,5 +1,5 @@
 class ClientLicense {
-  final int? id;
+  final String? id;
   final int? clientId;
   final int? licenseTypeId;
   final DateTime? serviceDate;
@@ -29,7 +29,7 @@ class ClientLicense {
 
   factory ClientLicense.fromMap(Map<String, dynamic> map) {
     return ClientLicense(
-      id: map['id'],
+      id: map['id']?.toString(),
       clientId: map['client_id'],
       licenseTypeId: map['license_type_id'],
       serviceDate: map['service_date'] != null

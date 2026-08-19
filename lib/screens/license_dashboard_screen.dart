@@ -203,7 +203,7 @@ class _LicenseDashboardScreenState extends State<LicenseDashboardScreen> {
         final type = typesList.firstWhere((t) => t.id == row.license_type_id, orElse: () => amplify_models.LicenseTypes(name: null));
         
         return ClientLicense(
-          id: int.tryParse(row.id),
+          id: row.id.toString(),
           clientId: row.client_id,
           clientName: client.name,
           licenseTypeId: row.license_type_id,

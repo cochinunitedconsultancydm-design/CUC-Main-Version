@@ -1,4 +1,4 @@
-﻿import 'package:amplify_api/amplify_api.dart';
+import 'package:amplify_api/amplify_api.dart';
 import 'dart:convert';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +10,7 @@ import 'package:cuc_app/services/backup_aware_api.dart';
 class BillingService {
   Future<List<Billing>> getPendingBillings() async {
     try {
-      var req = ModelQueries.list(Billings.classType);
+      var req = ModelQueries.list(Billings.classType, limit: 10000);
       List<Billings> all = [];
       while (true) {
         final res = await Amplify.API.query(request: req).response;
@@ -30,7 +30,7 @@ class BillingService {
   }
 
   Future<Map<String, int>> fetchStats() async {
-    final req = ModelQueries.list(Billings.classType);
+    final req = ModelQueries.list(Billings.classType, limit: 10000);
     final res = await Amplify.API.query(request: req).response;
     final all = (res.data?.items ?? []).whereType<Billings>() ?? [];
     
@@ -62,7 +62,7 @@ class BillingService {
   Future<void> syncClientBalance(String clientName) async {
     if (clientName.isEmpty) return;
     
-    final req = ModelQueries.list(Billings.classType, where: Billings.CLIENT_NAME.eq(clientName));
+    final req = ModelQueries.list(Billings.classType, where: Billings.CLIENT_NAME.eq(clientName), limit: 10000);
     final res = await Amplify.API.query(request: req).response;
     final all = (res.data?.items ?? []).whereType<Billings>() ?? [];
     
@@ -91,7 +91,7 @@ class BillingService {
     
     String finalBalance = totalDue > 0 ? NumberToWords.formatIndianCurrency(totalDue) : '0/-';
     
-    final cReq = ModelQueries.list(Clients.classType, where: Clients.NAME.eq(clientName));
+    final cReq = ModelQueries.list(Clients.classType, where: Clients.NAME.eq(clientName), limit: 10000);
     final cRes = await Amplify.API.query(request: cReq).response;
     if (cRes.data?.items.isNotEmpty == true) {
       final client = cRes.data!.items.first!;
@@ -172,7 +172,7 @@ class BillingService {
     String sortBy = 'Newest First',
     String searchTerm = '',
   }) async {
-    var req = ModelQueries.list(Billings.classType);
+    var req = ModelQueries.list(Billings.classType, limit: 10000);
     List<Billings> all = [];
     while (true) {
       final res = await Amplify.API.query(request: req).response;
@@ -402,7 +402,7 @@ class BillingService {
   }
 
   Future<String?> getNextInvoiceNo(String prefix) async {
-    var req = ModelQueries.list(Billings.classType);
+    var req = ModelQueries.list(Billings.classType, limit: 10000);
     List<Billings> all = [];
     while (true) {
       final res = await Amplify.API.query(request: req).response;
@@ -440,7 +440,7 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
   }
 
   Future<String?> getClientPhone(String clientName) async {
-    final req = ModelQueries.list(Clients.classType, where: Clients.NAME.eq(clientName));
+    final req = ModelQueries.list(Clients.classType, where: Clients.NAME.eq(clientName), limit: 10000);
     final res = await Amplify.API.query(request: req).response;
     if (res.data?.items.isNotEmpty == true) {
       return res.data!.items.first!.phone;
@@ -449,7 +449,7 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
   }
 
   Future<List<Billing>> getClientLedger(String clientName) async {
-    var req = ModelQueries.list(Billings.classType, where: Billings.CLIENT_NAME.contains(clientName));
+    var req = ModelQueries.list(Billings.classType, where: Billings.CLIENT_NAME.contains(clientName), limit: 10000);
     List<Billings> all = [];
     while (true) {
       final res = await Amplify.API.query(request: req).response;
@@ -475,7 +475,7 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
   Future<String> getNextBillingId() async {
     try {
       int maxId = 0;
-      var req = ModelQueries.list(Billings.classType);
+      var req = ModelQueries.list(Billings.classType, limit: 10000);
       while (true) {
         final res = await Amplify.API.query(request: req).response;
         final all = (res.data?.items ?? []).whereType<Billings>() ?? [];

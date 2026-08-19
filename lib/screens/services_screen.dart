@@ -28,7 +28,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
   Future<void> _fetchServices() async {
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.ServiceContent.classType);
+      final req = ModelQueries.list(amplify_models.ServiceContent.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final result = (res.data?.items ?? []).whereType<amplify_models.ServiceContent>().toList() ?? [];
       result.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));

@@ -95,11 +95,11 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
         }
       }
 
-      final reqLogs = ModelQueries.list(amplify_models.ActivityLogs.classType, where: amplify_models.ActivityLogs.ACTION.eq('CLIENT_CREATED'));
+      final reqLogs = ModelQueries.list(amplify_models.ActivityLogs.classType, where: amplify_models.ActivityLogs.ACTION.eq('CLIENT_CREATED'), limit: 10000);
       final resLogs = await Amplify.API.query(request: reqLogs).response;
       final logsList = resLogs.data?.items.whereType<amplify_models.ActivityLogs>().toList() ?? [];
 
-      final reqUsers = ModelQueries.list(amplify_models.Users.classType);
+      final reqUsers = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final resUsers = await Amplify.API.query(request: reqUsers).response;
       final usersList = resUsers.data?.items.whereType<amplify_models.Users>().toList() ?? [];
 

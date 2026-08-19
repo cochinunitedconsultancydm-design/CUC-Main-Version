@@ -32,7 +32,7 @@ class _ClientBillingViewState extends State<ClientBillingView> {
         final request = ModelQueries.list(
           Billings.classType,
           where: Billings.CLIENT_NAME.eq(clientName),
-        );
+         limit: 10000);
         final response = await Amplify.API.query(request: request).response;
         setState(() {
           _bills = (response.data?.items ?? []).whereType<Billings>().toList() ?? [];

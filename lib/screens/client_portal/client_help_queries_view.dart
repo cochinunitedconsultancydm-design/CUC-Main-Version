@@ -31,7 +31,7 @@ class _ClientHelpQueriesViewState extends State<ClientHelpQueriesView> {
         final request = ModelQueries.list(
           Deals.classType,
           where: Deals.CLIENT_NAME.eq(clientName),
-        );
+         limit: 10000);
         final response = await Amplify.API.query(request: request).response;
         
         if (mounted) {

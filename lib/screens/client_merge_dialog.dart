@@ -97,49 +97,49 @@ class _ClientMergeDialogState extends State<ClientMergeDialog> {
         final dupIdInt = int.tryParse(dupClient.id?.toString() ?? '') ?? 0;
 
         // 1. ClientDocuments
-        var reqDocs = ModelQueries.list(amplify_models.ClientDocuments.classType, where: amplify_models.ClientDocuments.CLIENT_NAME.eq(dupName));
+        var reqDocs = ModelQueries.list(amplify_models.ClientDocuments.classType, where: amplify_models.ClientDocuments.CLIENT_NAME.eq(dupName), limit: 10000);
         var resDocs = await Amplify.API.query(request: reqDocs).response;
         for (var doc in resDocs.data?.items.whereType<amplify_models.ClientDocuments>() ?? []) {
           await BackupAwareApi().update(doc.copyWith(client_name: pName, client_id: pIdStr));
         }
 
         // 2. Tasks
-        var reqTasks = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.CLIENT_NAME.eq(dupName));
+        var reqTasks = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.CLIENT_NAME.eq(dupName), limit: 10000);
         var resTasks = await Amplify.API.query(request: reqTasks).response;
         for (var t in resTasks.data?.items.whereType<amplify_models.Tasks>() ?? []) {
           await BackupAwareApi().update(t.copyWith(client_name: pName));
         }
 
         // 3. Properties
-        var reqProps = ModelQueries.list(amplify_models.Properties.classType, where: amplify_models.Properties.CLIENT_NAME.eq(dupName));
+        var reqProps = ModelQueries.list(amplify_models.Properties.classType, where: amplify_models.Properties.CLIENT_NAME.eq(dupName), limit: 10000);
         var resProps = await Amplify.API.query(request: reqProps).response;
         for (var p in resProps.data?.items.whereType<amplify_models.Properties>() ?? []) {
           await BackupAwareApi().update(p.copyWith(client_name: pName));
         }
 
         // 4. ClientLicenses
-        var reqLic = ModelQueries.list(amplify_models.ClientLicenses.classType, where: amplify_models.ClientLicenses.CLIENT_ID.eq(dupIdInt));
+        var reqLic = ModelQueries.list(amplify_models.ClientLicenses.classType, where: amplify_models.ClientLicenses.CLIENT_ID.eq(dupIdInt), limit: 10000);
         var resLic = await Amplify.API.query(request: reqLic).response;
         for (var l in resLic.data?.items.whereType<amplify_models.ClientLicenses>() ?? []) {
           await BackupAwareApi().update(l.copyWith(client_id: pIdInt, manual_client_name: pName));
         }
 
         // 5. Deals
-        var reqDeals = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.CLIENT_NAME.eq(dupName));
+        var reqDeals = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.CLIENT_NAME.eq(dupName), limit: 10000);
         var resDeals = await Amplify.API.query(request: reqDeals).response;
         for (var d in resDeals.data?.items.whereType<amplify_models.Deals>() ?? []) {
           await BackupAwareApi().update(d.copyWith(client_name: pName, client_id: pIdInt));
         }
 
         // 6. Billings
-        var reqBills = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.CLIENT_NAME.eq(dupName));
+        var reqBills = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.CLIENT_NAME.eq(dupName), limit: 10000);
         var resBills = await Amplify.API.query(request: reqBills).response;
         for (var b in resBills.data?.items.whereType<amplify_models.Billings>() ?? []) {
           await BackupAwareApi().update(b.copyWith(client_name: pName));
         }
 
         // 7. DscRecords
-        var reqDsc = ModelQueries.list(amplify_models.DscRecords.classType, where: amplify_models.DscRecords.CLIENT_NAME.eq(dupName));
+        var reqDsc = ModelQueries.list(amplify_models.DscRecords.classType, where: amplify_models.DscRecords.CLIENT_NAME.eq(dupName), limit: 10000);
         var resDsc = await Amplify.API.query(request: reqDsc).response;
         for (var d in resDsc.data?.items.whereType<amplify_models.DscRecords>() ?? []) {
           await BackupAwareApi().update(d.copyWith(client_name: pName));

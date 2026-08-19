@@ -140,7 +140,7 @@ class _ChatListViewState extends State<_ChatListView> {
       final mReq = ModelQueries.list(
         amplify_models.Messages.classType,
         where: amplify_models.Messages.RECEIVER_ID.eq(myId).and(amplify_models.Messages.IS_READ.eq(false))
-      );
+      , limit: 10000);
       final mRes = await Amplify.API.query(request: mReq).response;
       final unreadRes = (mRes.data?.items ?? []).whereType<amplify_models.Messages>().toList() ?? [];
       
@@ -152,7 +152,7 @@ class _ChatListViewState extends State<_ChatListView> {
         }
       }
 
-      final sReq = ModelQueries.list(amplify_models.UserSessions.classType);
+      final sReq = ModelQueries.list(amplify_models.UserSessions.classType, limit: 10000);
       final sRes = await Amplify.API.query(request: sReq).response;
       var sessionsRes = (sRes.data?.items ?? []).whereType<amplify_models.UserSessions>().toList() ?? [];
       

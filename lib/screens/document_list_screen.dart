@@ -72,10 +72,10 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
     final docs = await GoogleDocsService.getDriveFiles();
     
     try {
-      final dealsReq = ModelQueries.list(amplify_models.Deals.classType);
+      final dealsReq = ModelQueries.list(amplify_models.Deals.classType, limit: 10000);
       final dealsRes = await Amplify.API.query(request: dealsReq).response;
       
-      final clientsReq = ModelQueries.list(amplify_models.ClientDocuments.classType);
+      final clientsReq = ModelQueries.list(amplify_models.ClientDocuments.classType, limit: 10000);
       final clientsRes = await Amplify.API.query(request: clientsReq).response;
 
       final newDealMappings = <String, String>{};
@@ -365,7 +365,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
     // Link to Work/Deal if selected
     if (selectedDeal != null) {
       try {
-        final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(selectedDeal.id.toString()));
+        final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(selectedDeal.id.toString()), limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
         if (dealObj != null) {

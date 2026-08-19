@@ -14,7 +14,7 @@ class DealService {
 
   Future<List<old.Deal>> getAllDeals() async {
     try {
-      var req = ModelQueries.list(Deals.classType);
+      var req = ModelQueries.list(Deals.classType, limit: 10000);
       List<Deals> all = [];
       while (true) {
         final res = await Amplify.API.query(request: req).response;
@@ -41,7 +41,7 @@ class DealService {
 
     void fetchAndEmit() async {
       try {
-        var req = ModelQueries.list(Deals.classType);
+        var req = ModelQueries.list(Deals.classType, limit: 10000);
         List<Deals> all = [];
         while (true) {
           final res = await Amplify.API.query(request: req).response;
@@ -87,7 +87,7 @@ class DealService {
 
   Future<old.Deal?> getDealById(dynamic id) async {
     try {
-      final req = ModelQueries.list(Deals.classType, where: Deals.ID.eq(id.toString()));
+      final req = ModelQueries.list(Deals.classType, where: Deals.ID.eq(id.toString()), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
         return old.Deal.fromMap(res.data!.items.first!.toJson());
@@ -100,7 +100,7 @@ class DealService {
 
   Future<List<old.Deal>> getDealsByStage(String stage) async {
     try {
-      var req = ModelQueries.list(Deals.classType, where: Deals.STAGE.eq(stage));
+      var req = ModelQueries.list(Deals.classType, where: Deals.STAGE.eq(stage), limit: 10000);
       List<Deals> all = [];
       while (true) {
         final res = await Amplify.API.query(request: req).response;
@@ -233,7 +233,7 @@ class DealService {
     final userId = prefs.getInt('current_user_id');
 
     try {
-      final req = ModelQueries.list(Deals.classType, where: Deals.ID.eq(dealId.toString()));
+      final req = ModelQueries.list(Deals.classType, where: Deals.ID.eq(dealId.toString()), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isEmpty == true) return;
       
@@ -284,11 +284,11 @@ class DealService {
 
       // 2. Update primary responsible person
       String toUserName = 'Unknown';
-      final uReq = ModelQueries.list(Users.classType, where: Users.ID.eq(toUserId));
+      final uReq = ModelQueries.list(Users.classType, where: Users.ID.eq(toUserId), limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
       if (uRes.data?.items.isNotEmpty == true) toUserName = uRes.data!.items.first?.name ?? 'Unknown';
 
-      final dReq = ModelQueries.list(Deals.classType, where: Deals.ID.eq(dealId.toString()));
+      final dReq = ModelQueries.list(Deals.classType, where: Deals.ID.eq(dealId.toString()), limit: 10000);
       final dRes = await Amplify.API.query(request: dReq).response;
       if (dRes.data?.items.isNotEmpty == true) {
         final c = dRes.data!.items.first!;
@@ -299,14 +299,14 @@ class DealService {
         await BackupAwareApi().update(updated);
 
         // 3. Ensure new person is an assignee with Lead role
-        final aReq1 = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(dealId.toString()).and(DealAssignees.USER_ID.eq(fromUserId)));
+        final aReq1 = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(dealId.toString()).and(DealAssignees.USER_ID.eq(fromUserId)), limit: 10000);
         final aRes1 = await Amplify.API.query(request: aReq1).response;
         if (aRes1.data?.items.isNotEmpty == true) {
           final a1 = aRes1.data!.items.first!;
           await BackupAwareApi().update(a1.copyWith(role: 'Collaborator'));
         }
 
-        final aReq2 = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(dealId.toString()).and(DealAssignees.USER_ID.eq(toUserId)));
+        final aReq2 = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(dealId.toString()).and(DealAssignees.USER_ID.eq(toUserId)), limit: 10000);
         final aRes2 = await Amplify.API.query(request: aReq2).response;
         if (aRes2.data?.items.isNotEmpty == true) {
           final a2 = aRes2.data!.items.first!;
@@ -317,7 +317,7 @@ class DealService {
         }
 
         String fromUserName = 'Unknown';
-        final fReq = ModelQueries.list(Users.classType, where: Users.ID.eq(fromUserId));
+        final fReq = ModelQueries.list(Users.classType, where: Users.ID.eq(fromUserId), limit: 10000);
         final fRes = await Amplify.API.query(request: fReq).response;
         if (fRes.data?.items.isNotEmpty == true) fromUserName = fRes.data!.items.first?.name ?? 'Unknown';
 
@@ -338,7 +338,7 @@ class DealService {
   Future<void> addAssignee(dynamic dealId, int userId, {String role = 'Collaborator'}) async {
     try {
       final parsedDealId = int.tryParse(dealId.toString()) ?? 0;
-      final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(parsedDealId).and(DealAssignees.USER_ID.eq(userId)));
+      final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(parsedDealId).and(DealAssignees.USER_ID.eq(userId)), limit: 10000);
       final aRes = await Amplify.API.query(request: aReq).response;
       if (aRes.data?.items.isNotEmpty == true) {
         final a = aRes.data!.items.first!;
@@ -349,7 +349,7 @@ class DealService {
       }
 
       String dealName = 'Work';
-      final dReq = ModelQueries.list(Deals.classType, where: Deals.ID.eq(dealId.toString()));
+      final dReq = ModelQueries.list(Deals.classType, where: Deals.ID.eq(dealId.toString()), limit: 10000);
       final dRes = await Amplify.API.query(request: dReq).response;
       if (dRes.data?.items.isNotEmpty == true) dealName = dRes.data!.items.first?.name ?? 'Work';
 
@@ -367,7 +367,7 @@ class DealService {
   Future<void> removeAssignee(dynamic dealId, int userId) async {
     try {
       final parsedDealId = int.tryParse(dealId.toString()) ?? 0;
-      final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(parsedDealId).and(DealAssignees.USER_ID.eq(userId)));
+      final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(parsedDealId).and(DealAssignees.USER_ID.eq(userId)), limit: 10000);
       final aRes = await Amplify.API.query(request: aReq).response;
       if (aRes.data?.items.isNotEmpty == true) {
         await BackupAwareApi().delete(aRes.data!.items.first!);
@@ -380,7 +380,7 @@ class DealService {
   Future<List<old.DealAssignee>> getAssignees(dynamic dealId) async {
     try {
       final parsedDealId = int.tryParse(dealId.toString()) ?? 0;
-      final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(parsedDealId));
+      final aReq = ModelQueries.list(DealAssignees.classType, where: DealAssignees.DEAL_ID.eq(parsedDealId), limit: 10000);
       final aRes = await Amplify.API.query(request: aReq).response;
       var items = aRes.data?.items.where((e) => e != null).cast<DealAssignees>().toList() ?? [];
       
@@ -388,7 +388,7 @@ class DealService {
       for (var a in items) {
         String? uName;
         if (a.user_id != null) {
-          final uReq = ModelQueries.list(Users.classType, where: Users.ID.eq(a.user_id));
+          final uReq = ModelQueries.list(Users.classType, where: Users.ID.eq(a.user_id), limit: 10000);
           final uRes = await Amplify.API.query(request: uReq).response;
           if (uRes.data?.items.isNotEmpty == true) uName = uRes.data!.items.first?.name;
         }
@@ -433,7 +433,7 @@ class DealService {
   Future<List<oldActivity.DealActivity>> getActivities(dynamic dealId) async {
     try {
       final dealIdStr = dealId.toString();
-      var req = ModelQueries.list(DealActivities.classType, where: DealActivities.DEAL_ID.eq(dealIdStr));
+      var req = ModelQueries.list(DealActivities.classType, where: DealActivities.DEAL_ID.eq(dealIdStr), limit: 10000);
       List<DealActivities> all = [];
       while (true) {
         final res = await Amplify.API.query(request: req).response;
@@ -467,7 +467,7 @@ class DealService {
 
   Future<List<Map<String, dynamic>>> getVerificationHistory() async {
     try {
-      var req = ModelQueries.list(DealActivities.classType);
+      var req = ModelQueries.list(DealActivities.classType, limit: 10000);
       List<DealActivities> allActs = [];
       while (true) {
         final res = await Amplify.API.query(request: req).response;
@@ -491,7 +491,7 @@ class DealService {
       for (var a in allActs) {
         Map<String, dynamic>? dealData;
         if (a.deal_id != null) {
-          final dReq = ModelQueries.list(Deals.classType, where: Deals.ID.eq(a.deal_id.toString()));
+          final dReq = ModelQueries.list(Deals.classType, where: Deals.ID.eq(a.deal_id.toString()), limit: 10000);
           final dRes = await Amplify.API.query(request: dReq).response;
           if (dRes.data?.items.isNotEmpty == true) {
             dealData = dRes.data!.items.first!.toJson();
@@ -519,7 +519,7 @@ class DealService {
 
   Future<void> toggleActivityCompletion(dynamic activityId, bool completed) async {
     try {
-      final req = ModelQueries.list(DealActivities.classType, where: DealActivities.ID.eq(activityId.toString()));
+      final req = ModelQueries.list(DealActivities.classType, where: DealActivities.ID.eq(activityId.toString()), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
         final c = res.data!.items.first!;
@@ -532,7 +532,7 @@ class DealService {
 
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     try {
-      var req = ModelQueries.list(Users.classType);
+      var req = ModelQueries.list(Users.classType, limit: 10000);
       List<Users> all = [];
       while (true) {
         final res = await Amplify.API.query(request: req).response;

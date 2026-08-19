@@ -53,7 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _fetchTargetInfo() async {
     final targetId = widget.targetUserId ?? 1;
     try {
-      final req = ModelQueries.list(Users.classType, where: Users.ID.eq(targetId));
+      final req = ModelQueries.list(Users.classType, where: Users.ID.eq(targetId), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final u = (res.data?.items ?? []).isNotEmpty ? res.data!.items.first : null;
       if (u != null && mounted) {
@@ -70,7 +70,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       // Fetch initial messages
-      final req = ModelQueries.list(Messages.classType);
+      final req = ModelQueries.list(Messages.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var allMsgs = res.data?.items.where((e) => e != null).cast<Messages>().toList() ?? [];
       
@@ -103,7 +103,7 @@ class _ChatScreenState extends State<ChatScreen> {
           }
         ''')
       ).listen((event) async {
-          final req = ModelQueries.list(Messages.classType);
+          final req = ModelQueries.list(Messages.classType, limit: 10000);
           final res = await Amplify.API.query(request: req).response;
           var allMsgs = res.data?.items.where((e) => e != null).cast<Messages>().toList() ?? [];
           allMsgs.sort((a, b) => (a.createdAt?.toString() ?? '').compareTo(b.createdAt?.toString() ?? ''));
@@ -130,7 +130,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (_myId != null) {
         try {
-          final uReq = ModelQueries.list(Users.classType, where: Users.ID.eq(_myId));
+          final uReq = ModelQueries.list(Users.classType, where: Users.ID.eq(_myId), limit: 10000);
           final uRes = await Amplify.API.query(request: uReq).response;
           if (uRes.data?.items.isNotEmpty == true) {
              final u = uRes.data!.items.first!;
@@ -142,7 +142,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       bool isOnline = false;
       try {
-        final sReq = ModelQueries.list(UserSessions.classType, where: UserSessions.USER_ID.eq(targetId));
+        final sReq = ModelQueries.list(UserSessions.classType, where: UserSessions.USER_ID.eq(targetId), limit: 10000);
         final sRes = await Amplify.API.query(request: sReq).response;
         if (sRes.data?.items.isNotEmpty == true) {
           isOnline = sRes.data!.items.first?.is_active == true;
@@ -169,7 +169,7 @@ class _ChatScreenState extends State<ChatScreen> {
         if (unreadMsgs.isNotEmpty) {
            for (var m in unreadMsgs) {
              try {
-               final msgReq = ModelQueries.list(Messages.classType, where: Messages.ID.eq(m['id']));
+               final msgReq = ModelQueries.list(Messages.classType, where: Messages.ID.eq(m['id']), limit: 10000);
                final msgRes = await Amplify.API.query(request: msgReq).response;
                if (msgRes.data?.items.isNotEmpty == true) {
                  final msg = msgRes.data!.items.first!;

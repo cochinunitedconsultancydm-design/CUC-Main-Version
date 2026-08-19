@@ -430,7 +430,7 @@ class _BillingScreenState extends State<BillingScreen> {
       
       final allBillings = await _billingService.fetchBillings(limit: 1000, offset: 0); 
       
-      final req = ModelQueries.list(CompanyBills.classType);
+      final req = ModelQueries.list(CompanyBills.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final existingBills = (res.data?.items ?? []).whereType<CompanyBills>().toList() ?? [];
       
@@ -674,7 +674,7 @@ class _BillingScreenState extends State<BillingScreen> {
   Future<void> _showClientLedger(String clientName) async {
     try {
       final items = await _billingService.getClientLedger(clientName);
-      final req = ModelQueries.list(Clients.classType, where: Clients.NAME.eq(clientName));
+      final req = ModelQueries.list(Clients.classType, where: Clients.NAME.eq(clientName), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final clientObj = (res.data?.items ?? []).isNotEmpty ? res.data!.items.first : null;
       
@@ -1651,7 +1651,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       return;
     }
     try {
-      final req = ModelQueries.list(Deals.classType, where: Deals.CLIENT_NAME.eq(_clientName.text));
+      final req = ModelQueries.list(Deals.classType, where: Deals.CLIENT_NAME.eq(_clientName.text), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (mounted) {
         setState(() {
@@ -1872,7 +1872,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
 
   Future<bool> _isInvoiceNoDuplicate(String no) async {
     try {
-      final req = ModelQueries.list(Billings.classType, where: Billings.INVOICE_NO.eq(no));
+      final req = ModelQueries.list(Billings.classType, where: Billings.INVOICE_NO.eq(no), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       return (res.data?.items.where((i) => i!.id != widget.billing?.id.toString()).isNotEmpty) ?? false;
     } catch (e) {

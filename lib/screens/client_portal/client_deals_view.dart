@@ -40,13 +40,13 @@ class _ClientDealsViewState extends State<ClientDealsView> {
         final request = ModelQueries.list(
           Deals.classType,
           where: Deals.CLIENT_NAME.eq(clientName),
-        );
+         limit: 10000);
         final response = await Amplify.API.query(request: request).response;
         
         final billsReq = ModelQueries.list(
           Billings.classType,
           where: Billings.CLIENT_NAME.eq(clientName),
-        );
+         limit: 10000);
         final billsRes = await Amplify.API.query(request: billsReq).response;
         final clientBills = (billsRes.data?.items ?? []).whereType<Billings>().toList() ?? [];
 

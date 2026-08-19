@@ -1477,7 +1477,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final req = ModelQueries.list(
           amplify_models.ClientLicenses.classType,
           where: amplify_models.ClientLicenses.EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
-        );
+         limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final list = (res.data?.items ?? []).whereType<amplify_models.ClientLicenses>().toList() ?? [];
         list.sort((a, b) => (a.expiry_date ?? '').compareTo(b.expiry_date ?? ''));
@@ -1491,14 +1491,14 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final req = ModelQueries.list(
           amplify_models.DscRecords.classType,
           where: amplify_models.DscRecords.DSC_EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
-        );
+         limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final list = (res.data?.items ?? []).whereType<amplify_models.DscRecords>().toList() ?? [];
         list.sort((a, b) => (a.dsc_expiry_date ?? '').compareTo(b.dsc_expiry_date ?? ''));
         return list.map((l) => l.toJson()).toList();
         
       case 'Work Management':
-        final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed'));
+        final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed'), limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final list = (res.data?.items ?? []).whereType<amplify_models.Deals>().toList() ?? [];
         list.sort((a, b) => (b.id).compareTo(a.id));
@@ -1508,7 +1508,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final req = ModelQueries.list(
           amplify_models.Billings.classType,
           where: amplify_models.Billings.TYPE.eq('INVOICE').and(amplify_models.Billings.STATUS.ne('Received')),
-        );
+         limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final list = (res.data?.items ?? []).whereType<amplify_models.Billings>().toList() ?? [];
         list.sort((a, b) => (b.id).compareTo(a.id));
@@ -1760,7 +1760,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     final req = ModelQueries.list(
       amplify_models.ActivityLogs.classType,
       where: amplify_models.ActivityLogs.DETAILS.contains(title),
-    );
+     limit: 10000);
     final res = await amplify_core.Amplify.API.query(request: req).response;
     final logs = (res.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList() ?? [];
     logs.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
@@ -1833,7 +1833,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       try {
         final d = Map<String, dynamic>.from(b.data ?? {});
         d['payment_deadline'] = controller.text;
-        final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(b.id));
+        final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(b.id), limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final billing = res.data?.items.first;
         if (billing != null) {
@@ -1934,7 +1934,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         d['balance_due'] = updatedBalance > 0 ? NumberToWords.formatIndianCurrency(updatedBalance) : '0/-';
         if (isPaid) d['payment_date'] = DateTime.now().toIso8601String();
 
-        final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(b.id));
+        final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(b.id), limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final billing = res.data?.items.first;
         if (billing != null) {
@@ -1943,7 +1943,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         }
         
         if (b.clientName != null && b.clientName!.isNotEmpty) {
-           final cReq = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.NAME.eq(b.clientName!));
+           final cReq = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.NAME.eq(b.clientName!), limit: 10000);
            final cRes = await Amplify.API.query(request: cReq).response;
            final client = cRes.data?.items.isNotEmpty == true ? cRes.data?.items.first : null;
            if (client != null) {
@@ -1976,7 +1976,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
 
     if (ok == true) {
       try {
-        final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(b.id));
+        final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(b.id), limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final billing = res.data?.items.first;
         if (billing != null) {
@@ -2185,7 +2185,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     try {
       final userId = await AuthService().getUserId();
       final userIdStr = userId.toString();
-      final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(userIdStr));
+      final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(userIdStr), limit: 10000);
       final resList = await Amplify.API.query(request: req).response;
       final res = resList.data?.items.isNotEmpty == true ? resList.data?.items.first : null;
       
@@ -2326,7 +2326,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                 onPressed: isSaving ? null : () async {
                                   setState(() => isSaving = true);
                                   try {
-                                    final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(userId.toString()));
+                                    final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(userId.toString()), limit: 10000);
                                     final resList = await Amplify.API.query(request: req).response;
                                     final userObj = resList.data?.items.isNotEmpty == true ? resList.data?.items.first : null;
                                     if (userObj != null) {
@@ -2580,7 +2580,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                   if (userId == null) throw Exception('Not logged in.');
                                   
                                   // Verify current password
-                                  final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(userId.toString()));
+                                  final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(userId.toString()), limit: 10000);
                                   final resList = await Amplify.API.query(request: req).response;
                                   final userObj = resList.data?.items.isNotEmpty == true ? resList.data?.items.first : null;
                                   

@@ -355,7 +355,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       try {
         final req = ModelQueries.list(
           amplify_models.Users.classType,
-          where: amplify_models.Users.USERNAME.eq(name ?? (role == 'admin' ? 'admin' : 'accountant'))
+          where: amplify_models.Users.USERNAME.eq(name ?? (role == 'admin' ? 'admin' : 'accountant')),
+          limit: 10000
         );
         final res = await Amplify.API.query(request: req).response;
         if (res.data?.items.isNotEmpty == true) {
@@ -387,7 +388,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final thirtyDaysStr = DateTime.now().add(const Duration(days: 30)).toIso8601String();
       final licReq = ModelQueries.list(
         amplify_models.ClientLicenses.classType,
-        where: amplify_models.ClientLicenses.EXPIRY_DATE.le(thirtyDaysStr)
+        where: amplify_models.ClientLicenses.EXPIRY_DATE.le(thirtyDaysStr),
+        limit: 10000
       );
       final licCountRes = await Amplify.API.query(request: licReq).response;
       final licCount = licCountRes.data?.items.length ?? 0;
@@ -395,7 +397,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // 2. DSC Expiry (next 30 days)
       final dscReq = ModelQueries.list(
         amplify_models.DscRecords.classType,
-        where: amplify_models.DscRecords.DSC_EXPIRY_DATE.le(thirtyDaysStr)
+        where: amplify_models.DscRecords.DSC_EXPIRY_DATE.le(thirtyDaysStr),
+        limit: 10000
       );
       final dscCountRes = await Amplify.API.query(request: dscReq).response;
       final dscCount = dscCountRes.data?.items.length ?? 0;
@@ -408,14 +411,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (!_isAdmin && userId != null) {
         dealsWhere = amplify_models.Deals.STAGE.ne('Completed').and(amplify_models.Deals.RESPONSIBLE_ID.eq(userId));
       }
-      final dealsReq = ModelQueries.list(amplify_models.Deals.classType, where: dealsWhere);
+      final dealsReq = ModelQueries.list(amplify_models.Deals.classType, where: dealsWhere, limit: 10000);
       final dealsRes = await Amplify.API.query(request: dealsReq).response;
       dealsCount = dealsRes.data?.items.length ?? 0;
 
       // 4. Bills to Receive (Only pending INVOICES)
       final billsReq = ModelQueries.list(
         amplify_models.Billings.classType,
-        where: amplify_models.Billings.TYPE.eq('INVOICE').and(amplify_models.Billings.STATUS.ne('Received'))
+        where: amplify_models.Billings.TYPE.eq('INVOICE').and(amplify_models.Billings.STATUS.ne('Received')),
+        limit: 10000
       );
       final billsResult = await Amplify.API.query(request: billsReq).response;
       final billsItems = billsResult.data?.items ?? [];
@@ -435,7 +439,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (!_isAdmin && userId != null) {
         tasksWhere = amplify_models.Tasks.STATUS.ne('Completed').and(amplify_models.Tasks.ASSIGNED_TO.eq(userId));
       }
-      final tasksReq = ModelQueries.list(amplify_models.Tasks.classType, where: tasksWhere);
+      final tasksReq = ModelQueries.list(amplify_models.Tasks.classType, where: tasksWhere, limit: 10000);
       final tasksRes = await Amplify.API.query(request: tasksReq).response;
       pendingTasksCount = tasksRes.data?.items.length ?? 0;
 
@@ -1146,7 +1150,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final req = ModelQueries.list(
           amplify_models.ClientLicenses.classType,
           where: amplify_models.ClientLicenses.EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
-        );
+         limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final list = (res.data?.items ?? []).whereType<amplify_models.ClientLicenses>().toList() ?? [];
         list.sort((a, b) => (a.expiry_date ?? '').compareTo(b.expiry_date ?? ''));
@@ -1160,14 +1164,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final req = ModelQueries.list(
           amplify_models.DscRecords.classType,
           where: amplify_models.DscRecords.DSC_EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
-        );
+         limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final list = (res.data?.items ?? []).whereType<amplify_models.DscRecords>().toList() ?? [];
         list.sort((a, b) => (a.dsc_expiry_date ?? '').compareTo(b.dsc_expiry_date ?? ''));
         return list.map((l) => l.toJson()).toList();
         
       case 'Work Management':
-        final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed'));
+        final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.STAGE.ne('Completed'), limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final list = (res.data?.items ?? []).whereType<amplify_models.Deals>().toList() ?? [];
         list.sort((a, b) => (b.updatedAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.updatedAt?.getDateTimeInUtc() ?? DateTime.now()));
@@ -1177,7 +1181,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final req = ModelQueries.list(
           amplify_models.Billings.classType,
           where: amplify_models.Billings.TYPE.eq('INVOICE').and(amplify_models.Billings.STATUS.ne('Received')),
-        );
+         limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         final list = (res.data?.items ?? []).whereType<amplify_models.Billings>().toList() ?? [];
         list.sort((a, b) => (b.id).compareTo(a.id));
@@ -1484,7 +1488,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         await BackupAwareApi().update(reqBill);
         
         if (b.clientName != null && b.clientName!.isNotEmpty) {
-           final q = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.NAME.eq(b.clientName!));
+           final q = ModelQueries.list(amplify_models.Clients.classType, where: amplify_models.Clients.NAME.eq(b.clientName!), limit: 10000);
            final r = await amplify_core.Amplify.API.query(request: q).response;
            if (r.data?.items.isNotEmpty == true) {
              final clientToUpdate = r.data!.items.first!.copyWith(balance_due: d['balance_due'].toString());

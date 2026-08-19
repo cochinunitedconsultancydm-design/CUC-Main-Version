@@ -61,7 +61,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
     try {
       final name = await AuthService().getUserName();
       
-      final reqRev = ModelQueries.list(Billings.classType, where: Billings.STATUS.eq('Received').and(Billings.TYPE.eq('INVOICE')));
+      final reqRev = ModelQueries.list(Billings.classType, where: Billings.STATUS.eq('Received').and(Billings.TYPE.eq('INVOICE')), limit: 10000);
       final resRev = await Amplify.API.query(request: reqRev).response;
       final revenueRes = resRev.data?.items ?? [];
       double totalRev = 0;
@@ -71,7 +71,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
         totalRev += double.tryParse(amt.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
       }
 
-      final reqExp = ModelQueries.list(CompanyBills.classType);
+      final reqExp = ModelQueries.list(CompanyBills.classType, limit: 10000);
       final resExp = await Amplify.API.query(request: reqExp).response;
       final expenseRes = resExp.data?.items ?? [];
       double totalExp = 0;
@@ -80,15 +80,15 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
         totalExp += r.amount ?? 0.0;
       }
 
-      final reqPendingInv = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Received').and(Billings.TYPE.eq('INVOICE')));
+      final reqPendingInv = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Received').and(Billings.TYPE.eq('INVOICE')), limit: 10000);
       final resPendingInv = await Amplify.API.query(request: reqPendingInv).response;
       final pendingInvCount = resPendingInv.data?.items ?? [];
 
-      final reqPendingBill = ModelQueries.list(CompanyBills.classType, where: CompanyBills.STATUS.ne('Paid'));
+      final reqPendingBill = ModelQueries.list(CompanyBills.classType, where: CompanyBills.STATUS.ne('Paid'), limit: 10000);
       final resPendingBill = await Amplify.API.query(request: reqPendingBill).response;
       final pendingBillCount = resPendingBill.data?.items ?? [];
 
-      final reqClient = ModelQueries.list(Clients.classType);
+      final reqClient = ModelQueries.list(Clients.classType, limit: 10000);
       final resClient = await Amplify.API.query(request: reqClient).response;
       final clientCount = resClient.data?.items ?? [];
 
@@ -114,7 +114,7 @@ class _AccountantDashboardScreenState extends State<AccountantDashboardScreen> {
       final breakdownList = sortedBreakdown.take(5).map((e) => {'category': e.key, 'total': e.value}).toList();
 
       final fifteenDaysAgo = DateTime.now().subtract(const Duration(days: 15)).toIso8601String();
-      final reqOverdue = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Received').and(Billings.TYPE.eq('INVOICE')).and(Billings.CREATED_AT.lt(fifteenDaysAgo)));
+      final reqOverdue = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Received').and(Billings.TYPE.eq('INVOICE')).and(Billings.CREATED_AT.lt(fifteenDaysAgo)), limit: 10000);
       final resOverdue = await Amplify.API.query(request: reqOverdue).response;
       var overdueList = (resOverdue.data?.items ?? []).where((e) => e != null).cast<Billings>().toList();
       overdueList.sort((a, b) => (a.createdAt?.toString() ?? '').compareTo(b.createdAt?.toString() ?? ''));

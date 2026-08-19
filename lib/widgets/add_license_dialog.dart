@@ -53,12 +53,12 @@ class _AddLicenseDialogState extends State<AddLicenseDialog> {
 
   Future<void> _fetchData() async {
     try {
-      final cReq = ModelQueries.list(Clients.classType);
+      final cReq = ModelQueries.list(Clients.classType, limit: 10000);
       final cRes = await Amplify.API.query(request: cReq).response;
       var cList = (cRes.data?.items ?? []).whereType<Clients>().toList() ?? [];
       cList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
 
-      final lReq = ModelQueries.list(LicenseTypes.classType);
+      final lReq = ModelQueries.list(LicenseTypes.classType, limit: 10000);
       final lRes = await Amplify.API.query(request: lReq).response;
       var lList = (lRes.data?.items ?? []).whereType<LicenseTypes>().toList() ?? [];
       lList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));

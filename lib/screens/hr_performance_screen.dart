@@ -141,7 +141,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     if (!mounted) return;
     setState(() => _isLoadingAttendance = true);
     try {
-      final req = ModelQueries.list(amplify_models.StaffAttendance.classType);
+      final req = ModelQueries.list(amplify_models.StaffAttendance.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var att = (res.data?.items ?? []).whereType<amplify_models.StaffAttendance>().toList() ?? [];
       if (mounted) {
@@ -215,7 +215,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
         return (a.name ?? '').compareTo(b.name ?? '');
       });
       
-      final sReq = ModelQueries.list(amplify_models.UserSessions.classType);
+      final sReq = ModelQueries.list(amplify_models.UserSessions.classType, limit: 10000);
       final sRes = await Amplify.API.query(request: sReq).response;
       var sessionsRes = (sRes.data?.items ?? []).whereType<amplify_models.UserSessions>().toList() ?? [];
       
@@ -846,7 +846,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                               await BackupAwareApi().create(newUser);
                               await LoggingService().logAction(action: 'CREATE_STAFF', targetType: 'Staff', targetId: username.text, details: 'Added new staff member: ${name.text}');
                             } else {
-                              final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()));
+                              final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()), limit: 10000);
                               final res = await Amplify.API.query(request: req).response;
                               if (res.data?.items.isNotEmpty == true) {
                                 final existing = res.data!.items.first!;
@@ -933,7 +933,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                 try {
                   // SECURITY: Hash password before storing
                   final hashedPassword = SecurityService().hashPassword(passController.text);
-                  final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()));
+                  final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()), limit: 10000);
                   final res = await Amplify.API.query(request: req).response;
                   if (res.data?.items.isNotEmpty == true) {
                     final existing = res.data!.items.first!;
@@ -968,7 +968,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     ));
     if (ok == true) {
       try {
-        final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(id.toString()));
+        final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(id.toString()), limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         if (res.data?.items.isNotEmpty == true) {
           await BackupAwareApi().delete(res.data!.items.first!);
@@ -1289,7 +1289,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
         break;
     }
     
-    final sReq = ModelQueries.list(amplify_models.UserSessions.classType);
+    final sReq = ModelQueries.list(amplify_models.UserSessions.classType, limit: 10000);
     final sRes = await Amplify.API.query(request: sReq).response;
     var allSessions = (sRes.data?.items ?? []).whereType<amplify_models.UserSessions>().toList() ?? [];
     

@@ -35,7 +35,7 @@ class StartupTaskPopup {
       if (currentUserId == null) return;
 
       // Fetch tasks for the current user that are not completed
-      final req = ModelQueries.list(amplify_models.Tasks.classType);
+      final req = ModelQueries.list(amplify_models.Tasks.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       
       final allTasks = (res.data?.items ?? []).whereType<amplify_models.Tasks>().toList();

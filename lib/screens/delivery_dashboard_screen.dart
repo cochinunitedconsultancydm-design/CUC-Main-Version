@@ -232,7 +232,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
       final userId = await AuthService().getUserId();
       if (userId == null) return;
 
-      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ASSIGNED_TO.eq(userId));
+      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ASSIGNED_TO.eq(userId), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final tasksList = (res.data?.items ?? []).whereType<amplify_models.Tasks>().toList() ?? [];
 

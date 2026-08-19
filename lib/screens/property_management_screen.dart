@@ -31,7 +31,7 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
   Future<void> _fetchProperties() async {
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.Properties.classType);
+      final req = ModelQueries.list(amplify_models.Properties.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final result = (res.data?.items ?? []).whereType<amplify_models.Properties>().toList() ?? [];
       

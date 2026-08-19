@@ -124,15 +124,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _errorMessage = null;
     });
     try {
-      final req1 = ModelQueries.list(Clients.classType);
+      final req1 = ModelQueries.list(Clients.classType, limit: 10000);
       final res1 = await Amplify.API.query(request: req1).response;
       final clientsCountRes = res1.data?.items ?? [];
       
-      final req2 = ModelQueries.list(ClientLicenses.classType, where: ClientLicenses.STATUS.eq('Active'));
+      final req2 = ModelQueries.list(ClientLicenses.classType, where: ClientLicenses.STATUS.eq('Active'), limit: 10000);
       final res2 = await Amplify.API.query(request: req2).response;
       final licensesCountRes = res2.data?.items ?? [];
       
-      final req3 = ModelQueries.list(Billings.classType);
+      final req3 = ModelQueries.list(Billings.classType, limit: 10000);
       final res3 = await Amplify.API.query(request: req3).response;
       var billingsList = (res3.data?.items ?? []).where((e) => e != null).cast<Billings>().toList();
       billingsList.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
@@ -694,13 +694,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ping = sw.elapsedMilliseconds;
       syncStatus = 'Healthy';
       
-      stats['clients'] = (await Amplify.API.query(request: ModelQueries.list(Clients.classType)).response).data?.items.length ?? 0;
-      stats['billings'] = (await Amplify.API.query(request: ModelQueries.list(Billings.classType)).response).data?.items.length ?? 0;
-      stats['deals'] = (await Amplify.API.query(request: ModelQueries.list(Deals.classType)).response).data?.items.length ?? 0;
-      stats['tasks'] = (await Amplify.API.query(request: ModelQueries.list(Tasks.classType)).response).data?.items.length ?? 0;
-      stats['activity_logs'] = (await Amplify.API.query(request: ModelQueries.list(ActivityLogs.classType)).response).data?.items.length ?? 0;
-      stats['dsc_records'] = (await Amplify.API.query(request: ModelQueries.list(DscRecords.classType)).response).data?.items.length ?? 0;
-      stats['user_sessions'] = (await Amplify.API.query(request: ModelQueries.list(UserSessions.classType)).response).data?.items.length ?? 0;
+      stats['clients'] = (await Amplify.API.query(request: ModelQueries.list(Clients.classType, limit: 10000)).response).data?.items.length ?? 0;
+      stats['billings'] = (await Amplify.API.query(request: ModelQueries.list(Billings.classType, limit: 10000)).response).data?.items.length ?? 0;
+      stats['deals'] = (await Amplify.API.query(request: ModelQueries.list(Deals.classType, limit: 10000)).response).data?.items.length ?? 0;
+      stats['tasks'] = (await Amplify.API.query(request: ModelQueries.list(Tasks.classType, limit: 10000)).response).data?.items.length ?? 0;
+      stats['activity_logs'] = (await Amplify.API.query(request: ModelQueries.list(ActivityLogs.classType, limit: 10000)).response).data?.items.length ?? 0;
+      stats['dsc_records'] = (await Amplify.API.query(request: ModelQueries.list(DscRecords.classType, limit: 10000)).response).data?.items.length ?? 0;
+      stats['user_sessions'] = (await Amplify.API.query(request: ModelQueries.list(UserSessions.classType, limit: 10000)).response).data?.items.length ?? 0;
     } catch (e) {
       syncStatus = 'Error';
     }

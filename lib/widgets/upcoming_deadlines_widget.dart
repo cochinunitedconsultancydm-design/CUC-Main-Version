@@ -128,10 +128,10 @@ class UpcomingDeadlinesWidget extends StatelessWidget {
   }
 
   Future<List<Map<String, dynamic>>> _fetchDeadlines() async {
-    var req = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Received'));
+    var req = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Received'), limit: 10000);
     
     if (filterByAuthorities != null && filterByAuthorities!.isNotEmpty) {
-      req = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Received').and(Billings.AUTHORITIES.contains(filterByAuthorities!)));
+      req = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Received').and(Billings.AUTHORITIES.contains(filterByAuthorities!)), limit: 10000);
     }
 
     final res = await Amplify.API.query(request: req).response;

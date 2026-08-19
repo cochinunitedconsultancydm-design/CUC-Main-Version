@@ -956,7 +956,7 @@ final dLink = "";
     // Auto-sync amount from linked bill
     if (_billingId != null) {
       try {
-        final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(_billingId.toString()));
+        final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(_billingId.toString()), limit: 10000);
         final resList = await Amplify.API.query(request: req).response;
         final billRes = resList.data?.items.isNotEmpty == true ? resList.data?.items.first : null;
             
@@ -1049,7 +1049,7 @@ final dLink = "";
           final total = double.tryParse(_invoiceAmountController.text) ?? 0;
           final balance = total - received;
 
-          final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(_billingId.toString()));
+          final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(_billingId.toString()), limit: 10000);
           final res = await Amplify.API.query(request: req).response;
           final billObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
           
@@ -1127,7 +1127,7 @@ final dLink = "";
             Navigator.pop(context);
             setState(() => _isLoading = true);
             try {
-              final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()));
+              final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()), limit: 10000);
               final res = await Amplify.API.query(request: req).response;
               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
               if (dealObj != null) {
@@ -1212,7 +1212,7 @@ final dLink = "";
             Navigator.pop(context);
             setState(() => _isLoading = true);
             try {
-              final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()));
+              final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()), limit: 10000);
               final res = await Amplify.API.query(request: req).response;
               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
               if (dealObj != null) {
@@ -1368,7 +1368,7 @@ final dLink = "";
 
         if (selectedId != null) {
           setState(() => _isLoading = true);
-          final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()));
+          final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()), limit: 10000);
           final res = await Amplify.API.query(request: req).response;
           final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
           if (dealObj != null) {
@@ -1407,7 +1407,7 @@ final dLink = "";
   Future<void> _openWorkFileDialog() async {
     if (widget.deal == null) return;
     try {
-      final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()));
+      final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final match = res.data?.items.firstWhere((e) => e != null);
 
@@ -1608,7 +1608,7 @@ final dLink = "";
 
         if (selectedId != null) {
           setState(() => _isLoading = true);
-          final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()));
+          final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()), limit: 10000);
           final res = await Amplify.API.query(request: req).response;
           final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
           if (dealObj != null) {
@@ -2392,7 +2392,7 @@ final dLink = "";
                                                 setState(
                                                   () => _isLoading = true,
                                                 );
-                                                final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()));
+                                                final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()), limit: 10000);
                                                 final res = await Amplify.API.query(request: req).response;
                                                 final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
                                                 if (dealObj != null) {
@@ -2724,7 +2724,7 @@ final dLink = "";
                                                 setState(
                                                   () => _isLoading = true,
                                                 );
-                                                final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()));
+                                                final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()), limit: 10000);
                                                 final res = await Amplify.API.query(request: req).response;
                                                 final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
                                                 if (dealObj != null) {
@@ -3105,7 +3105,7 @@ final dLink = "";
                                           TextButton(
                                             onPressed: () async {
                                               setState(() => _isLoading = true);
-                                              final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()));
+                                              final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()), limit: 10000);
                                               final res = await Amplify.API.query(request: req).response;
                                               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
                                               if (dealObj != null) {
@@ -3429,7 +3429,7 @@ final dLink = "";
                                           TextButton(
                                             onPressed: () async {
                                               setState(() => _isLoading = true);
-                                              final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()));
+                                              final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(widget.deal!.id.toString()), limit: 10000);
                                               final res = await Amplify.API.query(request: req).response;
                                               final dealObj = res.data?.items.isNotEmpty == true ? res.data?.items.first : null;
                                               if (dealObj != null) {

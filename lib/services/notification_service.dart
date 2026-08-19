@@ -196,7 +196,7 @@ class NotificationService {
       final req = ModelQueries.list(
         Notifications.classType,
         where: Notifications.IS_READ.eq(false) // Note: Filter by userId might require string match if dynamic
-      );
+      , limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var items = res.data?.items.where((e) => e != null && e.user_id?.toString() == userId.toString()).cast<Notifications>().toList() ?? [];
       
@@ -211,7 +211,7 @@ class NotificationService {
 
   Future<void> markAsRead(dynamic notificationId) async {
     try {
-      final req = ModelQueries.list(Notifications.classType, where: Notifications.ID.eq(notificationId.toString()));
+      final req = ModelQueries.list(Notifications.classType, where: Notifications.ID.eq(notificationId.toString()), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
         final notif = res.data!.items.first!;
@@ -226,7 +226,7 @@ class NotificationService {
   Future<void> markAllAsRead(dynamic userId) async {
     try {
       // Fetch all unread for user
-      final req = ModelQueries.list(Notifications.classType, where: Notifications.IS_READ.eq(false));
+      final req = ModelQueries.list(Notifications.classType, where: Notifications.IS_READ.eq(false), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final unread = res.data?.items.where((e) => e != null && e.user_id?.toString() == userId.toString()).cast<Notifications>() ?? [];
       
@@ -306,7 +306,7 @@ class NotificationService {
     dynamic taskId,
   }) async {
     try {
-      final req = ModelQueries.list(Users.classType, where: Users.ROLE.eq('admin'));
+      final req = ModelQueries.list(Users.classType, where: Users.ROLE.eq('admin'), limit: 10000);
       final response = await Amplify.API.query(request: req).response;
       final items = (response.data?.items ?? []).whereType<Users>() ?? [];
       
@@ -338,7 +338,7 @@ class NotificationService {
 
     try {
       // 1. Always include Managers
-      final req = ModelQueries.list(Users.classType, where: Users.ROLE.eq('manager'));
+      final req = ModelQueries.list(Users.classType, where: Users.ROLE.eq('manager'), limit: 10000);
       final response = await Amplify.API.query(request: req).response;
       final managers = (response.data?.items ?? []).whereType<Users>() ?? [];
       for (var row in managers) {
@@ -347,7 +347,7 @@ class NotificationService {
 
       // 2. If Deal, include Responsible
       if (dealId != null) {
-        final dReq = ModelQueries.list(Deals.classType, where: Deals.ID.eq(dealId.toString()));
+        final dReq = ModelQueries.list(Deals.classType, where: Deals.ID.eq(dealId.toString()), limit: 10000);
         final dRes = await Amplify.API.query(request: dReq).response;
         if (dRes.data?.items.isNotEmpty == true) {
           final dealRes = dRes.data!.items.first!;
@@ -359,7 +359,7 @@ class NotificationService {
 
       // 3. If Task, include AssignedTo and AssignedBy
       if (taskId != null) {
-        final tReq = ModelQueries.list(Tasks.classType, where: Tasks.ID.eq(taskId.toString()));
+        final tReq = ModelQueries.list(Tasks.classType, where: Tasks.ID.eq(taskId.toString()), limit: 10000);
         final tRes = await Amplify.API.query(request: tReq).response;
         if (tRes.data?.items.isNotEmpty == true) {
           final taskRes = tRes.data!.items.first!;
@@ -390,7 +390,7 @@ class NotificationService {
       debugPrint('Running Smart Escalation Reminder Cron...');
 
       // 1. Remind Deals
-      final reqDeals = ModelQueries.list(Deals.classType, where: Deals.STAGE.ne('Completed'));
+      final reqDeals = ModelQueries.list(Deals.classType, where: Deals.STAGE.ne('Completed'), limit: 10000);
       final resDeals = await Amplify.API.query(request: reqDeals).response;
       final deals = (resDeals.data?.items ?? []).whereType<Deals>() ?? [];
 
@@ -403,7 +403,7 @@ class NotificationService {
         final stage = dealMap.stage ?? '';
 
         // Check frequency for Deal
-        final nReq = ModelQueries.list(Notifications.classType, where: Notifications.TYPE.eq('reminder'));
+        final nReq = ModelQueries.list(Notifications.classType, where: Notifications.TYPE.eq('reminder'), limit: 10000);
         final nRes = await Amplify.API.query(request: nReq).response;
         final notifs = nRes.data?.items.where((e) => e != null && e.deal_id?.toString() == dealId.toString()).cast<Notifications>().toList() ?? [];
         notifs.sort((a, b) => (b.created_at ?? '').compareTo(a.created_at ?? ''));
@@ -430,7 +430,7 @@ class NotificationService {
       }
 
       // 2. Remind Tasks
-      final reqTasks = ModelQueries.list(Tasks.classType, where: Tasks.STATUS.ne('Completed'));
+      final reqTasks = ModelQueries.list(Tasks.classType, where: Tasks.STATUS.ne('Completed'), limit: 10000);
       final resTasks = await Amplify.API.query(request: reqTasks).response;
       final tasks = (resTasks.data?.items ?? []).whereType<Tasks>() ?? [];
 
@@ -458,7 +458,7 @@ class NotificationService {
         }
 
         // Check last notification for this task
-        final nReq = ModelQueries.list(Notifications.classType);
+        final nReq = ModelQueries.list(Notifications.classType, limit: 10000);
         final nRes = await Amplify.API.query(request: nReq).response;
         final notifs = nRes.data?.items.where((e) => e != null && e.task_id?.toString() == taskId.toString() && (e.type == 'reminder' || e.type == 'alert')).cast<Notifications>().toList() ?? [];
         notifs.sort((a, b) => (b.created_at ?? '').compareTo(a.created_at ?? ''));

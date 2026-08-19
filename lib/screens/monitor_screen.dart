@@ -82,7 +82,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
       final req = ModelQueries.list(
         amplify_models.ActivityLogs.classType,
         where: amplify_models.ActivityLogs.CREATED_AT.gt(twentyFourHoursAgo)
-      );
+      , limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final logs = (res.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList() ?? [];
       

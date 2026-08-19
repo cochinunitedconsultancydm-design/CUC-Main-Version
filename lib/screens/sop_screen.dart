@@ -67,7 +67,7 @@ class _SopScreenState extends State<SopScreen> {
       final req = ModelQueries.list(
         ServiceContent.classType,
         where: ServiceContent.SERVICE_ID.eq(_sopServiceId),
-      );
+       limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.hasErrors) {
         throw Exception(res.errors.first.message);

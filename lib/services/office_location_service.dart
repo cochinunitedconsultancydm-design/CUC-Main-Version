@@ -9,7 +9,7 @@ import '../models/ModelProvider.dart';
 class OfficeLocationService {
   Future<List<OfficeLocations>> getLocations() async {
     try {
-      final request = ModelQueries.list(OfficeLocations.classType);
+      final request = ModelQueries.list(OfficeLocations.classType, limit: 10000);
       final response = await Amplify.API.query(request: request).response;
       return (response.data?.items ?? []).whereType<OfficeLocations>().toList() ?? [];
     } catch (e) {

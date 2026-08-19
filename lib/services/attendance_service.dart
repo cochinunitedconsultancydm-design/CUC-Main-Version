@@ -10,7 +10,7 @@ class AttendanceService {
     final req = ModelQueries.list(
       StaffAttendance.classType,
       where: StaffAttendance.ATTENDANCE_DATE.eq(DateTime.now().toIso8601String().split('T')[0])
-    );
+    , limit: 10000);
     final res = await Amplify.API.query(request: req).response;
     final all = (res.data?.items ?? []).whereType<StaffAttendance>() ?? [];
     
@@ -33,7 +33,7 @@ class AttendanceService {
     final req = ModelQueries.list(
       StaffAttendance.classType,
       where: StaffAttendance.ATTENDANCE_DATE.eq(date)
-    );
+    , limit: 10000);
     final res = await Amplify.API.query(request: req).response;
     final all = (res.data?.items ?? []).whereType<StaffAttendance>() ?? [];
     
@@ -67,7 +67,7 @@ class AttendanceService {
 
   // Check Out
   Future<bool> checkOut(dynamic attendanceId) async {
-    final req = ModelQueries.list(StaffAttendance.classType, where: StaffAttendance.ID.eq(attendanceId.toString()));
+    final req = ModelQueries.list(StaffAttendance.classType, where: StaffAttendance.ID.eq(attendanceId.toString()), limit: 10000);
     final res = await Amplify.API.query(request: req).response;
     if (res.data?.items.isNotEmpty == true) {
       final att = res.data!.items.first!;

@@ -68,7 +68,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
       userId = idInt ?? idStr;
       
       if (userId == null && name != null) {
-        final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.USERNAME.eq(name));
+        final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.USERNAME.eq(name), limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         if (res.data?.items.isNotEmpty == true) {
           userId = res.data!.items.first!.id;
@@ -170,7 +170,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.Tasks.classType);
+      final req = ModelQueries.list(amplify_models.Tasks.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var tasks = (res.data?.items ?? []).whereType<amplify_models.Tasks>().toList();
       tasks = tasks.where((t) {
@@ -236,7 +236,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
 
   Future<void> _updateTaskStatus(Task task, String newStatus) async {
     try {
-      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(task.id.toString()));
+      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(task.id.toString()), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
         final existingTask = res.data!.items.first!;
@@ -263,7 +263,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     );
     if (ok == true) {
       try {
-        final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(id.toString()));
+        final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(id.toString()), limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         if (res.data?.items.isNotEmpty == true) {
           await BackupAwareApi().delete(res.data!.items.first!);
@@ -585,7 +585,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                                 }
                               } else {
                                 final finalTitle = '[$selectedTaskType]${needsReturn ? ' [Requires Return]' : ''} ${titleCtrl.text}'.trim();
-                                final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(task.id.toString()));
+                                final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(task.id.toString()), limit: 10000);
                                 final res = await Amplify.API.query(request: req).response;
                                 if (res.data?.items.isNotEmpty == true) {
                                   final existingTask = res.data!.items.first!;

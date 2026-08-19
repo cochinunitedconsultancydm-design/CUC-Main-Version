@@ -92,7 +92,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
       final clientsList = (clientsRes.data?.items ?? []).whereType<amplify_models.Clients>().toList() ?? [];
       final clientsMap = { for (var c in clientsList) c.id.toString(): c.name };
 
-      final typesReq = ModelQueries.list(amplify_models.LicenseTypes.classType);
+      final typesReq = ModelQueries.list(amplify_models.LicenseTypes.classType, limit: 10000);
       final typesRes = await Amplify.API.query(request: typesReq).response;
       final typesList = (typesRes.data?.items ?? []).whereType<amplify_models.LicenseTypes>().toList() ?? [];
       final typesMap = { for (var t in typesList) t.id.toString(): t.name };
@@ -101,7 +101,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
       final tasksReq = ModelQueries.list(
         amplify_models.Tasks.classType,
         where: amplify_models.Tasks.STATUS.ne('Completed')
-      );
+      , limit: 10000);
       final tasksRes = await Amplify.API.query(request: tasksReq).response;
       final tasks = (tasksRes.data?.items ?? []).whereType<amplify_models.Tasks>().toList() ?? [];
       
@@ -126,7 +126,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
       final licenseReq = ModelQueries.list(
         amplify_models.ClientLicenses.classType,
         where: amplify_models.ClientLicenses.STATUS.eq('Active')
-      );
+      , limit: 10000);
       final licenseRes = await Amplify.API.query(request: licenseReq).response;
       final licenses = (licenseRes.data?.items ?? []).whereType<amplify_models.ClientLicenses>().toList() ?? [];
       
@@ -156,7 +156,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
       }
 
       // 3. Fetch DSC Expiry
-      final dscReq = ModelQueries.list(amplify_models.DscRecords.classType);
+      final dscReq = ModelQueries.list(amplify_models.DscRecords.classType, limit: 10000);
       final dscRes = await Amplify.API.query(request: dscReq).response;
       final dscs = (dscRes.data?.items ?? []).whereType<amplify_models.DscRecords>().toList() ?? [];
       

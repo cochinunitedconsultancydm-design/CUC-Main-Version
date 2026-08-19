@@ -41,7 +41,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   Future<void> _updateStatus(String newStatus) async {
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(_task.id.toString()));
+      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(_task.id.toString()), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
         final existingTask = res.data!.items.first!;
@@ -107,13 +107,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Future<Task?> _fetchTask(String id) async {
-    final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(id));
+    final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(id), limit: 10000);
     final res = await Amplify.API.query(request: req).response;
     if (res.data?.items.isNotEmpty == true) {
       final t = res.data!.items.first!;
       
       // Fetch users
-      final uReq = ModelQueries.list(amplify_models.Users.classType);
+      final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final uRes = await Amplify.API.query(request: uReq).response;
       final users = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
       final userMap = {for (var u in users) u.id.toString(): u};
@@ -529,7 +529,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                           
                                           setState(() => _isLoading = true);
                                           try {
-                                            final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(_task.id.toString()));
+                                            final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(_task.id.toString()), limit: 10000);
                                             final res = await Amplify.API.query(request: req).response;
                                             if (res.data?.items.isNotEmpty == true) {
                                               final existingTask = res.data!.items.first!;

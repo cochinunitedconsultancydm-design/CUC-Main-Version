@@ -38,7 +38,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
   Future<void> _fetchBills() async {
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.CompanyBills.classType);
+      final req = ModelQueries.list(amplify_models.CompanyBills.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final staffReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final staffRes = await Amplify.API.query(request: staffReq).response;
@@ -90,7 +90,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
     
     List<amplify_models.Billings> availableInvoices = [];
     try {
-      final req = ModelQueries.list(amplify_models.Billings.classType);
+      final req = ModelQueries.list(amplify_models.Billings.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       availableInvoices = (res.data?.items ?? []).whereType<amplify_models.Billings>().where((b) {
          return b.status != 'Received' && (b.invoice_no != null && b.invoice_no!.isNotEmpty);
@@ -484,7 +484,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                             // Link and update the Billing page if an invoice number was provided
                             if (linkedInvoiceNo.isNotEmpty && isIncoming) {
                               try {
-                                final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.INVOICE_NO.eq(linkedInvoiceNo));
+                                final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.INVOICE_NO.eq(linkedInvoiceNo), limit: 10000);
                                 final res = await Amplify.API.query(request: req).response;
                                 if (res.data != null && res.data!.items.isNotEmpty) {
                                   final b = res.data!.items.first!;

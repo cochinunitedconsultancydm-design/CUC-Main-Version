@@ -48,7 +48,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       final clientsMap = { for (var c in (clientRes.data?.items ?? []).whereType<Clients>()) c.id.toString(): c.name ?? 'Unknown' };
 
       // 1. Fetch Tasks (Overdue or Due in next 7 days)
-      final tReq = ModelQueries.list(Tasks.classType, where: Tasks.STATUS.ne('Completed'));
+      final tReq = ModelQueries.list(Tasks.classType, where: Tasks.STATUS.ne('Completed'), limit: 10000);
       final tRes = await Amplify.API.query(request: tReq).response;
       final tasksRes = (tRes.data?.items ?? []).whereType<Tasks>() ?? [];
       
@@ -71,7 +71,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       }
 
       // 2. Fetch Licenses Expiry (Expired or Expiring in next 30 days)
-      final lReq = ModelQueries.list(ClientLicenses.classType, where: ClientLicenses.STATUS.eq('Active'));
+      final lReq = ModelQueries.list(ClientLicenses.classType, where: ClientLicenses.STATUS.eq('Active'), limit: 10000);
       final lRes = await Amplify.API.query(request: lReq).response;
       final licenseRes = (lRes.data?.items ?? []).whereType<ClientLicenses>() ?? [];
       
@@ -95,7 +95,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       }
 
       // 3. Fetch DSC Expiry (Expired or Expiring in next 30 days)
-      final dReq = ModelQueries.list(DscRecords.classType);
+      final dReq = ModelQueries.list(DscRecords.classType, limit: 10000);
       final dRes = await Amplify.API.query(request: dReq).response;
       final dscRes = (dRes.data?.items ?? []).whereType<DscRecords>() ?? [];
       
@@ -118,7 +118,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       }
 
       // 4. Fetch Pending Bills/Receipts (Overdue or Due in next 15 days)
-      final bReq = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Paid').and(Billings.STATUS.ne('Receipt Generated')));
+      final bReq = ModelQueries.list(Billings.classType, where: Billings.STATUS.ne('Paid').and(Billings.STATUS.ne('Receipt Generated')), limit: 10000);
       final bRes = await Amplify.API.query(request: bReq).response;
       final billRes = (bRes.data?.items ?? []).whereType<Billings>() ?? [];
       

@@ -92,7 +92,7 @@ class _HRDashboardScreenState extends State<HRDashboardScreen> {
       final aReq = ModelQueries.list(
         StaffAttendance.classType,
         where: StaffAttendance.ATTENDANCE_DATE.eq(todayStr)
-      );
+      , limit: 10000);
       final aRes = await Amplify.API.query(request: aReq).response;
       var attendanceRes = (aRes.data?.items ?? []).whereType<StaffAttendance>().toList() ?? [];
 

@@ -9,7 +9,7 @@ class InwardPostService {
   /// Fetch all inward posts
   static Future<List<InwardPost>> getPosts() async {
     try {
-      final req = ModelQueries.list(InwardPosts.classType);
+      final req = ModelQueries.list(InwardPosts.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var items = res.data?.items.where((e) => e != null).cast<InwardPosts>().toList() ?? [];
       
@@ -53,7 +53,7 @@ class InwardPostService {
   /// Update an existing inward post
   static Future<void> updatePost(InwardPost post) async {
     try {
-      final req = ModelQueries.list(InwardPosts.classType, where: InwardPosts.ID.eq(post.id));
+      final req = ModelQueries.list(InwardPosts.classType, where: InwardPosts.ID.eq(post.id), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
         final item = res.data!.items.first!;
@@ -73,7 +73,7 @@ class InwardPostService {
   /// Update post status
   static Future<void> updatePostStatus(String id, PostStatus status) async {
     try {
-      final req = ModelQueries.list(InwardPosts.classType, where: InwardPosts.ID.eq(id));
+      final req = ModelQueries.list(InwardPosts.classType, where: InwardPosts.ID.eq(id), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
         final item = res.data!.items.first!;
@@ -88,7 +88,7 @@ class InwardPostService {
   /// Delete an existing inward post
   static Future<void> deletePost(String id) async {
     try {
-      final req = ModelQueries.list(InwardPosts.classType, where: InwardPosts.ID.eq(id));
+      final req = ModelQueries.list(InwardPosts.classType, where: InwardPosts.ID.eq(id), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
         final item = res.data!.items.first!;

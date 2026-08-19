@@ -37,7 +37,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
     });
 
     try {
-      final req = ModelQueries.list(ClientDocuments.classType);
+      final req = ModelQueries.list(ClientDocuments.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var all = (res.data?.items ?? []).whereType<ClientDocuments>().toList() ?? [];
       
@@ -67,7 +67,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
 
       // Fetch logs and uploaders
       try {
-        final logsReq = ModelQueries.list(ActivityLogs.classType, where: ActivityLogs.ACTION.eq('FILE_UPLOADED'));
+        final logsReq = ModelQueries.list(ActivityLogs.classType, where: ActivityLogs.ACTION.eq('FILE_UPLOADED'), limit: 10000);
         final logsRes = await Amplify.API.query(request: logsReq).response;
         final logs = (logsRes.data?.items ?? []).whereType<ActivityLogs>().toList();
         
@@ -107,7 +107,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
 
   Future<void> _updateField(String id, String field, String value) async {
     try {
-      final req = ModelQueries.list(ClientDocuments.classType, where: ClientDocuments.ID.eq(id));
+      final req = ModelQueries.list(ClientDocuments.classType, where: ClientDocuments.ID.eq(id), limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
         final doc = res.data!.items.first!;
@@ -180,7 +180,7 @@ class _UploadedFilesScreenState extends State<UploadedFilesScreen> {
 
     if (confirm == true) {
       try {
-        final req = ModelQueries.list(ClientDocuments.classType, where: ClientDocuments.ID.eq(doc.id));
+        final req = ModelQueries.list(ClientDocuments.classType, where: ClientDocuments.ID.eq(doc.id), limit: 10000);
         final res = await Amplify.API.query(request: req).response;
         if (res.data?.items.isNotEmpty == true) {
           await BackupAwareApi().delete(res.data!.items.first!);

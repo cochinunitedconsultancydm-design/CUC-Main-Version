@@ -18,7 +18,7 @@ class ChecklistService {
         where: Checklists.RESPONSIBLE_ID.eq(userId).and(
           Checklists.DUE_DATE.eq(targetDate).or(Checklists.STATUS.eq('Pending').and(Checklists.DUE_DATE.lt(targetDate)))
         )
-      );
+      , limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var items = res.data?.items.where((e) => e != null).cast<Checklists>().toList() ?? [];
       
@@ -28,12 +28,12 @@ class ChecklistService {
       for (var c in items) {
         String? mName, rName;
         if (c.manager_id != null) {
-          final mReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.manager_id));
+          final mReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.manager_id), limit: 10000);
           final mRes = await Amplify.API.query(request: mReq).response;
           if (mRes.data?.items.isNotEmpty == true) mName = mRes.data!.items.first?.name;
         }
         if (c.responsible_id != null) {
-          final rReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.responsible_id));
+          final rReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.responsible_id), limit: 10000);
           final rRes = await Amplify.API.query(request: rReq).response;
           if (rRes.data?.items.isNotEmpty == true) rName = rRes.data!.items.first?.name;
         }
@@ -56,7 +56,7 @@ class ChecklistService {
       final req = ModelQueries.list(
         Checklists.classType,
         where: Checklists.DUE_DATE.eq(targetDate).or(Checklists.STATUS.eq('Pending').and(Checklists.DUE_DATE.lt(targetDate)))
-      );
+      , limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var items = res.data?.items.where((e) => e != null).cast<Checklists>().toList() ?? [];
       items.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
@@ -65,12 +65,12 @@ class ChecklistService {
       for (var c in items) {
         String? mName, rName;
         if (c.manager_id != null) {
-          final mReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.manager_id));
+          final mReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.manager_id), limit: 10000);
           final mRes = await Amplify.API.query(request: mReq).response;
           if (mRes.data?.items.isNotEmpty == true) mName = mRes.data!.items.first?.name;
         }
         if (c.responsible_id != null) {
-          final rReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.responsible_id));
+          final rReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.responsible_id), limit: 10000);
           final rRes = await Amplify.API.query(request: rReq).response;
           if (rRes.data?.items.isNotEmpty == true) rName = rRes.data!.items.first?.name;
         }
@@ -162,7 +162,7 @@ class ChecklistService {
       if (c.manager_id != null) {
         String responsibleName = 'Staff';
         if (c.responsible_id != null) {
-          final rReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.responsible_id));
+          final rReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.responsible_id), limit: 10000);
           final rRes = await Amplify.API.query(request: rReq).response;
           if (rRes.data?.items.isNotEmpty == true) responsibleName = rRes.data!.items.first?.name ?? 'Staff';
         }
@@ -188,7 +188,7 @@ class ChecklistService {
         where: Checklists.RESPONSIBLE_ID.eq(userId)
           .and(Checklists.DUE_DATE.eq(today))
           .and(Checklists.STATUS.eq('Pending'))
-      );
+      , limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       return res.data?.items.length ?? 0;
     } catch (e) {
@@ -199,7 +199,7 @@ class ChecklistService {
 
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     try {
-      final req = ModelQueries.list(Users.classType);
+      final req = ModelQueries.list(Users.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var items = res.data?.items.where((e) => e != null).cast<Users>().toList() ?? [];
       
@@ -230,7 +230,7 @@ class ChecklistService {
 
   Future<void> patchNullTasksToSariga(int sarigaId) async {
     try {
-      final req = ModelQueries.list(Checklists.classType);
+      final req = ModelQueries.list(Checklists.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       final items = res.data?.items ?? [];
       for (var item in items) {

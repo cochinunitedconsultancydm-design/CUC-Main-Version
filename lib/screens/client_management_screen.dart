@@ -483,7 +483,10 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
   void _showClientForm([Client? client]) {
     final nameController = TextEditingController(text: client?.name);
     final emailController = TextEditingController(text: client?.email);
-    final phoneController = TextEditingController(text: client?.phone);
+    List<TextEditingController> phoneControllers = (client?.phone ?? '').split(',').map((p) => TextEditingController(text: p.trim())).toList();
+    if (phoneControllers.isEmpty || (phoneControllers.length == 1 && phoneControllers[0].text.isEmpty)) {
+      phoneControllers = [TextEditingController()];
+    }
     final workController = TextEditingController(text: client?.typeOfWork);
     final fileNoController = TextEditingController(text: client?.fileNo);
     final fileDateController = TextEditingController(text: client?.fileDate ?? DateFormat('dd/MM/yyyy').format(DateTime.now()));
@@ -506,12 +509,14 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     List<Map<String, TextEditingController>> companyControllers = (client?.companies ?? []).map((c) {
       String name = c;
       String address = '';
+      String phone = '';
       if (c.contains('|||')) {
         final parts = c.split('|||');
         name = parts[0];
         if (parts.length > 1) address = parts[1];
+        if (parts.length > 2) phone = parts[2];
       }
-      return {'name': TextEditingController(text: name), 'address': TextEditingController(text: address)};
+      return {'name': TextEditingController(text: name), 'address': TextEditingController(text: address), 'phone': TextEditingController(text: phone)};
     }).toList();
 
     List<Map<String, TextEditingController>> customFieldControllers = (client?.customFields ?? []).map((c) {
@@ -585,16 +590,63 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     _buildFormField(nameController, 'Full Name', Icons.person, true),
                     const SizedBox(height: 20),
                     isWide ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(child: _buildFormField(emailController, 'Email Address', Icons.email, false)),
                         const SizedBox(width: 20),
-                        Expanded(child: _buildFormField(phoneController, 'Phone Number', Icons.phone, true)),
+                        Expanded(child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            ...phoneControllers.asMap().entries.map((e) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                children: [
+                                  Expanded(child: _buildFormField(e.value, 'Phone Number', Icons.phone, e.key == 0)),
+                                  if (e.key > 0)
+                                    IconButton(
+                                      icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                      onPressed: () => setModalState(() => phoneControllers.removeAt(e.key))
+                                    )
+                                ]
+                              )
+                            )),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: () => setModalState(() => phoneControllers.add(TextEditingController())),
+                                icon: const Icon(Icons.add, size: 16),
+                                label: const Text('Add Phone Number'),
+                              ),
+                            )
+                          ]
+                        )),
                       ],
                     ) : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _buildFormField(emailController, 'Email Address', Icons.email, false),
                         const SizedBox(height: 20),
-                        _buildFormField(phoneController, 'Phone Number', Icons.phone, true),
+                        ...phoneControllers.asMap().entries.map((e) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Expanded(child: _buildFormField(e.value, 'Phone Number', Icons.phone, e.key == 0)),
+                              if (e.key > 0)
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                  onPressed: () => setModalState(() => phoneControllers.removeAt(e.key))
+                                )
+                            ]
+                          )
+                        )),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => setModalState(() => phoneControllers.add(TextEditingController())),
+                            icon: const Icon(Icons.add, size: 16),
+                            label: const Text('Add Phone Number'),
+                          ),
+                        )
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -693,6 +745,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                                   _buildFormField(e.value['name']!, 'Company Name', Icons.business, false),
                                   const SizedBox(height: 8),
                                   _buildFormField(e.value['address']!, 'Company Address', Icons.location_on, false, maxLines: 2),
+                                  const SizedBox(height: 8),
+                                  _buildFormField(e.value['phone']!, 'Company Phone Number', Icons.phone, false),
                                 ]
                               )
                             ),
@@ -713,7 +767,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                       child: TextButton.icon(
                         onPressed: () {
                           setModalState(() {
-                            companyControllers.add({'name': TextEditingController(), 'address': TextEditingController()});
+                            companyControllers.add({'name': TextEditingController(), 'address': TextEditingController(), 'phone': TextEditingController()});
                           });
                         },
                         icon: const Icon(Icons.add),
@@ -770,12 +824,12 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
 
                         if (client == null) {
                           final newName = nameController.text.trim().toLowerCase();
-                          final newPhone = phoneController.text.trim();
+                          final newPhoneStr = phoneControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).join(', ');
                           
                           Client? existingClient;
                           for (var c in _clients) {
                             if (c.name.trim().toLowerCase() == newName || 
-                                (newPhone.isNotEmpty && c.phone != null && c.phone!.trim() == newPhone)) {
+                                (newPhoneStr.isNotEmpty && c.phone != null && c.phone!.trim() == newPhoneStr)) {
                               existingClient = c;
                               break;
                             }
@@ -813,7 +867,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                           id: client?.id,
                           name: nameController.text,
                           email: emailController.text,
-                          phone: phoneController.text,
+                          phone: phoneControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).join(', '),
                           address: addressController.text,
                           typeOfWork: workController.text,
                           fileDate: fileDateController.text,
@@ -826,7 +880,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                           companies: companyControllers.map((c) {
                             final name = c['name']!.text.trim();
                             final addr = c['address']!.text.trim();
-                            return '$name|||$addr';
+                            final phone = c['phone']!.text.trim();
+                            return '$name|||$addr|||$phone';
                           }).where((c) => !c.startsWith('|||')).toList(),
                           customFields: customFieldControllers.map((c) {
                             final name = c['name']!.text.trim();

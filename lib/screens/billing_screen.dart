@@ -2245,6 +2245,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                       final parts = comp.split('|||');
                       cName = parts[0];
                       if (parts.length > 1) cAddr = parts[1];
+                      if (parts.length > 2) cAddr += '\n${parts[2]}';
                     }
                     return ActionChip(
                       label: Text(cName, style: const TextStyle(fontSize: 12)),
@@ -2473,7 +2474,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   void _showQuickCreateClientDialog() {
     final nameCtrl = TextEditingController(text: _clientName.text);
     final emailCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
+    List<TextEditingController> phoneControllers = [TextEditingController()];
     final workCtrl = TextEditingController();
     final fileNoCtrl = TextEditingController();
     final fileDateCtrl = TextEditingController();
@@ -2558,8 +2559,35 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                         buildPremiumField(nameCtrl, 'Full Name', Icons.person_outline),
                         const SizedBox(height: 16),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(child: buildPremiumField(phoneCtrl, 'Phone Number', Icons.phone_outlined)),
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  ...phoneControllers.asMap().entries.map((e) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Row(
+                                      children: [
+                                        Expanded(child: buildPremiumField(e.value, 'Phone Number', Icons.phone_outlined)),
+                                        if (e.key > 0)
+                                          IconButton(
+                                            icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                            onPressed: () => setDialogState(() => phoneControllers.removeAt(e.key))
+                                          )
+                                      ]
+                                    )
+                                  )),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: TextButton.icon(
+                                      onPressed: () => setDialogState(() => phoneControllers.add(TextEditingController())),
+                                      icon: const Icon(Icons.add, size: 16),
+                                      label: const Text('Add Phone Number', style: TextStyle(fontSize: 12)),
+                                    ),
+                                  )
+                                ]
+                              )
+                            ),
                             const SizedBox(width: 16),
                             Expanded(child: buildPremiumField(emailCtrl, 'Email Address', Icons.email_outlined)),
                           ],
@@ -2620,6 +2648,8 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                                       buildPremiumField(e.value['name']!, 'Company Name', Icons.business),
                                       const SizedBox(height: 8),
                                       buildPremiumField(e.value['address']!, 'Company Address', Icons.location_on_outlined, maxLines: 2),
+                                      const SizedBox(height: 8),
+                                      buildPremiumField(e.value['phone']!, 'Company Phone Number', Icons.phone_outlined),
                                     ]
                                   )
                                 ),
@@ -2634,7 +2664,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: TextButton.icon(
-                            onPressed: () => setDialogState(() => companyControllers.add({'name': TextEditingController(), 'address': TextEditingController()})),
+                            onPressed: () => setDialogState(() => companyControllers.add({'name': TextEditingController(), 'address': TextEditingController(), 'phone': TextEditingController()})),
                             icon: const Icon(Icons.add, size: 18),
                             label: const Text('Add Company', style: TextStyle(fontSize: 13)),
                           ),
@@ -2670,7 +2700,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                             final newClient = Clients(
                               name: nameCtrl.text,
                               email: emailCtrl.text,
-                              phone: phoneCtrl.text,
+                              phone: phoneControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).join(', '),
                               type_of_work: workCtrl.text,
                               file_no: fileNoCtrl.text,
                               file_date: fileDateCtrl.text,
@@ -2681,7 +2711,8 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                               companies: companyControllers.map((c) {
                                 final name = c['name']!.text.trim();
                                 final addr = c['address']!.text.trim();
-                                return '$name|||$addr';
+                                final phone = c['phone']!.text.trim();
+                                return '$name|||$addr|||$phone';
                               }).where((c) => !c.startsWith('|||')).toList(),
                             );
                             await BackupAwareApi().create(newClient);

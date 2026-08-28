@@ -33,6 +33,14 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
   int? _currentUserId;
   bool _isManagerOrAdmin = false;
   StreamSubscription? _dealsSubscription;
+  final ScrollController _boardScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _dealsSubscription?.cancel();
+    _boardScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -56,11 +64,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _dealsSubscription?.cancel();
-    super.dispose();
-  }
+
 
   Future<void> _loadCurrentUserId() async {
     final prefs = await SharedPreferences.getInstance();
@@ -1051,19 +1055,23 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
   }
 
   Widget _buildBoardView(List<Deal> deals, bool isWide) {
-    List<String> visibleStages = widget.showOnlyVerification ? ['Verification'] : Deal.stages;
+    List<String> visibleStages = widget.showOnlyVerification ? ['Verification'] : List.from(Deal.stages);
     
-    // Create a scroll controller for the horizontal scrollbar
-    final ScrollController boardScrollController = ScrollController();
+    if (!widget.showOnlyVerification) {
+      final existingStages = deals.map((d) => d.stage).toSet();
+      final unknownStages = existingStages.where((s) => !visibleStages.contains(s)).toList();
+      unknownStages.sort();
+      visibleStages.insertAll(0, unknownStages);
+    }
 
     return RawScrollbar(
-      controller: boardScrollController,
+      controller: _boardScrollController,
       thumbVisibility: true,
       thickness: 12,
       radius: const Radius.circular(8),
       thumbColor: Colors.grey.shade400,
       child: SingleChildScrollView(
-        controller: boardScrollController,
+        controller: _boardScrollController,
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.only(left: 16, right: 16, bottom: 20), // Bottom padding for the scrollbar
         child: Row(

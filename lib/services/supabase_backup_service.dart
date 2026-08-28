@@ -122,7 +122,7 @@ class SupabaseBackupService {
         } else {
           // Keep UUIDs for tables that use UUID primary keys.
           // Drop UUIDs for tables like Notifications, ActivityLogs that use BIGSERIAL integer IDs.
-          final uuidTables = ['Deals', 'Tasks', 'Clients', 'Contacts', 'ClientLicenses', 'LicenseTypes', 'DealActivities', 'Billings'];
+          final uuidTables = ['Deals', 'Tasks', 'Contacts', 'ClientLicenses', 'LicenseTypes', 'DealActivities', 'Billings'];
           if (uuidTables.contains(modelName)) {
             cleanData['id'] = cleanData['id'].toString();
           } else {
@@ -182,7 +182,7 @@ class SupabaseBackupService {
           if (idVal != null) {
             clean['id'] = idVal;
           } else {
-            final uuidTables = ['Deals', 'Tasks', 'Clients', 'Contacts', 'ClientLicenses', 'LicenseTypes', 'DealActivities', 'Billings'];
+            final uuidTables = ['Deals', 'Tasks', 'Contacts', 'ClientLicenses', 'LicenseTypes', 'DealActivities', 'Billings'];
             if (uuidTables.contains(modelName)) {
               clean['id'] = clean['id'].toString();
             } else {

@@ -98,6 +98,12 @@ class AutoBackupService {
         }
       }
 
+      if (kIsWeb) {
+        debugPrint('Auto-backup local saving is not supported on Web. Skipping local file generation.');
+        _isRunning = false;
+        return;
+      }
+
       final dir = await getApplicationDocumentsDirectory();
       final timestamp = DateFormat('yyyy-MM-dd_HHmmss').format(DateTime.now());
 

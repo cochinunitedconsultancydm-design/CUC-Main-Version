@@ -27,7 +27,8 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
 
   String _searchQuery = '';
   String _sortOption = 'Newest First';
-  bool _showOnlyMyWorks = false;
+  bool _showOnlyMyWorks = true;
+  bool _isBoardView = true;
   String? _selectedStaffFilter;
   int? _currentUserId;
   bool _isManagerOrAdmin = false;
@@ -308,7 +309,9 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
 
                         return list.isEmpty
                             ? _buildEmptyState()
-                            : _buildPremiumListView(list, MediaQuery.of(context).size.width > 1100);
+                            : _isBoardView
+                                ? _buildBoardView(list, MediaQuery.of(context).size.width > 1100)
+                                : _buildPremiumListView(list, MediaQuery.of(context).size.width > 1100);
                       }(),
               ),
             ),
@@ -417,6 +420,8 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
               _buildSortDropdown(),
               const SizedBox(width: 16),
               _filterIconButton(Icons.filter_list_rounded, 'Filter'),
+              const SizedBox(width: 16),
+              _buildViewToggle(),
             ],
           ],
         ),
@@ -427,10 +432,39 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
               Expanded(child: _buildSortDropdown()),
               const SizedBox(width: 12),
               Expanded(child: _filterIconButton(Icons.filter_list_rounded, 'Filter', showLabel: true)),
+              const SizedBox(width: 12),
+              _buildViewToggle(),
             ],
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildViewToggle() {
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: Icon(Icons.view_kanban, color: _isBoardView ? AppTheme.primaryColor : Colors.grey.shade500),
+            onPressed: () => setState(() => _isBoardView = true),
+            tooltip: 'Board View',
+          ),
+          Container(width: 1, height: 30, color: Colors.grey.shade300),
+          IconButton(
+            icon: Icon(Icons.list_alt, color: !_isBoardView ? AppTheme.primaryColor : Colors.grey.shade500),
+            onPressed: () => setState(() => _isBoardView = false),
+            tooltip: 'List View',
+          ),
+        ],
+      ),
     );
   }
 
@@ -1012,6 +1046,269 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
             ],
           ],
         ).animate().fadeIn(duration: 600.ms).scale(begin: const Offset(0.9, 0.9)),
+      ),
+    );
+  }
+
+  Widget _buildBoardView(List<Deal> deals, bool isWide) {
+    List<String> visibleStages = widget.showOnlyVerification ? ['Verification'] : Deal.stages;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: visibleStages.map((stage) {
+          final stageDeals = deals.where((d) => d.stage == stage).toList();
+          return _buildBoardColumn(stage, stageDeals);
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildBoardColumn(String stage, List<Deal> stageDeals) {
+    return DragTarget<Deal>(
+      onWillAcceptWithDetails: (details) => details.data.stage != stage,
+      onAcceptWithDetails: (details) async {
+        final deal = details.data;
+        // Optimistic UI update to prevent snap-back
+        setState(() {
+          final index = _allDeals.indexWhere((d) => d.id == deal.id);
+          if (index != -1) {
+            _allDeals[index] = deal.copyWith(stage: stage);
+          }
+        });
+        
+        try {
+          await _dealService.moveDealToStage(deal.id!, deal.stage, stage);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Moved to $stage'), backgroundColor: Colors.green));
+          }
+        } catch (e) {
+          // Revert on error
+          if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+             _refreshDeals();
+          }
+        }
+      },
+      builder: (context, candidateData, rejectedData) {
+        final isHovering = candidateData.isNotEmpty;
+        return Container(
+          width: 320,
+          margin: const EdgeInsets.only(right: 16),
+          decoration: BoxDecoration(
+            color: isHovering ? Colors.green.withValues(alpha: 0.1) : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isHovering ? Colors.green.withValues(alpha: 0.5) : Colors.grey.shade200,
+              width: isHovering ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      stage,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${stageDeals.length}',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: stageDeals.length,
+                  itemBuilder: (context, index) {
+                    final deal = stageDeals[index];
+                    return Draggable<Deal>(
+                      data: deal,
+                      feedback: Material(
+                        elevation: 8,
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        child: SizedBox(
+                          width: 300,
+                          child: _buildBoardCard(deal),
+                        ),
+                      ),
+                      childWhenDragging: Opacity(
+                        opacity: 0.3,
+                        child: _buildBoardCard(deal),
+                      ),
+                      child: _buildBoardCard(deal),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBoardCard(Deal deal) {
+    Color priorityColor = Colors.grey;
+    if (deal.priority == 'High') priorityColor = Colors.orange;
+    if (deal.priority == 'Urgent') priorityColor = Colors.red;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: InkWell(
+        onTap: () => _openDealDetail(deal),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      deal.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: priorityColor),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (deal.clientName != null && deal.clientName!.trim().isNotEmpty) ...[
+                Text(
+                  deal.clientName!,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+              ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '₹${deal.amount.toStringAsFixed(0)}',
+                    style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primaryColor),
+                  ),
+                  if (deal.responsibleName != null && deal.responsibleName!.trim().isNotEmpty) 
+                    Text(
+                      deal.responsibleName!.split(' ').first,
+                      style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _quickActionButton(Icons.edit_note, 'Add Note', () => _showQuickNoteDialog(deal)),
+                  _quickActionButton(Icons.check_circle_outline, 'Advance', () async {
+                    final currentIndex = Deal.stages.indexOf(deal.stage);
+                    if (currentIndex < Deal.stages.length - 1) {
+                      final nextStage = Deal.stages[currentIndex + 1];
+                      try {
+                        await _dealService.moveDealToStage(deal.id!, deal.stage, nextStage);
+                        _refreshDeals();
+                      } catch (e) {
+                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      }
+                    }
+                  }),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _quickActionButton(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: Colors.grey.shade700),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showQuickNoteDialog(Deal deal) async {
+    final _noteController = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Quick Note'),
+        content: TextField(
+          controller: _noteController,
+          decoration: const InputDecoration(hintText: 'Type your note here...', border: OutlineInputBorder()),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () async {
+              if (_noteController.text.trim().isNotEmpty) {
+                try {
+                  await _dealService.addActivity(DealActivity(
+                    dealId: deal.id!,
+                    type: 'note',
+                    title: 'Quick Note',
+                    description: _noteController.text.trim(),
+                    createdBy: _currentUserId ?? 1,
+                  ));
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Note added'), backgroundColor: Colors.green));
+                  }
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                }
+              }
+            },
+            child: const Text('SAVE'),
+          ),
+        ],
       ),
     );
   }

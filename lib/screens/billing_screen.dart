@@ -1233,13 +1233,17 @@ class _BillingScreenState extends State<BillingScreen> {
               ],
               if (b.data != null && b.data!['discount_given_by'] != null) ...[
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.pink.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                  child: Text(
-                    'Discount By: ${b.data!['discount_given_by'].split(' ').first}',
-                    style: const TextStyle(color: Colors.pink, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
-                  )
+                Tooltip(
+                  message: 'Discount Amount: ${b.data!['discount'] ?? '0'}',
+                  triggerMode: TooltipTriggerMode.tap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(color: Colors.pink.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                    child: Text(
+                      'Discount By: ${b.data!['discount_given_by'].split(' ').first}',
+                      style: const TextStyle(color: Colors.pink, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
+                    )
+                  ),
                 ),
               ],
             ]),

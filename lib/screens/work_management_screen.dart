@@ -1052,16 +1052,27 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
 
   Widget _buildBoardView(List<Deal> deals, bool isWide) {
     List<String> visibleStages = widget.showOnlyVerification ? ['Verification'] : Deal.stages;
+    
+    // Create a scroll controller for the horizontal scrollbar
+    final ScrollController boardScrollController = ScrollController();
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: visibleStages.map((stage) {
-          final stageDeals = deals.where((d) => d.stage == stage).toList();
-          return _buildBoardColumn(stage, stageDeals);
-        }).toList(),
+    return RawScrollbar(
+      controller: boardScrollController,
+      thumbVisibility: true,
+      thickness: 12,
+      radius: const Radius.circular(8),
+      thumbColor: Colors.grey.shade400,
+      child: SingleChildScrollView(
+        controller: boardScrollController,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 20), // Bottom padding for the scrollbar
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: visibleStages.map((stage) {
+            final stageDeals = deals.where((d) => d.stage == stage).toList();
+            return _buildBoardColumn(stage, stageDeals);
+          }).toList(),
+        ),
       ),
     );
   }

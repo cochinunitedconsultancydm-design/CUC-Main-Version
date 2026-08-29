@@ -28,12 +28,14 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
   final _descCtrl = TextEditingController();
   dynamic _assignedTo;
   DateTime? _dueDate;
+  int _recurrenceDays = -1; // -1 = None, 0 = Monthly, 7 = Weekly, 28 = Every 28 Days, 365 = Yearly
+  int _generationCount = 12;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _assignedTo = widget.currentUserId;
+    _assignedTo = widget.currentUserId?.toString();
     _dueDate = DateTime.now().add(const Duration(days: 1));
   }
 
@@ -42,6 +44,23 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
     _titleCtrl.dispose();
     _descCtrl.dispose();
     super.dispose();
+  }
+
+  DateTime _getDueDateForCycle(int cycleIndex) {
+    if (_recurrenceDays == -1) return _dueDate!;
+    if (_recurrenceDays == 0) {
+      int targetYear = _dueDate!.year;
+      int targetMonth = _dueDate!.month + cycleIndex;
+      while (targetMonth > 12) {
+        targetMonth -= 12;
+        targetYear += 1;
+      }
+      final daysInMonth = DateTime(targetYear, targetMonth + 1, 0).day;
+      final targetDay = _dueDate!.day > daysInMonth ? daysInMonth : _dueDate!.day;
+      return DateTime(targetYear, targetMonth, targetDay, _dueDate!.hour, _dueDate!.minute);
+    } else {
+      return _dueDate!.add(Duration(days: _recurrenceDays * cycleIndex));
+    }
   }
 
   Future<void> _saveReminder() async {
@@ -53,24 +72,40 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
     setState(() => _isSaving = true);
 
     try {
-      final task = Tasks(
-        title: _titleCtrl.text,
-        description: _descCtrl.text.isNotEmpty ? _descCtrl.text : 'Calendar Reminder',
-        assigned_to: int.tryParse(_assignedTo.toString()),
-        assigned_by: int.tryParse(widget.currentUserId.toString()),
-        due_date: _dueDate!.toIso8601String(),
-        status: 'Pending',
-      );
+      int createdCount = 0;
+      final int cycles = _recurrenceDays == -1 ? 1 : _generationCount;
+      String? firstTaskId;
+      
+      for (int i = 0; i < cycles; i++) {
+        final cycleDate = _getDueDateForCycle(i);
+        
+        // Skip past dates if recurring
+        if (_recurrenceDays != -1 && cycleDate.isBefore(DateTime.now())) continue;
 
-      final res = await BackupAwareApi().create(task);
-      final newTask = res.data;
-      final newId = newTask?.id;
+        final task = Tasks(
+          title: _titleCtrl.text,
+          description: _descCtrl.text.isNotEmpty ? _descCtrl.text : 'Calendar Reminder',
+          assigned_to: int.tryParse(_assignedTo.toString()),
+          assigned_by: int.tryParse(widget.currentUserId.toString()),
+          due_date: cycleDate.toIso8601String(),
+          status: 'Pending',
+        );
 
-      if (newId != null) {
+        final res = await BackupAwareApi().create(task);
+        if (firstTaskId == null && res.data?.id != null) {
+          firstTaskId = res.data!.id;
+        }
+        createdCount++;
+      }
+
+      if (firstTaskId != null) {
+        String msg = createdCount > 1 
+            ? 'Created $createdCount recurring reminders for "${_titleCtrl.text}".'
+            : 'Reminder "${_titleCtrl.text}" has been added to your calendar.';
         await NotificationService().notifyStakeholders(
-          taskId: newId,
-          title: 'New Reminder Added',
-          message: 'Reminder "${_titleCtrl.text}" has been added to your calendar.',
+          taskId: firstTaskId,
+          title: createdCount > 1 ? 'Recurring Reminders Added' : 'New Reminder Added',
+          message: msg,
           type: 'assignment',
         );
       }
@@ -79,13 +114,13 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
         action: 'REMINDER_CREATED', 
         targetType: 'Task', 
         targetId: _titleCtrl.text, 
-        details: 'Assigned to ID: $_assignedTo via Calendar'
+        details: 'Assigned to ID: $_assignedTo via Calendar. Cycles: $createdCount'
       );
 
       if (mounted) {
         widget.onSaved();
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reminder added to calendar!', style: TextStyle(color: Colors.white)), backgroundColor: AppTheme.primaryColor));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(createdCount > 1 ? '$createdCount recurring reminders added!' : 'Reminder added to calendar!', style: const TextStyle(color: Colors.white)), backgroundColor: AppTheme.primaryColor));
       }
     } catch (e) {
       if (mounted) {
@@ -98,6 +133,15 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
 
   @override
   Widget build(BuildContext context) {
+    // Hot-reload safeguard: ensure _assignedTo is string and exists in the list
+    if (_assignedTo != null) {
+      _assignedTo = _assignedTo.toString();
+      final exists = widget.allUsers.any((u) => u['id']?.toString() == _assignedTo);
+      if (!exists && widget.allUsers.isNotEmpty) {
+        _assignedTo = widget.allUsers.first['id']?.toString();
+      }
+    }
+
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: Colors.white,
@@ -159,7 +203,7 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
                 ),
                 items: widget.allUsers.map((u) => DropdownMenuItem<dynamic>(
-                  value: u['id'],
+                  value: u['id']?.toString(),
                   child: Text(u['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w500)),
                 )).toList(),
                 onChanged: (v) => setState(() => _assignedTo = v),
@@ -212,6 +256,50 @@ class _AddReminderDialogState extends State<AddReminderDialog> {
                   }
                 },
               ),
+              const SizedBox(height: 16),
+              // Plan Validity / Recurrence
+              DropdownButtonFormField<int>(
+                initialValue: _recurrenceDays,
+                decoration: InputDecoration(
+                  labelText: 'Recurrence',
+                  prefixIcon: const Icon(Icons.loop_rounded, size: 20),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                ),
+                items: const [
+                  DropdownMenuItem(value: -1, child: Text('None (One-time)', style: TextStyle(fontWeight: FontWeight.w500))),
+                  DropdownMenuItem(value: 0, child: Text('Monthly (Same Date)', style: TextStyle(fontWeight: FontWeight.w500))),
+                  DropdownMenuItem(value: 7, child: Text('Every Week (7 Days)', style: TextStyle(fontWeight: FontWeight.w500))),
+                  DropdownMenuItem(value: 28, child: Text('Every 28 Days', style: TextStyle(fontWeight: FontWeight.w500))),
+                  DropdownMenuItem(value: 365, child: Text('Yearly (365 Days)', style: TextStyle(fontWeight: FontWeight.w500))),
+                ],
+                onChanged: (v) => setState(() => _recurrenceDays = v ?? -1),
+                icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
+              ),
+              
+              if (_recurrenceDays != -1) ...[
+                const SizedBox(height: 16),
+                // Generate For (Cycles)
+                DropdownButtonFormField<int>(
+                  initialValue: _generationCount,
+                  decoration: InputDecoration(
+                    labelText: 'Generate For',
+                    prefixIcon: const Icon(Icons.auto_mode_rounded, size: 20),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                  ),
+                  items: [2, 3, 6, 12, 24, 36].map((m) => DropdownMenuItem<int>(
+                    value: m,
+                    child: Text('$m Occurrences', style: const TextStyle(fontWeight: FontWeight.w500)),
+                  )).toList(),
+                  onChanged: (v) => setState(() => _generationCount = v ?? 12),
+                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
+                ),
+              ],
             ],
           ),
         ),

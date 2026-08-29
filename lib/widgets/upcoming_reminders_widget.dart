@@ -25,6 +25,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
   List<Map<String, dynamic>> _licenseReminders = [];
   List<Map<String, dynamic>> _dscReminders = [];
   List<Map<String, dynamic>> _billingReminders = [];
+  List<Map<String, dynamic>> _rechargeReminders = [];
   bool _isLoading = true;
 
   @override
@@ -41,6 +42,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       final List<Map<String, dynamic>> licenses = [];
       final List<Map<String, dynamic>> dscs = [];
       final List<Map<String, dynamic>> bills = [];
+      final List<Map<String, dynamic>> recharges = [];
 
       // 0. Fetch Clients to map client_id to name
       final clientReq = ModelQueries.list(Clients.classType, limit: 10000);
@@ -57,14 +59,20 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
           try {
             final date = DateTime.parse(t.due_date.toString()).toLocal();
             final diff = date.difference(now).inDays;
+            final isRecharge = (t.title ?? '').contains('Recharge Reminder');
             if (diff <= 7) {
-              tasks.add({
+              final entry = {
                 'title': t.title ?? 'Task',
                 'date': date,
-                'type': 'Task',
-                'color': AppTheme.primaryColor,
-                'icon': Icons.assignment,
-              });
+                'type': isRecharge ? 'Recharge' : 'Task',
+                'color': isRecharge ? Colors.orange : AppTheme.primaryColor,
+                'icon': isRecharge ? Icons.phone_android_rounded : Icons.assignment,
+              };
+              if (isRecharge) {
+                recharges.add(entry);
+              } else {
+                tasks.add(entry);
+              }
             }
           } catch (_) {}
         }
@@ -145,6 +153,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       licenses.sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
       dscs.sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
       bills.sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+      recharges.sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
 
       if (mounted) {
         setState(() {
@@ -152,6 +161,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
           _licenseReminders = licenses.take(10).toList();
           _dscReminders = dscs.take(10).toList();
           _billingReminders = bills.take(10).toList();
+          _rechargeReminders = recharges.take(10).toList();
           _isLoading = false;
         });
       }
@@ -274,7 +284,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_taskReminders.isEmpty && _licenseReminders.isEmpty && _dscReminders.isEmpty && _billingReminders.isEmpty) {
+    if (_taskReminders.isEmpty && _licenseReminders.isEmpty && _dscReminders.isEmpty && _billingReminders.isEmpty && _rechargeReminders.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -294,6 +304,7 @@ class _UpcomingRemindersWidgetState extends State<UpcomingRemindersWidget> {
         ),
         const SizedBox(height: 16),
         _buildReminderBox("Upcoming Tasks", _taskReminders, AppTheme.primaryColor),
+        _buildReminderBox("Mobile Recharge", _rechargeReminders, Colors.orange),
         _buildReminderBox("License Renewals", _licenseReminders, Colors.purple),
         _buildReminderBox("DSC Expiry", _dscReminders, Colors.teal),
         _buildReminderBox("Bills & Receipts", _billingReminders, Colors.redAccent),

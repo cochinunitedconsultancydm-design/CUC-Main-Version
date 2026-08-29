@@ -1643,10 +1643,13 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
            _authorities = prefix; // Will be refined after _fetchStaffs
         }
       }
-      _fetchStaffs();
-      _fetchPastItems();
-      if (b != null) _fetchClientCompanies();
+      _fetchClientCompanies();
+    } else {
+      _generateInvoiceNo();
     }
+
+    _fetchStaffs();
+    _fetchPastItems();
   }
 
   Future<void> _fetchClientDeals() async {
@@ -1799,10 +1802,6 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           }
         }
       });
-      
-      if (_authorities.isNotEmpty) {
-        _generateInvoiceNo();
-      }
     } catch (e) {
       debugPrint('StaffFetchErr: $e');
     }

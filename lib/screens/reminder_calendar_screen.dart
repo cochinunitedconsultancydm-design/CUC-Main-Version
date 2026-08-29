@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../theme.dart';
 import '../services/auth_service.dart';
 import '../widgets/add_reminder_dialog.dart';
+import '../widgets/add_mobile_recharge_reminder_dialog.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class CalendarEvent {
@@ -110,10 +111,12 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
           try {
             final date = DateTime.parse(t.due_date!).toLocal();
             final assignedTo = usersMap[t.assigned_to.toString()] ?? 'Unassigned';
+            // Detect mobile recharge reminders by title prefix
+            final isRecharge = (t.title ?? '').contains('Recharge Reminder');
             events.add(CalendarEvent(
               date: date,
               title: t.title ?? 'Task Reminder',
-              type: 'Task',
+              type: isRecharge ? 'Recharge' : 'Task',
               subtitle: 'Assigned to: $assignedTo\n${t.description ?? ""}'.trim(),
               status: t.status,
               eventId: 'TASK-${t.id}',
@@ -202,6 +205,20 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
     );
   }
 
+  void _openMobileRechargeDialog() {
+    if (_currentUserId == null) return;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) => AddMobileRechargeReminderDialog(
+        currentUserId: _currentUserId!,
+        allUsers: _allUsers,
+        onSaved: () {
+          _loadEvents();
+        },
+      ),
+    );
+  }
+
   int _getDaysInMonth(DateTime month) {
     return DateTime(month.year, month.month + 1, 0).day;
   }
@@ -228,6 +245,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
       case 'Task': return AppTheme.primaryColor;
       case 'License': return Colors.purple;
       case 'DSC': return Colors.teal;
+      case 'Recharge': return Colors.orange;
       default: return Colors.blueGrey;
     }
   }
@@ -269,18 +287,25 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
     Widget categoryFilterRow = Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: ['All', 'Task', 'License', 'DSC'].map((cat) {
+      children: ['All', 'Task', 'License', 'DSC', 'Recharge'].map((cat) {
         final isSelected = _selectedCategory == cat;
         Color chipColor;
         if (cat == 'Task') {
           chipColor = AppTheme.primaryColor;
         } else if (cat == 'License') chipColor = Colors.purple;
         else if (cat == 'DSC') chipColor = Colors.teal;
+        else if (cat == 'Recharge') chipColor = Colors.orange;
         else chipColor = Colors.blueGrey;
+
+        String chipLabel;
+        if (cat == 'All') chipLabel = 'ALL';
+        else if (cat == 'Task') chipLabel = 'TASKS/REMINDERS';
+        else if (cat == 'Recharge') chipLabel = 'RECHARGE';
+        else chipLabel = '$cat EXPIRIES';
 
         return ChoiceChip(
           label: Text(
-            cat == 'All' ? 'ALL' : (cat == 'Task' ? 'TASKS/REMINDERS' : '$cat EXPIRIES'),
+            chipLabel,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,
@@ -601,24 +626,48 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
                   children: [
                     const Text('Reminder Calendar', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
                     if (isDesktop)
-                      Container(
-                        decoration: BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 4)),
-                          ],
-                        ),
-                        child: ElevatedButton.icon(
-                          onPressed: _openAddEventDialog,
-                          icon: const Icon(Icons.add_task),
-                          label: const Text('Add Reminder'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            elevation: 0,
+                      Row(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 4)),
+                              ],
+                            ),
+                            child: ElevatedButton.icon(
+                              onPressed: _openMobileRechargeDialog,
+                              icon: const Icon(Icons.phone_android_rounded),
+                              label: const Text('Mobile Recharge'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade600,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                elevation: 0,
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          Container(
+                            decoration: BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 4)),
+                              ],
+                            ),
+                            child: ElevatedButton.icon(
+                              onPressed: _openAddEventDialog,
+                              icon: const Icon(Icons.add_task),
+                              label: const Text('Add Reminder'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                   ],
                 ),
@@ -689,7 +738,7 @@ class _ReminderCalendarScreenState extends State<ReminderCalendarScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                      event.type == 'Task' ? Icons.assignment : (event.type == 'License' ? Icons.verified_user : Icons.vpn_key),
+                      event.type == 'Task' ? Icons.assignment : (event.type == 'License' ? Icons.verified_user : (event.type == 'Recharge' ? Icons.phone_android_rounded : Icons.vpn_key)),
                       color: color,
                     ),
                   ),

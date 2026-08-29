@@ -17,6 +17,7 @@ import 'global_merge_dialog.dart';
 import '../models/deal.dart';
 import 'deal_detail_screen.dart';
 import '../services/auth_service.dart';
+import '../services/supabase_backup_service.dart';
 
 class ClientManagementScreen extends StatefulWidget {
   const ClientManagementScreen({super.key});
@@ -104,10 +105,16 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
       final usersList = resUsers.data?.items.whereType<amplify_models.Users>().toList() ?? [];
 
       final Map<int, String> userNames = {};
-      for (var u in usersList) {
-        if (u.id != null) {
-          userNames[int.tryParse(u.id) ?? 0] = u.name ?? 'Unknown';
+      try {
+        final sbMap = await SupabaseBackupService().getUsernameToIdMap();
+        for (var u in usersList) {
+          final uName = u.username?.toLowerCase() ?? '';
+          if (sbMap.containsKey(uName)) {
+            userNames[sbMap[uName]!] = u.name ?? uName;
+          }
         }
+      } catch (e) {
+        debugPrint('Failed to get Supabase ID map: $e');
       }
 
       final Map<String, String> clientCreators = {};
@@ -118,24 +125,32 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
       }
 
       clientsList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+      print('DEBUG: ActivityLogs CLIENT_CREATED count: ${logsList.length}');
+      print('DEBUG: userNames mapping: $userNames');
+      print('DEBUG: clientCreators mapping: $clientCreators');
       if (!mounted) return;
       setState(() {
-        _clients = clientsList.map((m) => Client(
-          id: m.id,
-          name: m.name ?? '',
-          email: m.email,
-          phone: m.phone,
-          address: (m.address?.trim().toLowerCase() == 'false') ? '' : m.address,
-          typeOfWork: m.type_of_work,
-          caseNumber: m.case_number,
-          dob: m.dob,
-          fileNo: m.file_no,
-          fileDate: m.file_date,
-          isContacted: m.is_contacted ?? false,
-          balanceDue: m.balance_due,
-          registrationNumber: m.case_number,
-          createdBy: clientCreators[m.id] ?? 'System/Legacy',
-        )).toList();
+        _clients = clientsList.map((m) {
+          final mappedCreator = clientCreators[m.id] ?? clientCreators[m.name ?? ''] ?? 'System/Legacy';
+          print('DEBUG: Client ${m.name} (${m.id}) mapped to creator: $mappedCreator');
+          return Client(
+            id: m.id,
+            name: m.name ?? '',
+            email: m.email,
+            phone: m.phone,
+            address: (m.address?.trim().toLowerCase() == 'false') ? '' : m.address,
+            typeOfWork: m.type_of_work,
+            caseNumber: m.case_number,
+            dob: m.dob,
+            fileNo: m.file_no,
+            fileDate: m.file_date,
+            isContacted: m.is_contacted ?? false,
+            balanceDue: m.balance_due,
+            registrationNumber: m.case_number,
+            createdBy: mappedCreator,
+            createdAt: m.createdAt?.format() ?? m.created_at,
+          );
+        }).toList();
         _applySort();
       });
     } catch (e) {
@@ -1220,6 +1235,17 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     );
   }
 
+  String _formatDate(String? isoString, String? createdBy) {
+    if (createdBy == 'System/Legacy') return 'Not Saved';
+    if (isoString == null || isoString.isEmpty) return 'Not Saved';
+    try {
+      final dt = DateTime.parse(isoString).toLocal();
+      return DateFormat('dd MMM yyyy, hh:mm a').format(dt);
+    } catch (e) {
+      return isoString;
+    }
+  }
+
   Widget _buildClientCard(Client c, bool isWide) {
     return Card(
       elevation: 4,
@@ -1313,6 +1339,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                 _buildInfoPill(Icons.cake_outlined, 'DOB: ${c.dob?.isNotEmpty == true ? c.dob! : 'N/A'}', isWide),
                 _buildInfoPill(Icons.location_on_outlined, c.address?.isNotEmpty == true ? c.address! : 'No Address', isWide),
                 _buildInfoPill(Icons.supervised_user_circle_outlined, 'Care Of: ${c.managedBy?.isNotEmpty == true ? c.managedBy! : 'N/A'}', isWide),
+                _buildInfoPill(Icons.person_add_outlined, 'Created By: ${c.createdBy ?? 'System/Legacy'}', isWide),
+                _buildInfoPill(Icons.access_time_outlined, 'Created: ${_formatDate(c.createdAt, c.createdBy)}', isWide),
               ],
             ),
             const SizedBox(height: 16),
@@ -1392,7 +1420,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
 
   Widget _buildInfoPill(IconData icon, String text, bool isWide) {
     return SizedBox(
-      width: isWide ? 220 : double.infinity,
+      width: isWide ? 260 : double.infinity,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

@@ -19,6 +19,7 @@ class Client {
   final String? createdBy;
   final String? bankAccountDetails;
   final List<String>? customFields;
+  final String? createdAt;
 
   Client({
     this.id,
@@ -40,6 +41,7 @@ class Client {
     this.createdBy,
     this.bankAccountDetails,
     this.customFields,
+    this.createdAt,
   });
 
   factory Client.fromMap(Map<String, dynamic> map) {
@@ -61,6 +63,7 @@ class Client {
       registrationNumber: map['registration_number'],
       bankAccountDetails: map['bank_account_details'],
       customFields: (map['custom_fields'] as List?)?.map((e) => e.toString()).toList(),
+      createdAt: map['created_at'],
     );
   }
 
@@ -83,6 +86,7 @@ class Client {
       'registration_number': registrationNumber,
       'bank_account_details': bankAccountDetails,
       'custom_fields': customFields,
+      'created_at': createdAt,
     };
   }
 }

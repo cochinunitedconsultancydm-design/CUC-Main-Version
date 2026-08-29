@@ -949,6 +949,7 @@ final dLink = "";
   }
 
   Future<void> _loadDetails() async {
+    if (widget.deal?.id == null) return;
     final dealId = widget.deal!.id!;
     final activities = await _dealService.getActivities(dealId);
     final assignees = await _dealService.getAssignees(dealId);

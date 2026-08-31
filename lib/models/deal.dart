@@ -18,6 +18,7 @@ class Deal {
   final String? description;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final DateTime? closedAt;
   final bool isWon;
 
   // New stage-specific fields
@@ -63,6 +64,7 @@ class Deal {
     this.description,
     this.createdAt,
     this.updatedAt,
+    this.closedAt,
     this.isWon = false,
     this.regFeeRequired,
     this.referredBy,
@@ -107,6 +109,7 @@ class Deal {
     String? description,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? closedAt,
     bool? isWon,
     String? regFeeRequired,
     String? referredBy,
@@ -150,6 +153,7 @@ class Deal {
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      closedAt: closedAt ?? this.closedAt,
       isWon: isWon ?? this.isWon,
       regFeeRequired: regFeeRequired ?? this.regFeeRequired,
       referredBy: referredBy ?? this.referredBy,
@@ -225,6 +229,7 @@ class Deal {
       'pipeline': pipeline,
       'priority': priority,
       'description': finalDesc,
+      'closed_at': closedAt?.toIso8601String(),
       'is_won': isWon,
       'reg_fee_required': regFeeRequired,
       'referred_by': referredBy,
@@ -296,6 +301,9 @@ class Deal {
           : null,
       updatedAt: map['updated_at'] != null
           ? DateTime.tryParse(map['updated_at'].toString())
+          : null,
+      closedAt: map['closed_at'] != null
+          ? DateTime.tryParse(map['closed_at'].toString())
           : null,
       isWon: map['is_won'] == true || map['is_won'] == 'true',
       regFeeRequired: map['reg_fee_required'],

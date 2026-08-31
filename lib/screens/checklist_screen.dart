@@ -498,6 +498,19 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                                         ],
                                       ),
                                     ],
+                                    if (checklist.createdAt != null) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.edit_calendar, size: 12, color: Colors.grey.shade600),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Created: ${DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.parse(checklist.createdAt!).toLocal())}',
+                                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w500),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),

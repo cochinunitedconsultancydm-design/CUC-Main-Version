@@ -90,6 +90,7 @@ class _DealDetailScreenState extends State<DealDetailScreen>
   String? _currentDescription;
   dynamic _selectedVerifierId;
   bool _isDraftCreated = false;
+  DateTime? _selectedDeadline;
 
   @override
   void initState() {
@@ -183,6 +184,7 @@ class _DealDetailScreenState extends State<DealDetailScreen>
     _nocObtained = widget.deal?.nocObtained ?? false;
     _adjournedReasonController = TextEditingController(text: widget.deal?.adjournedReason ?? '');
     _postponedDate = d?.postponedDate;
+    _selectedDeadline = d?.closedAt;
 
     _commentController = TextEditingController();
     _tabController = TabController(length: 3, vsync: this);
@@ -257,6 +259,7 @@ class _DealDetailScreenState extends State<DealDetailScreen>
         isAdjourned: _isAdjourned,
         adjournedReason: _isAdjourned ? _adjournedReasonController.text : null,
         postponedDate: _isAdjourned ? _postponedDate : null,
+        closedAt: _selectedDeadline,
       );
 
       await _dealService.updateDeal(deal);
@@ -367,6 +370,7 @@ final dLink = "";
         isAdjourned: _isAdjourned,
         adjournedReason: _isAdjourned ? _adjournedReasonController.text : null,
         postponedDate: _isAdjourned ? _postponedDate : null,
+        closedAt: _selectedDeadline,
       );
 
       await _dealService.updateDeal(deal);
@@ -470,6 +474,7 @@ final dLink = "";
         isAdjourned: _isAdjourned,
         adjournedReason: _isAdjourned ? _adjournedReasonController.text : null,
         postponedDate: _isAdjourned ? _postponedDate : null,
+        closedAt: _selectedDeadline,
       );
 
       await _dealService.updateDeal(deal);
@@ -1035,6 +1040,7 @@ final dLink = "";
         isAdjourned: _isAdjourned,
         adjournedReason: _isAdjourned ? _adjournedReasonController.text : null,
         postponedDate: _isAdjourned ? _postponedDate : null,
+        closedAt: _selectedDeadline,
       );
 
       if (widget.deal == null) {
@@ -2267,6 +2273,22 @@ final dLink = "";
                                     'e.g. Audit, GST, License...',
                                     icon: Icons.category_outlined,
                                   ),
+                                  const SizedBox(height: 20),
+                                  _buildDatePickerField(
+                                    'Deadline',
+                                    _selectedDeadline,
+                                    () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: _selectedDeadline ?? DateTime.now(),
+                                        firstDate: DateTime(2000),
+                                        lastDate: DateTime(2100),
+                                      );
+                                      if (picked != null) {
+                                        setState(() => _selectedDeadline = picked);
+                                      }
+                                    },
+                                  ),
                                   const SizedBox(height: 32),
                                   _buildResponsibleTeamSection(),
                                   const SizedBox(height: 32),
@@ -2978,6 +3000,22 @@ final dLink = "";
                                       _workTypeController,
                                       'e.g. Audit, GST, License...',
                                       icon: Icons.category_outlined,
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildDatePickerField(
+                                      'Deadline',
+                                      _selectedDeadline,
+                                      () async {
+                                        final picked = await showDatePicker(
+                                          context: context,
+                                          initialDate: _selectedDeadline ?? DateTime.now(),
+                                          firstDate: DateTime(2000),
+                                          lastDate: DateTime(2100),
+                                        );
+                                        if (picked != null) {
+                                          setState(() => _selectedDeadline = picked);
+                                        }
+                                      },
                                     ),
                                     const SizedBox(height: 32),
                                     _buildResponsibleTeamSection(),

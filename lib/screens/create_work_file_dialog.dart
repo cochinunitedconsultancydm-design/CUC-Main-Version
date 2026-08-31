@@ -38,6 +38,7 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
   List<StorageItem> _clientFiles = [];
   final Set<String> _selectedFiles = {};
   bool _isLoadingFiles = false;
+  DateTime? _selectedDeadline;
 
   @override
   void initState() {
@@ -179,6 +180,7 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
         files_received: filesJson,
         responsible_id: _selectedStaff != null ? (_staffIdMap[_selectedStaff!.id] ?? int.tryParse(_selectedStaff!.id)) : null,
         responsible_name: _selectedStaff?.name,
+        closed_at: _selectedDeadline?.toIso8601String(),
         referred_by: currentUserName, // Using referred_by to store the creator
         created_at: DateTime.now().toIso8601String(),
         updated_at: DateTime.now().toIso8601String(),
@@ -369,7 +371,28 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
                         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(_selectedDeadline == null ? 'Select Deadline' : 'Deadline: ${_selectedDeadline!.toLocal().toString().split(' ')[0]}'),
+                      leading: const Icon(Icons.calendar_today, color: AppTheme.primaryColor),
+                      trailing: _selectedDeadline != null
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, color: Colors.red),
+                              onPressed: () => setState(() => _selectedDeadline = null),
+                            )
+                          : null,
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDeadline ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (date != null) setState(() => _selectedDeadline = date);
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     
                     if (_selectedClient != null) ...[
                       const Padding(

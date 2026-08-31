@@ -14,7 +14,7 @@ const schema = a.schema({
     service_cost: a.float(),
     service_date: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
   LicenseNotifications: a.model({
     id: a.id().required(),
     client_license_id: a.integer(),
@@ -23,12 +23,12 @@ const schema = a.schema({
     is_sent: a.boolean(),
     scheduled_date: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
   ServiceNames: a.model({
     id: a.id().required(),
     name: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
   DscRecords: a.model({
     id: a.id().required(),
     username: a.string(),
@@ -40,7 +40,7 @@ const schema = a.schema({
     dsc_expiry_date: a.string(),
     created_at: a.string(),
     updated_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.owner(), allow.groups(['Admin'])]),
   ClientDocuments: a.model({
     id: a.id().required(),
     client_id: a.string(),
@@ -52,7 +52,7 @@ const schema = a.schema({
     created_at: a.string(),
     verification_status: a.string(),
     rejection_reason: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   ServiceContent: a.model({
     id: a.id().required(),
     service_id: a.integer(),
@@ -62,7 +62,7 @@ const schema = a.schema({
     details: a.string(),
     pdf_url: a.string(),
     previous_case_id: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
   Sops: a.model({
     id: a.id().required(),
     title: a.string(),
@@ -70,7 +70,7 @@ const schema = a.schema({
     content: a.string(),
     created_at: a.string(),
     updated_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
 
   Clients: a.model({
     id: a.id().required(),
@@ -92,7 +92,7 @@ const schema = a.schema({
     bank_account_details: a.string(),
     companies: a.string().array(),
     custom_fields: a.string().array(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   Tasks: a.model({
     id: a.id().required(),
     title: a.string(),
@@ -106,7 +106,7 @@ const schema = a.schema({
     client_name: a.string(),
     phone_number: a.string(),
     updated_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   OfficeLocations: a.model({
     id: a.id().required(),
     name: a.string().required(),
@@ -120,7 +120,7 @@ const schema = a.schema({
     other_photos: a.string(),
     created_at: a.string(),
     updated_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
   Contacts: a.model({
     id: a.id().required(),
     name: a.string().required(),
@@ -133,7 +133,7 @@ const schema = a.schema({
     native_place: a.string(),
     working_place: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
   DealStageHistory: a.model({
     id: a.id().required(),
     deal_id: a.integer(),
@@ -141,20 +141,20 @@ const schema = a.schema({
     to_stage: a.string(),
     changed_by: a.integer(),
     changed_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   TravelLogs: a.model({
     id: a.id().required(),
     user_id: a.integer(),
     destination: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager'])]),
   LicenseTypes: a.model({
     id: a.id().required(),
     name: a.string(),
     description: a.string(),
     created_at: a.string(),
     updated_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
   LicenseBilling: a.model({
     id: a.id().required(),
     client_license_id: a.integer(),
@@ -163,7 +163,7 @@ const schema = a.schema({
     invoice_no: a.string(),
     payment_date: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   ActivityLogs: a.model({
     id: a.id().required(),
     user_id: a.integer(),
@@ -172,7 +172,7 @@ const schema = a.schema({
     target_id: a.string(),
     details: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager'])]),
   ClientLicenses: a.model({
     id: a.id().required(),
     client_id: a.integer(),
@@ -185,7 +185,7 @@ const schema = a.schema({
     created_at: a.string(),
     updated_at: a.string(),
     manual_client_name: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   DealHandoverHistory: a.model({
     id: a.id().required(),
     deal_id: a.integer(),
@@ -193,7 +193,7 @@ const schema = a.schema({
     to_user_id: a.integer(),
     note: a.string(),
     handed_over_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   DealActivities: a.model({
     id: a.id().required(),
     deal_id: a.string(),
@@ -204,7 +204,7 @@ const schema = a.schema({
     is_completed: a.boolean(),
     created_by: a.integer(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   Billings: a.model({
     id: a.id().required(),
     invoice_no: a.string(),
@@ -217,7 +217,7 @@ const schema = a.schema({
     category: a.string(),
     authorities: a.string(),
     status: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   Deals: a.model({
     id: a.id().required(),
     name: a.string(),
@@ -258,7 +258,7 @@ const schema = a.schema({
     noc_obtained: a.boolean(),
     referred_by: a.string(),
     expenses_list: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   Messages: a.model({
     id: a.id().required(),
     sender_id: a.integer(),
@@ -268,14 +268,14 @@ const schema = a.schema({
     created_at: a.string(),
     attachment_type: a.string(),
     attachment_id: a.integer(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   StaffAttendance: a.model({
     id: a.id().required(),
     user_id: a.integer(),
     check_in_time: a.string(),
     check_out_time: a.string(),
     attendance_date: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager'])]),
   CompanyBills: a.model({
     id: a.id().required(),
     category: a.string(),
@@ -287,12 +287,12 @@ const schema = a.schema({
     created_at: a.string(),
     spent_by: a.integer(),
     spent_by_name: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   SysCronLogs: a.model({
     id: a.id().required(),
     job_name: a.string(),
     last_run_date: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   Users: a.model({
     id: a.id().required(),
     username: a.string(),
@@ -317,7 +317,7 @@ const schema = a.schema({
     personal_email: a.string(),
     company_email: a.string(),
     company_phone: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.owner(), allow.groups(['Admin'])]),
   InwardPosts: a.model({
     id: a.id().required(),
     sender_name: a.string(),
@@ -327,7 +327,7 @@ const schema = a.schema({
     status: a.string(),
     received_date: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
 
   UserSessions: a.model({
     id: a.id().required(),
@@ -339,7 +339,7 @@ const schema = a.schema({
     status: a.string(),
     active_seconds: a.integer(),
     idle_seconds: a.integer(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.owner(), allow.groups(['Admin'])]),
   Checklists: a.model({
     id: a.id().required(),
     title: a.string(),
@@ -352,14 +352,14 @@ const schema = a.schema({
     due_date: a.string(),
     created_at: a.string(),
     updated_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   DealAssignees: a.model({
     id: a.id().required(),
     deal_id: a.integer(),
     user_id: a.integer(),
     role: a.string(),
     assigned_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   Notifications: a.model({
     id: a.id().required(),
     user_id: a.integer(),
@@ -370,7 +370,7 @@ const schema = a.schema({
     created_at: a.string(),
     deal_id: a.integer(),
     task_id: a.integer(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   Properties: a.model({
     id: a.id().required(),
     property_name: a.string(),
@@ -411,7 +411,7 @@ const schema = a.schema({
     notes: a.string(),
     created_at: a.string(),
     updated_at: a.string(),
-  }).authorization((allow) => [allow.authenticated()]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
 });
 
 

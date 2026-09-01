@@ -38,6 +38,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
   List<Billing> _billings = [];
   bool _isAdmin = false;
+  bool _isAmarnath = false;
   bool _isLoading = true;
   bool _isFetchingMore = false;
   final int _limit = 50;
@@ -80,7 +81,14 @@ class _BillingScreenState extends State<BillingScreen> {
 
   Future<void> _initRole() async {
     final isAdmin = await AuthService().isAdmin();
-    if (mounted) setState(() => _isAdmin = isAdmin);
+    final userName = await AuthService().getUserName();
+    final isAmarnath = userName?.toLowerCase().trim() == 'amarnath';
+    if (mounted) {
+      setState(() {
+        _isAdmin = isAdmin;
+        _isAmarnath = isAmarnath;
+      });
+    }
   }
 
   @override
@@ -1506,10 +1514,18 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   final _log = LoggingService();
   final _billingService = BillingService();
   bool _isAdmin = false;
+  bool _isAmarnath = false;
   
   Future<void> _initRole() async {
     final isAdmin = await AuthService().isAdmin();
-    if (mounted) setState(() => _isAdmin = isAdmin);
+    final userName = await AuthService().getUserName();
+    final isAmarnath = userName?.toLowerCase().trim() == 'amarnath';
+    if (mounted) {
+      setState(() {
+        _isAdmin = isAdmin;
+        _isAmarnath = isAmarnath;
+      });
+    }
   }
   int _pdfBuildCount = 0;
   Uint8List? _cachedPdf;
@@ -1931,7 +1947,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
 
     final isDuplicate = await _isInvoiceNoDuplicate(_invoiceNo.text);
     if (isDuplicate) {
-      if (widget.billing == null) {
+      if (widget.billing == null || widget.billing!.id == null) {
         // If this is a new bill, auto-assign the next available number instead of failing
         final newNo = await _billingService.getNextInvoiceNo(_getPrefix());
         setState(() { _invoiceNo.text = newNo ?? ''; });
@@ -2173,7 +2189,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                           _quotationTerms = _getDefaultTerms(_category);
                           _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
                         }
-                        if (widget.billing == null) _generateInvoiceNo(true);
+                        if (widget.billing == null || widget.billing!.id == null) _generateInvoiceNo(true);
                       }
                     });
                   })),
@@ -2184,7 +2200,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                         _type = v;
                         _quotationTerms = _getDefaultTerms(_category);
                         _termControllers = _quotationTerms.map((t) => TextEditingController(text: t)).toList();
-                        if (widget.billing == null) _generateInvoiceNo(true);
+                        if (widget.billing == null || widget.billing!.id == null) _generateInvoiceNo(true);
                       }
                     });
                   })),
@@ -2270,18 +2286,18 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
               ],
               const SizedBox(height: 20),
               if (isMobile) ...[
-                _buildField('Date', _date, 'dd/mm/yyyy', readOnly: true),
+                _buildField('Date', _date, 'dd/mm/yyyy', readOnly: !(_isAdmin || _isAmarnath)),
                 const SizedBox(height: 16),
                 _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy'),
                 const SizedBox(height: 16),
-                _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: !_isAdmin),
+                _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: !(_isAdmin || _isAmarnath)),
               ] else Row(
                 children: [
-                  Expanded(child: _buildField('Date', _date, 'dd/mm/yyyy', readOnly: true)),
+                  Expanded(child: _buildField('Date', _date, 'dd/mm/yyyy', readOnly: !(_isAdmin || _isAmarnath))),
                   const SizedBox(width: 16),
                   Expanded(child: _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy')),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: !_isAdmin)),
+                  Expanded(child: _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: !(_isAdmin || _isAmarnath))),
                 ],
               ),
               const SizedBox(height: 20),

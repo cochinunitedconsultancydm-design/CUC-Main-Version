@@ -408,6 +408,23 @@ class SupabaseBackupService {
     return {};
   }
 
+  /// Get all users data from Supabase
+  Future<List<Map<String, dynamic>>> getAllUsersData() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_supabaseUrl/rest/v1/users?select=id,username,email,name,role'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      debugPrint('Supabase getAllUsersData error: $e');
+    }
+    return [];
+  }
+
   /// Get user ID by username
   Future<int?> getUserIdByUsername(String username) async {
     try {

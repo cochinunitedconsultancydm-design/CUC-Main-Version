@@ -81,15 +81,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
     if (_tabController != null) _tabController!.dispose();
     _tabController = TabController(length: _isManager ? 3 : 2, vsync: this);
     
-    final allUsers = await _checklistService.getAllUsers();
-    final sbUserMap = await SupabaseBackupService().getUsernameToIdMap();
+    final allUsers = await SupabaseBackupService().getAllUsersData();
     _users = allUsers.map((u) {
-      final uname = u['username']?.toString().toLowerCase();
-      final uemail = u['email']?.toString().toLowerCase();
-      final intId = sbUserMap[uname] ?? sbUserMap[uemail];
       return {
         ...u,
-        'id': intId ?? u['id'],
+        'id': u['id'],
       };
     }).toList();
     _deals = await DealService().getAllDeals();
@@ -100,6 +96,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
     );
     if (sariga.isNotEmpty && sariga['id'] is int) {
       await _checklistService.patchNullTasksToSariga(sariga['id']);
+    }
+
+    debugPrint('ChecklistScreen _initData: loaded ${_users.length} users.');
+    for (var u in _users) {
+      debugPrint('User: ${u['name']} Role: ${u['role']} ID: ${u['id']}');
     }
 
     await _fetchChecklists();
@@ -1512,48 +1513,54 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                             Row(
                               children: [
                                 Expanded(
-                                  child: ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: const Text("Date", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                    subtitle: Text(DateFormat('dd MMM').format(draft.date), style: const TextStyle(fontSize: 14)),
-                                    trailing: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                                      child: const Icon(Icons.calendar_month, color: AppTheme.primaryColor, size: 18),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: const Text("Date", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                      subtitle: Text(DateFormat('dd MMM').format(draft.date), style: const TextStyle(fontSize: 14)),
+                                      trailing: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                                        child: const Icon(Icons.calendar_month, color: AppTheme.primaryColor, size: 18),
+                                      ),
+                                      onTap: () async {
+                                        final picked = await showDatePicker(
+                                          context: context,
+                                          initialDate: draft.date,
+                                          firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                                        );
+                                        if (picked != null) {
+                                          setDialogState(() => draft.date = picked);
+                                        }
+                                      },
                                     ),
-                                    onTap: () async {
-                                      final picked = await showDatePicker(
-                                        context: context,
-                                        initialDate: draft.date,
-                                        firstDate: DateTime.now().subtract(const Duration(days: 30)),
-                                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                                      );
-                                      if (picked != null) {
-                                        setDialogState(() => draft.date = picked);
-                                      }
-                                    },
                                   ),
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
-                                  child: ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: const Text("Time", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                    subtitle: Text(draft.time.format(context), style: const TextStyle(fontSize: 14)),
-                                    trailing: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                                      child: const Icon(Icons.access_time, color: AppTheme.primaryColor, size: 18),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: const Text("Time", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                      subtitle: Text(draft.time.format(context), style: const TextStyle(fontSize: 14)),
+                                      trailing: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                                        child: const Icon(Icons.access_time, color: AppTheme.primaryColor, size: 18),
+                                      ),
+                                      onTap: () async {
+                                        final picked = await showTimePicker(
+                                          context: context,
+                                          initialTime: draft.time,
+                                        );
+                                        if (picked != null) {
+                                          setDialogState(() => draft.time = picked);
+                                        }
+                                      },
                                     ),
-                                    onTap: () async {
-                                      final picked = await showTimePicker(
-                                        context: context,
-                                        initialTime: draft.time,
-                                      );
-                                      if (picked != null) {
-                                        setDialogState(() => draft.time = picked);
-                                      }
-                                    },
                                   ),
                                 ),
                               ],

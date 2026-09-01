@@ -170,7 +170,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      final req = ModelQueries.list(amplify_models.Tasks.classType, limit: 10000);
+      final req = ModelQueries.list(amplify_models.Tasks.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools);
       final res = await Amplify.API.query(request: req).response;
       var tasks = (res.data?.items ?? []).whereType<amplify_models.Tasks>().toList();
       tasks = tasks.where((t) {
@@ -184,14 +184,11 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
         return dateB.compareTo(dateA);
       });
       
-      final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
-      final uRes = await Amplify.API.query(request: uReq).response;
-      final usersList = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
+      final sbUsers = await SupabaseBackupService().getAllUsersData();
       
-      final sbUserMap = await SupabaseBackupService().getUsernameToIdMap();
       final userMap = {
-        for (var u in usersList) 
-          (sbUserMap[u.username] ?? sbUserMap[u.email] ?? u.id).toString(): u
+        for (var u in sbUsers) 
+          u['id'].toString(): u
       };
 
       final List<Task> parsedTasks = tasks.map((m) {
@@ -210,8 +207,8 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
           'client_name': m.client_name,
           'phone_number': m.phone_number,
           'updated_at': m.updatedAt?.getDateTimeInUtc().toIso8601String(),
-          'assigned_by_name': assignedByMap?.name,
-          'assigned_to_name': assignedToMap?.name,
+          'assigned_by_name': assignedByMap?['name'],
+          'assigned_to_name': assignedToMap?['name'],
         });
       }).toList();
 
@@ -236,7 +233,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
 
   Future<void> _updateTaskStatus(Task task, String newStatus) async {
     try {
-      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(task.id.toString()), limit: 10000);
+      final req = ModelQueries.list(amplify_models.Tasks.classType, where: amplify_models.Tasks.ID.eq(task.id.toString()), limit: 10000, authorizationMode: APIAuthorizationType.userPools);
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
         final existingTask = res.data!.items.first!;

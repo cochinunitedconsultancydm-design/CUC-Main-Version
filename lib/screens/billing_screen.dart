@@ -2286,16 +2286,16 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
               ],
               const SizedBox(height: 20),
               if (isMobile) ...[
-                _buildField('Date', _date, 'dd/mm/yyyy', readOnly: !(_isAdmin || _isAmarnath)),
+                _buildField('Date', _date, 'dd/mm/yyyy', readOnly: !(_isAdmin || _isAmarnath), onTap: (_isAdmin || _isAmarnath) ? () => _pickDate(_date) : null),
                 const SizedBox(height: 16),
-                _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy'),
+                _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy', readOnly: !(_isAdmin || _isAmarnath), onTap: (_isAdmin || _isAmarnath) ? () => _pickDate(_deadlineDate) : null),
                 const SizedBox(height: 16),
                 _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: !(_isAdmin || _isAmarnath)),
               ] else Row(
                 children: [
-                  Expanded(child: _buildField('Date', _date, 'dd/mm/yyyy', readOnly: !(_isAdmin || _isAmarnath))),
+                  Expanded(child: _buildField('Date', _date, 'dd/mm/yyyy', readOnly: !(_isAdmin || _isAmarnath), onTap: (_isAdmin || _isAmarnath) ? () => _pickDate(_date) : null)),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy')),
+                  Expanded(child: _buildField('Payment Deadline', _deadlineDate, 'dd/mm/yyyy', readOnly: !(_isAdmin || _isAmarnath), onTap: (_isAdmin || _isAmarnath) ? () => _pickDate(_deadlineDate) : null)),
                   const SizedBox(width: 16),
                   Expanded(child: _buildField('Invoice No', _invoiceNo, 'e.g. AA-001', readOnly: !(_isAdmin || _isAmarnath))),
                 ],
@@ -2457,6 +2457,26 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
 
   Widget _sectionTitle(String title) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(title.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade400, letterSpacing: 1.5)));
 
+  Future<void> _pickDate(TextEditingController controller) async {
+    DateTime? initialDate;
+    try {
+      if (controller.text.isNotEmpty) {
+        initialDate = DateFormat('dd/MM/yyyy').parse(controller.text);
+      }
+    } catch (_) {}
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        controller.text = DateFormat('dd/MM/yyyy').format(picked);
+      });
+    }
+  }
+
   void _formatCurrencyField(TextEditingController controller) {
     double val = NumberToWords.parseCurrency(controller.text);
     if (val > 0) {
@@ -2465,7 +2485,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     }
   }
 
-  Widget _buildField(String label, TextEditingController controller, String hint, {int lines = 1, ValueChanged<String>? onChanged, bool isCurrency = false, Widget? suffix, bool readOnly = false}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _buildField(String label, TextEditingController controller, String hint, {int lines = 1, ValueChanged<String>? onChanged, bool isCurrency = false, Widget? suffix, bool readOnly = false, VoidCallback? onTap}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
     const SizedBox(height: 6),
     Focus(
@@ -2473,15 +2493,16 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         if (!hasFocus && isCurrency) _formatCurrencyField(controller);
       },
       child: TextField(
+        onTap: onTap,
         controller: controller, maxLines: lines, onChanged: onChanged,
-        readOnly: readOnly,
+        readOnly: onTap != null ? true : readOnly,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: hint, 
           hintStyle: TextStyle(color: Colors.grey.shade300), 
           filled: true, 
           fillColor: readOnly ? Colors.grey.shade100 : const Color(0xFFF8FAFC), 
-          suffixIcon: suffix,
+          suffixIcon: suffix ?? (onTap != null ? Icon(Icons.calendar_month, color: Colors.grey.shade400, size: 20) : null),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)), 
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)), 
           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB)))

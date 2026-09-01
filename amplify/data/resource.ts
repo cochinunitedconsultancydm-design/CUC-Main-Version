@@ -92,7 +92,7 @@ const schema = a.schema({
     bank_account_details: a.string(),
     companies: a.string().array(),
     custom_fields: a.string().array(),
-  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create', 'update', 'delete'])]),
   Tasks: a.model({
     id: a.id().required(),
     title: a.string(),
@@ -217,7 +217,7 @@ const schema = a.schema({
     category: a.string(),
     authorities: a.string(),
     status: a.string(),
-  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create', 'update', 'delete'])]),
   Deals: a.model({
     id: a.id().required(),
     name: a.string(),

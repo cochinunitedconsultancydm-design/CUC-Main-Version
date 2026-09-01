@@ -1333,7 +1333,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 ],
                 IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 22), tooltip: 'Duplicate'),
                 IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 28), tooltip: 'Edit'),
-                if (_isAdmin)
+                if (_isAdmin || _isAmarnath)
                   IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 24), tooltip: 'Delete'),
               ]
             ),
@@ -1412,7 +1412,7 @@ class _BillingScreenState extends State<BillingScreen> {
                       ],
                       IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 20), tooltip: 'Duplicate', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 24), tooltip: 'Edit', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
-                      if (_isAdmin)
+                      if (_isAdmin || _isAmarnath)
                         IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 20), tooltip: 'Delete', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                     ],
                   ),

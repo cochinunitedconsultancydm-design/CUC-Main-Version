@@ -51,6 +51,11 @@ class BackupAwareApi {
         .mutate(request: ModelMutations.delete(model))
         .response;
 
+    if (response.hasErrors) {
+      debugPrint('GraphQL delete errors: ${response.errors}');
+      throw Exception(response.errors.map((e) => e.message).join(', '));
+    }
+
     if (response.data != null) {
       String modelId;
       try {
@@ -69,6 +74,11 @@ class BackupAwareApi {
     final response = await Amplify.API
         .mutate(request: ModelMutations.deleteById(classType, id))
         .response;
+
+    if (response.hasErrors) {
+      debugPrint('GraphQL deleteById errors: ${response.errors}');
+      throw Exception(response.errors.map((e) => e.message).join(', '));
+    }
 
     if (response.data != null) {
       _deleteBackupInBackground(

@@ -139,8 +139,6 @@ class _MyAppState extends State<MyApp> with WindowListener, WidgetsBindingObserv
   Widget build(BuildContext context) {
     return Listener(
       onPointerDown: (_) => TimeTrackingService.instance.registerActivity(),
-      onPointerMove: (_) => TimeTrackingService.instance.registerActivity(),
-      onPointerHover: (_) => TimeTrackingService.instance.registerActivity(),
       onPointerSignal: (_) => TimeTrackingService.instance.registerActivity(),
       child: MaterialApp(
         navigatorKey: navigatorKey,

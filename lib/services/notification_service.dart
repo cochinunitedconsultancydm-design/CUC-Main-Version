@@ -193,12 +193,14 @@ class NotificationService {
 
   Future<List<AppNotification>> getUnreadNotifications(dynamic userId) async {
     try {
+      final parsedUserId = userId is int ? userId : int.tryParse(userId.toString()) ?? 0;
       final req = ModelQueries.list(
         Notifications.classType,
-        where: Notifications.IS_READ.eq(false) // Note: Filter by userId might require string match if dynamic
-      , limit: 10000);
+        where: Notifications.IS_READ.eq(false).and(Notifications.USER_ID.eq(parsedUserId)),
+        limit: 100,
+      );
       final res = await Amplify.API.query(request: req).response;
-      var items = res.data?.items.where((e) => e != null && e.user_id?.toString() == userId.toString()).cast<Notifications>().toList() ?? [];
+      var items = res.data?.items.where((e) => e != null).cast<Notifications>().toList() ?? [];
       
       items.sort((a, b) => (b.created_at ?? '').compareTo(a.created_at ?? ''));
       
@@ -225,10 +227,14 @@ class NotificationService {
 
   Future<void> markAllAsRead(dynamic userId) async {
     try {
-      // Fetch all unread for user
-      final req = ModelQueries.list(Notifications.classType, where: Notifications.IS_READ.eq(false), limit: 10000);
+      final parsedUserId = userId is int ? userId : int.tryParse(userId.toString()) ?? 0;
+      final req = ModelQueries.list(
+        Notifications.classType, 
+        where: Notifications.IS_READ.eq(false).and(Notifications.USER_ID.eq(parsedUserId)), 
+        limit: 100,
+      );
       final res = await Amplify.API.query(request: req).response;
-      final unread = res.data?.items.where((e) => e != null && e.user_id?.toString() == userId.toString()).cast<Notifications>() ?? [];
+      final unread = res.data?.items.whereType<Notifications>() ?? [];
       
       for (var notif in unread) {
         final updated = notif.copyWith(is_read: true);

@@ -24,23 +24,23 @@ class ChecklistService {
       
       items.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
       
+      final Map<int, String> userNameMap = {};
+      try {
+        final uReq = ModelQueries.list(Users.classType, limit: 1000, authorizationMode: APIAuthorizationType.userPools);
+        final uRes = await Amplify.API.query(request: uReq).response;
+        final users = uRes.data?.items.whereType<Users>() ?? [];
+        for (var u in users) {
+          final intId = int.tryParse(u.id);
+          if (intId != null) userNameMap[intId] = u.name ?? '';
+        }
+      } catch (_) {}
+
       List<old.Checklist> mapped = [];
       for (var c in items) {
-        String? mName, rName;
-        if (c.manager_id != null) {
-          final mReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.manager_id), limit: 10000, authorizationMode: APIAuthorizationType.userPools);
-          final mRes = await Amplify.API.query(request: mReq).response;
-          if (mRes.data?.items.isNotEmpty == true) mName = mRes.data!.items.first?.name;
-        }
-        if (c.responsible_id != null) {
-          final rReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.responsible_id), limit: 10000, authorizationMode: APIAuthorizationType.userPools);
-          final rRes = await Amplify.API.query(request: rReq).response;
-          if (rRes.data?.items.isNotEmpty == true) rName = rRes.data!.items.first?.name;
-        }
         mapped.add(old.Checklist.fromMap({
           ...c.toJson(),
-          'manager_name': mName,
-          'responsible_name': rName,
+          'manager_name': c.manager_id != null ? userNameMap[c.manager_id!] : null,
+          'responsible_name': c.responsible_id != null ? userNameMap[c.responsible_id!] : null,
         }));
       }
       return mapped;
@@ -61,23 +61,23 @@ class ChecklistService {
       var items = res.data?.items.where((e) => e != null).cast<Checklists>().toList() ?? [];
       items.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
       
+      final Map<int, String> userNameMap = {};
+      try {
+        final uReq = ModelQueries.list(Users.classType, limit: 1000, authorizationMode: APIAuthorizationType.userPools);
+        final uRes = await Amplify.API.query(request: uReq).response;
+        final users = uRes.data?.items.whereType<Users>() ?? [];
+        for (var u in users) {
+          final intId = int.tryParse(u.id);
+          if (intId != null) userNameMap[intId] = u.name ?? '';
+        }
+      } catch (_) {}
+
       List<old.Checklist> mapped = [];
       for (var c in items) {
-        String? mName, rName;
-        if (c.manager_id != null) {
-          final mReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.manager_id), limit: 10000, authorizationMode: APIAuthorizationType.userPools);
-          final mRes = await Amplify.API.query(request: mReq).response;
-          if (mRes.data?.items.isNotEmpty == true) mName = mRes.data!.items.first?.name;
-        }
-        if (c.responsible_id != null) {
-          final rReq = ModelQueries.list(Users.classType, where: Users.ID.eq(c.responsible_id), limit: 10000, authorizationMode: APIAuthorizationType.userPools);
-          final rRes = await Amplify.API.query(request: rReq).response;
-          if (rRes.data?.items.isNotEmpty == true) rName = rRes.data!.items.first?.name;
-        }
         mapped.add(old.Checklist.fromMap({
           ...c.toJson(),
-          'manager_name': mName,
-          'responsible_name': rName,
+          'manager_name': c.manager_id != null ? userNameMap[c.manager_id!] : null,
+          'responsible_name': c.responsible_id != null ? userNameMap[c.responsible_id!] : null,
         }));
       }
       return mapped;

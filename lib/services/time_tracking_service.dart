@@ -93,7 +93,7 @@ class TimeTrackingService with WindowListener {
     if (_currentSessionId == null) return;
 
     try {
-      final req = ModelQueries.list(UserSessions.classType, where: UserSessions.ID.eq(_currentSessionId.toString()), limit: 10000);
+      final req = ModelQueries.list(UserSessions.classType, where: UserSessions.ID.eq(_currentSessionId.toString()), limit: 1);
       final res = await Amplify.API.query(request: req).response;
       if (res.data?.items.isNotEmpty == true) {
         final session = res.data!.items.first!;

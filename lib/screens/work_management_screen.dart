@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -807,11 +808,40 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                   ],
                 ],
                 const SizedBox(width: 16),
-                IconButton(
-                  onPressed: () => _deleteDeal(deal),
-                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: () => _openDealDetail(deal),
+                      icon: const Icon(Icons.visibility_outlined, color: Colors.green, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'View Work',
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () {
+                        if (deal.driveLink != null && deal.driveLink!.isNotEmpty) {
+                          try {
+                            final parsed = jsonDecode(deal.driveLink!);
+                            if (parsed is List && parsed.isNotEmpty) {
+                              launchUrl(Uri.parse(parsed.first['url'] ?? deal.driveLink!));
+                            } else {
+                              launchUrl(Uri.parse(deal.driveLink!));
+                            }
+                          } catch (e) {
+                            launchUrl(Uri.parse(deal.driveLink!));
+                          }
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No documents attached')));
+                        }
+                      },
+                      icon: const Icon(Icons.download_rounded, color: Colors.purple, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Download Documents',
+                    ),
+                  ],
                 ),
               ],
             )
@@ -828,11 +858,40 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => _deleteDeal(deal),
-                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: () => _openDealDetail(deal),
+                          icon: const Icon(Icons.visibility_outlined, color: Colors.green, size: 20),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: 'View Work',
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: () {
+                            if (deal.driveLink != null && deal.driveLink!.isNotEmpty) {
+                              try {
+                                final parsed = jsonDecode(deal.driveLink!);
+                                if (parsed is List && parsed.isNotEmpty) {
+                                  launchUrl(Uri.parse(parsed.first['url'] ?? deal.driveLink!));
+                                } else {
+                                  launchUrl(Uri.parse(deal.driveLink!));
+                                }
+                              } catch (e) {
+                                launchUrl(Uri.parse(deal.driveLink!));
+                              }
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No documents attached')));
+                            }
+                          },
+                          icon: const Icon(Icons.download_rounded, color: Colors.purple, size: 20),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: 'Download Documents',
+                        ),
+                      ],
                     ),
                   ],
                 ),

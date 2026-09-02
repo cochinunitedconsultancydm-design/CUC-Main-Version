@@ -484,9 +484,29 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                                             onPressed: () => _editWorkFile(workFile),
                                           ),
                                           IconButton(
-                                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                                            tooltip: 'Delete Work File',
-                                            onPressed: () => _deleteWorkFile(workFile),
+                                            icon: const Icon(Icons.visibility_outlined, color: Colors.green, size: 20),
+                                            tooltip: 'View Work File',
+                                            onPressed: () => _viewWorkFile(workFile),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.download_rounded, color: Colors.purple, size: 20),
+                                            tooltip: 'Download Documents',
+                                            onPressed: () {
+                                              if (workFile.drive_link != null && workFile.drive_link!.isNotEmpty) {
+                                                try {
+                                                  final parsed = jsonDecode(workFile.drive_link!);
+                                                  if (parsed is List && parsed.isNotEmpty) {
+                                                    launchUrl(Uri.parse(parsed.first['url'] ?? parsed.first['link'] ?? workFile.drive_link!));
+                                                  } else {
+                                                    launchUrl(Uri.parse(workFile.drive_link!));
+                                                  }
+                                                } catch (e) {
+                                                  launchUrl(Uri.parse(workFile.drive_link!));
+                                                }
+                                              } else {
+                                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No documents attached')));
+                                              }
+                                            },
                                           ),
                                         ],
                                       ),
@@ -1138,10 +1158,11 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
                         Text('File No: ${_currentWorkFile.register_no}', style: TextStyle(color: Colors.amber.shade700, fontWeight: FontWeight.bold, fontSize: 14)),
                       ],
                       const SizedBox(height: 4),
-                      Row(
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 4,
                         children: [
                           Text('Type: ${_currentWorkFile.work_type != null && _currentWorkFile.work_type!.trim().isNotEmpty ? _currentWorkFile.work_type : "N/A"}', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
-                          const SizedBox(width: 16),
                           Text('Status: ${_currentWorkFile.stage ?? "Unknown"}', style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
                         ],
                       ),
@@ -1361,14 +1382,15 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
                           title: Text(name.toString(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Row(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
                               children: [
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                                   child: Text(type.toString(), style: TextStyle(color: Colors.blue.shade700, fontSize: 10, fontWeight: FontWeight.bold)),
                                 ),
-                                const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(color: status == 'Returned' ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
@@ -1376,11 +1398,6 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
                                 ),
                               ],
                             ),
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                            onPressed: () => _removeFileItem(index),
-                            tooltip: 'Remove',
                           ),
                         ),
                       );
@@ -1406,20 +1423,10 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(category, style: TextStyle(fontSize: 12, color: isPersonal ? Colors.purple.shade700 : Colors.blue.shade700)),
                           ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.download_rounded, color: Colors.blue),
-                                onPressed: () => _downloadFile(context, path),
-                                tooltip: 'Open / Download',
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                onPressed: () => _removeFileItem(index),
-                                tooltip: 'Remove',
-                              ),
-                            ],
+                          trailing: IconButton(
+                            icon: const Icon(Icons.download_rounded, color: Colors.blue),
+                            onPressed: () => _downloadFile(context, path),
+                            tooltip: 'Open / Download',
                           ),
                         ),
                       );

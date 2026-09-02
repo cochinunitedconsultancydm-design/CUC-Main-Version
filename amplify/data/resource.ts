@@ -258,7 +258,7 @@ const schema = a.schema({
     noc_obtained: a.boolean(),
     referred_by: a.string(),
     expenses_list: a.string(),
-  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create', 'update'])]),
+  }).authorization((allow) => [allow.authenticated()]),
   Messages: a.model({
     id: a.id().required(),
     sender_id: a.integer(),

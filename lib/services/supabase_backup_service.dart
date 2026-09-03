@@ -386,6 +386,182 @@ class SupabaseBackupService {
     }
   }
 
+  /// Imports missing clients from Supabase to Amplify.
+  Future<void> importMissingClients() async {
+    try {
+      final response = await http.get(Uri.parse('$_supabaseUrl/rest/v1/clients?select=*'), headers: _headers);
+      if (response.statusCode == 200) {
+        final List<dynamic> sbClients = json.decode(response.body);
+        var req = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
+        var res = await Amplify.API.query(request: req).response;
+        final existingMap = { for (var item in (res.data?.items ?? [])) item!.id: item };
+        int importedCount = 0;
+        int updatedCount = 0;
+        for (var sbData in sbClients) {
+          final String sbId = sbData['id'].toString();
+          
+          List<String>? companiesList;
+          if (sbData['companies'] != null) {
+            try {
+              companiesList = List<String>.from(sbData['companies']);
+            } catch (_) {}
+          }
+          
+          List<String>? customFieldsList;
+          if (sbData['custom_fields'] != null) {
+            try {
+              customFieldsList = List<String>.from(sbData['custom_fields']);
+            } catch (_) {}
+          }
+          
+          final newClient = amplify_models.Clients(
+            id: sbId,
+            name: sbData['name']?.toString(),
+            email: sbData['email']?.toString(),
+            phone: sbData['phone']?.toString(),
+            address: sbData['address']?.toString(),
+            type_of_work: sbData['type_of_work']?.toString(),
+            case_number: sbData['case_number']?.toString(),
+            dob: sbData['dob']?.toString(),
+            file_no: sbData['file_no']?.toString(),
+            file_date: sbData['file_date']?.toString(),
+            is_contacted: sbData['is_contacted'] == true || sbData['is_contacted'] == 'true',
+            managed_by: sbData['managed_by']?.toString(),
+            balance_due: sbData['balance_due']?.toString(),
+            registration_number: sbData['registration_number']?.toString(),
+            bank_account_details: sbData['bank_account_details']?.toString(),
+            created_at: sbData['created_at']?.toString(),
+            review_rating: sbData['review_rating'] != null ? int.tryParse(sbData['review_rating'].toString()) : null,
+            companies: companiesList,
+            custom_fields: customFieldsList,
+          );
+          
+          if (!existingMap.containsKey(sbId)) {
+            final mutReq = ModelMutations.create(newClient);
+            await Amplify.API.mutate(request: mutReq).response;
+            importedCount++;
+          } else {
+            final mutReq = ModelMutations.update(newClient);
+            await Amplify.API.mutate(request: mutReq).response;
+            updatedCount++;
+          }
+        }
+        debugPrint('Successfully imported $importedCount missing and updated $updatedCount clients from Supabase.');
+      }
+    } catch (e) {
+      debugPrint('Supabase import clients error: $e');
+    }
+  }
+
+  /// Imports missing deals from Supabase to Amplify.
+  Future<void> importMissingDeals() async {
+    try {
+      final response = await http.get(Uri.parse('$_supabaseUrl/rest/v1/deals?select=*'), headers: _headers);
+      if (response.statusCode == 200) {
+        final List<dynamic> sbDeals = json.decode(response.body);
+        var req = ModelQueries.list(amplify_models.Deals.classType, limit: 10000);
+        var res = await Amplify.API.query(request: req).response;
+        final existingMap = { for (var item in (res.data?.items ?? [])) item!.id: item };
+        int importedCount = 0;
+        int updatedCount = 0;
+        for (var sbData in sbDeals) {
+          final String sbId = sbData['id'].toString();
+          final newDeal = amplify_models.Deals(
+            id: sbId,
+            name: sbData['name']?.toString(),
+            client_id: sbData['client_id'] != null ? int.tryParse(sbData['client_id'].toString()) : null,
+            client_name: sbData['client_name']?.toString(),
+            contact_info: sbData['contact_info']?.toString(),
+            company: sbData['company']?.toString(),
+            work_type: sbData['work_type']?.toString(),
+            stage: sbData['stage']?.toString(),
+            responsible_id: sbData['responsible_id'] != null ? int.tryParse(sbData['responsible_id'].toString()) : null,
+            responsible_name: sbData['responsible_name']?.toString(),
+            amount: sbData['amount'] != null ? double.tryParse(sbData['amount'].toString()) : null,
+            currency: sbData['currency']?.toString(),
+            pipeline: sbData['pipeline']?.toString(),
+            priority: sbData['priority']?.toString(),
+            description: sbData['description']?.toString(),
+            created_at: sbData['created_at']?.toString(),
+            updated_at: sbData['updated_at']?.toString(),
+            closed_at: sbData['closed_at']?.toString(),
+            is_won: sbData['is_won'] == true || sbData['is_won'] == 'true',
+            reg_fee_required: sbData['reg_fee_required']?.toString(),
+            files_received: sbData['files_received']?.toString(),
+            contact_status: sbData['contact_status']?.toString(),
+            files_asked: sbData['files_asked']?.toString(),
+            est_amount_work: sbData['est_amount_work'] != null ? double.tryParse(sbData['est_amount_work'].toString()) : null,
+            create_invoice_share: sbData['create_invoice_share']?.toString(),
+            expense_spent: sbData['expense_spent'] != null ? double.tryParse(sbData['expense_spent'].toString()) : null,
+            upload_invoice_path: sbData['upload_invoice_path']?.toString(),
+            send_to_customer: sbData['send_to_customer']?.toString(),
+            register_no: sbData['register_no']?.toString(),
+            invoice_amount: sbData['invoice_amount'] != null ? double.tryParse(sbData['invoice_amount'].toString()) : null,
+            payment_type: sbData['payment_type']?.toString(),
+            drive_link: sbData['drive_link']?.toString(),
+            billing_id: sbData['billing_id'] != null ? int.tryParse(sbData['billing_id'].toString()) : null,
+            quotation_id: sbData['quotation_id'] != null ? int.tryParse(sbData['quotation_id'].toString()) : null,
+            payment_received: sbData['payment_received'] != null ? double.tryParse(sbData['payment_received'].toString()) : null,
+            part_payment_amount: sbData['part_payment_amount'] != null ? double.tryParse(sbData['part_payment_amount'].toString()) : null,
+            noc_obtained: sbData['noc_obtained'] == true || sbData['noc_obtained'] == 'true',
+            referred_by: sbData['referred_by']?.toString(),
+            expenses_list: sbData['expenses_list']?.toString(),
+          );
+          
+          if (!existingMap.containsKey(sbId)) {
+            final mutReq = ModelMutations.create(newDeal);
+            await Amplify.API.mutate(request: mutReq).response;
+            importedCount++;
+          } else {
+            final mutReq = ModelMutations.update(newDeal);
+            await Amplify.API.mutate(request: mutReq).response;
+            updatedCount++;
+          }
+        }
+        debugPrint('Successfully imported $importedCount missing and updated $updatedCount deals from Supabase.');
+      }
+    } catch (e) {
+      debugPrint('Supabase import deals error: $e');
+    }
+  }
+
+  /// Imports missing client documents from Supabase to Amplify.
+  Future<void> importMissingDocuments() async {
+    try {
+      final response = await http.get(Uri.parse('$_supabaseUrl/rest/v1/client_documents?select=*'), headers: _headers);
+      if (response.statusCode == 200) {
+        final List<dynamic> sbDocs = json.decode(response.body);
+        var req = ModelQueries.list(amplify_models.ClientDocuments.classType, limit: 10000);
+        var res = await Amplify.API.query(request: req).response;
+        final existingIds = (res.data?.items ?? []).map((b) => b?.id).toSet();
+        int importedCount = 0;
+        for (var sbData in sbDocs) {
+          final String sbId = sbData['id'].toString();
+          if (!existingIds.contains(sbId)) {
+            final newDoc = amplify_models.ClientDocuments(
+              id: sbId,
+              client_id: sbData['client_id']?.toString(),
+              client_name: sbData['client_name']?.toString(),
+              document_name: sbData['document_name']?.toString(),
+              storage_path: sbData['storage_path']?.toString(),
+              og_copy: sbData['og_copy']?.toString(),
+              remarks: sbData['remarks']?.toString(),
+              created_at: sbData['created_at']?.toString(),
+              verification_status: sbData['verification_status']?.toString(),
+              rejection_reason: sbData['rejection_reason']?.toString(),
+            );
+            final mutReq = ModelMutations.create(newDoc);
+            await Amplify.API.mutate(request: mutReq).response;
+            importedCount++;
+          }
+        }
+        debugPrint('Successfully imported $importedCount missing documents from Supabase.');
+      }
+    } catch (e) {
+      debugPrint('Supabase import docs error: $e');
+    }
+  }
+
   Future<Map<String, int>> getUsernameToIdMap() async {
     try {
       final response = await http.get(
@@ -408,6 +584,36 @@ class SupabaseBackupService {
     return {};
   }
 
+  Future<List<Map<String, dynamic>>> getActivityLogs() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_supabaseUrl/rest/v1/activity_logs?select=*&order=created_at.desc&limit=10000'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return List<Map<String, dynamic>>.from(json.decode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Supabase getActivityLogs error: $e');
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getBillings() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_supabaseUrl/rest/v1/billings?select=*&order=created_at.desc&limit=10000'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return List<Map<String, dynamic>>.from(json.decode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Supabase getBillings error: $e');
+    }
+    return [];
+  }
+
   /// Get all users data from Supabase
   Future<List<Map<String, dynamic>>> getAllUsersData() async {
     try {
@@ -421,6 +627,23 @@ class SupabaseBackupService {
       }
     } catch (e) {
       debugPrint('Supabase getAllUsersData error: $e');
+    }
+    return [];
+  }
+
+  /// Get complete users data with all fields from Supabase (fallback for restrictive Amplify auth rules)
+  Future<List<Map<String, dynamic>>> getFullUsersData() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_supabaseUrl/rest/v1/users'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      debugPrint('Supabase getFullUsersData error: $e');
     }
     return [];
   }

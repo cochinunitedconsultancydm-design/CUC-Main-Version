@@ -74,9 +74,37 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     try {
       final req = ModelQueries.list(amplify_models.ActivityLogs.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
+      
+      final supabaseLogsData = await SupabaseBackupService().getActivityLogs();
+      
       if (mounted) {
         setState(() {
-          _overallLogs = (res.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList() ?? [];
+          List<amplify_models.ActivityLogs> amplifyLogs = (res.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList();
+          
+          List<amplify_models.ActivityLogs> legacyLogs = supabaseLogsData.map((sLog) {
+            int? uid = sLog['user_id'];
+            if (uid == null && sLog['username'] != null) {
+              uid = _usernameToIdMap[sLog['username'].toString().toLowerCase()];
+            }
+            return amplify_models.ActivityLogs(
+              id: sLog['id']?.toString() ?? '',
+              user_id: uid,
+              action: sLog['action']?.toString(),
+              details: sLog['details']?.toString(),
+              created_at: sLog['created_at']?.toString() ?? sLog['timestamp']?.toString(), 
+              target_type: sLog['target_type']?.toString(),
+              target_id: sLog['target_id']?.toString(),
+            );
+          }).toList();
+          
+          _overallLogs = [...amplifyLogs];
+          final existingIds = amplifyLogs.map((l) => l.id).toSet();
+          for (var legLog in legacyLogs) {
+            if (!existingIds.contains(legLog.id)) {
+              _overallLogs.add(legLog);
+            }
+          }
+          
           _isLoadingOverallLogs = false;
         });
       }
@@ -92,9 +120,37 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     try {
       final req = ModelQueries.list(amplify_models.Billings.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
+      
+      final supabaseBillingsData = await SupabaseBackupService().getBillings();
+      
       if (mounted) {
         setState(() {
-          _overallBillings = (res.data?.items ?? []).whereType<amplify_models.Billings>().toList() ?? [];
+          List<amplify_models.Billings> amplifyBillings = (res.data?.items ?? []).whereType<amplify_models.Billings>().toList();
+          
+          List<amplify_models.Billings> legacyBillings = supabaseBillingsData.map((sLog) {
+            return amplify_models.Billings(
+              id: sLog['id']?.toString() ?? '',
+              client_name: sLog['client_name']?.toString(),
+              invoice_no: sLog['invoice_no']?.toString(),
+              date: sLog['date']?.toString(),
+              amount: sLog['amount']?.toString(),
+              type: sLog['type']?.toString(),
+              category: sLog['category']?.toString(),
+              authorities: sLog['authorities']?.toString(),
+              status: sLog['status']?.toString(),
+              created_at: sLog['created_at']?.toString(),
+              data: sLog['data']?.toString(),
+            );
+          }).toList();
+          
+          _overallBillings = [...amplifyBillings];
+          final existingIds = amplifyBillings.map((b) => b.id).toSet();
+          for (var legBill in legacyBillings) {
+            if (!existingIds.contains(legBill.id)) {
+              _overallBillings.add(legBill);
+            }
+          }
+          
           _isLoadingBillings = false;
         });
       }
@@ -116,6 +172,10 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
         break;
       case 'This Month':
         startDate = DateTime(today.year, today.month, 1);
+        break;
+      case 'Last Month':
+        startDate = DateTime(today.year, today.month - 1, 1);
+        endDate = DateTime(today.year, today.month, 0, 23, 59, 59);
         break;
       case 'All Time':
         startDate = DateTime(2000, 1, 1);
@@ -184,6 +244,39 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
         _msg('GraphQL Errors: ${uRes.errors.map((e) => e.message).join(", ")}', false);
       }
       var usersResRaw = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
+      
+      // Fallback for restrictive Amplify auth rules before backend deployment
+      if (usersResRaw.length <= 1) {
+        try {
+          final supabaseUsers = await SupabaseBackupService().getFullUsersData();
+          if (supabaseUsers.isNotEmpty) {
+            usersResRaw = supabaseUsers.map((su) => amplify_models.Users(
+              id: su['id']?.toString() ?? '',
+              name: su['name']?.toString(),
+              username: su['username']?.toString(),
+              email: su['email']?.toString(),
+              role: su['role']?.toString(),
+              designation: su['designation']?.toString(),
+              personal_phone: su['personal_phone']?.toString(),
+              aadhar_card: su['aadhar_card']?.toString(),
+              driving_license: su['driving_license']?.toString(),
+              insurance: su['insurance']?.toString(),
+              emergency_contact: su['emergency_contact']?.toString(),
+              offer_letter: su['offer_letter']?.toString(),
+              dob: su['dob']?.toString(),
+              salary: su['salary']?.toString(),
+              work_time: su['work_time']?.toString(),
+              blood_group: su['blood_group']?.toString(),
+              wedding_anniversary: su['wedding_anniversary']?.toString(),
+              personal_email: su['personal_email']?.toString(),
+              company_email: su['company_email']?.toString(),
+              company_phone: su['company_phone']?.toString(),
+            )).toList();
+          }
+        } catch (e) {
+          debugPrint('Failed to fetch fallback users from Supabase: $e');
+        }
+      }
       
       // Deduplicate users by username, prioritizing UUID-based IDs (Cognito)
       final Map<String, amplify_models.Users> uniqueUsers = {};
@@ -1240,6 +1333,24 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     final uRes = await Amplify.API.query(request: uReq).response;
     var usersResRaw = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
     
+    // Fallback for restrictive Amplify auth rules before backend deployment
+    if (usersResRaw.length <= 1) {
+      try {
+        final supabaseUsers = await SupabaseBackupService().getFullUsersData();
+        if (supabaseUsers.isNotEmpty) {
+          usersResRaw = supabaseUsers.map((su) => amplify_models.Users(
+            id: su['id']?.toString() ?? '',
+            name: su['name']?.toString(),
+            username: su['username']?.toString(),
+            email: su['email']?.toString(),
+            role: su['role']?.toString(),
+          )).toList();
+        }
+      } catch (e) {
+        debugPrint('Failed to fetch fallback users from Supabase: $e');
+      }
+    }
+    
     final Map<String, amplify_models.Users> uniqueUsers = {};
     for (var u in usersResRaw) {
       final name = (u.name ?? '').toLowerCase().trim();
@@ -1273,6 +1384,10 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
         break;
       case 'This Month':
         startDate = DateTime(today.year, today.month, 1);
+        break;
+      case 'Last Month':
+        startDate = DateTime(today.year, today.month - 1, 1);
+        endDate = DateTime(today.year, today.month, 0, 23, 59, 59);
         break;
       case 'All Time':
         startDate = DateTime(2000, 1, 1);
@@ -1381,7 +1496,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                     value: _timeTrackerPeriod,
                     underline: const SizedBox(),
                     icon: const Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
-                    items: ['Today', 'This Week', 'This Month', 'All Time', 'Custom'].map((String value) {
+                    items: ['Today', 'This Week', 'This Month', 'Last Month', 'All Time', 'Custom'].map((String value) {
                       String displayText = value;
                       if (value == 'Custom' && _timeTrackerPeriod == 'Custom' && _customDateRange != null) {
                         if (_customDateRange!.start.isAtSameMomentAs(_customDateRange!.end)) {
@@ -1610,7 +1725,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                     value: _hrDashboardPeriod,
                     underline: const SizedBox(),
                     icon: const Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
-                    items: ['Today', 'This Week', 'This Month', 'All Time', 'Custom'].map((String value) {
+                    items: ['Today', 'This Week', 'This Month', 'Last Month', 'All Time', 'Custom'].map((String value) {
                       String displayText = value;
                       if (value == 'Custom' && _hrDashboardPeriod == 'Custom' && _hrCustomDateRange != null) {
                         if (_hrCustomDateRange!.start.isAtSameMomentAs(_hrCustomDateRange!.end)) {
@@ -1659,6 +1774,31 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Starting full data migration... Please wait.')));
+                    final s = SupabaseBackupService();
+                    await s.importMissingClients();
+                    await s.importMissingDeals();
+                    await s.importMissingDocuments();
+                    await s.importMissingBillings();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Migration complete! Refreshing...')));
+                      _fetchOverallLogs();
+                      _fetchBillings();
+                    }
+                  },
+                  icon: const Icon(Icons.sync, size: 18),
+                  label: const Text('Sync Legacy Data'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent, 
+                    foregroundColor: Colors.white, 
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
               ],
             ),
           ],
@@ -1691,7 +1831,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
 
               int totalClientsCreated = filteredLogs.where((l) => l.action == 'CLIENT_CREATED').length;
               int totalWorkFilesCreated = filteredLogs.where((l) => ['WORK_CREATED', 'WORK_FILE_CREATED'].contains(l.action)).length;
-              int totalWorkStatusUpdated = filteredLogs.where((l) => l.action == 'WORK_UPDATED').length;
+              int totalWorkStatusUpdated = filteredLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED'].contains(l.action)).length;
               int totalFilesUploaded = filteredLogs.where((l) => l.action == 'FILE_UPLOADED').length;
               
               double totalBillAmountCreated = 0;
@@ -1846,7 +1986,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                     children: [
                       _buildMetricCard('Total Clients Created', totalClientsCreated.toString(), Icons.person_add, Colors.blue, onTap: () => _showMetricDetailsModal('Total Clients Created', filteredLogs.where((l) => l.action == 'CLIENT_CREATED').toList())),
                       _buildMetricCard('Total Work Files', totalWorkFilesCreated.toString(), Icons.folder, Colors.orange, onTap: () => _showMetricDetailsModal('Total Work Files', filteredLogs.where((l) => ['WORK_CREATED', 'WORK_FILE_CREATED'].contains(l.action)).toList())),
-                      _buildMetricCard('Total Work Updated', totalWorkStatusUpdated.toString(), Icons.update, Colors.purple, onTap: () => _showMetricDetailsModal('Total Work Updated', filteredLogs.where((l) => l.action == 'WORK_UPDATED').toList())),
+                      _buildMetricCard('Total Work Updated', totalWorkStatusUpdated.toString(), Icons.update, Colors.purple, onTap: () => _showMetricDetailsModal('Total Work Updated', filteredLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED'].contains(l.action)).toList())),
                       _buildMetricCard('Total Files Uploaded', totalFilesUploaded.toString(), Icons.upload_file, Colors.green, onTap: () => _showMetricDetailsModal('Total Files Uploaded', filteredLogs.where((l) => l.action == 'FILE_UPLOADED').toList())),
                       _buildMetricCard('Amount Created', _formatCurrency(totalBillAmountCreated), Icons.receipt, Colors.indigo, onTap: () => _showMetricDetailsModal('Bills Created', filteredLogs.where((l) => l.action == 'INVOICE_CREATED' && !quotationInvoiceNos.contains(l.target_id)).toList())),
                       _buildMetricCard('Amount Received', _formatCurrency(totalBillAmountReceived), Icons.account_balance_wallet, Colors.teal, onTap: () => _showMetricDetailsModal('Payments Recorded', filteredLogs.where((l) => l.action == 'INVOICE_PAYMENT').toList())),
@@ -2045,7 +2185,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
             
             int clientsCreated = userLogs.where((l) => l.action == 'CLIENT_CREATED').length;
             int workFilesCreated = userLogs.where((l) => ['WORK_CREATED', 'WORK_FILE_CREATED'].contains(l.action)).length;
-            int workStatusUpdated = userLogs.where((l) => l.action == 'WORK_UPDATED').length;
+            int workStatusUpdated = userLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED'].contains(l.action)).length;
             int filesUploaded = userLogs.where((l) => l.action == 'FILE_UPLOADED').length;
             
             final staffCreatedInvoiceNos = userLogs.where((l) => l.action == 'INVOICE_CREATED').map((l) => l.target_id).toSet();
@@ -2126,7 +2266,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                         const Text('Filter by Period:', style: TextStyle(fontWeight: FontWeight.bold)),
                         DropdownButton<String>(
                           value: period,
-                          items: ['Today', 'This Week', 'This Month', 'All Time', 'Custom'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                          items: ['Today', 'This Week', 'This Month', 'Last Month', 'All Time', 'Custom'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
                           onChanged: (val) async {
                             if (val == 'Custom') {
                               final picked = await showDateRangePicker(
@@ -2166,7 +2306,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                         children: [
                           _buildMetricCard('Clients Created', clientsCreated.toString(), Icons.person_add, Colors.blue, onTap: () => _showMetricDetailsModal('Clients Created', userLogs.where((l) => l.action == 'CLIENT_CREATED').toList())),
                           _buildMetricCard('Work Files Created', workFilesCreated.toString(), Icons.folder, Colors.orange, onTap: () => _showMetricDetailsModal('Work Files Created', userLogs.where((l) => ['WORK_CREATED', 'WORK_FILE_CREATED'].contains(l.action)).toList())),
-                          _buildMetricCard('Work Status Updated', workStatusUpdated.toString(), Icons.update, Colors.purple, onTap: () => _showMetricDetailsModal('Work Status Updated', userLogs.where((l) => l.action == 'WORK_UPDATED').toList())),
+                          _buildMetricCard('Work Status Updated', workStatusUpdated.toString(), Icons.update, Colors.purple, onTap: () => _showMetricDetailsModal('Work Status Updated', userLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED'].contains(l.action)).toList())),
                           _buildMetricCard('Files Uploaded', filesUploaded.toString(), Icons.upload_file, Colors.green, onTap: () => _showMetricDetailsModal('Files Uploaded', userLogs.where((l) => l.action == 'FILE_UPLOADED').toList())),
                           _buildMetricCard('Amount Created', _formatCurrency(staffAmountCreated), Icons.receipt, Colors.indigo, onTap: () => _showMetricDetailsModal('Bills Created', userLogs.where((l) => l.action == 'INVOICE_CREATED' && !staffQuotationInvoiceNos.contains(l.target_id)).toList())),
                           _buildMetricCard('Amount Received', _formatCurrency(staffAmountReceived), Icons.account_balance_wallet, Colors.teal, onTap: () => _showMetricDetailsModal('Payments Recorded', userLogs.where((l) => l.action == 'INVOICE_PAYMENT').toList())),

@@ -25,6 +25,7 @@ class LoggingService {
           target_type: targetType,
           target_id: targetId,
           details: details,
+          created_at: DateTime.now().toIso8601String(),
         );
         await BackupAwareApi().create(logEntry);
       }

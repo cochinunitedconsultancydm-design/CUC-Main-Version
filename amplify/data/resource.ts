@@ -317,7 +317,7 @@ const schema = a.schema({
     personal_email: a.string(),
     company_email: a.string(),
     company_phone: a.string(),
-  }).authorization((allow) => [allow.owner(), allow.groups(['Admin'])]),
+  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager', 'HR'])]),
   InwardPosts: a.model({
     id: a.id().required(),
     sender_name: a.string(),
@@ -339,7 +339,7 @@ const schema = a.schema({
     status: a.string(),
     active_seconds: a.integer(),
     idle_seconds: a.integer(),
-  }).authorization((allow) => [allow.owner(), allow.groups(['Admin'])]),
+  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager', 'HR'])]),
   Checklists: a.model({
     id: a.id().required(),
     title: a.string(),

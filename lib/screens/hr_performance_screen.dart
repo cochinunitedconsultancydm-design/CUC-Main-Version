@@ -72,7 +72,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     if (!mounted) return;
     setState(() => _isLoadingOverallLogs = true);
     try {
-      final req = ModelQueries.list(amplify_models.ActivityLogs.classType, limit: 10000);
+      final req = ModelQueries.list(amplify_models.ActivityLogs.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools);
       final res = await Amplify.API.query(request: req).response;
       
       final supabaseLogsData = await SupabaseBackupService().getActivityLogs();
@@ -118,7 +118,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     if (!mounted) return;
     setState(() => _isLoadingBillings = true);
     try {
-      final req = ModelQueries.list(amplify_models.Billings.classType, limit: 10000);
+      final req = ModelQueries.list(amplify_models.Billings.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools);
       final res = await Amplify.API.query(request: req).response;
       
       final supabaseBillingsData = await SupabaseBackupService().getBillings();
@@ -201,7 +201,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     if (!mounted) return;
     setState(() => _isLoadingAttendance = true);
     try {
-      final req = ModelQueries.list(amplify_models.StaffAttendance.classType, limit: 10000);
+      final req = ModelQueries.list(amplify_models.StaffAttendance.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools);
       final res = await Amplify.API.query(request: req).response;
       var att = (res.data?.items ?? []).whereType<amplify_models.StaffAttendance>().toList() ?? [];
       if (mounted) {
@@ -238,7 +238,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     if (!mounted) return;
     setState(() => _isLoadingDirectory = true);
     try {
-      final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
+      final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools);
       final uRes = await Amplify.API.query(request: uReq).response;
       if (uRes.hasErrors) {
         _msg('GraphQL Errors: ${uRes.errors.map((e) => e.message).join(", ")}', false);
@@ -286,18 +286,18 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
           uniqueUsers[u.id] = u; // Keep if no name
           continue;
         }
-        var firstName = name.split(' ')[0];
-        if (firstName == 'jithasree') firstName = 'jitha';
+        var key = (u.username ?? u.email ?? name).toLowerCase().trim();
+        if (key.contains('jithasree')) key = 'jitha';
         
-        if (uniqueUsers.containsKey(firstName)) {
-          final existing = uniqueUsers[firstName]!;
+        if (uniqueUsers.containsKey(key)) {
+          final existing = uniqueUsers[key]!;
           final isNewUuid = u.id.contains('-');
           final isExistingUuid = existing.id.contains('-');
           if (isNewUuid && !isExistingUuid) {
-            uniqueUsers[firstName] = u;
+            uniqueUsers[key] = u;
           }
         } else {
-          uniqueUsers[firstName] = u;
+          uniqueUsers[key] = u;
         }
       }
       var usersRes = uniqueUsers.values.toList();
@@ -308,7 +308,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
         return (a.name ?? '').compareTo(b.name ?? '');
       });
       
-      final sReq = ModelQueries.list(amplify_models.UserSessions.classType, limit: 10000);
+      final sReq = ModelQueries.list(amplify_models.UserSessions.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools);
       final sRes = await Amplify.API.query(request: sReq).response;
       var sessionsRes = (sRes.data?.items ?? []).whereType<amplify_models.UserSessions>().toList() ?? [];
       
@@ -939,7 +939,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                               await BackupAwareApi().create(newUser);
                               await LoggingService().logAction(action: 'CREATE_STAFF', targetType: 'Staff', targetId: username.text, details: 'Added new staff member: ${name.text}');
                             } else {
-                              final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()), limit: 10000);
+                              final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()), limit: 10000, authorizationMode: APIAuthorizationType.userPools);
                               final res = await Amplify.API.query(request: req).response;
                               if (res.data?.items.isNotEmpty == true) {
                                 final existing = res.data!.items.first!;
@@ -1026,7 +1026,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                 try {
                   // SECURITY: Hash password before storing
                   final hashedPassword = SecurityService().hashPassword(passController.text);
-                  final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()), limit: 10000);
+                  final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()), limit: 10000, authorizationMode: APIAuthorizationType.userPools);
                   final res = await Amplify.API.query(request: req).response;
                   if (res.data?.items.isNotEmpty == true) {
                     final existing = res.data!.items.first!;
@@ -1061,7 +1061,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     ));
     if (ok == true) {
       try {
-        final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(id.toString()), limit: 10000);
+        final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(id.toString()), limit: 10000, authorizationMode: APIAuthorizationType.userPools);
         final res = await Amplify.API.query(request: req).response;
         if (res.data?.items.isNotEmpty == true) {
           await BackupAwareApi().delete(res.data!.items.first!);
@@ -1329,7 +1329,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _fetchStaffTimeStats() async {
-    final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
+    final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools);
     final uRes = await Amplify.API.query(request: uReq).response;
     var usersResRaw = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
     
@@ -1404,7 +1404,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
         break;
     }
     
-    final sReq = ModelQueries.list(amplify_models.UserSessions.classType, limit: 10000);
+    final sReq = ModelQueries.list(amplify_models.UserSessions.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools);
     final sRes = await Amplify.API.query(request: sReq).response;
     var allSessions = (sRes.data?.items ?? []).whereType<amplify_models.UserSessions>().toList() ?? [];
     
@@ -2390,3 +2390,4 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     );
   }
 }
+

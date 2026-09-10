@@ -7,6 +7,7 @@ import '../models/ModelProvider.dart' as amplify_models;
 import '../models/task.dart';
 import '../theme.dart';
 import '../services/notification_service.dart';
+import '../services/logging_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 
@@ -59,6 +60,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         );
 
         await BackupAwareApi().update(updatedAmplifyTask);
+        await LoggingService().logAction(action: 'TASK_STATUS_UPDATED', targetType: 'Task', targetId: _task.id.toString(), details: 'Status changed to $newStatus for "${_task.title}"');
 
         // Re-fetch to get joined user data for UI mapping
         final fetchedUpdatedTask = await _fetchTask(_task.id.toString());

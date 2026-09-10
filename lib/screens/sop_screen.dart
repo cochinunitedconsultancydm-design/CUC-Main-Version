@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import 'dart:convert';
 import '../services/backup_aware_api.dart';
+import '../services/logging_service.dart';
 import '../theme.dart';
 
 class SopScreen extends StatefulWidget {
@@ -101,6 +102,7 @@ class _SopScreenState extends State<SopScreen> {
   Future<void> _deleteSop(ServiceContent sop) async {
     try {
       await BackupAwareApi().delete(sop);
+      await LoggingService().logAction(action: 'SOP_DELETED', targetType: 'SOP', targetId: sop.id, details: 'Deleted SOP: ${sop.title}');
       _fetchSops();
     } catch (e) {
       if (mounted) {
@@ -355,8 +357,10 @@ class _SopScreenState extends State<SopScreen> {
 
                                     if (sop == null) {
                                       await BackupAwareApi().create(newSop);
+                                      await LoggingService().logAction(action: 'SOP_CREATED', targetType: 'SOP', targetId: newSop.id, details: 'Created SOP: ${titleController.text.trim()}');
                                     } else {
                                       await BackupAwareApi().update(newSop);
+                                      await LoggingService().logAction(action: 'SOP_UPDATED', targetType: 'SOP', targetId: newSop.id, details: 'Updated SOP: ${titleController.text.trim()}');
                                     }
                                     
                                     if (mounted) {

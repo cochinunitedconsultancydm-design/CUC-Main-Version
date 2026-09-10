@@ -4,6 +4,7 @@ import '../models/ModelProvider.dart';
 import '../models/checklist.dart' as old;
 import 'auth_service.dart';
 import 'notification_service.dart';
+import 'logging_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 
@@ -119,6 +120,7 @@ class ChecklistService {
           type: 'checklist',
         );
       }
+      await LoggingService().logAction(action: 'CHECKLIST_CREATED', targetType: 'Checklist', targetId: checklistId?.toString(), details: 'Created checklist: ${checklist.title}');
       return checklistId;
     } catch (e) {
       safePrint('Error createChecklist: $e');
@@ -158,6 +160,7 @@ class ChecklistService {
       );
       
       await BackupAwareApi().update(updated);
+      await LoggingService().logAction(action: 'CHECKLIST_STATUS_UPDATED', targetType: 'Checklist', targetId: id.toString(), details: 'Checklist "${c.title}" status changed to $status');
 
       if (c.manager_id != null) {
         String responsibleName = 'Staff';
@@ -263,6 +266,7 @@ class ChecklistService {
       );
       
       await BackupAwareApi().update(updated);
+      await LoggingService().logAction(action: 'CHECKLIST_UPDATED', targetType: 'Checklist', targetId: checklist.id.toString(), details: 'Updated checklist: ${checklist.title}');
     } catch (e) {
       safePrint('Error updateChecklist: $e');
       rethrow;
@@ -273,6 +277,7 @@ class ChecklistService {
     try {
       await BackupAwareApi().deleteById(Checklists.classType, ChecklistsModelIdentifier(id: id.toString())
       );
+      await LoggingService().logAction(action: 'CHECKLIST_DELETED', targetType: 'Checklist', targetId: id.toString(), details: 'Deleted checklist');
     } catch (e) {
       safePrint('Error deleteChecklist: $e');
       rethrow;

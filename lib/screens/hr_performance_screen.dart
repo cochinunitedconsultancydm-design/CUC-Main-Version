@@ -1830,9 +1830,22 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
               }).toList();
 
               int totalClientsCreated = filteredLogs.where((l) => l.action == 'CLIENT_CREATED').length;
-              int totalWorkFilesCreated = filteredLogs.where((l) => ['WORK_CREATED', 'WORK_FILE_CREATED'].contains(l.action)).length;
-              int totalWorkStatusUpdated = filteredLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED'].contains(l.action)).length;
+              int totalWorkFilesCreated = filteredLogs.where((l) => ['WORK_CREATED', 'WORK_FILE_CREATED', 'SUB_WORK_CREATED'].contains(l.action)).length;
+              int totalWorkStatusUpdated = filteredLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED', 'WORK_FILE_UPDATED', 'WORK_FILE_HANDOVER'].contains(l.action)).length;
               int totalFilesUploaded = filteredLogs.where((l) => l.action == 'FILE_UPLOADED').length;
+              int totalTasksManaged = filteredLogs.where((l) => ['TASK_CREATED', 'TASK_UPDATED', 'TASK_SYNC_CREATED', 'TASK_DELETED', 'TASK_STATUS_UPDATED'].contains(l.action)).length;
+              int totalSignatures = filteredLogs.where((l) => ['SIGNATURE_CREATED', 'SIGNATURE_UPDATED'].contains(l.action)).length;
+              int totalReminders = filteredLogs.where((l) => ['REMINDER_CREATED', 'MOBILE_RECHARGE_REMINDER_CREATED'].contains(l.action)).length;
+              int totalServices = filteredLogs.where((l) => ['SERVICE_CREATED', 'SERVICE_UPDATED', 'SERVICE_IMPORTED', 'SERVICE_DELETED'].contains(l.action)).length;
+              int totalAdminOps = filteredLogs.where((l) => ['PROPERTY_CREATED', 'PROPERTY_UPDATED', 'PROPERTY_DELETED', 'INWARD_POST_CREATED', 'INWARD_POST_CONFIRMED', 'COMPANY_BILL_CREATED', 'COMPANY_BILL_UPDATED', 'CONTACT_DELETED', 'OFFICE_LOCATION_DELETED', 'CREATE_STAFF', 'UPDATE_STAFF', 'RESET_PASSWORD', 'DELETE_STAFF'].contains(l.action)).length;
+              int totalSops = filteredLogs.where((l) => ['SOP_CREATED', 'SOP_UPDATED', 'SOP_DELETED'].contains(l.action)).length;
+              int totalLicenses = filteredLogs.where((l) => ['LICENSE_CREATED', 'LICENSE_RENEWED', 'LICENSE_UPDATED', 'LICENSE_DELETED'].contains(l.action)).length;
+              int totalChecklists = filteredLogs.where((l) => ['CHECKLIST_CREATED', 'CHECKLIST_STATUS_UPDATED', 'CHECKLIST_UPDATED', 'CHECKLIST_DELETED'].contains(l.action)).length;
+              // Auth logs (LOGIN, LOGOUT, CLIENT_LOGIN) are excluded from staff work metrics
+              const _authActions = {'LOGIN', 'LOGOUT', 'CLIENT_LOGIN'};
+              final nonAuthLogs = filteredLogs.where((l) => !_authActions.contains(l.action)).toList();
+              int totalCategorized = totalClientsCreated + totalWorkFilesCreated + totalWorkStatusUpdated + totalFilesUploaded + totalTasksManaged + totalSignatures + totalReminders + totalServices + totalAdminOps + totalSops + totalLicenses + totalChecklists + filteredLogs.where((l) => ['INVOICE_CREATED', 'INVOICE_PAYMENT'].contains(l.action)).length;
+              int totalOtherActivities = nonAuthLogs.length - totalCategorized;
               
               double totalBillAmountCreated = 0;
               double totalBillAmountReceived = 0;
@@ -1898,6 +1911,9 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                 final name = (user['name'] ?? '').toString().toLowerCase();
                 
                 int? uid = _usernameToIdMap[uname] ?? _usernameToIdMap[email];
+                if (name.contains('jayan') || uname.contains('jayan')) {
+                  uid ??= _usernameToIdMap['vp'] ?? _usernameToIdMap['jayan&midhun'] ?? _usernameToIdMap['jayan'];
+                }
                 if (uid == null) {
                   uid = _usernameToIdMap[name] ?? _usernameToIdMap[name.replaceAll(' ', '')];
                   if (uid == null) {
@@ -1985,13 +2001,26 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                     childAspectRatio: isWide ? 3.0 : 2.0,
                     children: [
                       _buildMetricCard('Total Clients Created', totalClientsCreated.toString(), Icons.person_add, Colors.blue, onTap: () => _showMetricDetailsModal('Total Clients Created', filteredLogs.where((l) => l.action == 'CLIENT_CREATED').toList())),
-                      _buildMetricCard('Total Work Files', totalWorkFilesCreated.toString(), Icons.folder, Colors.orange, onTap: () => _showMetricDetailsModal('Total Work Files', filteredLogs.where((l) => ['WORK_CREATED', 'WORK_FILE_CREATED'].contains(l.action)).toList())),
-                      _buildMetricCard('Total Work Updated', totalWorkStatusUpdated.toString(), Icons.update, Colors.purple, onTap: () => _showMetricDetailsModal('Total Work Updated', filteredLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED'].contains(l.action)).toList())),
+                      _buildMetricCard('Total Work Files', totalWorkFilesCreated.toString(), Icons.folder, Colors.orange, onTap: () => _showMetricDetailsModal('Total Work Files', filteredLogs.where((l) => ['WORK_CREATED', 'WORK_FILE_CREATED', 'SUB_WORK_CREATED'].contains(l.action)).toList())),
+                      _buildMetricCard('Total Work Updated', totalWorkStatusUpdated.toString(), Icons.update, Colors.purple, onTap: () => _showMetricDetailsModal('Total Work Updated', filteredLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED', 'WORK_FILE_UPDATED', 'WORK_FILE_HANDOVER'].contains(l.action)).toList())),
                       _buildMetricCard('Total Files Uploaded', totalFilesUploaded.toString(), Icons.upload_file, Colors.green, onTap: () => _showMetricDetailsModal('Total Files Uploaded', filteredLogs.where((l) => l.action == 'FILE_UPLOADED').toList())),
+                      _buildMetricCard('Tasks Managed', totalTasksManaged.toString(), Icons.assignment, Colors.deepOrange, onTap: () => _showMetricDetailsModal('Tasks Managed', filteredLogs.where((l) => ['TASK_CREATED', 'TASK_UPDATED', 'TASK_SYNC_CREATED', 'TASK_DELETED', 'TASK_STATUS_UPDATED'].contains(l.action)).toList())),
+                      _buildMetricCard('Signatures Managed', totalSignatures.toString(), Icons.vpn_key, Colors.amber, onTap: () => _showMetricDetailsModal('Signatures Managed', filteredLogs.where((l) => ['SIGNATURE_CREATED', 'SIGNATURE_UPDATED'].contains(l.action)).toList())),
+                      _buildMetricCard('Reminders Set', totalReminders.toString(), Icons.alarm, Colors.deepPurple, onTap: () => _showMetricDetailsModal('Reminders Set', filteredLogs.where((l) => ['REMINDER_CREATED', 'MOBILE_RECHARGE_REMINDER_CREATED'].contains(l.action)).toList())),
+                      _buildMetricCard('Services Managed', totalServices.toString(), Icons.design_services, Colors.pink, onTap: () => _showMetricDetailsModal('Services Managed', filteredLogs.where((l) => ['SERVICE_CREATED', 'SERVICE_UPDATED', 'SERVICE_IMPORTED', 'SERVICE_DELETED'].contains(l.action)).toList())),
+                      _buildMetricCard('SOPs Managed', totalSops.toString(), Icons.menu_book, Colors.brown, onTap: () => _showMetricDetailsModal('SOPs Managed', filteredLogs.where((l) => ['SOP_CREATED', 'SOP_UPDATED', 'SOP_DELETED'].contains(l.action)).toList())),
+                      _buildMetricCard('Licenses Managed', totalLicenses.toString(), Icons.badge, Colors.lime.shade800, onTap: () => _showMetricDetailsModal('Licenses Managed', filteredLogs.where((l) => ['LICENSE_CREATED', 'LICENSE_RENEWED', 'LICENSE_UPDATED', 'LICENSE_DELETED'].contains(l.action)).toList())),
+                      _buildMetricCard('Checklists Managed', totalChecklists.toString(), Icons.checklist, Colors.lightBlue, onTap: () => _showMetricDetailsModal('Checklists Managed', filteredLogs.where((l) => ['CHECKLIST_CREATED', 'CHECKLIST_STATUS_UPDATED', 'CHECKLIST_UPDATED', 'CHECKLIST_DELETED'].contains(l.action)).toList())),
+                      _buildMetricCard('Admin & Misc Ops', totalAdminOps.toString(), Icons.admin_panel_settings, Colors.blueGrey, onTap: () => _showMetricDetailsModal('Admin & Misc Ops', filteredLogs.where((l) => ['PROPERTY_CREATED', 'PROPERTY_UPDATED', 'PROPERTY_DELETED', 'INWARD_POST_CREATED', 'INWARD_POST_CONFIRMED', 'COMPANY_BILL_CREATED', 'COMPANY_BILL_UPDATED', 'CONTACT_DELETED', 'OFFICE_LOCATION_DELETED', 'CREATE_STAFF', 'UPDATE_STAFF', 'RESET_PASSWORD', 'DELETE_STAFF'].contains(l.action)).toList())),
                       _buildMetricCard('Amount Created', _formatCurrency(totalBillAmountCreated), Icons.receipt, Colors.indigo, onTap: () => _showMetricDetailsModal('Bills Created', filteredLogs.where((l) => l.action == 'INVOICE_CREATED' && !quotationInvoiceNos.contains(l.target_id)).toList())),
                       _buildMetricCard('Amount Received', _formatCurrency(totalBillAmountReceived), Icons.account_balance_wallet, Colors.teal, onTap: () => _showMetricDetailsModal('Payments Recorded', filteredLogs.where((l) => l.action == 'INVOICE_PAYMENT').toList())),
                       _buildMetricCard('Pending Bills', _formatCurrency(totalPending), Icons.pending_actions, Colors.redAccent, onTap: () => _showMetricDetailsModal('Pending Bills', filteredLogs.where((l) => l.action == 'INVOICE_CREATED' && pendingInvoiceNos.contains(l.target_id)).toList())),
                       _buildMetricCard('Quotations Value', _formatCurrency(totalQuotationAmount), Icons.request_quote, Colors.cyan, onTap: () => _showMetricDetailsModal('Quotations Created', filteredLogs.where((l) => l.action == 'INVOICE_CREATED' && quotationInvoiceNos.contains(l.target_id)).toList())),
+                      if (totalOtherActivities > 0)
+                        _buildMetricCard('Other Activities', totalOtherActivities.toString(), Icons.more_horiz, Colors.grey, onTap: () {
+                          const _knownActions = {'CLIENT_CREATED', 'WORK_CREATED', 'WORK_FILE_CREATED', 'SUB_WORK_CREATED', 'DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED', 'WORK_FILE_UPDATED', 'WORK_FILE_HANDOVER', 'FILE_UPLOADED', 'TASK_CREATED', 'TASK_UPDATED', 'TASK_SYNC_CREATED', 'TASK_DELETED', 'TASK_STATUS_UPDATED', 'SIGNATURE_CREATED', 'SIGNATURE_UPDATED', 'REMINDER_CREATED', 'MOBILE_RECHARGE_REMINDER_CREATED', 'SERVICE_CREATED', 'SERVICE_UPDATED', 'SERVICE_IMPORTED', 'SERVICE_DELETED', 'PROPERTY_CREATED', 'PROPERTY_UPDATED', 'PROPERTY_DELETED', 'INWARD_POST_CREATED', 'INWARD_POST_CONFIRMED', 'COMPANY_BILL_CREATED', 'COMPANY_BILL_UPDATED', 'CONTACT_DELETED', 'OFFICE_LOCATION_DELETED', 'CREATE_STAFF', 'UPDATE_STAFF', 'RESET_PASSWORD', 'DELETE_STAFF', 'SOP_CREATED', 'SOP_UPDATED', 'SOP_DELETED', 'LICENSE_CREATED', 'LICENSE_RENEWED', 'LICENSE_UPDATED', 'LICENSE_DELETED', 'CHECKLIST_CREATED', 'CHECKLIST_STATUS_UPDATED', 'CHECKLIST_UPDATED', 'CHECKLIST_DELETED', 'INVOICE_CREATED', 'INVOICE_PAYMENT', 'LOGIN', 'LOGOUT', 'CLIENT_LOGIN'};
+                          _showMetricDetailsModal('Other Activities', nonAuthLogs.where((l) => !_knownActions.contains(l.action)).toList());
+                        }),
                     ],
                   ),
                 ],
@@ -2120,6 +2149,9 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     int? supabaseUserId;
     if (uname.isNotEmpty) supabaseUserId = _usernameToIdMap[uname];
     if (supabaseUserId == null && email.isNotEmpty) supabaseUserId = _usernameToIdMap[email];
+    if (name.contains('jayan') || uname.contains('jayan')) {
+      supabaseUserId ??= _usernameToIdMap['vp'] ?? _usernameToIdMap['jayan&midhun'] ?? _usernameToIdMap['jayan'];
+    }
     if (supabaseUserId == null && name.isNotEmpty) {
       supabaseUserId = _usernameToIdMap[name] ?? _usernameToIdMap[name.replaceAll(' ', '')];
       if (supabaseUserId == null) {
@@ -2184,9 +2216,21 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
             }
             
             int clientsCreated = userLogs.where((l) => l.action == 'CLIENT_CREATED').length;
-            int workFilesCreated = userLogs.where((l) => ['WORK_CREATED', 'WORK_FILE_CREATED'].contains(l.action)).length;
-            int workStatusUpdated = userLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED'].contains(l.action)).length;
+            int workFilesCreated = userLogs.where((l) => ['WORK_CREATED', 'WORK_FILE_CREATED', 'SUB_WORK_CREATED'].contains(l.action)).length;
+            int workStatusUpdated = userLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED', 'WORK_FILE_UPDATED', 'WORK_FILE_HANDOVER'].contains(l.action)).length;
             int filesUploaded = userLogs.where((l) => l.action == 'FILE_UPLOADED').length;
+            int tasksManaged = userLogs.where((l) => ['TASK_CREATED', 'TASK_UPDATED', 'TASK_SYNC_CREATED', 'TASK_DELETED', 'TASK_STATUS_UPDATED'].contains(l.action)).length;
+            int signaturesManaged = userLogs.where((l) => ['SIGNATURE_CREATED', 'SIGNATURE_UPDATED'].contains(l.action)).length;
+            int remindersSet = userLogs.where((l) => ['REMINDER_CREATED', 'MOBILE_RECHARGE_REMINDER_CREATED'].contains(l.action)).length;
+            int servicesManaged = userLogs.where((l) => ['SERVICE_CREATED', 'SERVICE_UPDATED', 'SERVICE_IMPORTED', 'SERVICE_DELETED'].contains(l.action)).length;
+            int adminOps = userLogs.where((l) => ['PROPERTY_CREATED', 'PROPERTY_UPDATED', 'PROPERTY_DELETED', 'INWARD_POST_CREATED', 'INWARD_POST_CONFIRMED', 'COMPANY_BILL_CREATED', 'COMPANY_BILL_UPDATED', 'CONTACT_DELETED', 'OFFICE_LOCATION_DELETED', 'CREATE_STAFF', 'UPDATE_STAFF', 'RESET_PASSWORD', 'DELETE_STAFF'].contains(l.action)).length;
+            int sopsManaged = userLogs.where((l) => ['SOP_CREATED', 'SOP_UPDATED', 'SOP_DELETED'].contains(l.action)).length;
+            int licensesManaged = userLogs.where((l) => ['LICENSE_CREATED', 'LICENSE_RENEWED', 'LICENSE_UPDATED', 'LICENSE_DELETED'].contains(l.action)).length;
+            int checklistsManaged = userLogs.where((l) => ['CHECKLIST_CREATED', 'CHECKLIST_STATUS_UPDATED', 'CHECKLIST_UPDATED', 'CHECKLIST_DELETED'].contains(l.action)).length;
+            const _authActions = {'LOGIN', 'LOGOUT', 'CLIENT_LOGIN'};
+            final userNonAuthLogs = userLogs.where((l) => !_authActions.contains(l.action)).toList();
+            int userCategorized = clientsCreated + workFilesCreated + workStatusUpdated + filesUploaded + tasksManaged + signaturesManaged + remindersSet + servicesManaged + adminOps + sopsManaged + licensesManaged + checklistsManaged + userLogs.where((l) => ['INVOICE_CREATED', 'INVOICE_PAYMENT'].contains(l.action)).length;
+            int userOtherActivities = userNonAuthLogs.length - userCategorized;
             
             final staffCreatedInvoiceNos = userLogs.where((l) => l.action == 'INVOICE_CREATED').map((l) => l.target_id).toSet();
             final staffBillings = _overallBillings.where((b) => staffCreatedInvoiceNos.contains(b.invoice_no)).toList();
@@ -2305,13 +2349,26 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                         childAspectRatio: 2.5,
                         children: [
                           _buildMetricCard('Clients Created', clientsCreated.toString(), Icons.person_add, Colors.blue, onTap: () => _showMetricDetailsModal('Clients Created', userLogs.where((l) => l.action == 'CLIENT_CREATED').toList())),
-                          _buildMetricCard('Work Files Created', workFilesCreated.toString(), Icons.folder, Colors.orange, onTap: () => _showMetricDetailsModal('Work Files Created', userLogs.where((l) => ['WORK_CREATED', 'WORK_FILE_CREATED'].contains(l.action)).toList())),
-                          _buildMetricCard('Work Status Updated', workStatusUpdated.toString(), Icons.update, Colors.purple, onTap: () => _showMetricDetailsModal('Work Status Updated', userLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED'].contains(l.action)).toList())),
+                          _buildMetricCard('Work Files Created', workFilesCreated.toString(), Icons.folder, Colors.orange, onTap: () => _showMetricDetailsModal('Work Files Created', userLogs.where((l) => ['WORK_CREATED', 'WORK_FILE_CREATED', 'SUB_WORK_CREATED'].contains(l.action)).toList())),
+                          _buildMetricCard('Work Status Updated', workStatusUpdated.toString(), Icons.update, Colors.purple, onTap: () => _showMetricDetailsModal('Work Status Updated', userLogs.where((l) => ['DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED', 'WORK_FILE_UPDATED', 'WORK_FILE_HANDOVER'].contains(l.action)).toList())),
                           _buildMetricCard('Files Uploaded', filesUploaded.toString(), Icons.upload_file, Colors.green, onTap: () => _showMetricDetailsModal('Files Uploaded', userLogs.where((l) => l.action == 'FILE_UPLOADED').toList())),
+                          _buildMetricCard('Tasks Managed', tasksManaged.toString(), Icons.assignment, Colors.deepOrange, onTap: () => _showMetricDetailsModal('Tasks Managed', userLogs.where((l) => ['TASK_CREATED', 'TASK_UPDATED', 'TASK_SYNC_CREATED', 'TASK_DELETED', 'TASK_STATUS_UPDATED'].contains(l.action)).toList())),
+                          _buildMetricCard('Signatures Managed', signaturesManaged.toString(), Icons.vpn_key, Colors.amber, onTap: () => _showMetricDetailsModal('Signatures Managed', userLogs.where((l) => ['SIGNATURE_CREATED', 'SIGNATURE_UPDATED'].contains(l.action)).toList())),
+                          _buildMetricCard('Reminders Set', remindersSet.toString(), Icons.alarm, Colors.deepPurple, onTap: () => _showMetricDetailsModal('Reminders Set', userLogs.where((l) => ['REMINDER_CREATED', 'MOBILE_RECHARGE_REMINDER_CREATED'].contains(l.action)).toList())),
+                          _buildMetricCard('Services Managed', servicesManaged.toString(), Icons.design_services, Colors.pink, onTap: () => _showMetricDetailsModal('Services Managed', userLogs.where((l) => ['SERVICE_CREATED', 'SERVICE_UPDATED', 'SERVICE_IMPORTED', 'SERVICE_DELETED'].contains(l.action)).toList())),
+                          _buildMetricCard('SOPs Managed', sopsManaged.toString(), Icons.menu_book, Colors.brown, onTap: () => _showMetricDetailsModal('SOPs Managed', userLogs.where((l) => ['SOP_CREATED', 'SOP_UPDATED', 'SOP_DELETED'].contains(l.action)).toList())),
+                          _buildMetricCard('Licenses Managed', licensesManaged.toString(), Icons.badge, Colors.lime.shade800, onTap: () => _showMetricDetailsModal('Licenses Managed', userLogs.where((l) => ['LICENSE_CREATED', 'LICENSE_RENEWED', 'LICENSE_UPDATED', 'LICENSE_DELETED'].contains(l.action)).toList())),
+                          _buildMetricCard('Checklists Managed', checklistsManaged.toString(), Icons.checklist, Colors.lightBlue, onTap: () => _showMetricDetailsModal('Checklists Managed', userLogs.where((l) => ['CHECKLIST_CREATED', 'CHECKLIST_STATUS_UPDATED', 'CHECKLIST_UPDATED', 'CHECKLIST_DELETED'].contains(l.action)).toList())),
+                          _buildMetricCard('Admin & Misc Ops', adminOps.toString(), Icons.admin_panel_settings, Colors.blueGrey, onTap: () => _showMetricDetailsModal('Admin & Misc Ops', userLogs.where((l) => ['PROPERTY_CREATED', 'PROPERTY_UPDATED', 'PROPERTY_DELETED', 'INWARD_POST_CREATED', 'INWARD_POST_CONFIRMED', 'COMPANY_BILL_CREATED', 'COMPANY_BILL_UPDATED', 'CONTACT_DELETED', 'OFFICE_LOCATION_DELETED', 'CREATE_STAFF', 'UPDATE_STAFF', 'RESET_PASSWORD', 'DELETE_STAFF'].contains(l.action)).toList())),
                           _buildMetricCard('Amount Created', _formatCurrency(staffAmountCreated), Icons.receipt, Colors.indigo, onTap: () => _showMetricDetailsModal('Bills Created', userLogs.where((l) => l.action == 'INVOICE_CREATED' && !staffQuotationInvoiceNos.contains(l.target_id)).toList())),
                           _buildMetricCard('Amount Received', _formatCurrency(staffAmountReceived), Icons.account_balance_wallet, Colors.teal, onTap: () => _showMetricDetailsModal('Payments Recorded', userLogs.where((l) => l.action == 'INVOICE_PAYMENT').toList())),
                           _buildMetricCard('Pending Bills', _formatCurrency(staffPending), Icons.pending_actions, Colors.redAccent, onTap: () => _showMetricDetailsModal('Pending Bills', userLogs.where((l) => l.action == 'INVOICE_CREATED' && staffPendingInvoiceNos.contains(l.target_id)).toList())),
                           _buildMetricCard('Quotations Value', _formatCurrency(staffQuotationAmount), Icons.request_quote, Colors.cyan, onTap: () => _showMetricDetailsModal('Quotations Created', userLogs.where((l) => l.action == 'INVOICE_CREATED' && staffQuotationInvoiceNos.contains(l.target_id)).toList())),
+                          if (userOtherActivities > 0)
+                            _buildMetricCard('Other Activities', userOtherActivities.toString(), Icons.more_horiz, Colors.grey, onTap: () {
+                              const _knownActions = {'CLIENT_CREATED', 'WORK_CREATED', 'WORK_FILE_CREATED', 'SUB_WORK_CREATED', 'DRAFT_SHARED', 'DRAFT_VERIFIED', 'WORK_SENT_TO_VERIFICATION', 'WORK_COMPLETED', 'WORK_UPDATED', 'WORK_FILE_UPDATED', 'WORK_FILE_HANDOVER', 'FILE_UPLOADED', 'TASK_CREATED', 'TASK_UPDATED', 'TASK_SYNC_CREATED', 'TASK_DELETED', 'TASK_STATUS_UPDATED', 'SIGNATURE_CREATED', 'SIGNATURE_UPDATED', 'REMINDER_CREATED', 'MOBILE_RECHARGE_REMINDER_CREATED', 'SERVICE_CREATED', 'SERVICE_UPDATED', 'SERVICE_IMPORTED', 'SERVICE_DELETED', 'PROPERTY_CREATED', 'PROPERTY_UPDATED', 'PROPERTY_DELETED', 'INWARD_POST_CREATED', 'INWARD_POST_CONFIRMED', 'COMPANY_BILL_CREATED', 'COMPANY_BILL_UPDATED', 'CONTACT_DELETED', 'OFFICE_LOCATION_DELETED', 'CREATE_STAFF', 'UPDATE_STAFF', 'RESET_PASSWORD', 'DELETE_STAFF', 'SOP_CREATED', 'SOP_UPDATED', 'SOP_DELETED', 'LICENSE_CREATED', 'LICENSE_RENEWED', 'LICENSE_UPDATED', 'LICENSE_DELETED', 'CHECKLIST_CREATED', 'CHECKLIST_STATUS_UPDATED', 'CHECKLIST_UPDATED', 'CHECKLIST_DELETED', 'INVOICE_CREATED', 'INVOICE_PAYMENT', 'LOGIN', 'LOGOUT', 'CLIENT_LOGIN'};
+                              _showMetricDetailsModal('Other Activities', userNonAuthLogs.where((l) => !_knownActions.contains(l.action)).toList());
+                            }),
                         ],
                       ),
                   ],

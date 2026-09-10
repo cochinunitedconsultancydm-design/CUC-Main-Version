@@ -9,6 +9,7 @@ import '../services/excel_service.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import 'package:cuc_app/services/backup_aware_api.dart';
+import '../services/logging_service.dart';
 import '../screens/client_files_dialog.dart';
 import '../models/client.dart';
 
@@ -393,6 +394,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
           manual_client_name: license.manualClientName,
         );
         await BackupAwareApi().create(newLicense);
+        await LoggingService().logAction(action: 'LICENSE_RENEWED', targetType: 'License', targetId: newLicense.id, details: 'Renewed license ${license.fileNo} for ${license.clientName ?? license.manualClientName}');
         _fetchLicenses();
         _showSuccess('License renewed successfully');
       } catch (e) {
@@ -436,6 +438,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
           status: 'Not Interested'
         );
         await BackupAwareApi().update(updatedModel);
+        await LoggingService().logAction(action: 'LICENSE_UPDATED', targetType: 'License', targetId: license.id.toString(), details: 'Marked license ${license.fileNo} as Not Interested');
         _fetchLicenses();
         _showSuccess('License marked as Not Interested');
       } catch (e) {
@@ -464,6 +467,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
     if (confirmed == true) {
       try {
         await BackupAwareApi().deleteById(amplify_models.ClientLicenses.classType, amplify_models.ClientLicensesModelIdentifier(id: id));
+        await LoggingService().logAction(action: 'LICENSE_DELETED', targetType: 'License', targetId: id, details: 'Deleted license record');
         _fetchLicenses();
         _showSuccess('License deleted successfully');
       } catch (e) {
@@ -788,6 +792,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                       status: 'Active',
                     );
                     await BackupAwareApi().create(newLic);
+                    await LoggingService().logAction(action: 'LICENSE_CREATED', targetType: 'License', targetId: newLic.id, details: 'Created license for ${clientNameController.text}');
                   } else {
                     final updateLic = amplify_models.ClientLicenses(
                       id: license.id.toString(),
@@ -799,6 +804,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                       notes: notesController.text,
                     );
                     await BackupAwareApi().update(updateLic);
+                    await LoggingService().logAction(action: 'LICENSE_UPDATED', targetType: 'License', targetId: updateLic.id, details: 'Updated license for ${clientNameController.text}');
                   }
                   if (mounted) Navigator.pop(context);
                   _fetchLicenses();

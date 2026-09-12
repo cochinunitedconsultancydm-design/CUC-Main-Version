@@ -137,34 +137,36 @@ class _FormatsScreenState extends State<FormatsScreen> {
 
   Future<void> _uploadFormat() async {
     try {
-      final result = await FilePicker.pickFiles(type: FileType.any, withData: true);
-      if (result != null) {
-        final file = result.files.single;
-        if (file.path == null && file.bytes == null) return;
-        
+      final result = await FilePicker.pickFiles(type: FileType.any, allowMultiple: true, withData: true);
+      if (result != null && result.files.isNotEmpty) {
         setState(() => _isLoading = true);
-        final fileName = file.name;
         final pathPrefix = _currentPath.isEmpty ? 'public/formats/' : 'public/formats/${_currentPath.join('/')}/';
-        final path = '$pathPrefix$fileName';
         
-        final awsFile = file.path != null ? AWSFile.fromPath(file.path!) : AWSFile.fromData(file.bytes!);
-        
-        await Amplify.Storage.uploadFile(
-          localFile: awsFile,
-          path: StoragePath.fromString(path),
-        ).result;
-        
-        try {
-          if (file.bytes != null) {
-            SupabaseBackupService().backupFileInBackground(path, file.bytes!);
-          } else if (file.path != null) {
-            final bytes = await File(file.path!).readAsBytes();
-            SupabaseBackupService().backupFileInBackground(path, bytes);
-          }
-        } catch (_) {}
+        for (var file in result.files) {
+          if (file.path == null && file.bytes == null) continue;
+          
+          final fileName = file.name;
+          final path = '$pathPrefix$fileName';
+          
+          final awsFile = file.path != null ? AWSFile.fromPath(file.path!) : AWSFile.fromData(file.bytes!);
+          
+          await Amplify.Storage.uploadFile(
+            localFile: awsFile,
+            path: StoragePath.fromString(path),
+          ).result;
+          
+          try {
+            if (file.bytes != null) {
+              SupabaseBackupService().backupFileInBackground(path, file.bytes!);
+            } else if (file.path != null) {
+              final bytes = await File(file.path!).readAsBytes();
+              SupabaseBackupService().backupFileInBackground(path, bytes);
+            }
+          } catch (_) {}
+        }
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Format uploaded successfully'), backgroundColor: Colors.green));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Formats uploaded successfully'), backgroundColor: Colors.green));
         }
         await _fetchFormats();
       }

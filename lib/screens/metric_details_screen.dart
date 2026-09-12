@@ -38,7 +38,7 @@ class _MetricDetailsScreenState extends State<MetricDetailsScreen> {
     setState(() {
       _searchQuery = query;
       _filteredLogs = widget.logs.where((log) {
-        final details = (log.details ?? log.target_id ?? '').toLowerCase();
+        final details = (log.details ?? log.target_id ?? '').toLowerCase().replaceAll(RegExp(r'\s*\[user:\s*.*?\]'), '');
         final userName = _getUserName(log).toLowerCase();
         return details.contains(lowerQuery) || userName.contains(lowerQuery);
       }).toList();
@@ -46,7 +46,14 @@ class _MetricDetailsScreenState extends State<MetricDetailsScreen> {
   }
 
   String _getUserName(amplify_models.ActivityLogs log) {
-    if (log.user_id == null) return 'Unknown';
+    if (log.details != null && log.details!.contains('[User: ')) {
+      final match = RegExp(r'\[User:\s*(.*?)\]').firstMatch(log.details!);
+      if (match != null && match.groupCount >= 1) {
+        return match.group(1)!;
+      }
+    }
+
+    if (log.user_id == null) return 'jayan';
     final matchingEntry = widget.usernameToIdMap.entries.where((e) => e.value == log.user_id).toList();
     if (matchingEntry.isNotEmpty) {
       final keyOrEmail = matchingEntry.first.key.toLowerCase();
@@ -62,7 +69,7 @@ class _MetricDetailsScreenState extends State<MetricDetailsScreen> {
       }
       return keyOrEmail;
     }
-    return 'Unknown';
+    return 'jayan';
   }
 
   /// Whether we should render a rich billing view instead of generic log list.
@@ -330,7 +337,9 @@ class _MetricDetailsScreenState extends State<MetricDetailsScreen> {
                       }
 
                       // ── Default generic log view ──
-                      final details = log.details ?? log.target_id ?? 'Action Recorded';
+                      String details = log.details ?? log.target_id ?? 'Action Recorded';
+                      details = details.replaceAll(RegExp(r'\s*\[User:\s*.*?\]'), '');
+                      
                       return Container(
                         decoration: BoxDecoration(
                           color: Colors.white,

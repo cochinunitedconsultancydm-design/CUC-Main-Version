@@ -1707,8 +1707,9 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     final hrStaffList = _staff.toList();
     hrStaffList.sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
 
-    return Column(
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -2029,10 +2030,11 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
           ),
           const SizedBox(height: 24),
         ],
-        Expanded(
-          child: ListView.separated(
-            itemCount: hrStaffList.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: hrStaffList.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final s = hrStaffList[index];
               final role = s['role']?.toString() ?? 'staff';
@@ -2116,8 +2118,8 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
               );
             },
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -2293,9 +2295,10 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
               child: Container(
                 width: 600,
                 padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -2374,8 +2377,9 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                   ],
                 ),
               ),
-            );
-          }
+            ),
+          );
+        }
         );
       }
     );

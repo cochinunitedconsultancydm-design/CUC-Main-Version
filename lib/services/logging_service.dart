@@ -17,6 +17,14 @@ class LoggingService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('current_user_id');
+      final userName = prefs.getString('user_name');
+      
+      String finalDetails = details ?? '';
+      if (userName != null && userName.isNotEmpty) {
+        finalDetails = finalDetails.isEmpty ? '[User: $userName]' : '$finalDetails [User: $userName]';
+      } else if (finalDetails.isEmpty) {
+        finalDetails = 'Action logged';
+      }
       
       if (userId != null) {
         final logEntry = ActivityLogs(
@@ -24,7 +32,7 @@ class LoggingService {
           action: action,
           target_type: targetType,
           target_id: targetId,
-          details: details,
+          details: finalDetails,
           created_at: DateTime.now().toIso8601String(),
         );
         await BackupAwareApi().create(logEntry);

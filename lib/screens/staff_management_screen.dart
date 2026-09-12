@@ -359,8 +359,92 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                         detailRow(Icons.card_membership, 'Driving License', user['driving_license'], isLink: true),
                         detailRow(Icons.security, 'Insurance Upload', user['insurance'], isLink: true),
                         detailRow(Icons.document_scanner, 'Offer Letter', user['offer_letter'], isLink: true),
+                        
+                        const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider()),
+                        
+                        Center(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.access_time),
+                            label: const Text('View Attendance Log'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            ),
+                            onPressed: () => _showAttendanceLog(user),
+                          ),
+                        ),
                       ],
                     ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    );
+  }
+
+  void _showAttendanceLog(Map<String, dynamic> user) {
+    final username = user['username']?.toString().toLowerCase().trim() ?? '';
+    final email = user['email']?.toString().toLowerCase().trim() ?? '';
+    
+    int? userId;
+    if (_usernameToIdMap.containsKey(username)) {
+      userId = _usernameToIdMap[username];
+    } else if (_usernameToIdMap.containsKey(email)) {
+      userId = _usernameToIdMap[email];
+    }
+    
+    final logs = _attendanceLogs.where((log) => log.user_id == userId).toList();
+    logs.sort((a, b) {
+      final dateA = DateTime.tryParse(a.attendance_date ?? '') ?? DateTime(2000);
+      final dateB = DateTime.tryParse(b.attendance_date ?? '') ?? DateTime(2000);
+      return dateB.compareTo(dateA); // Descending
+    });
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            width: 500,
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('${user['name'] ?? 'Staff'} Attendance', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                  ],
+                ),
+                const Divider(),
+                Expanded(
+                  child: logs.isEmpty 
+                  ? const Center(child: Text('No attendance records found.', style: TextStyle(color: Colors.grey)))
+                  : ListView.separated(
+                    itemCount: logs.length,
+                    separatorBuilder: (_, __) => const Divider(),
+                    itemBuilder: (context, index) {
+                      final log = logs[index];
+                      final dateStr = log.attendance_date ?? '';
+                      final inStr = log.check_in_time != null ? DateFormat('hh:mm a').format(DateTime.parse(log.check_in_time!).toLocal()) : 'N/A';
+                      final outStr = log.check_out_time != null ? DateFormat('hh:mm a').format(DateTime.parse(log.check_out_time!).toLocal()) : 'In Progress';
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.primaryColor.withAlpha(20),
+                          child: const Icon(Icons.calendar_today, color: AppTheme.primaryColor, size: 20),
+                        ),
+                        title: Text(dateStr, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('In: $inStr  |  Out: $outStr'),
+                      );
+                    },
                   ),
                 ),
               ],

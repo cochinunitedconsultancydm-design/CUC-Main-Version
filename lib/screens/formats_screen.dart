@@ -466,27 +466,30 @@ class _FormatsScreenState extends State<FormatsScreen> {
                               if (index < _currentFolders.length) {
                                 // Folder Item
                                 final folderName = _currentFolders[index];
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                                  hoverColor: Colors.grey.shade50,
-                                  leading: Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(10),
+                                return Material(
+                                  color: Colors.transparent,
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                                    hoverColor: Colors.grey.shade50,
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(Icons.folder_rounded, color: Colors.amber, size: 28),
                                     ),
-                                    child: const Icon(Icons.folder_rounded, color: Colors.amber, size: 28),
-                                  ),
-                                  title: Text(folderName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                                  subtitle: Text('Folder', style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
-                                  onTap: () {
-                                    setState(() => _currentPath.add(folderName));
-                                    _fetchFormats();
-                                  },
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
-                                    tooltip: 'Delete Folder',
-                                    onPressed: () => _deleteFolder(folderName),
+                                    title: Text(folderName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                                    subtitle: Text('Folder', style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                                    onTap: () {
+                                      setState(() => _currentPath.add(folderName));
+                                      _fetchFormats();
+                                    },
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                                      tooltip: 'Delete Folder',
+                                      onPressed: () => _deleteFolder(folderName),
+                                    ),
                                   ),
                                 );
                               } else {
@@ -509,38 +512,41 @@ class _FormatsScreenState extends State<FormatsScreen> {
                                   iconColor = Colors.purpleAccent;
                                 }
 
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                                  hoverColor: Colors.grey.shade50,
-                                  leading: Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: iconColor.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(10),
+                                return Material(
+                                  color: Colors.transparent,
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                                    hoverColor: Colors.grey.shade50,
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: iconColor.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(fileIcon, color: iconColor),
                                     ),
-                                    child: Icon(fileIcon, color: iconColor),
-                                  ),
-                                  title: Text(fileName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                                  subtitle: Text(dateStr, style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.download_rounded, color: Colors.blue),
-                                        tooltip: 'Download',
-                                        onPressed: () => _downloadFormat(item),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.edit_rounded, color: Colors.orange),
-                                        tooltip: 'Rename',
-                                        onPressed: () => _renameFormat(item),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
-                                        tooltip: 'Delete',
-                                        onPressed: () => _deleteFormat(item),
-                                      ),
-                                    ],
+                                    title: Text(fileName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                                    subtitle: Text(dateStr, style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.download_rounded, color: Colors.blue),
+                                          tooltip: 'Download',
+                                          onPressed: () => _downloadFormat(item),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.edit_rounded, color: Colors.orange),
+                                          tooltip: 'Rename',
+                                          onPressed: () => _renameFormat(item),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                                          tooltip: 'Delete',
+                                          onPressed: () => _deleteFormat(item),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 );
                               }

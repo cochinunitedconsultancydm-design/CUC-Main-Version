@@ -488,6 +488,15 @@
                       "delete",
                       "read"
                     ]
+                  },
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "read",
+                      "create",
+                      "update",
+                      "delete"
+                    ]
                   }
                 ]
               }
@@ -627,7 +636,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -1226,7 +1237,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -1638,7 +1651,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -1966,7 +1981,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -2239,7 +2256,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -2352,7 +2371,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -2486,7 +2507,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -3094,7 +3117,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -3352,7 +3377,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -3444,7 +3471,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -3815,7 +3844,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -4109,7 +4140,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -4215,7 +4248,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -4349,7 +4384,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]
@@ -4618,7 +4655,9 @@
                     "allow": "private",
                     "operations": [
                       "read",
-                      "create"
+                      "create",
+                      "update",
+                      "delete"
                     ]
                   }
                 ]

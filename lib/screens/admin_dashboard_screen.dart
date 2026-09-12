@@ -39,6 +39,7 @@ import '../utils/number_to_words.dart';
 import '../services/checklist_service.dart';
 import '../widgets/startup_task_popup.dart';
 import '../services/auto_backup_service.dart';
+import 'formats_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -477,6 +478,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _sidebarItem(5, Icons.health_and_safety_outlined, 'System Health', isWide),
                 _sidebarItem(26, Icons.help_center_rounded, 'Client Help & Queries', isWide),
                 _sidebarItem(19, Icons.cloud_sync, 'Google Docs Vault', isWide),
+                _sidebarItem(29, Icons.format_list_bulleted_rounded, 'Formats', isWide),
                 _sidebarItem(22, Icons.handshake_rounded, 'File Acknowledgement', isWide),
                 _sidebarItem(20, Icons.history_rounded, 'Verification History', isWide),
                 _sidebarItem(21, Icons.real_estate_agent_rounded, 'Property Management', isWide),
@@ -609,6 +611,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 23: return const SopScreen();
       case 27: return const OfficeDetailsScreen();
       case 28: return const BillingScreen();
+      case 29: return const FormatsScreen();
       default: return _buildPlaceholderView('Coming Soon');
     }
   }

@@ -60,6 +60,7 @@ class _DashboardMenuGridState extends State<DashboardMenuGrid> {
     MenuCategory('Documents & Files', [
       MenuItem(24, Icons.folder_shared_rounded, 'Work File'),
       MenuItem(19, Icons.cloud_sync, 'Google Docs Vault'),
+      MenuItem(29, Icons.format_list_bulleted_rounded, 'Formats'),
     ]),
     MenuCategory('Tools & Utilities', [
       MenuItem(5, Icons.verified_user_rounded, 'Licences'),

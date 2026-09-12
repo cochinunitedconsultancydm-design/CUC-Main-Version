@@ -275,7 +275,7 @@ const schema = a.schema({
     check_in_time: a.string(),
     check_out_time: a.string(),
     attendance_date: a.string(),
-  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager'])]),
+  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read'])]),
   CompanyBills: a.model({
     id: a.id().required(),
     category: a.string(),
@@ -317,7 +317,7 @@ const schema = a.schema({
     personal_email: a.string(),
     company_email: a.string(),
     company_phone: a.string(),
-  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager', 'HR'])]),
+  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager', 'HR']), allow.authenticated().to(['read'])]),
   InwardPosts: a.model({
     id: a.id().required(),
     sender_name: a.string(),
@@ -339,7 +339,7 @@ const schema = a.schema({
     status: a.string(),
     active_seconds: a.integer(),
     idle_seconds: a.integer(),
-  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager', 'HR'])]),
+  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager', 'HR']), allow.authenticated().to(['read'])]),
   Checklists: a.model({
     id: a.id().required(),
     title: a.string(),

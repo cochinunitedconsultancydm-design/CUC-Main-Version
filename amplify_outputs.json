@@ -3207,6 +3207,12 @@
                       "delete",
                       "read"
                     ]
+                  },
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "read"
+                    ]
                   }
                 ]
               }
@@ -3668,12 +3674,20 @@
                     "provider": "userPools",
                     "allow": "groups",
                     "groups": [
-                      "Admin"
+                      "Admin",
+                      "Manager",
+                      "HR"
                     ],
                     "operations": [
                       "create",
                       "update",
                       "delete",
+                      "read"
+                    ]
+                  },
+                  {
+                    "allow": "private",
+                    "operations": [
                       "read"
                     ]
                   }
@@ -3933,12 +3947,20 @@
                     "provider": "userPools",
                     "allow": "groups",
                     "groups": [
-                      "Admin"
+                      "Admin",
+                      "Manager",
+                      "HR"
                     ],
                     "operations": [
                       "create",
                       "update",
                       "delete",
+                      "read"
+                    ]
+                  },
+                  {
+                    "allow": "private",
+                    "operations": [
                       "read"
                     ]
                   }

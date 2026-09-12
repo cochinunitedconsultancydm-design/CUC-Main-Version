@@ -57,6 +57,7 @@ import 'file_acknowledgement_screen.dart';
 import 'package:cuc_app/services/birthday_service.dart';
 import '../widgets/startup_task_popup.dart';
 import '../services/auto_backup_service.dart';
+import 'formats_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -621,6 +622,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 23: return const OfficeDetailsScreen();
       case 24: return const PropertyManagementScreen();
       case 25: return const ContactBookScreen();
+      case 29: return const FormatsScreen();
       default: return const Center(child: Text('Page not found'));
     }
   }
@@ -699,6 +701,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _sidebarItem(20, Icons.handshake_rounded, 'File Acknowledgement'),
                   _sidebarItem(22, Icons.help_center_rounded, 'Client Help & Queries'),
                   _sidebarItem(17, Icons.cloud_sync, 'Google Docs Vault'),
+                  _sidebarItem(29, Icons.format_list_bulleted_rounded, 'Formats'),
                   _sidebarItem(18, Icons.history_rounded, 'Verification History'),
                   _sidebarItem(19, Icons.directions_car_filled_outlined, 'Travel Logs'),
                   _sidebarItem(23, Icons.business_rounded, 'Office Details'),

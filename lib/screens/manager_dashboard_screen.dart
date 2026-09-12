@@ -54,6 +54,7 @@ import '../services/attendance_service.dart';
 import 'package:cuc_app/services/birthday_service.dart';
 import '../widgets/startup_task_popup.dart';
 import '../services/auto_backup_service.dart';
+import 'formats_screen.dart';
 
 class ManagerDashboardScreen extends StatefulWidget {
   const ManagerDashboardScreen({super.key});
@@ -705,6 +706,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       case 28: return const HrPerformanceScreen();
       case 27: return const OfficeDetailsScreen();
       case 7: return _buildSettingsPage();
+      case 29: return const FormatsScreen();
       default: return _buildPlaceholderView('Coming Soon');
     }
   }

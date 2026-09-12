@@ -40,6 +40,7 @@ import '../services/checklist_service.dart';
 import '../widgets/startup_task_popup.dart';
 import '../services/auto_backup_service.dart';
 import 'formats_screen.dart';
+import 'attendance_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -489,6 +490,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         _sidebarItem(7, Icons.logout_rounded, 'Exit Admin', isWide),
         const SizedBox(height: 24),
+        _sidebarItem(30, Icons.access_time_rounded, 'Attendance', isWide),
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -612,6 +615,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 27: return const OfficeDetailsScreen();
       case 28: return const BillingScreen();
       case 29: return const FormatsScreen();
+      case 30: return const AttendanceScreen();
       default: return _buildPlaceholderView('Coming Soon');
     }
   }

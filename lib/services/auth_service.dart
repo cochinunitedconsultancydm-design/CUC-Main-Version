@@ -425,7 +425,7 @@ class AuthService {
 
   Future<bool> isAdmin() async {
     final role = await getUserRole();
-    return role == 'admin';
+    return role?.toLowerCase().trim() == 'admin';
   }
 
   Future<int?> getUserId() async {

@@ -42,6 +42,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   
   bool _isLoading = true;
   bool _isManager = false;
+  bool _isAdmin = false;
   int? _userId;
   List<Checklist> _checklists = [];
   List<Checklist> _myTasks = [];
@@ -79,7 +80,8 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   Future<void> _initData() async {
     setState(() => _isLoading = true);
     _userId = await _authService.getUserId();
-    _isManager = await _authService.isManager() || await _authService.isAdmin();
+    _isAdmin = await _authService.isAdmin();
+    _isManager = await _authService.isManager() || _isAdmin;
     
     if (_tabController != null) _tabController!.dispose();
     _tabController = TabController(length: _isManager ? 3 : 2, vsync: this);
@@ -734,7 +736,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
     final rName = respUser.isNotEmpty ? respUser['name'] : (checklist.responsibleName ?? 'Unknown');
     final mName = mgrUser.isNotEmpty ? mgrUser['name'] : (checklist.managerName ?? 'Manager');
     final isAssignedToMe = checklist.responsibleId?.toString() == _userId?.toString();
-    final canEdit = _isManager;
+    final canEdit = _isAdmin;
 
     String currentStatus = checklist.status;
     Color currentStatusColor = statusColor;
@@ -830,7 +832,8 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
                           );
                         },
                       ),
-                      IconButton(
+                      if (_isAdmin)
+                        IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
                         tooltip: 'Delete Task',
                         splashRadius: 20,
@@ -1180,6 +1183,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> with SingleTickerProv
   }
   
   void _showDeleteConfirmation(Checklist checklist) {
+    if (!_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permission Denied: Only Admin can delete tasks'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

@@ -15,6 +15,8 @@ import '../services/logging_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/deal_service.dart';
 import '../services/supabase_backup_service.dart';
+import '../services/fiscal_year_service.dart';
+import '../services/auth_service.dart';
 
 class ClientFilesScreen extends StatefulWidget {
   const ClientFilesScreen({super.key});
@@ -25,8 +27,8 @@ class ClientFilesScreen extends StatefulWidget {
 
 class _ClientFilesScreenState extends State<ClientFilesScreen> {
   final _searchController = TextEditingController();
-  static final DateTime nov1Cutoff = DateTime(2026, 11, 1);
-  String _selectedPeriod = '2026-2027'; // Starts fresh from Nov 1, 2026
+  static final DateTime nov1Cutoff = FiscalYearService.nov1Cutoff;
+  String _selectedPeriod = FiscalYearService.currentPeriod.value; // Starts fresh from Nov 1, 2026
   String _sortOption = 'Newest First';
   String? _selectedStaffFilter;
   List<amplify_models.Users> _allStaffList = [];
@@ -34,6 +36,7 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
   List<amplify_models.Deals> _workFiles = [];
   List<amplify_models.Deals> _filtered = [];
   bool _isLoading = true;
+  bool _isAdmin = false;
 
   DateTime _getWorkFileDate(amplify_models.Deals d) {
     if (d.created_at != null && d.created_at!.isNotEmpty) {
@@ -104,12 +107,28 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAdminRole();
+    _selectedPeriod = FiscalYearService.currentPeriod.value;
+    FiscalYearService.currentPeriod.addListener(_onPeriodChanged);
     _fetchStaff();
     _fetchWorkFiles();
   }
 
+  Future<void> _checkAdminRole() async {
+    final isAdmin = await AuthService().isAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
+  }
+
+  void _onPeriodChanged() {
+    if (mounted && _selectedPeriod != FiscalYearService.currentPeriod.value) {
+      setState(() => _selectedPeriod = FiscalYearService.currentPeriod.value);
+      _applyFilterAndSort();
+    }
+  }
+
   @override
   void dispose() {
+    FiscalYearService.currentPeriod.removeListener(_onPeriodChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -145,6 +164,12 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
   }
 
   Future<void> _deleteWorkFile(amplify_models.Deals workFile) async {
+    if (!_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permission Denied: Only Admin can delete work files'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -181,8 +206,13 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
   }
 
   Future<void> _editWorkFile(amplify_models.Deals workFile) async {
+    if (!_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permission Denied: Only Admin can edit work files'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     final nameController = TextEditingController(text: workFile.name);
-    final fileNoController = TextEditingController(text: workFile.register_no);
     
     String currentType = workFile.work_type ?? '';
     String currentCategory = 'General';
@@ -243,14 +273,34 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  TextField(
-                    controller: fileNoController,
-                    decoration: InputDecoration(
-                      labelText: 'File No',
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.lock_outline_rounded, size: 18, color: Color(0xFF64748B)),
+                        const SizedBox(width: 10),
+                        Text(
+                          'File No: ${workFile.register_no?.isNotEmpty == true ? workFile.register_no : "Auto-assigned"}',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: Color(0xFF1E293B)),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade100,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Fixed',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -318,7 +368,7 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
         }
         final newDeal = workFile.copyWith(
           name: nameController.text.trim(),
-          register_no: fileNoController.text.trim(),
+          register_no: workFile.register_no,
           work_type: finalType,
         );
         await BackupAwareApi().update(newDeal);
@@ -1301,150 +1351,6 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
     );
   }
 
-  Widget _buildPeriodSelector() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          _buildPeriodChip(
-            id: '2026-2027',
-            title: '2026-2027 (Current)',
-            subtitle: 'From Nov 1, 2026',
-            icon: Icons.fiber_new_rounded,
-            count: _count2026_2027,
-            activeColor: const Color(0xFF10B981),
-          ),
-          _buildPeriodChip(
-            id: '2025-2026',
-            title: '2025-2026',
-            subtitle: 'Till Nov 1, 2026',
-            icon: Icons.history_rounded,
-            count: _count2025_2026,
-            activeColor: const Color(0xFF6366F1),
-          ),
-          _buildPeriodChip(
-            id: 'All',
-            title: 'All Files',
-            subtitle: 'Complete Archive',
-            icon: Icons.folder_copy_rounded,
-            count: _countAll,
-            activeColor: AppTheme.primaryColor,
-          ),
-          if (_count2025_2026 > 0)
-            Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: ElevatedButton.icon(
-                onPressed: _showImportToCurrentDialog,
-                icon: const Icon(Icons.drive_file_move_outlined, size: 16),
-                label: const Text('Import to Current', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 0,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPeriodChip({
-    required String id,
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required int count,
-    required Color activeColor,
-  }) {
-    final isSelected = _selectedPeriod == id;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedPeriod = id;
-        });
-        _applyFilterAndSort();
-      },
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? activeColor : const Color(0xFFE2E8F0),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected ? Colors.white : const Color(0xFF64748B),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF94A3B8),
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                count.toString(),
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF475569),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1465,7 +1371,6 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildPeriodSelector(),
             Row(
               children: [
                 Expanded(
@@ -1621,6 +1526,21 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                     padding: const EdgeInsets.all(12),
                   ),
                 ),
+                if (_selectedPeriod == '2026-2027' && _count2025_2026 > 0) ...[
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _showImportToCurrentDialog,
+                    icon: const Icon(Icons.drive_file_move_outlined, size: 16),
+                    label: const Text('Import from 25-26', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                  ),
+                ],
               ],
             ).animate().fadeIn().slideY(begin: -0.1),
             const SizedBox(height: 24),
@@ -1751,21 +1671,48 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
-                                          IconButton(
-                                            icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 20),
-                                            tooltip: 'Edit Work File',
-                                            onPressed: () => _editWorkFile(workFile),
-                                          ),
+                                          if (_isAdmin)
+                                            IconButton(
+                                              icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 20),
+                                              tooltip: 'Edit Work File',
+                                              onPressed: () => _editWorkFile(workFile),
+                                            ),
                                           IconButton(
                                             icon: const Icon(Icons.visibility_outlined, color: Colors.green, size: 20),
                                             tooltip: 'View Work File',
                                             onPressed: () => _viewWorkFile(workFile),
                                           ),
                                           if (_getWorkFileDate(workFile).isBefore(nov1Cutoff))
-                                            IconButton(
-                                              icon: const Icon(Icons.drive_file_move_outlined, color: Color(0xFF10B981), size: 20),
-                                              tooltip: 'Import to Current (2026-2027)',
-                                              onPressed: () => _importSingleWorkFileToCurrent(workFile),
+                                            Tooltip(
+                                              message: 'Import to 2026-2027 to continue working on this file',
+                                              child: InkWell(
+                                                onTap: () => _importSingleWorkFileToCurrent(workFile),
+                                                borderRadius: BorderRadius.circular(8),
+                                                child: Container(
+                                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    border: Border.all(color: const Color(0xFF10B981), width: 1.0),
+                                                  ),
+                                                  child: const Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(Icons.drive_file_move_rounded, color: Color(0xFF10B981), size: 14),
+                                                      SizedBox(width: 4),
+                                                      Text(
+                                                        'Import to 26–27',
+                                                        style: TextStyle(
+                                                          color: Color(0xFF047857),
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
                                             ),
                                           IconButton(
                                             icon: const Icon(Icons.download_rounded, color: Colors.purple, size: 20),

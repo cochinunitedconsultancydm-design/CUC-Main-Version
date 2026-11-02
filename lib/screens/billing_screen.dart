@@ -576,6 +576,10 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   Future<void> _deleteBilling(Billing b) async {
+    if (!_isAdmin) {
+      _msg('Permission Denied: Only Admin can delete invoices', false);
+      return;
+    }
     final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
       title: const Text('Confirm Delete', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
       content: Text('Are you sure you want to delete invoice ${b.invoiceNo}?\nThis action cannot be undone.'),
@@ -796,9 +800,15 @@ class _BillingScreenState extends State<BillingScreen> {
     content: Text(t), behavior: SnackBarBehavior.floating, backgroundColor: ok ? Colors.green.shade600 : Colors.redAccent,
   ));
 
-  void _openCreator([Billing? b]) => Navigator.of(context).push(MaterialPageRoute(
-    builder: (_) => InvoiceCreatorPage(billing: b, onSaved: (dynamic id) { _fetchBillings(refresh: true); Navigator.pop(context); }),
-  ));
+  void _openCreator([Billing? b]) {
+    if (b != null && !_isAdmin) {
+      _msg('Permission Denied: Only Admin can edit invoices', false);
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => InvoiceCreatorPage(billing: b, onSaved: (dynamic id) { _fetchBillings(refresh: true); Navigator.pop(context); }),
+    ));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1331,8 +1341,9 @@ class _BillingScreenState extends State<BillingScreen> {
                   IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.cancel_outlined, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 22), tooltip: 'Not Interested'),
                 ],
                 IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 22), tooltip: 'Duplicate'),
-                IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 28), tooltip: 'Edit'),
-                if (_isAdmin || _isAmarnath)
+                if (_isAdmin)
+                  IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 28), tooltip: 'Edit'),
+                if (_isAdmin)
                   IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 24), tooltip: 'Delete'),
               ]
             ),
@@ -1410,8 +1421,9 @@ class _BillingScreenState extends State<BillingScreen> {
                         IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.cancel_outlined, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 18), tooltip: 'Not Interested', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       ],
                       IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 20), tooltip: 'Duplicate', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
-                      IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 24), tooltip: 'Edit', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
-                      if (_isAdmin || _isAmarnath)
+                      if (_isAdmin)
+                        IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 24), tooltip: 'Edit', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
+                      if (_isAdmin)
                         IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 20), tooltip: 'Delete', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                     ],
                   ),

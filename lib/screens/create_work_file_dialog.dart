@@ -11,6 +11,8 @@ import '../theme.dart';
 import '../services/supabase_backup_service.dart';
 import '../widgets/google_docs_picker_dialog.dart';
 import '../services/logging_service.dart';
+import '../services/fiscal_year_service.dart';
+import '../services/deal_service.dart';
 
 class CreateWorkFileDialog extends StatefulWidget {
   final VoidCallback onSaved;
@@ -46,6 +48,19 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
     super.initState();
     _fetchClients();
     _fetchStaff();
+    _initFileNo();
+  }
+
+  Future<void> _initFileNo() async {
+    _fileNoController.text = 'CC1';
+    try {
+      final nextNo = await DealService().getNextWorkfileNumber();
+      if (mounted) {
+        setState(() {
+          _fileNoController.text = nextNo;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchStaff() async {
@@ -155,13 +170,19 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
   }
 
   Future<void> _saveWorkFile() async {
-    if (_selectedClient == null || _workNameController.text.trim().isEmpty || _fileNoController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a client, enter a work name, and provide a File No.')));
+    if (_selectedClient == null || _workNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a client and enter a work name.')));
       return;
     }
 
     setState(() => _isLoading = true);
     try {
+      String fileNo = _fileNoController.text.trim();
+      if (fileNo.isEmpty) {
+        fileNo = await DealService().getNextWorkfileNumber();
+        _fileNoController.text = fileNo;
+      }
+
       final filesJson = jsonEncode(_selectedFiles.toList());
       
       final prefs = await SharedPreferences.getInstance();
@@ -179,13 +200,13 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
                 ? _selectedCategory 
                 : '$_selectedCategory - ${_workTypeController.text.trim()}',
         drive_link: _googleDocsController.text.trim(),
-        register_no: _fileNoController.text.trim(),
+        register_no: fileNo,
         files_received: filesJson,
         responsible_id: _selectedStaff != null ? (_staffIdMap[_selectedStaff!.id] ?? int.tryParse(_selectedStaff!.id)) : null,
         responsible_name: _selectedStaff?.name,
         closed_at: _selectedDeadline?.toIso8601String(),
         referred_by: currentUserName, // Using referred_by to store the creator
-        created_at: DateTime.now().toIso8601String(),
+        created_at: FiscalYearService.getEffectiveCreationDate().toIso8601String(),
         updated_at: DateTime.now().toIso8601String(),
       );
 
@@ -366,12 +387,17 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
               const SizedBox(height: 16),
                     TextField(
                       controller: _fileNoController,
+                      readOnly: true,
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
                       decoration: InputDecoration(
-                        labelText: 'File No',
+                        labelText: 'File No (Auto-assigned)',
+                        prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20, color: Color(0xFF64748B)),
                         filled: true,
-                        fillColor: Colors.grey.shade50,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                        fillColor: const Color(0xFFF1F5F9),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        helperText: 'Sequentially issued by system (CC1, CC2...)',
                       ),
                     ),
                     const SizedBox(height: 16),

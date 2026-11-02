@@ -3,6 +3,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import 'backup_aware_api.dart';
 import 'logging_service.dart';
+import 'fiscal_year_service.dart';
 
 class ClientService {
 
@@ -97,7 +98,7 @@ class ClientService {
         type_of_work: typeOfWork,
         case_number: newRegNo,
         companies: (company != null && company.trim().isNotEmpty) ? [company.trim()] : null,
-        created_at: DateTime.now().toIso8601String(),
+        created_at: FiscalYearService.getEffectiveCreationDate().toIso8601String(),
         is_contacted: true,
       );
 

@@ -16,6 +16,7 @@ import 'dart:async';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import '../services/meta_service.dart';
 import '../services/supabase_backup_service.dart';
+import '../services/fiscal_year_service.dart';
 
 class TaskManagementScreen extends StatefulWidget {
   final String? initialStatus;
@@ -27,13 +28,14 @@ class TaskManagementScreen extends StatefulWidget {
 
 class _TaskManagementScreenState extends State<TaskManagementScreen> with SingleTickerProviderStateMixin {
   final _auth = AuthService();
-  static final DateTime nov1Cutoff = DateTime(2026, 11, 1);
-  String _selectedPeriod = '2026-2027'; // Starts fresh from Nov 1, 2026
+  static final DateTime nov1Cutoff = FiscalYearService.nov1Cutoff;
+  String _selectedPeriod = FiscalYearService.currentPeriod.value; // Starts fresh from Nov 1, 2026
   
   late TabController _tabController;
   
   bool _isLoading = true;
   bool _isAdmin = false;
+  bool _canViewAll = false;
   dynamic _currentUserId;
   
   List<Task> _myTasks = [];
@@ -68,20 +70,30 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
   @override
   void initState() {
     super.initState();
+    _selectedPeriod = FiscalYearService.currentPeriod.value;
+    FiscalYearService.currentPeriod.addListener(_onPeriodChanged);
     if (widget.initialStatus != null) {
       _statusFilter = widget.initialStatus!;
     }
     _initData();
   }
 
+  void _onPeriodChanged() {
+    if (mounted && _selectedPeriod != FiscalYearService.currentPeriod.value) {
+      setState(() => _selectedPeriod = FiscalYearService.currentPeriod.value);
+    }
+  }
+
   Future<void> _initData() async {
     dynamic userId;
     bool isAdmin = false;
+    bool canViewAll = false;
     
     try {
-      final role = await _auth.getUserRole();
+      final role = (await _auth.getUserRole())?.toLowerCase().trim();
       final name = await _auth.getUserName();
-      isAdmin = role == 'admin' || role == 'manager';
+      isAdmin = role == 'admin';
+      canViewAll = role == 'admin' || role == 'manager';
       
       final prefs = await SharedPreferences.getInstance();
       final idInt = prefs.getInt('current_user_id');
@@ -102,8 +114,9 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     if (mounted) {
       setState(() {
         _isAdmin = isAdmin;
+        _canViewAll = canViewAll;
         _currentUserId = userId ?? '0';
-        _tabController = TabController(length: _isAdmin ? 3 : 1, vsync: this);
+        _tabController = TabController(length: _canViewAll ? 3 : 1, vsync: this);
       });
     }
 
@@ -132,6 +145,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
 
   @override
   void dispose() {
+    FiscalYearService.currentPeriod.removeListener(_onPeriodChanged);
     _createSub?.cancel();
     _updateSub?.cancel();
     _deleteSub?.cancel();
@@ -664,149 +678,6 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
     );
   }
 
-  Widget _buildPeriodSelector() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          _buildPeriodChip(
-            id: '2026-2027',
-            title: '2026-2027 (Current)',
-            subtitle: 'From Nov 1, 2026',
-            icon: Icons.fiber_new_rounded,
-            count: _count2026_2027,
-            activeColor: const Color(0xFF10B981),
-          ),
-          _buildPeriodChip(
-            id: '2025-2026',
-            title: '2025-2026',
-            subtitle: 'Till Nov 1, 2026',
-            icon: Icons.history_rounded,
-            count: _count2025_2026,
-            activeColor: const Color(0xFF6366F1),
-          ),
-          _buildPeriodChip(
-            id: 'All',
-            title: 'All Deliveries',
-            subtitle: 'Complete Archive',
-            icon: Icons.inventory_2_rounded,
-            count: _countAll,
-            activeColor: AppTheme.primaryColor,
-          ),
-          if (_count2025_2026 > 0)
-            Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: ElevatedButton.icon(
-                onPressed: _showImportToCurrentDialog,
-                icon: const Icon(Icons.drive_file_move_outlined, size: 16),
-                label: const Text('Import to Current', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 0,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPeriodChip({
-    required String id,
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required int count,
-    required Color activeColor,
-  }) {
-    final isSelected = _selectedPeriod == id;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedPeriod = id;
-        });
-      },
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? activeColor : const Color(0xFFE2E8F0),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected ? Colors.white : const Color(0xFF64748B),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF94A3B8),
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                count.toString(),
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF475569),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Future<void> _updateTaskStatus(Task task, String newStatus) async {
     try {
@@ -824,6 +695,10 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
   }
 
   Future<void> _deleteTask(dynamic id) async {
+    if (!_isAdmin) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permission Denied: Only Admin can delete tasks')));
+      return;
+    }
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
@@ -850,6 +725,10 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
   }
 
   void _showTaskDialog([Task? task]) {
+    if (task != null && !_isAdmin) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permission Denied: Only Admin can edit tasks')));
+      return;
+    }
     String selectedTaskType = 'Delivery';
     bool needsReturn = false;
     String cleanTitle = task?.title ?? '';
@@ -1143,6 +1022,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                                     client_name: clientCtrl.text.isEmpty ? null : clientCtrl.text,
                                     phone_number: phoneCtrl.text.isEmpty ? null : phoneCtrl.text,
                                     status: 'Pending',
+                                    created_at: FiscalYearService.getEffectiveCreationDate().toIso8601String(),
                                   );
                                   final res = await BackupAwareApi().create(newTask);
                                   final newId = res.data?.id;
@@ -1332,9 +1212,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
             ),
           ],
           const SizedBox(height: 16),
-          _buildPeriodSelector(),
-          const SizedBox(height: 8),
-          if (_isAdmin)
+          if (_canViewAll)
             TabBar(
               controller: _tabController,
               isScrollable: true,
@@ -1403,7 +1281,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
           Expanded(
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator())
-              : (_isAdmin 
+              : (_canViewAll 
                   ? TabBarView(
                       controller: _tabController,
                       children: [
@@ -1632,7 +1510,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
                       ]
                     ],
                   ),
-                  if (!isWide && (_isAdmin || !isMyTask)) ...[
+                  if (!isWide && _isAdmin) ...[
                     const Divider(height: 32),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -1666,12 +1544,38 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
       mainAxisSize: MainAxisSize.min,
       children: [
         if (_getTaskDate(t).isBefore(nov1Cutoff))
-          IconButton(
-            onPressed: () => _importSingleTaskToCurrent(t),
-            icon: const Icon(Icons.drive_file_move_outlined, color: Color(0xFF10B981)),
-            tooltip: 'Import to Current (2026-2027)',
+          Tooltip(
+            message: 'Import to 2026-2027 to continue working on this task',
+            child: InkWell(
+              onTap: () => _importSingleTaskToCurrent(t),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                margin: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF10B981), width: 1.0),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.drive_file_move_rounded, color: Color(0xFF10B981), size: 14),
+                    SizedBox(width: 4),
+                    Text(
+                      'Import 26–27',
+                      style: TextStyle(
+                        color: Color(0xFF047857),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        if (!isMyTask || _isAdmin) ...[
+        if (_isAdmin) ...[
           IconButton(onPressed: () => _showTaskDialog(t), icon: const Icon(Icons.edit, color: Colors.grey)),
           IconButton(onPressed: () => _deleteTask(t.id!), icon: const Icon(Icons.delete, color: Colors.redAccent)),
         ],

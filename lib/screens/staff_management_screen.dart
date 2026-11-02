@@ -12,6 +12,8 @@ import '../services/logging_service.dart';
 import '../services/security_service.dart';
 import '../services/supabase_backup_service.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import '../services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class StaffManagementScreen extends StatefulWidget {
   const StaffManagementScreen({super.key});
@@ -24,6 +26,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   // Tab 1: Staff Directory State
   List<Map<String, dynamic>> _staff = [];
   bool _isLoadingDirectory = true;
+  bool _isAdmin = false;
 
   // Tab 2: Time Tracker State
   String _timeTrackerPeriod = 'Today';
@@ -40,9 +43,15 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAdminRole();
     _fetchStaff();
     _fetchAttendance();
     _loadUserMappings();
+  }
+
+  Future<void> _checkAdminRole() async {
+    final isAdmin = await AuthService().isAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
   }
 
   Future<void> _loadUserMappings() async {
@@ -100,6 +109,48 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
         _msg('GraphQL Errors: ${uRes.errors.map((e) => e.message).join(", ")}', false);
       }
       var usersResRaw = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
+
+      // Exclude staff members deleted locally or removed from Supabase
+      final prefs = await SharedPreferences.getInstance();
+      final deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? [])
+          .map((k) => k.toLowerCase().trim())
+          .toSet();
+
+      Set<String>? activeSupabaseKeys;
+      try {
+        final supabaseUsers = await SupabaseBackupService().getFullUsersData();
+        if (supabaseUsers.isNotEmpty) {
+          activeSupabaseKeys = {};
+          for (var su in supabaseUsers) {
+            if (su['id'] != null) activeSupabaseKeys.add(su['id'].toString().toLowerCase().trim());
+            if (su['username'] != null) activeSupabaseKeys.add(su['username'].toString().toLowerCase().trim());
+            if (su['email'] != null) activeSupabaseKeys.add(su['email'].toString().toLowerCase().trim());
+          }
+        }
+      } catch (sbErr) {
+        debugPrint('Supabase users cross-reference notice: $sbErr');
+      }
+
+      if (deletedKeys.isNotEmpty || activeSupabaseKeys != null) {
+        usersResRaw.removeWhere((u) {
+          final uid = u.id.toLowerCase().trim();
+          final uname = (u.username ?? '').toLowerCase().trim();
+          final uemail = (u.email ?? '').toLowerCase().trim();
+          
+          if (deletedKeys.contains(uid) || (uname.isNotEmpty && deletedKeys.contains(uname)) || (uemail.isNotEmpty && deletedKeys.contains(uemail))) {
+            return true;
+          }
+
+          if (activeSupabaseKeys != null && activeSupabaseKeys.isNotEmpty) {
+            final matches = activeSupabaseKeys.contains(uid) ||
+                (uname.isNotEmpty && activeSupabaseKeys.contains(uname)) ||
+                (uemail.isNotEmpty && activeSupabaseKeys.contains(uemail));
+            if (!matches) return true;
+          }
+
+          return false;
+        });
+      }
       
       // Deduplicate users by username, prioritizing UUID-based IDs (Cognito)
       final Map<String, amplify_models.Users> uniqueUsers = {};
@@ -456,6 +507,10 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   }
 
   void _showForm([Map<String, dynamic>? user]) {
+    if (!_isAdmin) {
+      _msg('Permission Denied: Only Admin can add or edit staff members', false);
+      return;
+    }
     final name = TextEditingController(text: user?['name']);
     final username = TextEditingController(text: user?['username']);
     final email = TextEditingController(text: user?['email']);
@@ -908,6 +963,10 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   }
 
   void _resetPassword(Map<String, dynamic> user) {
+    if (!_isAdmin) {
+      _msg('Permission Denied: Only Admin can reset staff passwords', false);
+      return;
+    }
     final passController = TextEditingController();
     bool isSaving = false;
     showDialog(
@@ -958,25 +1017,88 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   }
 
   Future<void> _delete(dynamic id) async {
+    if (!_isAdmin) {
+      _msg('Permission Denied: Only Admin can delete staff members', false);
+      return;
+    }
+
+    final targetStaff = _staff.firstWhere(
+      (s) => s['id']?.toString() == id.toString(),
+      orElse: () => <String, dynamic>{},
+    );
+    final staffName = targetStaff['name'] ?? 'this staff member';
+    final staffUsername = targetStaff['username']?.toString();
+    final staffEmail = targetStaff['email']?.toString();
+
     final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
       title: const Text('Confirm Delete'),
-      content: const Text('Remove this staff member?'),
+      content: Text('Remove $staffName from staff directory?'),
       actions: [
         TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-        TextButton(onPressed: () => Navigator.pop(c, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: const Text('Delete')),
+        TextButton(
+          onPressed: () => Navigator.pop(c, true),
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Delete'),
+        ),
       ],
     ));
     if (ok == true) {
       try {
-        final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(id.toString()), limit: 10000, authorizationMode: APIAuthorizationType.userPools);
-        final res = await Amplify.API.query(request: req).response;
-        if (res.data?.items.isNotEmpty == true) {
-          await BackupAwareApi().delete(res.data!.items.first!);
+        // 1. Persist deletion key locally so it is filtered permanently
+        final prefs = await SharedPreferences.getInstance();
+        final deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? []).toSet();
+        if (id != null) deletedKeys.add(id.toString().toLowerCase().trim());
+        if (staffUsername != null && staffUsername.isNotEmpty) deletedKeys.add(staffUsername.toLowerCase().trim());
+        if (staffEmail != null && staffEmail.isNotEmpty) deletedKeys.add(staffEmail.toLowerCase().trim());
+        await prefs.setStringList('deleted_staff_keys', deletedKeys.toList());
+
+        // 2. Delete from Supabase
+        await SupabaseBackupService().deleteUser(
+          id: id,
+          username: staffUsername,
+          email: staffEmail,
+        );
+
+        // 3. Delete from AppSync with quiet catch for cloud auth restrictions
+        try {
+          final req = ModelQueries.list(
+            amplify_models.Users.classType,
+            where: amplify_models.Users.ID.eq(id.toString()),
+            limit: 10000,
+            authorizationMode: APIAuthorizationType.userPools,
+          );
+          final res = await Amplify.API.query(request: req).response;
+          if (res.data?.items.isNotEmpty == true && res.data!.items.first != null) {
+            await BackupAwareApi().delete(res.data!.items.first!);
+          }
+        } catch (_) {}
+
+        // 4. Immediately update UI state
+        if (mounted) {
+          setState(() {
+            _staff.removeWhere((s) {
+              final sid = s['id']?.toString().toLowerCase().trim();
+              final suname = s['username']?.toString().toLowerCase().trim();
+              final semail = s['email']?.toString().toLowerCase().trim();
+              return sid == id.toString().toLowerCase().trim() ||
+                  (staffUsername != null && suname == staffUsername.toLowerCase().trim()) ||
+                  (staffEmail != null && semail == staffEmail.toLowerCase().trim());
+            });
+          });
         }
-        await LoggingService().logAction(action: 'DELETE_STAFF', targetType: 'Staff', targetId: id.toString(), details: 'Deleted staff member');
+
+        await LoggingService().logAction(
+          action: 'DELETE_STAFF',
+          targetType: 'Staff',
+          targetId: (staffUsername ?? id).toString(),
+          details: 'Deleted staff member: $staffName',
+        );
+
         _fetchStaff();
-        _msg('Removed', true);
-      } catch (e) { _msg('Error: $e', false); }
+        _msg('Removed $staffName successfully', true);
+      } catch (e) {
+        _msg('Error: $e', false);
+      }
     }
   }
 
@@ -1011,18 +1133,19 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Directory Overview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ElevatedButton.icon(
-              onPressed: () => _showForm(),
-              icon: const Icon(Icons.person_add_rounded, size: 18),
-              label: const Text('Add Member'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor, 
-                foregroundColor: Colors.white, 
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            if (_isAdmin)
+              ElevatedButton.icon(
+                onPressed: () => _showForm(),
+                icon: const Icon(Icons.person_add_rounded, size: 18),
+                label: const Text('Add Member'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor, 
+                  foregroundColor: Colors.white, 
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
-            ),
           ],
         ),
         const SizedBox(height: 24),
@@ -1127,16 +1250,17 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                               ],
                             ),
                           ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _actionBtn(Icons.lock_reset_rounded, Colors.orange, 'Reset Password', () => _resetPassword(s)),
-                            const SizedBox(width: 8),
-                            _actionBtn(Icons.edit_rounded, Colors.blueGrey, 'Edit', () => _showForm(s)),
-                            const SizedBox(width: 8),
-                            _actionBtn(Icons.delete_outline_rounded, Colors.redAccent, 'Delete', () => _delete(s['id'])),
-                          ],
-                        ),
+                        if (_isAdmin)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _actionBtn(Icons.lock_reset_rounded, Colors.orange, 'Reset Password', () => _resetPassword(s)),
+                              const SizedBox(width: 8),
+                              _actionBtn(Icons.edit_rounded, Colors.blueGrey, 'Edit', () => _showForm(s)),
+                              const SizedBox(width: 8),
+                              _actionBtn(Icons.delete_outline_rounded, Colors.redAccent, 'Delete', () => _delete(s['id'])),
+                            ],
+                          ),
                       ],
                     ),
                   ),

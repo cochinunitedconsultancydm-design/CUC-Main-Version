@@ -9,6 +9,7 @@ import '../services/excel_service.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import 'package:cuc_app/services/backup_aware_api.dart';
+import '../services/auth_service.dart';
 
 class DscManagementScreen extends StatefulWidget {
   const DscManagementScreen({super.key});
@@ -21,12 +22,19 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
   final _excel = ExcelService();
   List<DscRecord> _records = [];
   bool _isLoading = true;
+  bool _isAdmin = false;
   String _searchTerm = '';
 
   @override
   void initState() {
     super.initState();
+    _checkAdminRole();
     _fetchRecords();
+  }
+
+  Future<void> _checkAdminRole() async {
+    final isAdmin = await AuthService().isAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
   }
 
   Future<void> _fetchRecords() async {
@@ -57,6 +65,10 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
   }
 
   Future<void> _deleteRecord(int id) async {
+    if (!_isAdmin) {
+      _showError('Permission Denied: Only Admin can delete DSC records');
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -103,6 +115,10 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
   }
 
   void _showRecordForm([DscRecord? record]) {
+    if (record != null && !_isAdmin) {
+      _showError('Permission Denied: Only Admin can edit DSC records');
+      return;
+    }
     final clientNameController = TextEditingController(text: record?.clientName);
     final emailController = TextEditingController(text: record?.emailId);
     final phoneController = TextEditingController(text: record?.phoneNo);
@@ -414,8 +430,10 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                   runSpacing: 8,
                   alignment: WrapAlignment.end,
                   children: [
-                    TextButton.icon(onPressed: () => _showRecordForm(r), icon: const Icon(Icons.edit_outlined, size: 18), label: const Text('Edit')),
-                    TextButton.icon(onPressed: () => _deleteRecord(r.id!), icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent), label: const Text('Delete', style: TextStyle(color: Colors.redAccent))),
+                    if (_isAdmin)
+                      TextButton.icon(onPressed: () => _showRecordForm(r), icon: const Icon(Icons.edit_outlined, size: 18), label: const Text('Edit')),
+                    if (_isAdmin)
+                      TextButton.icon(onPressed: () => _deleteRecord(r.id!), icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent), label: const Text('Delete', style: TextStyle(color: Colors.redAccent))),
                   ],
                 ),
               ],

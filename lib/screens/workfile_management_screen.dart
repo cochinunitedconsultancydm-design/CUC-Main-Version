@@ -13,6 +13,7 @@ import '../models/client.dart';
 import '../services/deal_service.dart';
 import '../services/client_service.dart';
 import '../services/logging_service.dart';
+import '../services/fiscal_year_service.dart';
 import '../theme.dart';
 
 import 'billing_screen.dart';
@@ -80,6 +81,7 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
   bool _isBasicInfoExpanded = false;
   String _currentUserName = 'Staff User';
   String _currentUserEmail = '';
+  bool _isAdmin = false;
   String? _dealId;
   Deal? _deal;
 
@@ -139,6 +141,8 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
     final prefs = await SharedPreferences.getInstance();
     _currentUserEmail = prefs.getString('user_email') ?? '';
     _currentUserName = prefs.getString('user_name') ?? (_currentUserEmail.isNotEmpty ? _currentUserEmail : 'Staff User');
+    final role = prefs.getString('user_role');
+    if (mounted) setState(() => _isAdmin = role?.toLowerCase() == 'admin');
 
     try {
       final req = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
@@ -173,7 +177,9 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
       _deal = widget.existingDeal;
       final d = _deal!;
       _dealId = d.id?.toString();
-      _fileNumberController.text = d.registerNo?.isNotEmpty == true ? d.registerNo! : 'CU-WF-${d.id ?? DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+      _fileNumberController.text = d.registerNo?.isNotEmpty == true
+          ? d.registerNo!
+          : (FiscalYearService.currentPeriod.value == FiscalYearService.period2026_2027 ? 'CC1' : 'CC-${d.id ?? DateTime.now().millisecondsSinceEpoch.toString().substring(7)}');
       _workTitleController.text = d.name;
       _clientController.text = d.clientName ?? '';
       _companyController.text = d.company ?? '';
@@ -282,8 +288,15 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
     } else {
       // New Workfile
       _isBasicInfoExpanded = true;
-      _fileNumberController.text = 'CU-WF-2026-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+      _fileNumberController.text = 'CC1';
       _priorityController.text = 'Normal';
+      _dealService.getNextWorkfileNumber().then((val) {
+        if (mounted && (_fileNumberController.text == 'CC1' || _fileNumberController.text.startsWith('CU-WF-'))) {
+          setState(() {
+            _fileNumberController.text = val;
+          });
+        }
+      });
     }
   }
 
@@ -450,7 +463,7 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
     }
   }
 
-  Future<bool> _saveWorkfileToBackend() async {
+  Future<bool> _saveWorkfileToBackend({DateTime? targetCreatedAt}) async {
     final title = _workTitleController.text.trim();
     final client = _clientController.text.trim();
     if (title.isEmpty || client.isEmpty) {
@@ -487,6 +500,10 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
 
       final isWon = _primaryStatus == 'Completed';
 
+      if (_fileNumberController.text.trim().isEmpty || _fileNumberController.text.trim().startsWith('CU-WF-')) {
+        _fileNumberController.text = await _dealService.getNextWorkfileNumber();
+      }
+
       final dealToSave = Deal(
         id: _dealId ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
         name: title,
@@ -505,7 +522,7 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
         driveLink: _driveLinkController.text.trim(),
         description: packedDescription,
         closedAt: _selectedNextFollowupDate ?? _deal?.closedAt,
-        createdAt: _deal?.createdAt ?? DateTime.now(),
+        createdAt: targetCreatedAt ?? _deal?.createdAt ?? FiscalYearService.getEffectiveCreationDate(),
         updatedAt: DateTime.now(),
         isWon: isWon,
       );
@@ -541,8 +558,81 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
     }
   }
 
+  Future<void> _importThisWorkfileToCurrent() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.drive_file_move_rounded, color: Color(0xFF10B981)),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Import Workfile to 2026-2027?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        content: Text(
+          'Do you want to import "${_workTitleController.text.trim().isNotEmpty ? _workTitleController.text.trim() : (_deal?.name ?? 'this workfile')}" into the 2026-2027 active workspace?\n\nYou can continue working on it seamlessly in the current period.',
+          style: const TextStyle(fontSize: 14, color: Color(0xFF334155)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.drive_file_move_rounded, size: 16),
+            label: const Text('Import to 2026–2027'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final targetDate = FiscalYearService.getEffectiveCreationDate();
+    final success = await _saveWorkfileToBackend(targetCreatedAt: targetDate);
+    if (success) {
+      await LoggingService().logAction(
+        action: 'WORK_IMPORTED',
+        targetType: 'Work',
+        targetId: _dealId ?? _workTitleController.text,
+        details: 'Imported workfile "${_workTitleController.text}" into 2026-2027',
+      );
+      await FiscalYearService.setPeriod(FiscalYearService.period2026_2027);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Successfully imported workfile to 2026–2027! Now active in current period.'),
+            backgroundColor: Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        setState(() {});
+      }
+    }
+  }
+
   Future<void> _onDeleteWorkfile() async {
     if (_dealId == null) return;
+    if (!_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permission Denied: Only Admin can delete workfiles')));
+      return;
+    }
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -618,7 +708,23 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
         ),
         centerTitle: true,
         actions: [
-          if (_dealId != null)
+          if (_dealId != null && FiscalYearService.isOldFile(_deal?.createdAt))
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0, top: 8, bottom: 8),
+              child: ElevatedButton.icon(
+                onPressed: _importThisWorkfileToCurrent,
+                icon: const Icon(Icons.drive_file_move_rounded, size: 16),
+                label: const Text('IMPORT TO 26–27', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                ),
+              ),
+            ),
+          if (_dealId != null && _isAdmin)
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
               onPressed: _onDeleteWorkfile,
@@ -1335,7 +1441,7 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
                     children: [
                       Expanded(child: _buildCompactInput(_categoryController, 'Service Category / Work Type', Icons.category_rounded)),
                       const SizedBox(width: 14),
-                      Expanded(child: _buildCompactInput(_fileNumberController, 'Workfile / File Number', Icons.numbers_rounded)),
+                      Expanded(child: _buildCompactInput(_fileNumberController, 'Workfile / File Number (Auto-assigned)', Icons.lock_outline_rounded, readOnly: true)),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -1379,23 +1485,32 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
     );
   }
 
-  Widget _buildCompactInput(TextEditingController controller, String label, IconData icon) {
+  Widget _buildCompactInput(TextEditingController controller, String label, IconData icon, {bool readOnly = false}) {
     return TextField(
       controller: controller,
-      style: GoogleFonts.montserrat(fontSize: 13.5, color: const Color(0xFF0F172A), fontWeight: FontWeight.w600),
+      readOnly: readOnly,
+      style: GoogleFonts.montserrat(
+        fontSize: 13.5,
+        color: readOnly ? const Color(0xFF475569) : const Color(0xFF0F172A),
+        fontWeight: FontWeight.w600,
+      ),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: GoogleFonts.montserrat(fontSize: 12.5, color: const Color(0xFF64748B)),
-        prefixIcon: Icon(icon, color: AppTheme.accentColor, size: 18),
+        prefixIcon: Icon(icon, color: readOnly ? const Color(0xFF64748B) : AppTheme.accentColor, size: 18),
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: readOnly ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          borderSide: BorderSide(color: readOnly ? const Color(0xFFE2E8F0) : const Color(0xFFCBD5E1)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: readOnly ? const Color(0xFFE2E8F0) : const Color(0xFFCBD5E1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.accentColor, width: 1.5),
+          borderSide: BorderSide(color: readOnly ? const Color(0xFFCBD5E1) : AppTheme.accentColor, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),

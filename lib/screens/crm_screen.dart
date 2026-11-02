@@ -14,6 +14,11 @@ import '../services/crm_data_importer.dart';
 import '../services/notification_service.dart';
 import '../services/meta_service.dart';
 import '../widgets/meta_hub_dialog.dart';
+import '../services/fiscal_year_service.dart';
+import '../services/backup_aware_api.dart';
+import '../models/ModelProvider.dart' as amplify_models;
+import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:amplify_api/amplify_api.dart';
 
 class CrmScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -128,6 +133,7 @@ class _CrmScreenState extends State<CrmScreen>
   @override
   void initState() {
     super.initState();
+    FiscalYearService.currentPeriod.addListener(_onPeriodChanged);
     _tabController = TabController(length: 3, vsync: this);
     _subscribeToDeals();
     _startLiveReminderEngine();
@@ -692,6 +698,7 @@ class _CrmScreenState extends State<CrmScreen>
 
   @override
   void dispose() {
+    FiscalYearService.currentPeriod.removeListener(_onPeriodChanged);
     _searchController.dispose();
     _tabController.dispose();
     _dealSubscription.cancel();
@@ -701,13 +708,20 @@ class _CrmScreenState extends State<CrmScreen>
     super.dispose();
   }
 
+  void _onPeriodChanged() {
+    if (mounted) setState(() {});
+  }
+
   List<Deal> get _crmDeals => _deals.where((d) {
         final p = d.pipeline.toLowerCase();
-        return p == 'crm' || p == 'lead';
+        if (p != 'crm' && p != 'lead') return false;
+        return FiscalYearService.matchesCurrentPeriod(d.createdAt);
       }).toList();
 
   List<Deal> get _scopedDeals {
-    final base = _showAllPipelines ? _deals : _crmDeals;
+    final base = _showAllPipelines
+        ? _deals.where((d) => FiscalYearService.matchesCurrentPeriod(d.createdAt)).toList()
+        : _crmDeals;
     final groups = <String, List<Deal>>{};
     for (final d in base) {
       final phone = (d.contactInfo ?? '').replaceAll(RegExp(r'[^0-9]'), '');
@@ -739,6 +753,85 @@ class _CrmScreenState extends State<CrmScreen>
       }
     }
     return _sortDeals(uniqueList);
+  }
+
+  Future<void> _importSingleLeadToCurrent(Deal deal) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.drive_file_move_rounded, color: Color(0xFF10B981)),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Import Lead to 2026-2027?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        content: Text(
+          'Do you want to import CRM lead "${deal.name}" into the current period (2026-2027)?\n\nYou can continue follow-ups in the current workspace.',
+          style: const TextStyle(fontSize: 14, color: Color(0xFF334155)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.drive_file_move_rounded, size: 16),
+            label: const Text('Import to 2026–2027'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final targetDate = FiscalYearService.getEffectiveCreationDate();
+      final targetDateStr = targetDate.toIso8601String();
+
+      final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(deal.id.toString()), limit: 1);
+      final res = await Amplify.API.query(request: req).response;
+      final existing = (res.data?.items ?? []).whereType<amplify_models.Deals>().firstOrNull;
+      if (existing != null) {
+        final updated = existing.copyWith(created_at: targetDateStr);
+        await BackupAwareApi().update(updated);
+      }
+
+      await FiscalYearService.setPeriod(FiscalYearService.period2026_2027);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully imported lead "${deal.name}" to 2026–2027!'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error importing lead: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   List<Deal> _sortDeals(List<Deal> deals) {
@@ -5643,6 +5736,38 @@ class _CrmScreenState extends State<CrmScreen>
             const SizedBox(height: 8),
             const Divider(color: Color(0xFFE2E8F0), height: 1),
             const SizedBox(height: 8),
+
+            if (FiscalYearService.isOldFile(deal.createdAt)) ...[
+              InkWell(
+                onTap: () => _importSingleLeadToCurrent(deal),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF10B981), width: 0.8),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.drive_file_move_rounded, color: Color(0xFF10B981), size: 13),
+                      SizedBox(width: 4),
+                      Text(
+                        'Import to 2026–2027',
+                        style: TextStyle(
+                          color: Color(0xFF047857),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
 
             // Actions row
             Row(

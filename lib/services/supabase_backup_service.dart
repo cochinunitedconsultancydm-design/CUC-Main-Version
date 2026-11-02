@@ -327,6 +327,38 @@ class SupabaseBackupService {
     }
   }
 
+  /// Delete a user from Supabase by ID, username, or email.
+  Future<bool> deleteUser({dynamic id, String? username, String? email}) async {
+    try {
+      bool deleted = false;
+      if (id != null && int.tryParse(id.toString()) != null) {
+        final res = await http.delete(
+          Uri.parse('$_supabaseUrl/rest/v1/users?id=eq.$id'),
+          headers: _headers,
+        );
+        if (res.statusCode >= 200 && res.statusCode < 300) deleted = true;
+      }
+      if (username != null && username.isNotEmpty) {
+        final res = await http.delete(
+          Uri.parse('$_supabaseUrl/rest/v1/users?username=eq.$username'),
+          headers: _headers,
+        );
+        if (res.statusCode >= 200 && res.statusCode < 300) deleted = true;
+      }
+      if (email != null && email.isNotEmpty) {
+        final res = await http.delete(
+          Uri.parse('$_supabaseUrl/rest/v1/users?email=eq.$email'),
+          headers: _headers,
+        );
+        if (res.statusCode >= 200 && res.statusCode < 300) deleted = true;
+      }
+      return deleted;
+    } catch (e) {
+      debugPrint('Supabase deleteUser error: $e');
+      return false;
+    }
+  }
+
   /// Check if Supabase is reachable.
   Future<bool> isAvailable() async {
     try {

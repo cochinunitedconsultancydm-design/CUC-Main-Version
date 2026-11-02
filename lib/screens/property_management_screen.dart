@@ -10,6 +10,7 @@ import '../theme.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import '../services/logging_service.dart';
+import '../services/auth_service.dart';
 class PropertyManagementScreen extends StatefulWidget {
   const PropertyManagementScreen({super.key});
 
@@ -20,12 +21,19 @@ class PropertyManagementScreen extends StatefulWidget {
 class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
   List<amplify_models.Properties> _properties = [];
   bool _isLoading = true;
+  bool _isAdmin = false;
   String _searchTerm = '';
 
   @override
   void initState() {
     super.initState();
+    _checkAdminRole();
     _fetchProperties();
+  }
+
+  Future<void> _checkAdminRole() async {
+    final isAdmin = await AuthService().isAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
   }
 
   Future<void> _fetchProperties() async {
@@ -67,6 +75,10 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
   }
 
   void _showEditForm([amplify_models.Properties? property]) {
+    if (property != null && !_isAdmin) {
+      _showError('Permission Denied: Only Admin can edit properties');
+      return;
+    }
     final formWidget = _EditPropertyForm(
       property: property,
       onSaved: () {
@@ -371,6 +383,10 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
   }
 
   Future<void> _deleteProperty(amplify_models.Properties property) async {
+    if (!_isAdmin) {
+      _showError('Permission Denied: Only Admin can delete properties');
+      return;
+    }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -726,23 +742,24 @@ class _PropertyManagementScreenState extends State<PropertyManagementScreen> {
                                 ),
                               ],
                             ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit_outlined, color: AppTheme.mutedTextColor),
-                                  onPressed: () => _showEditForm(prop),
-                                  tooltip: 'Edit',
-                                  hoverColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                  onPressed: () => _deleteProperty(prop),
-                                  tooltip: 'Delete',
-                                  hoverColor: Colors.red.withValues(alpha: 0.1),
-                                ),
-                              ],
-                            ),
+                            if (_isAdmin)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined, color: AppTheme.mutedTextColor),
+                                    onPressed: () => _showEditForm(prop),
+                                    tooltip: 'Edit',
+                                    hoverColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                    onPressed: () => _deleteProperty(prop),
+                                    tooltip: 'Delete',
+                                    hoverColor: Colors.red.withValues(alpha: 0.1),
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
                       ],

@@ -10,6 +10,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import 'package:cuc_app/services/backup_aware_api.dart';
 import '../services/logging_service.dart';
+import '../services/auth_service.dart';
 import '../screens/client_files_dialog.dart';
 import '../models/client.dart';
 
@@ -25,6 +26,7 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
   final _excel = ExcelService();
   List<ClientLicense> _licenses = [];
   List<Map<String, dynamic>> _licenseTypes = [];
+  bool _isAdmin = false;
   
   static const Map<int, String> _fallbackLicenseTypes = {
     2: 'Rent',
@@ -221,16 +223,18 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
                   label: const Text('Renew License', style: TextStyle(color: Colors.blue)),
                 ),
               ],
-              TextButton.icon(
-                onPressed: () => _showLicenseForm(l),
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('Edit'),
-              ),
-              TextButton.icon(
-                onPressed: () => _deleteLicense(l.id!),
-                icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
-                label: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
-              ),
+              if (_isAdmin)
+                TextButton.icon(
+                  onPressed: () => _showLicenseForm(l),
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: const Text('Edit'),
+                ),
+              if (_isAdmin)
+                TextButton.icon(
+                  onPressed: () => _deleteLicense(l.id!),
+                  icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
+                  label: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                ),
             ],
           ),
         ],
@@ -241,8 +245,14 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAdminRole();
     _filterType = widget.initialFilter ?? 'All';
     _fetchInitialData();
+  }
+
+  Future<void> _checkAdminRole() async {
+    final isAdmin = await AuthService().isAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
   }
 
   Future<void> _fetchInitialData() async {
@@ -448,6 +458,10 @@ class _LicenseManagementScreenState extends State<LicenseManagementScreen> {
   }
 
   Future<void> _deleteLicense(String id) async {
+    if (!_isAdmin) {
+      _showError('Permission Denied: Only Admin can delete licenses');
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

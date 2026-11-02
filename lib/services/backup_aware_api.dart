@@ -52,17 +52,24 @@ class BackupAwareApi {
         .response;
 
     if (response.hasErrors) {
-      debugPrint('GraphQL delete errors: ${response.errors}');
-      throw Exception(response.errors.map((e) => e.message).join(', '));
+      final isAuthMutationError = response.errors.any(
+        (e) => e.message.contains('Not Authorized') || e.message.contains('Unauthorized'),
+      );
+      if (!isAuthMutationError) {
+        debugPrint('GraphQL delete errors: ${response.errors}');
+        throw Exception(response.errors.map((e) => e.message).join(', '));
+      }
     }
 
-    if (response.data != null) {
-      String modelId;
+    String modelId = '';
+    try {
+      modelId = (model as dynamic).id.toString();
+    } catch (e) {
       try {
-        modelId = (model as dynamic).id.toString();
-      } catch (e) {
         modelId = (model as dynamic).getId().toString();
-      }
+      } catch (_) {}
+    }
+    if (modelId.isNotEmpty) {
       _deleteBackupInBackground(
           model.getInstanceType().modelName(), modelId);
     }
@@ -76,8 +83,13 @@ class BackupAwareApi {
         .response;
 
     if (response.hasErrors) {
-      debugPrint('GraphQL deleteById errors: ${response.errors}');
-      throw Exception(response.errors.map((e) => e.message).join(', '));
+      final isAuthMutationError = response.errors.any(
+        (e) => e.message.contains('Not Authorized') || e.message.contains('Unauthorized'),
+      );
+      if (!isAuthMutationError) {
+        debugPrint('GraphQL deleteById errors: ${response.errors}');
+        throw Exception(response.errors.map((e) => e.message).join(', '));
+      }
     }
 
     if (response.data != null) {

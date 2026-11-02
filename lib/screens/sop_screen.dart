@@ -11,6 +11,7 @@ import 'dart:io';
 import 'dart:convert';
 import '../services/backup_aware_api.dart';
 import '../services/logging_service.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 
 class SopScreen extends StatefulWidget {
@@ -22,6 +23,7 @@ class SopScreen extends StatefulWidget {
 
 class _SopScreenState extends State<SopScreen> {
   bool _isLoading = true;
+  bool _isAdmin = false;
   List<ServiceContent> _sops = [];
   List<ServiceContent> _filteredSops = [];
   List<Deals> _deals = [];
@@ -33,8 +35,14 @@ class _SopScreenState extends State<SopScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAdminRole();
     _fetchSops();
     _searchController.addListener(_filterSops);
+  }
+
+  Future<void> _checkAdminRole() async {
+    final isAdmin = await AuthService().isAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
   }
 
   @override
@@ -100,6 +108,10 @@ class _SopScreenState extends State<SopScreen> {
   }
 
   Future<void> _deleteSop(ServiceContent sop) async {
+    if (!_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permission Denied: Only Admin can delete SOPs'), backgroundColor: Colors.red));
+      return;
+    }
     try {
       await BackupAwareApi().delete(sop);
       await LoggingService().logAction(action: 'SOP_DELETED', targetType: 'SOP', targetId: sop.id, details: 'Deleted SOP: ${sop.title}');
@@ -128,6 +140,10 @@ class _SopScreenState extends State<SopScreen> {
   }
 
   void _showAddEditSopDialog([ServiceContent? sop]) {
+    if (sop != null && !_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permission Denied: Only Admin can edit SOPs'), backgroundColor: Colors.red));
+      return;
+    }
     final titleController = TextEditingController(text: sop?.title);
     final descController = TextEditingController(text: sop?.description);
     final contentController = TextEditingController(text: sop?.details);
@@ -451,6 +467,10 @@ class _SopScreenState extends State<SopScreen> {
   }
 
   void _confirmDelete(ServiceContent sop) {
+    if (!_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permission Denied: Only Admin can delete SOPs'), backgroundColor: Colors.red));
+      return;
+    }
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -634,16 +654,18 @@ class _SopScreenState extends State<SopScreen> {
                                       trailing: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          IconButton(
-                                            icon: Icon(Icons.edit_outlined, color: Colors.blue.shade700),
-                                            tooltip: 'Edit',
-                                            onPressed: () => _showAddEditSopDialog(sop),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade600),
-                                            tooltip: 'Delete',
-                                            onPressed: () => _confirmDelete(sop),
-                                          ),
+                                          if (_isAdmin)
+                                            IconButton(
+                                              icon: Icon(Icons.edit_outlined, color: Colors.blue.shade700),
+                                              tooltip: 'Edit',
+                                              onPressed: () => _showAddEditSopDialog(sop),
+                                            ),
+                                          if (_isAdmin)
+                                            IconButton(
+                                              icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade600),
+                                              tooltip: 'Delete',
+                                              onPressed: () => _confirmDelete(sop),
+                                            ),
                                           const SizedBox(width: 8),
                                           const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
                                         ],

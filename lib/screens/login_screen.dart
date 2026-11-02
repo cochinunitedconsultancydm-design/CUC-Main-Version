@@ -84,6 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success) {
         await _auth.saveRememberMe(_userController.text.trim(), _rememberMe);
         final role = await _auth.getUserRole();
+
         if (mounted) {
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(

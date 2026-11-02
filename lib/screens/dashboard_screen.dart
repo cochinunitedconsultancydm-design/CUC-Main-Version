@@ -23,6 +23,7 @@ import 'reminder_calendar_screen.dart';
 import '../widgets/upcoming_reminders_widget.dart';
 import 'delivery_dashboard_screen.dart';
 import 'accountant_dashboard_screen.dart';
+import '../services/fiscal_year_service.dart';
 
 import 'help_and_queries_management_screen.dart';
 import 'company_bill_management_screen.dart';
@@ -101,14 +102,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   @override
   void dispose() {
+    FiscalYearService.currentPeriod.removeListener(_onPeriodChanged);
     _notifSubscription?.cancel();
 
     super.dispose();
   }
 
+  void _onPeriodChanged() {
+    if (mounted) {
+      _fetchStats();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    FiscalYearService.currentPeriod.addListener(_onPeriodChanged);
     _checkRoleAndRedirect();
     // Add a small delay to ensure DB service is ready on mobile
     Future.delayed(const Duration(milliseconds: 500), () => _fetchStats());
@@ -396,7 +405,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         limit: 10000
       );
       final licCountRes = await Amplify.API.query(request: licReq).response;
-      final licCount = licCountRes.data?.items.length ?? 0;
+      final rawLics = (licCountRes.data?.items ?? []).whereType<amplify_models.ClientLicenses>().toList();
+      final licCount = rawLics.where((l) => FiscalYearService.matchesCurrentPeriod(l.createdAt?.getDateTimeInUtc().toLocal())).length;
 
       // 2. DSC Expiry (next 30 days)
       final dscReq = ModelQueries.list(
@@ -405,7 +415,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         limit: 10000
       );
       final dscCountRes = await Amplify.API.query(request: dscReq).response;
-      final dscCount = dscCountRes.data?.items.length ?? 0;
+      final rawDscs = (dscCountRes.data?.items ?? []).whereType<amplify_models.DscRecords>().toList();
+      final dscCount = rawDscs.where((d) => FiscalYearService.matchesCurrentPeriod(d.createdAt?.getDateTimeInUtc().toLocal())).length;
 
       // 3. Active Deals
       final userId = await AuthService().getUserId();
@@ -421,7 +432,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       dealsCount = dealsRaw.where((d) {
         final isCrm = (d.pipeline ?? '').toLowerCase() == 'crm' || (d.pipeline ?? '').toLowerCase() == 'lead';
         if (isCrm && d.is_won != true) return false;
-        return true;
+        DateTime? dt;
+        if (d.created_at != null && d.created_at!.isNotEmpty) {
+          dt = DateTime.tryParse(d.created_at!);
+        }
+        dt ??= d.createdAt?.getDateTimeInUtc().toLocal();
+        return FiscalYearService.matchesCurrentPeriod(dt);
       }).length;
 
       // 4. Bills to Receive (Only pending INVOICES)
@@ -436,9 +452,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       double totalAmount = 0;
       for (var row in billsItems) {
         if (row != null) {
-          final amtStr = row.amount?.toString() ?? '0';
-          final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
-          totalAmount += double.tryParse(cleanAmt) ?? 0.0;
+          DateTime? dt;
+          try {
+            if (row.date != null) dt = DateTime.parse(row.date!);
+          } catch (_) {}
+          dt ??= row.createdAt?.getDateTimeInUtc().toLocal();
+          if (FiscalYearService.matchesCurrentPeriod(dt)) {
+            final amtStr = row.amount?.toString() ?? '0';
+            final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
+            totalAmount += double.tryParse(cleanAmt) ?? 0.0;
+          }
         }
       }
 
@@ -450,7 +473,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
       final tasksReq = ModelQueries.list(amplify_models.Tasks.classType, where: tasksWhere, limit: 10000);
       final tasksRes = await Amplify.API.query(request: tasksReq).response;
-      pendingTasksCount = tasksRes.data?.items.length ?? 0;
+      final taskItems = (tasksRes.data?.items ?? []).whereType<amplify_models.Tasks>();
+      pendingTasksCount = taskItems.where((t) {
+        DateTime? dt;
+        if (t.created_at != null && t.created_at!.isNotEmpty) {
+          dt = DateTime.tryParse(t.created_at!);
+        }
+        dt ??= t.createdAt?.getDateTimeInUtc().toLocal();
+        return FiscalYearService.matchesCurrentPeriod(dt);
+      }).length;
 
       // 6. Pending Checklists
       int pendingChecklistsCount = 0;
@@ -909,6 +940,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
+        FiscalYearHeaderPill(onSwitched: _fetchStats),
+        const SizedBox(width: 12),
         const NotificationBell(),
         const SizedBox(width: 8),
         IconButton(

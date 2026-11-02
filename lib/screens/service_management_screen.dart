@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import '../services/logging_service.dart';
+import '../services/auth_service.dart';
 
 class ServiceManagementScreen extends StatefulWidget {
   const ServiceManagementScreen({super.key});
@@ -22,13 +23,20 @@ class ServiceManagementScreen extends StatefulWidget {
 class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
   List<ServiceItem> _services = [];
   bool _isLoading = true;
+  bool _isAdmin = false;
   bool _isImporting = false;
   String _searchTerm = '';
 
   @override
   void initState() {
     super.initState();
+    _checkAdminRole();
     _fetchServices();
+  }
+
+  Future<void> _checkAdminRole() async {
+    final isAdmin = await AuthService().isAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
   }
 
   Future<void> _fetchServices() async {
@@ -194,6 +202,10 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
   }
 
   void _showEditForm(ServiceItem service) {
+    if (!_isAdmin) {
+      _showError('Permission Denied: Only Admin can edit services');
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -617,16 +629,18 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                     ),
                     Row(
                       children: [
-                        IconButton(
-                          onPressed: () => _showEditForm(service),
-                          icon: const Icon(Icons.edit_note_rounded, color: AppTheme.primaryColor),
-                          tooltip: 'Edit Service',
-                        ),
-                        IconButton(
-                          onPressed: () => _confirmDelete(service),
-                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
-                          tooltip: 'Delete',
-                        ),
+                        if (_isAdmin)
+                          IconButton(
+                            onPressed: () => _showEditForm(service),
+                            icon: const Icon(Icons.edit_note_rounded, color: AppTheme.primaryColor),
+                            tooltip: 'Edit Service',
+                          ),
+                        if (_isAdmin)
+                          IconButton(
+                            onPressed: () => _confirmDelete(service),
+                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                            tooltip: 'Delete',
+                          ),
                       ],
                     ),
                   ],
@@ -664,6 +678,10 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
   }
 
   void _confirmDelete(ServiceItem service) {
+    if (!_isAdmin) {
+      _showError('Permission Denied: Only Admin can delete services');
+      return;
+    }
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

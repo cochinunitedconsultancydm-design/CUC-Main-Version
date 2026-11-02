@@ -14,6 +14,8 @@ import '../theme.dart';
 import '../models/deal.dart';
 import '../models/deal_activity.dart';
 import '../services/deal_service.dart';
+import '../services/auth_service.dart';
+import '../services/fiscal_year_service.dart';
 import 'deal_detail_screen.dart';
 import 'workfile_management_screen.dart';
 import 'google_docs_webview_screen.dart';
@@ -36,11 +38,12 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   bool _showOnlyMyWorks = false;
+  bool _isAdmin = false;
   int? _currentUserId;
   StreamSubscription? _dealsSubscription;
 
-  static final DateTime nov1Cutoff = DateTime(2026, 11, 1);
-  String _selectedPeriod = '2026-2027'; // '2026-2027', '2025-2026', 'All'
+  static final DateTime nov1Cutoff = FiscalYearService.nov1Cutoff;
+  String _selectedPeriod = FiscalYearService.currentPeriod.value; // '2026-2027', '2025-2026', 'All'
   String? _selectedStaffFilter;
   String _sortOption = 'Newest First';
 
@@ -52,9 +55,23 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAdminRole();
+    _selectedPeriod = FiscalYearService.currentPeriod.value;
+    FiscalYearService.currentPeriod.addListener(_onFiscalYearChanged);
     _loadCurrentUserId();
     _fetchStaff();
     _subscribeToDeals();
+  }
+
+  Future<void> _checkAdminRole() async {
+    final isAdmin = await AuthService().isAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
+  }
+
+  void _onFiscalYearChanged() {
+    if (mounted && _selectedPeriod != FiscalYearService.currentPeriod.value) {
+      setState(() => _selectedPeriod = FiscalYearService.currentPeriod.value);
+    }
   }
 
   void _subscribeToDeals() {
@@ -74,6 +91,7 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
 
   @override
   void dispose() {
+    FiscalYearService.currentPeriod.removeListener(_onFiscalYearChanged);
     _dealsSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -147,6 +165,12 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
   }
 
   Future<void> _deleteDeal(Deal deal) async {
+    if (!_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permission Denied: Only Admin can delete works'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -184,6 +208,95 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
             SnackBar(content: Text('Error deleting work: $e'), backgroundColor: Colors.red),
           );
         }
+      }
+    }
+  }
+
+  Future<void> _importSingleDealToCurrent(Deal deal) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.drive_file_move_rounded, color: Color(0xFF10B981)),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Import Work to 2026–2027?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        content: Text(
+          'Do you want to import work "${deal.name}" into the current period (2026–2027)?\n\nYou can continue working on this file in the 2026–2027 workspace.',
+          style: const TextStyle(fontSize: 14, color: Color(0xFF334155)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.drive_file_move_rounded, size: 16),
+            label: const Text('Import to 2026–2027'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final targetDate = FiscalYearService.getEffectiveCreationDate();
+      final targetDateStr = targetDate.toIso8601String();
+
+      final req = ModelQueries.list(amplify_models.Deals.classType, where: amplify_models.Deals.ID.eq(deal.id.toString()), limit: 1);
+      final res = await Amplify.API.query(request: req).response;
+      final existing = (res.data?.items ?? []).whereType<amplify_models.Deals>().firstOrNull;
+      if (existing != null) {
+        final updated = existing.copyWith(created_at: targetDateStr);
+        await BackupAwareApi().update(updated);
+      }
+
+      await LoggingService().logAction(
+        action: 'WORK_IMPORTED',
+        targetType: 'Work',
+        targetId: deal.name,
+        details: 'Imported work "${deal.name}" into 2026-2027 to continue working',
+      );
+
+      await FiscalYearService.setPeriod(FiscalYearService.period2026_2027);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully imported "${deal.name}" to 2026–2027! Active in current workspace.'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      await _refreshDeals();
+    } catch (e) {
+      debugPrint('Error importing work: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error importing work: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -899,7 +1012,6 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               _buildMyWorksToggle(),
-              _buildPeriodSelector(),
               _buildStaffDropdown(staffNames),
               _buildStaffWorkloadButton(),
             ],
@@ -979,63 +1091,6 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
     );
   }
 
-  Widget _buildPeriodSelector() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      padding: const EdgeInsets.all(3),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _periodChip('2026-2027', '2026-2027 (Current)', isCurrent: true),
-          _periodChip('2025-2026', '2025-2026'),
-          _periodChip('All', 'All'),
-        ],
-      ),
-    );
-  }
-
-  Widget _periodChip(String period, String label, {bool isCurrent = false}) {
-    final isSelected = _selectedPeriod == period;
-    return InkWell(
-      onTap: () => setState(() => _selectedPeriod = period),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0F172A) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isCurrent) ...[
-              Container(
-                width: 6,
-                height: 6,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF10B981),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 5),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? Colors.white : const Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildStaffDropdown(List<String> staffNames) {
     return Container(
@@ -1513,14 +1568,49 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                       ),
                     ],
                   ],
-                  const SizedBox(width: 16),
-                  IconButton(
-                    onPressed: () => _deleteDeal(deal),
-                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: 'Delete Work',
-                  ),
+                  if (_getDealDate(deal).isBefore(nov1Cutoff)) ...[
+                    const SizedBox(width: 12),
+                    Tooltip(
+                      message: 'Import to 2026–2027 to continue working on this file',
+                      child: InkWell(
+                        onTap: () => _importSingleDealToCurrent(deal),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF10B981), width: 1.0),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.drive_file_move_rounded, color: Color(0xFF10B981), size: 14),
+                              SizedBox(width: 4),
+                              Text(
+                                'Import to 26-27',
+                                style: TextStyle(
+                                  color: Color(0xFF047857),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (_isAdmin) ...[
+                    const SizedBox(width: 16),
+                    IconButton(
+                      onPressed: () => _deleteDeal(deal),
+                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Delete Work',
+                    ),
+                  ],
                 ],
               )
             : Column(
@@ -1536,13 +1626,40 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      IconButton(
-                        onPressed: () => _deleteDeal(deal),
-                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        tooltip: 'Delete Work',
-                      ),
+                      if (_getDealDate(deal).isBefore(nov1Cutoff)) ...[
+                        InkWell(
+                          onTap: () => _importSingleDealToCurrent(deal),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFF10B981), width: 0.8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.drive_file_move_rounded, color: Color(0xFF10B981), size: 12),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Import 26-27',
+                                  style: TextStyle(color: Color(0xFF047857), fontWeight: FontWeight.bold, fontSize: 10.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      if (_isAdmin)
+                        IconButton(
+                          onPressed: () => _deleteDeal(deal),
+                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: 'Delete Work',
+                        ),
                     ],
                   ),
                   if (deal.isAdjourned) ...[

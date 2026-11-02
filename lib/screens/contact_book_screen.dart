@@ -6,6 +6,7 @@ import '../theme.dart';
 import '../widgets/premium_app_bar.dart';
 import '../services/supabase_backup_service.dart';
 import '../services/logging_service.dart';
+import '../services/auth_service.dart';
 class ContactBookScreen extends StatefulWidget {
   const ContactBookScreen({super.key});
 
@@ -16,6 +17,7 @@ class ContactBookScreen extends StatefulWidget {
 class _ContactBookScreenState extends State<ContactBookScreen> {
   List<dynamic> _contacts = [];
   bool _isLoading = true;
+  bool _isAdmin = false;
   String _searchQuery = '';
   String? _errorMessage;
 
@@ -112,6 +114,12 @@ class _ContactBookScreenState extends State<ContactBookScreen> {
   }
 
   Future<void> _deleteContact(dynamic contact) async {
+    if (!_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permission Denied: Only Admin can delete contacts'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -167,6 +175,12 @@ class _ContactBookScreenState extends State<ContactBookScreen> {
   }
 
   void _showContactDialog([dynamic contact]) {
+    if (contact != null && !_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permission Denied: Only Admin can edit contacts'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     showDialog(
       context: context,
       builder: (_) => _ContactDialog(
@@ -325,7 +339,8 @@ class _ContactBookScreenState extends State<ContactBookScreen> {
                     ],
                   ),
                 ),
-                PopupMenuButton(
+                if (_isAdmin)
+                  PopupMenuButton(
                   icon: const Icon(Icons.more_vert, color: AppTheme.mutedTextColor),
                   itemBuilder: (_) => [
                     const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 18), SizedBox(width: 8), Text('Edit')])),

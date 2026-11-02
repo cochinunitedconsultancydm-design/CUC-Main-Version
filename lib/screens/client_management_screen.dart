@@ -19,6 +19,7 @@ import '../models/deal.dart';
 import 'deal_detail_screen.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_backup_service.dart';
+import '../services/fiscal_year_service.dart';
 
 class ClientManagementScreen extends StatefulWidget {
   const ClientManagementScreen({super.key});
@@ -30,8 +31,8 @@ class ClientManagementScreen extends StatefulWidget {
 class _ClientManagementScreenState extends State<ClientManagementScreen> {
   final _excel = ExcelService();
   final _auth = AuthService();
-  static final DateTime nov1Cutoff = DateTime(2026, 11, 1);
-  String _selectedPeriod = '2026-2027'; // Starts fresh from Nov 1, 2026
+  static final DateTime nov1Cutoff = FiscalYearService.nov1Cutoff;
+  String _selectedPeriod = FiscalYearService.currentPeriod.value; // Starts fresh from Nov 1, 2026
   List<Client> _clients = [];
   List<amplify_models.Clients> _rawClients = [];
   bool _isLoading = true;
@@ -98,7 +99,21 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedPeriod = FiscalYearService.currentPeriod.value;
+    FiscalYearService.currentPeriod.addListener(_onPeriodChanged);
     _fetchClients();
+  }
+
+  void _onPeriodChanged() {
+    if (mounted && _selectedPeriod != FiscalYearService.currentPeriod.value) {
+      setState(() => _selectedPeriod = FiscalYearService.currentPeriod.value);
+    }
+  }
+
+  @override
+  void dispose() {
+    FiscalYearService.currentPeriod.removeListener(_onPeriodChanged);
+    super.dispose();
   }
 
   Future<void> _fetchClients() async {
@@ -901,6 +916,10 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
   }
 
   Future<void> _deleteClient(String id) async {
+    if (!_isAdmin) {
+      _showError('Permission Denied: Only Admin can delete clients');
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -964,6 +983,10 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
   }
 
   void _showClientForm([Client? client]) {
+    if (client != null && !_isAdmin) {
+      _showError('Permission Denied: Only Admin can edit client profiles');
+      return;
+    }
     final nameController = TextEditingController(text: client?.name);
     final emailController = TextEditingController(text: client?.email);
     List<TextEditingController> phoneControllers = (client?.phone ?? '').split(',').map((p) => TextEditingController(text: p.trim())).toList();
@@ -1622,6 +1645,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                               case_number: newRegNo,
                               companies: newClient.companies,
                               custom_fields: newClient.customFields,
+                              created_at: FiscalYearService.getEffectiveCreationDate().toIso8601String(),
                             );
                             await BackupAwareApi().create(model);
                           } else {
@@ -1701,149 +1725,6 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     );
   }
 
-  Widget _buildPeriodSelector() {
-    return Container(
-      margin: const EdgeInsets.only(top: 16, bottom: 8),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          _buildPeriodChip(
-            id: '2026-2027',
-            title: '2026-2027 (Current)',
-            subtitle: 'From Nov 1, 2026',
-            icon: Icons.fiber_new_rounded,
-            count: _count2026_2027,
-            activeColor: const Color(0xFF10B981),
-          ),
-          _buildPeriodChip(
-            id: '2025-2026',
-            title: '2025-2026',
-            subtitle: 'Till Nov 1, 2026',
-            icon: Icons.history_rounded,
-            count: _count2025_2026,
-            activeColor: const Color(0xFF6366F1),
-          ),
-          _buildPeriodChip(
-            id: 'All',
-            title: 'All Clients',
-            subtitle: 'Complete Archive',
-            icon: Icons.people_alt_rounded,
-            count: _countAll,
-            activeColor: AppTheme.primaryColor,
-          ),
-          if (_count2025_2026 > 0)
-            Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: ElevatedButton.icon(
-                onPressed: _showImportToCurrentDialog,
-                icon: const Icon(Icons.drive_file_move_outlined, size: 16),
-                label: const Text('Import to Current', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 0,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPeriodChip({
-    required String id,
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required int count,
-    required Color activeColor,
-  }) {
-    final isSelected = _selectedPeriod == id;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedPeriod = id;
-        });
-      },
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? activeColor : const Color(0xFFE2E8F0),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected ? Colors.white : const Color(0xFF64748B),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF94A3B8),
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                count.toString(),
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF475569),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -2009,10 +1890,11 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                   _buildSortDropdown(),
                   _headerAction(Icons.refresh_rounded, 'Refresh', AppTheme.primaryColor, _fetchClients),
                   _headerAction(Icons.download_rounded, 'Export', Colors.green, _exportToExcel),
+                  if (_selectedPeriod == '2026-2027' && _count2025_2026 > 0)
+                    _headerAction(Icons.drive_file_move_outlined, 'Import from 25-26', const Color(0xFF10B981), _showImportToCurrentDialog),
                 ],
               ).animate().fadeIn().slideY(begin: 0.1),
             ],
-            _buildPeriodSelector(),
             const SizedBox(height: 16),
             Expanded(
               child: _isLoading
@@ -2316,24 +2198,26 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
-                OutlinedButton.icon(
-                  onPressed: () => _showClientForm(c),
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text('Edit Profile'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primaryColor,
-                    side: const BorderSide(color: AppTheme.primaryColor),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                if (_getClientDate(c).isBefore(nov1Cutoff))
+                if (_isAdmin)
                   OutlinedButton.icon(
-                    onPressed: () => _importSingleClientToCurrent(c),
-                    icon: const Icon(Icons.drive_file_move_outlined, size: 16),
-                    label: const Text('Import to Current'),
+                    onPressed: () => _showClientForm(c),
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text('Edit Profile'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF10B981),
-                      side: const BorderSide(color: Color(0xFF10B981)),
+                      foregroundColor: AppTheme.primaryColor,
+                      side: const BorderSide(color: AppTheme.primaryColor),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                if (_getClientDate(c).isBefore(nov1Cutoff))
+                  ElevatedButton.icon(
+                    onPressed: () => _importSingleClientToCurrent(c),
+                    icon: const Icon(Icons.drive_file_move_rounded, size: 15),
+                    label: const Text('Import to 26–27', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),

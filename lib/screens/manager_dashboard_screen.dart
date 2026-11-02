@@ -20,6 +20,7 @@ import 'dsc_management_screen.dart';
 import 'work_management_screen.dart';
 import 'company_bill_management_screen.dart';
 import 'contact_book_screen.dart';
+import '../services/fiscal_year_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/notification_bell.dart';
 import 'package:intl/intl.dart';
@@ -93,17 +94,31 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   String? _checkInTimeStr;
   int _dailyTotalMinutes = 0;
   bool _isAttendanceLoading = true;
+  bool _isAdmin = false;
 
   @override
   void dispose() {
+    FiscalYearService.currentPeriod.removeListener(_onFiscalYearChanged);
     _notifSubscription?.cancel();
     super.dispose();
   }
 
+  void _onFiscalYearChanged() {
+    if (mounted) {
+      _fetchAdminStats();
+    }
+  }
+
+  Future<void> _checkAdminRole() async {
+    final isAdmin = await AuthService().isAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
+  }
 
   @override
   void initState() {
     super.initState();
+    _checkAdminRole();
+    FiscalYearService.currentPeriod.addListener(_onFiscalYearChanged);
     // Delay to ensure connection is stable on mobile
     Future.delayed(const Duration(milliseconds: 500), () => _fetchAdminStats());
     _fetchAttendanceStatus();
@@ -247,31 +262,50 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
 
     try {
       
-      // 1. Basic Stats
+      // 1. Basic Stats filtered by active Fiscal Year
       final clientsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Clients.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools)).response;
-      debugPrint('DEBUG: clientsRes errors: ${clientsRes.errors}');
-      debugPrint('DEBUG: clientsRes data length: ${(clientsRes.data?.items ?? []).length}');
-      final clientsCount = (clientsRes.data?.items ?? []).length;
+      final rawClients = (clientsRes.data?.items ?? []).whereType<amplify_models.Clients>().toList();
+      final clientsCount = rawClients.where((c) {
+        DateTime? dt;
+        if (c.created_at != null && c.created_at!.isNotEmpty) {
+          dt = DateTime.tryParse(c.created_at!);
+        }
+        dt ??= c.createdAt?.getDateTimeInUtc().toLocal();
+        return FiscalYearService.matchesCurrentPeriod(dt);
+      }).length;
       
       final licensesRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ClientLicenses.classType, limit: 10000, where: amplify_models.ClientLicenses.STATUS.eq('Active'), authorizationMode: APIAuthorizationType.userPools)).response;
-      debugPrint('DEBUG: licensesRes fetched');
-      final licensesCount = (licensesRes.data?.items ?? []).length;
+      final rawLicenses = (licensesRes.data?.items ?? []).whereType<amplify_models.ClientLicenses>().toList();
+      final licensesCount = rawLicenses.where((l) {
+        final dt = l.createdAt?.getDateTimeInUtc().toLocal();
+        return FiscalYearService.matchesCurrentPeriod(dt);
+      }).length;
       
       final tasksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Tasks.classType, limit: 10000, where: amplify_models.Tasks.STATUS.ne('Completed'), authorizationMode: APIAuthorizationType.userPools)).response;
-      debugPrint('DEBUG: tasksRes fetched');
-      final pendingTasksCount = (tasksRes.data?.items ?? []).length;
+      final rawTasks = (tasksRes.data?.items ?? []).whereType<amplify_models.Tasks>().toList();
+      final pendingTasksCount = rawTasks.where((t) {
+        DateTime? dt;
+        if (t.created_at != null && t.created_at!.isNotEmpty) {
+          dt = DateTime.tryParse(t.created_at!);
+        }
+        dt ??= t.createdAt?.getDateTimeInUtc().toLocal();
+        return FiscalYearService.matchesCurrentPeriod(dt);
+      }).length;
       
       final worksRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Deals.classType, limit: 10000, where: amplify_models.Deals.STAGE.ne('Completed'), authorizationMode: APIAuthorizationType.userPools)).response;
-      debugPrint('DEBUG: worksRes fetched');
       final rawWorks = (worksRes.data?.items ?? []).whereType<amplify_models.Deals>().toList();
       final pendingWorksCount = rawWorks.where((d) {
         final isCrm = (d.pipeline ?? '').toLowerCase() == 'crm' || (d.pipeline ?? '').toLowerCase() == 'lead';
         if (isCrm && d.is_won != true) return false;
-        return true;
+        DateTime? dt;
+        if (d.created_at != null && d.created_at!.isNotEmpty) {
+          dt = DateTime.tryParse(d.created_at!);
+        }
+        dt ??= d.createdAt?.getDateTimeInUtc().toLocal();
+        return FiscalYearService.matchesCurrentPeriod(dt);
       }).length;
       
       final companyBillsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.CompanyBills.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools)).response;
-      debugPrint('DEBUG: companyBillsRes fetched');
 
       final now = DateTime.now();
 
@@ -285,14 +319,16 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           try {
             if (row.bill_date != null) billDate = DateTime.parse(row.bill_date!);
           } catch (_) {}
-          billDate ??= row.createdAt?.getDateTimeInUtc();
+          billDate ??= row.createdAt?.getDateTimeInUtc().toLocal();
           
-          if (billDate != null && billDate.month == now.month && billDate.year == now.year) {
-            double amount = row.amount ?? 0.0;
-            if (amount > 0) {
-              totalExpenses += amount;
-            } else if (amount < 0) {
-              totalRevenue += amount.abs();
+          if (billDate != null && FiscalYearService.matchesCurrentPeriod(billDate)) {
+            if (billDate.month == now.month && billDate.year == now.year) {
+              double amount = row.amount ?? 0.0;
+              if (amount > 0) {
+                totalExpenses += amount;
+              } else if (amount < 0) {
+                totalRevenue += amount.abs();
+              }
             }
           }
         }
@@ -300,7 +336,14 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
 
       // 2. Recent Activity & Billings
       final allBillingsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.Billings.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools)).response;
-      final allBillings = ((allBillingsRes.data?.items ?? []).whereType<amplify_models.Billings>().toList() ?? []);
+      final allBillings = ((allBillingsRes.data?.items ?? []).whereType<amplify_models.Billings>().where((e) {
+        DateTime? bDate;
+        try {
+          if (e.date != null) bDate = DateTime.parse(e.date!);
+        } catch (_) {}
+        bDate ??= e.createdAt?.getDateTimeInUtc().toLocal();
+        return FiscalYearService.matchesCurrentPeriod(bDate);
+      }).toList() ?? []);
       allBillings.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
       
       final activityRes = allBillings.take(5).map((e) => {
@@ -366,7 +409,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       List<Map<String, dynamic>> peakActivity = [];
       try {
         final staffLogsRes = await Amplify.API.query(request: ModelQueries.list(amplify_models.ActivityLogs.classType, limit: 10000)).response;
-        final allLogs = ((staffLogsRes.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList() ?? []);
+        final allLogs = ((staffLogsRes.data?.items ?? []).whereType<amplify_models.ActivityLogs>().where((l) {
+          final dt = l.createdAt?.getDateTimeInUtc().toLocal();
+          return FiscalYearService.matchesCurrentPeriod(dt);
+        }).toList() ?? []);
         allLogs.sort((a, b) => (b.createdAt?.getDateTimeInUtc() ?? DateTime.now()).compareTo(a.createdAt?.getDateTimeInUtc() ?? DateTime.now()));
         
         final latestLogs = allLogs.take(5).toList();
@@ -630,6 +676,8 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 _headerBadge('System Health: Excellent', Colors.green),
                 const SizedBox(width: 16),
                 _buildAttendanceButton(),
+                const SizedBox(width: 12),
+                FiscalYearHeaderPill(onSwitched: _fetchAdminStats),
                 const SizedBox(width: 16),
                 const NotificationBell(),
                 const SizedBox(width: 16),
@@ -658,6 +706,8 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             ) else Row(
               children: [
                 _buildAttendanceButton(),
+                const SizedBox(width: 8),
+                FiscalYearHeaderPill(onSwitched: _fetchAdminStats),
                 const SizedBox(width: 8),
                 const NotificationBell(),
                 IconButton(
@@ -1520,7 +1570,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           where: amplify_models.ClientLicenses.EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
          limit: 10000);
         final res = await Amplify.API.query(request: req).response;
-        final list = (res.data?.items ?? []).whereType<amplify_models.ClientLicenses>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.ClientLicenses>().where((l) {
+          final dt = l.createdAt?.getDateTimeInUtc().toLocal();
+          return FiscalYearService.matchesCurrentPeriod(dt);
+        }).toList() ?? [];
         list.sort((a, b) => (a.expiry_date ?? '').compareTo(b.expiry_date ?? ''));
         return list.map((l) => {
           'client_name': l.client_id, // Might need to resolve name
@@ -1534,7 +1587,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           where: amplify_models.DscRecords.DSC_EXPIRY_DATE.le(DateTime.now().add(const Duration(days: 30)).toIso8601String()),
          limit: 10000);
         final res = await Amplify.API.query(request: req).response;
-        final list = (res.data?.items ?? []).whereType<amplify_models.DscRecords>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.DscRecords>().where((d) {
+          final dt = d.createdAt?.getDateTimeInUtc().toLocal();
+          return FiscalYearService.matchesCurrentPeriod(dt);
+        }).toList() ?? [];
         list.sort((a, b) => (a.dsc_expiry_date ?? '').compareTo(b.dsc_expiry_date ?? ''));
         return list.map((l) => l.toJson()).toList();
         
@@ -1544,7 +1600,12 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         final list = (res.data?.items ?? []).whereType<amplify_models.Deals>().where((d) {
           final isCrm = (d.pipeline ?? '').toLowerCase() == 'crm' || (d.pipeline ?? '').toLowerCase() == 'lead';
           if (isCrm && d.is_won != true) return false;
-          return true;
+          DateTime? dt;
+          if (d.created_at != null && d.created_at!.isNotEmpty) {
+            dt = DateTime.tryParse(d.created_at!);
+          }
+          dt ??= d.createdAt?.getDateTimeInUtc().toLocal();
+          return FiscalYearService.matchesCurrentPeriod(dt);
         }).toList();
         list.sort((a, b) => (b.id).compareTo(a.id));
         return list.map((l) => l.toJson()).toList();
@@ -1555,21 +1616,42 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           where: amplify_models.Billings.TYPE.eq('INVOICE').and(amplify_models.Billings.STATUS.ne('Received')),
          limit: 10000);
         final res = await Amplify.API.query(request: req).response;
-        final list = (res.data?.items ?? []).whereType<amplify_models.Billings>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.Billings>().where((b) {
+          DateTime? bDate;
+          try {
+            if (b.date != null) bDate = DateTime.parse(b.date!);
+          } catch (_) {}
+          bDate ??= b.createdAt?.getDateTimeInUtc().toLocal();
+          return FiscalYearService.matchesCurrentPeriod(bDate);
+        }).toList() ?? [];
         list.sort((a, b) => (b.id).compareTo(a.id));
         return list.map((l) => l.toJson()).toList();
         
       case 'Clients':
         final req = ModelQueries.list(amplify_models.Clients.classType, limit: 10000);
         final res = await Amplify.API.query(request: req).response;
-        final list = (res.data?.items ?? []).whereType<amplify_models.Clients>().toList() ?? [];
+        final list = (res.data?.items ?? []).whereType<amplify_models.Clients>().where((c) {
+          DateTime? dt;
+          if (c.created_at != null && c.created_at!.isNotEmpty) {
+            dt = DateTime.tryParse(c.created_at!);
+          }
+          dt ??= c.createdAt?.getDateTimeInUtc().toLocal();
+          return FiscalYearService.matchesCurrentPeriod(dt);
+        }).toList() ?? [];
         list.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
         return list.map((l) => l.toJson()).toList();
         
       default:
         final req = ModelQueries.list(amplify_models.Clients.classType, limit: 1);
         final res = await Amplify.API.query(request: req).response;
-        return (res.data?.items ?? []).whereType<amplify_models.Clients>().map((e) => e.toJson()).toList() ?? [];
+        return (res.data?.items ?? []).whereType<amplify_models.Clients>().where((c) {
+          DateTime? dt;
+          if (c.created_at != null && c.created_at!.isNotEmpty) {
+            dt = DateTime.tryParse(c.created_at!);
+          }
+          dt ??= c.createdAt?.getDateTimeInUtc().toLocal();
+          return FiscalYearService.matchesCurrentPeriod(dt);
+        }).map((e) => e.toJson()).toList() ?? [];
     }
   }
 
@@ -1758,10 +1840,11 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                       },
                     )));
                   }),
-                  _actionTile(Icons.delete_outline_rounded, 'Delete Invoice', 'Remove this record', Colors.red, onTap: () {
-                    Navigator.pop(context);
-                    _deleteBilling(Billing.fromMap(billingMap));
-                  }),
+                  if (_isAdmin)
+                    _actionTile(Icons.delete_outline_rounded, 'Delete Invoice', 'Remove this record', Colors.red, onTap: () {
+                      Navigator.pop(context);
+                      _deleteBilling(Billing.fromMap(billingMap));
+                    }),
                   _actionTile(Icons.cancel_outlined, 'Mark as Not Interested', 'Client declined payment', Colors.red, onTap: () {
                     Navigator.pop(context);
                     _showReasonDialog(context);
@@ -2007,6 +2090,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   }
 
   Future<void> _deleteBilling(Billing b) async {
+    if (!_isAdmin) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permission Denied: Only Admin can delete invoices')));
+      return;
+    }
     final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
       title: const Text('Confirm Delete', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
       content: Text('Are you sure you want to delete invoice ${b.invoiceNo}?\nThis action cannot be undone.'),

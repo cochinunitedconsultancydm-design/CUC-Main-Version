@@ -20,6 +20,7 @@ import 'screens/delivery_dashboard_screen.dart';
 import 'screens/client_portal/client_portal_dashboard_screen.dart';
 import 'services/time_tracking_service.dart';
 import 'services/meta_service.dart';
+import 'services/fiscal_year_service.dart';
 
 final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -93,6 +94,7 @@ Future<void> main() async {
   // Force login on every startup to track time accurately
   // This also gracefully logs out any session that was previously killed unexpectedly
   await AuthService().logout();
+  await FiscalYearService.init();
 
   runApp(MyApp(startupError: _amplifyStartupError));
 }

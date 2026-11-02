@@ -22,6 +22,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
   List<CompanyBill> _bills = [];
   List<Map<String, dynamic>> _staffList = [];
   bool _isLoading = true;
+  bool _isAdmin = false;
   DateTime? _startDate;
   DateTime? _endDate;
   String _filterCategory = 'All';
@@ -32,7 +33,13 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
   @override
   void initState() {
     super.initState();
+    _checkAdminRole();
     _fetchBills();
+  }
+
+  Future<void> _checkAdminRole() async {
+    final isAdmin = await AuthService().isAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
   }
 
   Future<void> _fetchBills() async {
@@ -557,6 +564,10 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
   }
 
   Future<void> _delete(String id) async {
+    if (!_isAdmin) {
+      _msg('Permission Denied: Only Admin can delete bills', false);
+      return;
+    }
     final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
       title: const Text('Confirm Delete'),
       content: const Text('Remove this bill record?'),
@@ -1059,7 +1070,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
 
     return InkWell(
         onTap: () => _showDetails(bill),
-        onLongPress: () => _delete(bill.id.toString()),
+        onLongPress: _isAdmin ? () => _delete(bill.id.toString()) : null,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(

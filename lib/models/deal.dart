@@ -327,13 +327,13 @@ class Deal {
       description: cleanDesc,
       createdAt: map['created_at'] != null
           ? DateTime.tryParse(map['created_at'].toString())
-          : null,
+          : (map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) : null),
       updatedAt: map['updated_at'] != null
           ? DateTime.tryParse(map['updated_at'].toString())
-          : null,
+          : (map['updatedAt'] != null ? DateTime.tryParse(map['updatedAt'].toString()) : null),
       closedAt: map['closed_at'] != null
           ? DateTime.tryParse(map['closed_at'].toString())
-          : null,
+          : (map['closedAt'] != null ? DateTime.tryParse(map['closedAt'].toString()) : null),
       isWon: map['is_won'] == true || map['is_won'] == 'true',
       regFeeRequired: map['reg_fee_required'],
       referredBy: map['referred_by'],

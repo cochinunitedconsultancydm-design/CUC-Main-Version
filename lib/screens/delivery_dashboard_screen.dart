@@ -22,6 +22,7 @@ import 'dart:async';
 import '../services/attendance_service.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import '../widgets/startup_task_popup.dart';
+import '../services/fiscal_year_service.dart';
 
 class DeliveryDashboardScreen extends StatefulWidget {
   const DeliveryDashboardScreen({super.key});
@@ -31,8 +32,8 @@ class DeliveryDashboardScreen extends StatefulWidget {
 }
 
 class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
-  static final DateTime nov1Cutoff = DateTime(2026, 11, 1);
-  String _selectedPeriod = '2026-2027'; // Starts fresh from Nov 1, 2026
+  static final DateTime nov1Cutoff = FiscalYearService.nov1Cutoff;
+  String _selectedPeriod = FiscalYearService.currentPeriod.value; // Starts fresh from Nov 1, 2026
   int _selectedIndex = 0;
   String _userName = 'User';
   int _pendingTasks = 0;
@@ -49,6 +50,8 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedPeriod = FiscalYearService.currentPeriod.value;
+    FiscalYearService.currentPeriod.addListener(_onPeriodChanged);
     _loadUserInfo();
     _fetchTaskStats();
     
@@ -65,9 +68,16 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
     });
   }
 
+  void _onPeriodChanged() {
+    if (mounted && _selectedPeriod != FiscalYearService.currentPeriod.value) {
+      setState(() => _selectedPeriod = FiscalYearService.currentPeriod.value);
+      _fetchTaskStats();
+    }
+  }
+
   @override
   void dispose() {
-
+    FiscalYearService.currentPeriod.removeListener(_onPeriodChanged);
     super.dispose();
   }
 
@@ -268,95 +278,6 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
     } catch (_) {}
   }
 
-  Widget _buildPeriodSelector() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
-          _buildPeriodChip(
-            id: '2026-2027',
-            title: '2026-2027 (Current)',
-            icon: Icons.fiber_new_rounded,
-            activeColor: const Color(0xFF10B981),
-          ),
-          _buildPeriodChip(
-            id: '2025-2026',
-            title: '2025-2026',
-            icon: Icons.history_rounded,
-            activeColor: const Color(0xFF6366F1),
-          ),
-          _buildPeriodChip(
-            id: 'All',
-            title: 'All Deliveries',
-            icon: Icons.inventory_2_rounded,
-            activeColor: AppTheme.primaryColor,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPeriodChip({
-    required String id,
-    required String title,
-    required IconData icon,
-    required Color activeColor,
-  }) {
-    final isSelected = _selectedPeriod == id;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedPeriod = id;
-        });
-        _fetchTaskStats();
-      },
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? activeColor : const Color(0xFFE2E8F0),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 15,
-              color: isSelected ? Colors.white : const Color(0xFF64748B),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: TextStyle(
-                color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   void _handleLogout() async {
     await AuthService().logout();
@@ -393,8 +314,6 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
           // Fleet Banner
           _buildFleetBanner(),
           const SizedBox(height: 24),
-          _buildPeriodSelector(),
-          const SizedBox(height: 20),
           
           // Stats Cards
           if (MediaQuery.of(context).size.width > 600)

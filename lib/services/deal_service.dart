@@ -11,6 +11,7 @@ import 'meta_service.dart';
 import 'logging_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import 'fiscal_year_service.dart';
 
 class DealService {
 
@@ -32,6 +33,37 @@ class DealService {
     } catch (e) {
       debugPrint('Error getAllDeals: $e');
       return [];
+    }
+  }
+
+  /// Generates the next sequential CC number (e.g. CC1, CC2, CC3...)
+  /// For 2026-2027 (Fresh Clean), sequences strictly start fresh from CC1.
+  Future<String> getNextWorkfileNumber({String? period}) async {
+    try {
+      final targetPeriod = period ?? FiscalYearService.currentPeriod.value;
+      final isFresh = targetPeriod == FiscalYearService.period2026_2027;
+
+      final all = await getAllDeals();
+      final relevantDeals = isFresh
+          ? all.where((d) => !FiscalYearService.isOldFile(d.createdAt)).toList()
+          : all.where((d) => FiscalYearService.isOldFile(d.createdAt)).toList();
+
+      int maxNum = 0;
+      final ccRegex = RegExp(r'^CC\s*[-]?\s*(\d+)$', caseSensitive: false);
+
+      for (final d in relevantDeals) {
+        final reg = (d.registerNo ?? '').trim();
+        final match = ccRegex.firstMatch(reg);
+        if (match != null) {
+          final n = int.tryParse(match.group(1)!);
+          if (n != null && n > maxNum) maxNum = n;
+        }
+      }
+
+      return 'CC${maxNum + 1}';
+    } catch (e) {
+      debugPrint('Error getting next workfile number: $e');
+      return 'CC1';
     }
   }
 
@@ -130,8 +162,16 @@ class DealService {
     values['id'] = values['id']?.toString() ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
     if (values['responsible_id'] == null) values['responsible_id'] = userId;
     if (values['responsible_name'] == null) values['responsible_name'] = userName;
-    if (values['created_at'] == null) values['created_at'] = DateTime.now().toIso8601String();
+    if (values['created_at'] == null) values['created_at'] = FiscalYearService.getEffectiveCreationDate().toIso8601String();
     if (values['updated_at'] == null) values['updated_at'] = DateTime.now().toIso8601String();
+
+    final isCrmInquiry = (deal.pipeline.toLowerCase() == 'crm' || deal.pipeline.toLowerCase() == 'lead') && !deal.isWon;
+    if (!isCrmInquiry) {
+      final currentReg = (values['register_no'] ?? '').toString().trim();
+      if (currentReg.isEmpty || currentReg.startsWith('CU-WF-')) {
+        values['register_no'] = await getNextWorkfileNumber();
+      }
+    }
 
     if (values['expenses_list'] is List) {
       values['expenses_list'] = jsonEncode(values['expenses_list']);
@@ -296,7 +336,13 @@ class DealService {
     required String clientName,
     int? currentUserId,
   }) async {
+    final currentReg = (lead.registerNo ?? '').trim();
+    final nextNo = (currentReg.isNotEmpty && !currentReg.startsWith('CU-WF-'))
+        ? currentReg
+        : await getNextWorkfileNumber();
+
     final updatedDeal = lead.copyWith(
+      registerNo: nextNo,
       clientId: int.tryParse(clientId) ?? lead.clientId,
       clientName: clientName,
       isWon: true,
@@ -308,6 +354,9 @@ class DealService {
               lead.stage == 'Passed to Work')
           ? 'Work Started'
           : lead.stage,
+      createdAt: FiscalYearService.currentPeriod.value == FiscalYearService.period2026_2027
+          ? FiscalYearService.getEffectiveCreationDate()
+          : lead.createdAt,
       closedAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );

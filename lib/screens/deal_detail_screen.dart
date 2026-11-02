@@ -25,6 +25,7 @@ import 'package:cuc_app/services/backup_aware_api.dart';
 import 'file_acknowledgement_screen.dart';
 import 'client_files_screen.dart';
 import '../services/meta_service.dart';
+import '../services/fiscal_year_service.dart';
 
 class DealDetailScreen extends StatefulWidget {
   final Deal? deal;
@@ -1197,7 +1198,7 @@ final dLink = "";
     }
   }
 
-  Future<void> _saveDeal() async {
+  Future<void> _saveDeal({DateTime? overrideCreatedAt}) async {
     setState(() => _isLoading = true);
     try {
       final deal = Deal(
@@ -1244,6 +1245,8 @@ final dLink = "";
         adjournedReason: _isAdjourned ? _adjournedReasonController.text : null,
         postponedDate: _isAdjourned || _postponedDate != null ? _postponedDate : null,
         closedAt: _selectedDeadline,
+        createdAt: overrideCreatedAt ?? widget.deal?.createdAt ?? FiscalYearService.getEffectiveCreationDate(),
+        updatedAt: DateTime.now(),
         pipeline: _pipeline,
         isWon: _isWon,
       );
@@ -1292,6 +1295,63 @@ final dLink = "";
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _importDealToCurrent() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.drive_file_move_rounded, color: Color(0xFF10B981)),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Import to 2026-2027?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        content: Text(
+          'Do you want to import "${_nameController.text.trim().isNotEmpty ? _nameController.text.trim() : (widget.deal?.name ?? 'this record')}" into the 2026-2027 active workspace?\n\nYou can continue working on it in the current period.',
+          style: const TextStyle(fontSize: 14, color: Color(0xFF334155)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.drive_file_move_rounded, size: 16),
+            label: const Text('Import to 2026–2027'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final targetDate = FiscalYearService.getEffectiveCreationDate();
+    await _saveDeal(overrideCreatedAt: targetDate);
+    await FiscalYearService.setPeriod(FiscalYearService.period2026_2027);
+    await LoggingService().logAction(
+      action: 'WORK_IMPORTED',
+      targetType: 'Work',
+      targetId: widget.deal?.id?.toString() ?? _nameController.text,
+      details: 'Imported "${_nameController.text}" into 2026-2027 workspace',
+    );
   }
 
   void _openInvoiceCreator() {
@@ -2769,10 +2829,11 @@ final dLink = "";
                                     _buildDynamicExpensesList(),
                                     const SizedBox(height: 24),
                                     _buildField(
-                                      'Register / Ref Number',
+                                      'Register / Ref Number (Auto-assigned)',
                                       _registerNoController,
-                                      'Enter any registration/reference number...',
-                                      icon: Icons.numbers_rounded,
+                                      'Auto-assigned sequentially',
+                                      icon: Icons.lock_outline_rounded,
+                                      readOnly: true,
                                     ),
                                     const SizedBox(height: 24),
                                     _buildModernRadioGroup(
@@ -3496,10 +3557,11 @@ final dLink = "";
                                       _buildDynamicExpensesList(),
                                       const SizedBox(height: 24),
                                       _buildField(
-                                        'Register / Ref Number',
+                                        'Register / Ref Number (Auto-assigned)',
                                         _registerNoController,
-                                        'Enter any registration/reference number...',
-                                        icon: Icons.numbers_rounded,
+                                        'Auto-assigned sequentially',
+                                        icon: Icons.lock_outline_rounded,
+                                        readOnly: true,
                                       ),
                                       const SizedBox(height: 24),
                                       _buildModernRadioGroup(
@@ -4000,6 +4062,21 @@ final dLink = "";
                   SizedBox(width: 4),
                   Text('Passed to Work', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF166534))),
                 ],
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (widget.deal != null && FiscalYearService.isOldFile(widget.deal!.createdAt)) ...[
+            ElevatedButton.icon(
+              onPressed: _isLoading ? null : _importDealToCurrent,
+              icon: const Icon(Icons.drive_file_move_rounded, size: 15, color: Colors.white),
+              label: const Text('Import to 26–27', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
               ),
             ),
             const SizedBox(width: 8),
@@ -4746,6 +4823,7 @@ final dLink = "";
     int lines = 1,
     bool isCurrency = false,
     IconData? icon,
+    bool readOnly = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4761,8 +4839,9 @@ final dLink = "";
         const SizedBox(height: 10),
         TextField(
           controller: controller,
+          readOnly: readOnly,
           maxLines: lines,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: readOnly ? const Color(0xFF475569) : Colors.black),
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: icon != null
@@ -4774,7 +4853,7 @@ final dLink = "";
               color: Colors.black,
             ),
             filled: true,
-            fillColor: const Color(0xFFF8FAFC),
+            fillColor: readOnly ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade200),

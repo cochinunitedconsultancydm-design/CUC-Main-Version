@@ -23,6 +23,7 @@ import '../services/auth_service.dart';
 import 'checklist_screen.dart';
 import 'help_and_queries_management_screen.dart';
 import 'reminder_calendar_screen.dart';
+import '../services/fiscal_year_service.dart';
 import 'sop_screen.dart';
 import 'contact_book_screen.dart';
 import '../widgets/upcoming_reminders_widget.dart';
@@ -62,8 +63,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<Map<String, dynamic>> _recentActivity = [];
   List<Map<String, dynamic>> _globalBillings = [];
   @override
+  void dispose() {
+    FiscalYearService.currentPeriod.removeListener(_fetchAdminStats);
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
+    FiscalYearService.currentPeriod.addListener(_fetchAdminStats);
     _fetchAdminStats();
     
     // Start realtime notifications
@@ -129,15 +137,37 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     try {
       final req1 = ModelQueries.list(Clients.classType, limit: 10000);
       final res1 = await Amplify.API.query(request: req1).response;
-      final clientsCountRes = res1.data?.items ?? [];
+      final rawClients = (res1.data?.items ?? []).whereType<Clients>().toList();
+      final clientsCountRes = rawClients.where((c) {
+        DateTime? dt;
+        if (c.created_at != null && c.created_at!.isNotEmpty) {
+          dt = DateTime.tryParse(c.created_at!);
+        }
+        dt ??= c.createdAt?.getDateTimeInUtc().toLocal();
+        return FiscalYearService.matchesCurrentPeriod(dt);
+      }).toList();
       
       final req2 = ModelQueries.list(ClientLicenses.classType, where: ClientLicenses.STATUS.eq('Active'), limit: 10000);
       final res2 = await Amplify.API.query(request: req2).response;
-      final licensesCountRes = res2.data?.items ?? [];
+      final rawLicenses = (res2.data?.items ?? []).whereType<ClientLicenses>().toList();
+      final licensesCountRes = rawLicenses.where((l) {
+        final dt = l.createdAt?.getDateTimeInUtc().toLocal();
+        return FiscalYearService.matchesCurrentPeriod(dt);
+      }).toList();
       
       final req3 = ModelQueries.list(Billings.classType, limit: 10000);
       final res3 = await Amplify.API.query(request: req3).response;
-      var billingsList = (res3.data?.items ?? []).where((e) => e != null).cast<Billings>().toList();
+      var billingsList = (res3.data?.items ?? []).where((e) => e != null).cast<Billings>().where((b) {
+        DateTime? recordDate;
+        try {
+           if (b.data != null) {
+              final d = jsonDecode(b.data!);
+              if (d['payment_date'] != null) recordDate = DateTime.parse(d['payment_date']);
+           }
+        } catch (_) {}
+        recordDate ??= b.createdAt?.getDateTimeInUtc().toLocal();
+        return FiscalYearService.matchesCurrentPeriod(recordDate);
+      }).toList();
       billingsList.sort((a, b) => (b.createdAt?.toString() ?? '').compareTo(a.createdAt?.toString() ?? ''));
       
       final now = DateTime.now();
@@ -152,7 +182,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         } catch (_) {}
         recordDate ??= row.createdAt?.getDateTimeInUtc();
         
-        if (recordDate != null && recordDate.month == now.month && recordDate.year == now.year) {
+        if (recordDate != null && FiscalYearService.matchesCurrentPeriod(recordDate) && recordDate.month == now.month && recordDate.year == now.year) {
           final amtStr = row.amount?.toString() ?? '0';
           final cleanAmt = amtStr.replaceAll(RegExp(r'[^0-9.]'), '');
           totalRevenue += double.tryParse(cleanAmt) ?? 0.0;
@@ -570,6 +600,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             if (isWide) Row(
               children: [
                 _headerBadge('System Health: Excellent', Colors.green),
+                const SizedBox(width: 12),
+                FiscalYearHeaderPill(onSwitched: _fetchAdminStats),
                 const SizedBox(width: 16),
                 const NotificationBell(),
                 const SizedBox(width: 16),
@@ -581,7 +613,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ],
             ) else Row(
               children: [
+                FiscalYearHeaderPill(onSwitched: _fetchAdminStats),
+                const SizedBox(width: 8),
                 const NotificationBell(),
+                const SizedBox(width: 8),
                 IconButton(
                   onPressed: _fetchAdminStats,
                   icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor),

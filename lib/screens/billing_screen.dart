@@ -100,64 +100,96 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   String _getFullAuthorityName(String? auth, [String? invNo]) {
-    if (auth == null || auth.isEmpty) {
-      if (invNo != null) {
-        auth = invNo.split(RegExp(r'[ \-]')).first;
-      } else {
-        return '-';
+    if (auth != null && auth.trim().isNotEmpty) {
+      final clean = auth.trim();
+      
+      // If already formatted as "K - Sariga", format nicely as "Sariga (K)"
+      if (clean.contains('-')) {
+        final parts = clean.split('-');
+        final prefix = parts.first.trim();
+        final name = parts.last.trim();
+        if (name.isNotEmpty && prefix.isNotEmpty) {
+          return '$name ($prefix)';
+        }
+        return name.isNotEmpty ? name : clean;
       }
+      
+      final upper = clean.toUpperCase();
+      // Match letter code or name against staffMapping
+      for (final entry in staffMapping.entries) {
+        if (entry.value.toUpperCase() == upper || entry.key.toUpperCase() == upper) {
+          return '${entry.key} (${entry.value})';
+        }
+      }
+      for (final entry in staffMapping.entries) {
+        if (upper.contains(entry.key.toUpperCase()) || entry.key.toUpperCase().contains(upper)) {
+          return '${entry.key} (${entry.value})';
+        }
+      }
+      
+      if (clean == 'CUC') return 'Cochin United Consultancy';
+      if (clean == 'AA') return 'Aakrithi';
+      
+      return clean;
     }
-    if (auth == 'CUC') return 'Cochin United Consultancy';
-    if (auth == 'AA') return 'Aakrithi';
     
-    // Check if it's a shorthand prefix and try to match with a staff name
-    final prefix = auth.split(RegExp(r'[ \-]')).first.toUpperCase();
+    // Check if invoice number prefix maps to a staff or firm
+    if (invNo != null && invNo.isNotEmpty) {
+      final prefix = invNo.split(RegExp(r'[ \-]')).first.toUpperCase();
+      for (final entry in staffMapping.entries) {
+        if (entry.value.toUpperCase() == prefix) {
+          return '${entry.key} (${entry.value})';
+        }
+      }
+      if (prefix == 'CUC' || prefix == 'CC') return 'Cochin United Consultancy';
+      if (prefix == 'AA') return 'Aakrithi';
+    }
     
-    final match = staffMapping.keys.firstWhere(
-      (k) {
-        final keyUp = k.toUpperCase();
-        final valUp = staffMapping[k]!.toUpperCase();
-        if (valUp == prefix) return true;
-        if (keyUp == prefix) return true;
-        if (prefix.length > 2 && keyUp.startsWith(prefix)) return true;
-        if (prefix.contains(keyUp)) return true;
-        return false;
-      }, 
-      orElse: () => ''
-    );
-    if (match.isNotEmpty) return '${staffMapping[match] ?? prefix} - $match';
-    
-    return auth;
+    return 'Admin';
   }
 
-  String _getStaffPrefix(String? auth, [String? invNo]) {
-    if (auth == null || auth.isEmpty) {
-      if (invNo != null) {
-        auth = invNo.split(RegExp(r'[ \-]')).first;
-      } else {
-        return '-';
+  String _getStaffDisplayName(String? auth, [String? invNo]) {
+    if (auth != null && auth.trim().isNotEmpty) {
+      final clean = auth.trim();
+      
+      // If it's formatted as "K - Sariga", extract the full staff name
+      if (clean.contains('-')) {
+        final parts = clean.split('-');
+        final namePart = parts.last.trim();
+        if (namePart.isNotEmpty) {
+          return namePart.toUpperCase();
+        }
+      }
+      
+      final upper = clean.toUpperCase();
+      // Match letter code or name against staffMapping
+      for (final entry in staffMapping.entries) {
+        if (entry.value.toUpperCase() == upper || entry.key.toUpperCase() == upper) {
+          return entry.key.toUpperCase();
+        }
+      }
+      for (final entry in staffMapping.entries) {
+        if (upper.contains(entry.key.toUpperCase()) || entry.key.toUpperCase().contains(upper)) {
+          return entry.key.toUpperCase();
+        }
+      }
+      
+      return clean.toUpperCase();
+    }
+    
+    if (invNo != null && invNo.isNotEmpty) {
+      final prefix = invNo.split(RegExp(r'[ \-]')).first.toUpperCase();
+      for (final entry in staffMapping.entries) {
+        if (entry.value.toUpperCase() == prefix) {
+          return entry.key.toUpperCase();
+        }
       }
     }
-    if (auth == 'CUC') return 'CUC';
-    if (auth == 'AA') return 'AA';
     
-    final prefix = auth.split(RegExp(r'[ \-]')).first.toUpperCase();
-    final match = staffMapping.keys.firstWhere(
-      (k) {
-        final keyUp = k.toUpperCase();
-        final valUp = staffMapping[k]!.toUpperCase();
-        if (valUp == prefix) return true;
-        if (keyUp == prefix) return true;
-        if (prefix.length > 2 && keyUp.startsWith(prefix)) return true;
-        if (prefix.contains(keyUp)) return true;
-        return false;
-      }, 
-      orElse: () => ''
-    );
-    if (match.isNotEmpty) return staffMapping[match] ?? prefix;
-    
-    return prefix;
+    return '';
   }
+
+  String _getStaffPrefix(String? auth, [String? invNo]) => _getStaffDisplayName(auth, invNo);
 
   Future<void> _fetchStats() async {
     try {
@@ -828,8 +860,9 @@ class _BillingScreenState extends State<BillingScreen> {
           final cName = b.clientName?.toLowerCase() ?? '';
           final invNo = b.invoiceNo?.toLowerCase() ?? '';
           final amt = b.amount?.toLowerCase() ?? '';
+          final staffStr = _getFullAuthorityName(b.authorities, b.invoiceNo).toLowerCase();
           final dataStr = b.data?.toString().toLowerCase() ?? '';
-          return cName.contains(query) || invNo.contains(query) || amt.contains(query) || dataStr.contains(query);
+          return cName.contains(query) || invNo.contains(query) || amt.contains(query) || staffStr.contains(query) || dataStr.contains(query);
         }).toList();
         
         final paidCount = _billings.where((b) => b.data?['payment_received'] == true).length;
@@ -1215,15 +1248,27 @@ class _BillingScreenState extends State<BillingScreen> {
                 const SizedBox(width: 8),
                 Text(b.category!, style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w500)),
               ],
-              if (b.authorities != null && b.authorities!.isNotEmpty) ...[
+              final staffName = _getStaffDisplayName(b.authorities, b.invoiceNo);
+              if (staffName.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                  child: Text(
-                    _getStaffPrefix(b.authorities, b.invoiceNo),
-                    style: const TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
-                  )
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.35), width: 0.8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.person_rounded, size: 11, color: Colors.orange),
+                      const SizedBox(width: 3.5),
+                      Text(
+                        staffName,
+                        style: const TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                      ),
+                    ],
+                  ),
                 ),
               ],
               if (b.data != null && b.data!['edit_count'] != null && b.data!['edit_count'] > 0) ...[
@@ -1272,8 +1317,17 @@ class _BillingScreenState extends State<BillingScreen> {
                 style: TextStyle(fontSize: 14, color: Colors.blue.shade700, fontWeight: FontWeight.w600, decoration: TextDecoration.underline, decorationColor: Colors.blue.shade200)
               ),
             ),
-            const SizedBox(height: 2),
-            Text('Issued by: ${_getFullAuthorityName(b.authorities, b.invoiceNo)}', style: TextStyle(fontSize: 11, color: Colors.grey.shade400, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 3),
+            Row(
+              children: [
+                Icon(Icons.badge_outlined, size: 12, color: Colors.grey.shade600),
+                const SizedBox(width: 4),
+                Text(
+                  'Issued by: ${_getFullAuthorityName(b.authorities, b.invoiceNo)}',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
           ])),
 
           const SizedBox(width: 12),
@@ -1362,8 +1416,28 @@ class _BillingScreenState extends State<BillingScreen> {
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(b.invoiceNo ?? '-', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)), overflow: TextOverflow.ellipsis),
-                        Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: typeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                          child: Text(b.type ?? 'INVOICE', style: TextStyle(color: typeColor, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 0.5))),
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: typeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                              child: Text(b.type ?? 'INVOICE', style: TextStyle(color: typeColor, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 0.5))),
+                            if (_getStaffDisplayName(b.authorities, b.invoiceNo).isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.orange.withValues(alpha: 0.35), width: 0.8),
+                                ),
+                                child: Text(
+                                  _getStaffDisplayName(b.authorities, b.invoiceNo),
+                                  style: const TextStyle(color: Colors.orange, fontSize: 8.5, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                                ),
+                              ),
+                          ],
+                        ),
                       ]),
                     ),
                   ],
@@ -1394,8 +1468,17 @@ class _BillingScreenState extends State<BillingScreen> {
             const SizedBox(height: 2),
             Text('Reg No: ${b.data!['client_reg_no']}', style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
           ],
-          const SizedBox(height: 2),
-          Text('By: ${_getFullAuthorityName(b.authorities, b.invoiceNo)}', style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
+          const SizedBox(height: 3),
+          Row(
+            children: [
+              Icon(Icons.badge_outlined, size: 11, color: Colors.grey.shade600),
+              const SizedBox(width: 4),
+              Text(
+                'By: ${_getFullAuthorityName(b.authorities, b.invoiceNo)}',
+                style: TextStyle(fontSize: 10.5, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

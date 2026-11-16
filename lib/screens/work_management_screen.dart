@@ -1232,6 +1232,8 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
         _buildSortDropdown(),
         const SizedBox(width: 8),
         _buildRefreshButton(),
+        const SizedBox(width: 8),
+        FiscalYearHeaderPill(onSwitched: _refreshDeals),
       ],
     );
   }

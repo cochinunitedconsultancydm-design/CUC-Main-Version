@@ -1526,6 +1526,8 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                     padding: const EdgeInsets.all(12),
                   ),
                 ),
+                const SizedBox(width: 12),
+                FiscalYearHeaderPill(onSwitched: _applyFilterAndSort),
                 if (_selectedPeriod == '2026-2027' && _count2025_2026 > 0) ...[
                   const SizedBox(width: 12),
                   ElevatedButton.icon(

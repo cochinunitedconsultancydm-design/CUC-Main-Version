@@ -48,6 +48,21 @@ class _CrmScreenState extends State<CrmScreen>
   String _batchImportStatus = '';
   late StreamSubscription<List<Deal>> _dealSubscription;
 
+  static const String timeframeAll = 'All Time';
+  static const String timeframeCurrent = 'Current (2026–2027)';
+  static const String timeframePrevMonth = 'Previous Month (Oct 2026)';
+  static const String timeframePrevPeriod = 'Previous (2025–2026)';
+
+  String _selectedTimeframe = timeframeAll;
+  bool _includeActiveOldFollowups = true;
+
+  final List<String> _timeframeOptions = [
+    timeframeAll,
+    timeframeCurrent,
+    timeframePrevMonth,
+    timeframePrevPeriod,
+  ];
+
   static const String stageCreated = 'Created';
   static const String stageFollowUp = 'Follow-up';
   static const String stagePassed = 'Passed to Work';
@@ -87,12 +102,20 @@ class _CrmScreenState extends State<CrmScreen>
   ];
 
   final List<String> _priorities = ['All', ...Deal.priorities];
+  static const String fuFilterAll = 'All';
+  static const String fuFilterToday = 'Due Today';
+  static const String fuFilterOverdue = 'Overdue';
+  static const String fuFilterOld = 'Old Follow-ups';
+  static const String fuFilterUpcoming = 'Upcoming';
+  static const String fuFilterPending = 'Pending Set';
+
   final List<String> _followUpFilters = [
-    'All',
-    'Due Today',
-    'Overdue',
-    'Upcoming',
-    'Pending Set',
+    fuFilterAll,
+    fuFilterToday,
+    fuFilterOverdue,
+    fuFilterOld,
+    fuFilterUpcoming,
+    fuFilterPending,
   ];
 
   String _selectedSort = 'Newest First';
@@ -133,6 +156,14 @@ class _CrmScreenState extends State<CrmScreen>
   @override
   void initState() {
     super.initState();
+    final p = FiscalYearService.currentPeriod.value;
+    if (p == FiscalYearService.period2025_2026) {
+      _selectedTimeframe = timeframePrevPeriod;
+    } else if (p == FiscalYearService.periodAll) {
+      _selectedTimeframe = timeframeAll;
+    } else {
+      _selectedTimeframe = timeframeCurrent;
+    }
     FiscalYearService.currentPeriod.addListener(_onPeriodChanged);
     _tabController = TabController(length: 3, vsync: this);
     _subscribeToDeals();
@@ -209,6 +240,9 @@ class _CrmScreenState extends State<CrmScreen>
     if (!mounted) return;
     final now = nowIst;
 
+    final dueDeals = <Deal>[];
+    int newlyEscalatedCount = 0;
+
     for (final deal in _deals) {
       if (deal.id == null) continue;
       final dealIdStr = deal.id.toString();
@@ -220,18 +254,18 @@ class _CrmScreenState extends State<CrmScreen>
 
       final fu = toIst(deal.postponedDate!);
 
-      // 1. Trigger popup 5 minutes before the scheduled follow-up time (or if past trigger time)
+      // 1. Check if due within 5 minutes or past due
       final alertTriggerTime = fu.subtract(const Duration(minutes: 5));
-      final shouldShowPopup = now.isAfter(alertTriggerTime);
-      if (shouldShowPopup && !_notifiedReminderDealIds.contains(dealIdStr) && !_isShowingReminderDialog) {
-        _notifiedReminderDealIds.add(dealIdStr);
-        _triggerLiveReminderPopup(deal);
+      final isDue = now.isAfter(alertTriggerTime);
+      if (isDue) {
+        dueDeals.add(deal);
       }
 
       // 2. Escalation: If scheduled time has passed and still not followed up, alert Admin!
       final isPastDueTime = now.isAfter(fu);
       if (isPastDueTime && !_escalatedToAdminDealIds.contains(dealIdStr)) {
         _escalatedToAdminDealIds.add(dealIdStr);
+        newlyEscalatedCount++;
         NotificationService().notifyAdminsMissedFollowUp(
           dealId: deal.id,
           leadName: deal.name,
@@ -240,28 +274,46 @@ class _CrmScreenState extends State<CrmScreen>
           contactStatus: deal.contactStatus,
           company: deal.company,
         );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text('Follow-up missed for "${deal.name}". Admin has been alerted!'),
-                  ),
-                ],
-              ),
-              backgroundColor: const Color(0xFFDC2626),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
       }
+    }
+
+    if (newlyEscalatedCount > 0 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  newlyEscalatedCount == 1
+                      ? 'A scheduled follow-up was missed. Admin has been alerted!'
+                      : '$newlyEscalatedCount follow-ups were missed. Admin has been alerted!',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFDC2626),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+
+    // Trigger one consolidated list dialog for all newly due deals instead of separate popups
+    final unnotifiedDue = dueDeals.where((d) => !_notifiedReminderDealIds.contains(d.id.toString())).toList();
+    if (unnotifiedDue.isNotEmpty && !_isShowingReminderDialog) {
+      for (final d in unnotifiedDue) {
+        _notifiedReminderDealIds.add(d.id.toString());
+      }
+      _showDueRemindersListDialog(initialDeals: dueDeals);
     }
   }
 
   Future<void> _triggerLiveReminderPopup(Deal deal) async {
+    await _showDueRemindersListDialog(singleDeal: deal);
+  }
+
+  Future<void> _showDueRemindersListDialog({List<Deal>? initialDeals, Deal? singleDeal}) async {
     if (!mounted || _isShowingReminderDialog) return;
     _isShowingReminderDialog = true;
 
@@ -270,21 +322,26 @@ class _CrmScreenState extends State<CrmScreen>
       await SystemSound.play(SystemSoundType.alert);
     } catch (_) {}
 
-    final now = nowIst;
-    final fu = deal.postponedDate != null ? toIst(deal.postponedDate!) : null;
-    final isUpcoming = fu != null && fu.isAfter(now);
-    final minutesLeft = isUpcoming
-        ? (fu.difference(now).inSeconds / 60).ceil()
-        : 0;
+    final List<Deal> activeDueDeals = (initialDeals != null && initialDeals.isNotEmpty)
+        ? List<Deal>.from(initialDeals)
+        : (singleDeal != null
+            ? [singleDeal]
+            : List<Deal>.from(_dueRemindersNow));
 
-    final notifTitle = isUpcoming
-        ? '⏰ Follow-up in $minutesLeft min: ${deal.name}'
-        : '🚨 Follow-up Due Now: ${deal.name}';
-    final notifMessage = fu != null
-        ? 'Scheduled at ${DateFormat('hh:mm a').format(fu)} (IST). Status: ${deal.contactStatus ?? "Pending"}.'
-        : 'Follow-up is due now.';
+    // Sort by postponedDate (most overdue first)
+    activeDueDeals.sort((a, b) {
+      final aDate = a.postponedDate ?? DateTime(2099);
+      final bDate = b.postponedDate ?? DateTime(2099);
+      return aDate.compareTo(bDate);
+    });
 
-    // Send local notification for desktop / mobile
+    final notifTitle = activeDueDeals.length == 1
+        ? '🚨 Follow-up Due: ${activeDueDeals.first.name}'
+        : '🚨 ${activeDueDeals.length} Follow-ups Due Now / Overdue';
+    final notifMessage = activeDueDeals.length == 1
+        ? 'Scheduled at ${DateFormat('hh:mm a').format(toIst(activeDueDeals.first.postponedDate!))} (IST)'
+        : 'You have ${activeDueDeals.length} follow-ups that need your attention.';
+
     NotificationService().showLocalNotification(
       title: notifTitle,
       message: notifMessage,
@@ -295,362 +352,384 @@ class _CrmScreenState extends State<CrmScreen>
       return;
     }
 
+    final searchController = TextEditingController();
+
     await showDialog(
       context: context,
       barrierDismissible: true,
       builder: (dialogCtx) {
+        String searchQuery = '';
+        String filterTab = 'All'; // 'All', 'Overdue', 'Due Today'
+        final list = List<Deal>.from(activeDueDeals);
+
         return StatefulBuilder(
           builder: (ctx, setModalState) {
-            final (alarmSource, alarmNotes) = _extractSourceAndNotes(deal);
-            final nowInner = DateTime.now();
-            final isPastDue = deal.postponedDate != null && deal.postponedDate!.isBefore(nowInner);
-            final minsBefore = (deal.postponedDate != null && deal.postponedDate!.isAfter(nowInner))
-                ? (deal.postponedDate!.difference(nowInner).inSeconds / 60).ceil()
-                : 0;
+            final nowInner = nowIst;
+            final todayInner = DateTime(nowInner.year, nowInner.month, nowInner.day);
+
+            final displayList = list.where((deal) {
+              if (searchQuery.isNotEmpty) {
+                final q = searchQuery.toLowerCase();
+                final name = deal.name.toLowerCase();
+                final phone = (deal.contactInfo ?? '').toLowerCase();
+                final status = (deal.contactStatus ?? '').toLowerCase();
+                final comp = (deal.company ?? '').toLowerCase();
+                if (!name.contains(q) && !phone.contains(q) && !status.contains(q) && !comp.contains(q)) {
+                  return false;
+                }
+              }
+
+              if (deal.postponedDate == null) return filterTab == 'All';
+              final fu = toIst(deal.postponedDate!);
+              final targetDay = DateTime(fu.year, fu.month, fu.day);
+
+              if (filterTab == 'Overdue') {
+                return targetDay.isBefore(todayInner) || fu.isBefore(nowInner);
+              } else if (filterTab == 'Due Today') {
+                return targetDay.isAtSameMomentAs(todayInner);
+              }
+              return true;
+            }).toList();
+
+            final overdueCount = list.where((d) {
+              if (d.postponedDate == null) return false;
+              final fu = toIst(d.postponedDate!);
+              return fu.isBefore(nowInner);
+            }).length;
+
+            final todayCount = list.where((d) {
+              if (d.postponedDate == null) return false;
+              final fu = toIst(d.postponedDate!);
+              final targetDay = DateTime(fu.year, fu.month, fu.day);
+              return targetDay.isAtSameMomentAs(todayInner);
+            }).length;
 
             return Dialog(
               backgroundColor: Colors.white,
-              elevation: 20,
+              elevation: 24,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(22),
-                side: BorderSide(
-                  color: isPastDue ? const Color(0xFFDC2626) : const Color(0xFFD97706),
-                  width: 1.5,
-                ),
+                side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.2),
               ),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               child: Container(
-                constraints: const BoxConstraints(maxWidth: 480),
-                padding: const EdgeInsets.all(24),
+                constraints: const BoxConstraints(maxWidth: 840, maxHeight: 760),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Top alert banner
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: (isPastDue ? const Color(0xFFDC2626) : const Color(0xFFD97706))
-                                .withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isPastDue ? const Color(0xFFDC2626) : const Color(0xFFD97706),
-                            ),
-                          ),
-                          child: Icon(
-                            isPastDue ? Icons.warning_rounded : Icons.alarm_on_rounded,
-                            color: isPastDue ? const Color(0xFFDC2626) : const Color(0xFFD97706),
-                            size: 26,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                minsBefore > 0
-                                    ? 'Follow-up in $minsBefore min!'
-                                    : (isPastDue ? 'Follow-up Overdue!' : 'Follow-up Due Now!'),
-                                style: const TextStyle(
-                                  color: Color(0xFF0F172A),
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                deal.postponedDate != null
-                                    ? (minsBefore > 0
-                                        ? 'Scheduled for: ${DateFormat('hh:mm a').format(deal.postponedDate!)} (Upcoming)'
-                                        : 'Scheduled for: ${DateFormat('dd MMM • hh:mm a').format(deal.postponedDate!)}')
-                                    : 'Scheduled follow-up due now',
-                                style: TextStyle(
-                                  color: isPastDue ? const Color(0xFFDC2626) : const Color(0xFFD97706),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(dialogCtx),
-                          icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B), size: 20),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Lead Info Box
+                    // Header Bar
                     Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF0F172A),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.person_rounded, size: 16, color: AppTheme.primaryColor),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  deal.name,
-                                  style: const TextStyle(
-                                    color: Color(0xFF0F172A),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              if (deal.contactStatus != null && deal.contactStatus!.trim().isNotEmpty)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.3)),
-                                  ),
-                                  child: Text(
-                                    deal.contactStatus!,
-                                    style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 11, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                            ],
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDC2626).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFDC2626)),
+                            ),
+                            child: const Icon(Icons.notifications_active_rounded, color: Color(0xFFEF4444), size: 22),
                           ),
-                          if (deal.contactInfo != null && deal.contactInfo!.trim().isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            Row(
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(Icons.phone_rounded, size: 14, color: Color(0xFF64748B)),
-                                const SizedBox(width: 8),
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'Follow-up Reminders & Overdue',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFDC2626),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '${list.length} Due',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
                                 Text(
-                                  deal.contactInfo!,
-                                  style: const TextStyle(color: Color(0xFF334155), fontSize: 13, fontWeight: FontWeight.w600),
-                                ),
-                                const Spacer(),
-                                // WhatsApp
-                                InkWell(
-                                  onTap: () => _openWhatsApp(deal.contactInfo!, deal.name),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF25D366).withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.4)),
-                                    ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF16A34A), size: 13),
-                                        SizedBox(width: 4),
-                                        Text('WhatsApp', style: TextStyle(color: Color(0xFF16A34A), fontSize: 11, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                // Call
-                                InkWell(
-                                  onTap: () => _makePhoneCall(deal.contactInfo!),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF0284C7).withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.4)),
-                                    ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.call_outlined, color: Color(0xFF0284C7), size: 13),
-                                        SizedBox(width: 4),
-                                        Text('Call', style: TextStyle(color: Color(0xFF0284C7), fontSize: 11, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
+                                  'Complete list of client follow-ups requiring attention',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
                             ),
-                          ],
-                          if (alarmSource.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(Icons.campaign_outlined, size: 12, color: Color(0xFF0284C7)),
-                                const SizedBox(width: 4),
-                                Text(
-                                  alarmSource,
-                                  style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11, fontWeight: FontWeight.w600),
-                                ),
-                              ],
-                            ),
-                          ],
-                          if (alarmNotes.isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            const Divider(color: Color(0xFFE2E8F0), height: 1),
-                            const SizedBox(height: 8),
-                            Text(
-                              alarmNotes,
-                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(dialogCtx),
+                            icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                            tooltip: 'Close',
+                          ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 18),
 
-                    // Quick Snooze options
-                    Row(
-                      children: [
-                        const Text(
-                          'Snooze:',
-                          style: TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(width: 8),
-                        ActionChip(
-                          label: const Text('+15 min', style: TextStyle(fontSize: 11.5, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
-                          backgroundColor: const Color(0xFFF1F5F9),
-                          side: const BorderSide(color: Color(0xFFCBD5E1)),
-                          onPressed: () async {
-                            final snoozeTime = DateTime.now().add(const Duration(minutes: 15));
-                            final updated = deal.copyWith(postponedDate: snoozeTime);
-                            await _dealService.updateDeal(updated);
-                            _notifiedReminderDealIds.remove(deal.id.toString());
-                            _escalatedToAdminDealIds.remove(deal.id.toString());
-                            if (mounted) {
-                              setState(() {
-                                final idx = _deals.indexWhere((d) => d.id?.toString() == updated.id?.toString());
-                                if (idx != -1) _deals[idx] = updated;
-                              });
-                            }
-                            if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Reminder snoozed for 15 minutes')),
-                              );
-                            }
-                          },
-                        ),
-                        const SizedBox(width: 6),
-                        ActionChip(
-                          label: const Text('+1 hour', style: TextStyle(fontSize: 11.5, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
-                          backgroundColor: const Color(0xFFF1F5F9),
-                          side: const BorderSide(color: Color(0xFFCBD5E1)),
-                          onPressed: () async {
-                            final snoozeTime = DateTime.now().add(const Duration(hours: 1));
-                            final updated = deal.copyWith(postponedDate: snoozeTime);
-                            await _dealService.updateDeal(updated);
-                            _notifiedReminderDealIds.remove(deal.id.toString());
-                            _escalatedToAdminDealIds.remove(deal.id.toString());
-                            if (mounted) {
-                              setState(() {
-                                final idx = _deals.indexWhere((d) => d.id?.toString() == updated.id?.toString());
-                                if (idx != -1) _deals[idx] = updated;
-                              });
-                            }
-                            if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Reminder snoozed for 1 hour')),
-                              );
-                            }
-                          },
-                        ),
-                        const SizedBox(width: 6),
-                        ActionChip(
-                          label: const Text('Tomorrow', style: TextStyle(fontSize: 11.5, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
-                          backgroundColor: const Color(0xFFF1F5F9),
-                          side: const BorderSide(color: Color(0xFFCBD5E1)),
-                          onPressed: () async {
-                            final snoozeTime = DateTime.now().add(const Duration(days: 1));
-                            final updated = deal.copyWith(postponedDate: snoozeTime);
-                            await _dealService.updateDeal(updated);
-                            _notifiedReminderDealIds.remove(deal.id.toString());
-                            _escalatedToAdminDealIds.remove(deal.id.toString());
-                            if (mounted) {
-                              setState(() {
-                                final idx = _deals.indexWhere((d) => d.id?.toString() == updated.id?.toString());
-                                if (idx != -1) _deals[idx] = updated;
-                              });
-                            }
-                            if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Reminder snoozed until tomorrow')),
-                              );
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Footer actions
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            final updated = deal.copyWith(postponedDate: null);
-                            await _dealService.updateDeal(updated);
-                            _notifiedReminderDealIds.remove(deal.id.toString());
-                            _escalatedToAdminDealIds.remove(deal.id.toString());
-                            if (mounted) {
-                              setState(() {
-                                final idx = _deals.indexWhere((d) => d.id?.toString() == updated.id?.toString());
-                                if (idx != -1) _deals[idx] = updated;
-                              });
-                            }
-                            if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Follow-up marked as completed!'), backgroundColor: Color(0xFF16A34A)),
-                              );
-                            }
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF16A34A),
-                            side: const BorderSide(color: Color(0xFF16A34A), width: 1.0),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          icon: const Icon(Icons.check_circle_outline_rounded, size: 15),
-                          label: const Text('Mark Done', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        ),
-                        Row(
-                          children: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(dialogCtx),
-                              child: const Text('Dismiss', style: TextStyle(color: Color(0xFF64748B))),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.pop(dialogCtx);
-                                _showLeadDetailsDialog(deal);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primaryColor,
-                                foregroundColor: Colors.black,
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    // Controls / Filter & Batch bar
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF8FAFC),
+                        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              // Search field
+                              Expanded(
+                                child: Container(
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                                  ),
+                                  child: TextField(
+                                    controller: searchController,
+                                    onChanged: (v) => setModalState(() => searchQuery = v.trim()),
+                                    decoration: InputDecoration(
+                                      hintText: 'Search due follow-ups by name, phone, status...',
+                                      hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
+                                      prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Color(0xFF64748B)),
+                                      suffixIcon: searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(Icons.clear_rounded, size: 16),
+                                              onPressed: () {
+                                                searchController.clear();
+                                                setModalState(() => searchQuery = '');
+                                              },
+                                            )
+                                          : null,
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                                    ),
+                                  ),
+                                ),
                               ),
-                              icon: const Icon(Icons.open_in_new_rounded, size: 15),
-                              label: const Text('View Lead', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              const SizedBox(width: 12),
+                              // Batch Actions
+                              if (list.isNotEmpty) ...[
+                                PopupMenuButton<String>(
+                                  onSelected: (val) async {
+                                    if (val == 'snooze_1h') {
+                                      await _batchSnooze(list, const Duration(hours: 1), setModalState, dialogCtx);
+                                    } else if (val == 'snooze_tomorrow') {
+                                      await _batchSnooze(list, const Duration(days: 1), setModalState, dialogCtx);
+                                    } else if (val == 'mark_all_done') {
+                                      await _batchMarkDone(list, setModalState, dialogCtx);
+                                    } else if (val == 'dismiss_all') {
+                                      Navigator.pop(dialogCtx);
+                                    }
+                                  },
+                                  tooltip: 'Batch Actions for All (${list.length})',
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  itemBuilder: (ctx) => [
+                                    const PopupMenuItem(
+                                      value: 'snooze_1h',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.snooze_rounded, size: 18, color: Color(0xFFF59E0B)),
+                                          SizedBox(width: 10),
+                                          Text('Snooze All (+1 hour)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'snooze_tomorrow',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.next_plan_outlined, size: 18, color: Color(0xFF3B82F6)),
+                                          SizedBox(width: 10),
+                                          Text('Snooze All (Tomorrow)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuDivider(),
+                                    const PopupMenuItem(
+                                      value: 'mark_all_done',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.check_circle_outline_rounded, size: 18, color: Color(0xFF10B981)),
+                                          SizedBox(width: 10),
+                                          Text('Mark All as Done', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'dismiss_all',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.close_rounded, size: 18, color: Color(0xFF64748B)),
+                                          SizedBox(width: 10),
+                                          Text('Dismiss All Reminders', style: TextStyle(fontSize: 13)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  child: Container(
+                                    height: 40,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: const Color(0xFFCBD5E1)),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.checklist_rounded, size: 18, color: Color(0xFF0F172A)),
+                                        SizedBox(width: 6),
+                                        Text('Batch Actions', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                        SizedBox(width: 4),
+                                        Icon(Icons.arrow_drop_down_rounded, size: 18, color: Color(0xFF64748B)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          // Filter tabs
+                          Row(
+                            children: [
+                              _buildModalFilterChip(
+                                label: 'All Due (${list.length})',
+                                isSelected: filterTab == 'All',
+                                onTap: () => setModalState(() => filterTab = 'All'),
+                              ),
+                              const SizedBox(width: 8),
+                              _buildModalFilterChip(
+                                label: 'Overdue ($overdueCount)',
+                                color: const Color(0xFFDC2626),
+                                isSelected: filterTab == 'Overdue',
+                                onTap: () => setModalState(() => filterTab = 'Overdue'),
+                              ),
+                              const SizedBox(width: 8),
+                              _buildModalFilterChip(
+                                label: 'Due Today ($todayCount)',
+                                color: const Color(0xFFD97706),
+                                isSelected: filterTab == 'Due Today',
+                                onTap: () => setModalState(() => filterTab = 'Due Today'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // The List
+                    Expanded(
+                      child: displayList.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      list.isEmpty ? Icons.celebration_rounded : Icons.search_off_rounded,
+                                      size: 54,
+                                      color: list.isEmpty ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      list.isEmpty
+                                          ? 'All caught up! No due follow-ups.'
+                                          : 'No follow-ups match "$searchQuery"',
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      list.isEmpty
+                                          ? 'You have attended to all scheduled client follow-ups.'
+                                          : 'Try another search term or change the filter tab.',
+                                      style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                              itemCount: displayList.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 12),
+                              itemBuilder: (itemCtx, idx) {
+                                final deal = displayList[idx];
+                                return _buildDueReminderListCard(
+                                  deal: deal,
+                                  setModalState: setModalState,
+                                  dialogList: list,
+                                  dialogCtx: dialogCtx,
+                                );
+                              },
                             ),
-                          ],
-                        ),
-                      ],
+                    ),
+
+                    // Bottom Bar
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF8FAFC),
+                        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(dialogCtx);
+                              _tabController.animateTo(1); // Switch to "All Leads" list tab
+                              setState(() {
+                                _selectedFollowUpFilter = fuFilterOld;
+                              });
+                            },
+                            icon: const Icon(Icons.table_rows_rounded, size: 16),
+                            label: const Text('View in All Leads List Tab', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF2563EB),
+                              side: const BorderSide(color: Color(0xFF93C5FD)),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(dialogCtx),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F172A),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: const Text('Done', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -661,7 +740,441 @@ class _CrmScreenState extends State<CrmScreen>
       },
     );
 
+    searchController.dispose();
     _isShowingReminderDialog = false;
+  }
+
+  Widget _buildModalFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    final activeColor = color ?? const Color(0xFF0F172A);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.withValues(alpha: 0.12) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? activeColor : const Color(0xFFCBD5E1),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? activeColor : const Color(0xFF64748B),
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDueReminderListCard({
+    required Deal deal,
+    required StateSetter setModalState,
+    required List<Deal> dialogList,
+    required BuildContext dialogCtx,
+  }) {
+    final nowInner = nowIst;
+    final isPastDue = deal.postponedDate != null && deal.postponedDate!.isBefore(nowInner);
+    final fu = deal.postponedDate != null ? toIst(deal.postponedDate!) : null;
+    final (alarmSource, alarmNotes) = _extractSourceAndNotes(deal);
+
+    String timeStatusStr = 'Follow-up Due';
+    if (fu != null) {
+      if (isPastDue) {
+        final diff = nowInner.difference(fu);
+        final days = diff.inDays;
+        final hours = diff.inHours;
+        final mins = diff.inMinutes;
+        final agoStr = days > 0
+            ? '${days}d ago'
+            : (hours > 0 ? '${hours}h ago' : '${mins}m ago');
+        timeStatusStr = 'Overdue: ${DateFormat('dd MMM • hh:mm a').format(fu)} ($agoStr)';
+      } else {
+        timeStatusStr = 'Scheduled: ${DateFormat('hh:mm a').format(fu)} (Upcoming)';
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isPastDue ? const Color(0xFFFECACA) : const Color(0xFFFED7AA),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isPastDue ? const Color(0xFFDC2626) : const Color(0xFFD97706)).withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Row: Avatar + Name + Status + Overdue Badge
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: (isPastDue ? const Color(0xFFDC2626) : const Color(0xFFD97706)).withValues(alpha: 0.12),
+                child: Icon(
+                  isPastDue ? Icons.warning_rounded : Icons.alarm_on_rounded,
+                  color: isPastDue ? const Color(0xFFDC2626) : const Color(0xFFD97706),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            deal.name,
+                            style: const TextStyle(
+                              color: Color(0xFF0F172A),
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (deal.contactStatus != null && deal.contactStatus!.trim().isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.3)),
+                            ),
+                            child: Text(
+                              deal.contactStatus!,
+                              style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 10.5, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.schedule_rounded,
+                          size: 13,
+                          color: isPastDue ? const Color(0xFFDC2626) : const Color(0xFFD97706),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          timeStatusStr,
+                          style: TextStyle(
+                            color: isPastDue ? const Color(0xFFDC2626) : const Color(0xFFD97706),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Contact info row (WhatsApp, Call, Phone)
+          if (deal.contactInfo != null && deal.contactInfo!.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(Icons.phone_rounded, size: 14, color: Color(0xFF64748B)),
+                const SizedBox(width: 6),
+                Text(
+                  deal.contactInfo!,
+                  style: const TextStyle(color: Color(0xFF334155), fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(width: 12),
+                // WhatsApp button
+                InkWell(
+                  onTap: () => _openWhatsApp(deal.contactInfo!, deal.name),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF25D366).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.4)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF16A34A), size: 12),
+                        SizedBox(width: 4),
+                        Text('WhatsApp', style: TextStyle(color: Color(0xFF16A34A), fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Call button
+                InkWell(
+                  onTap: () => _makePhoneCall(deal.contactInfo!),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.4)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.call_outlined, color: Color(0xFF0284C7), size: 12),
+                        SizedBox(width: 4),
+                        Text('Call', style: TextStyle(color: Color(0xFF0284C7), fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          if (alarmSource.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.campaign_outlined, size: 13, color: Color(0xFF0284C7)),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    alarmSource,
+                    style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11, fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          if (alarmNotes.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              alarmNotes,
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+
+          const SizedBox(height: 10),
+          const Divider(color: Color(0xFFF1F5F9), height: 1),
+          const SizedBox(height: 8),
+
+          // Actions row (Snooze + Mark Done + Reschedule + View)
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Text(
+                'Snooze:',
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w600),
+              ),
+              _buildMiniActionChip('+15 min', () async {
+                await _snoozeSingleDeal(deal, const Duration(minutes: 15), setModalState, dialogList);
+              }),
+              _buildMiniActionChip('+1 hour', () async {
+                await _snoozeSingleDeal(deal, const Duration(hours: 1), setModalState, dialogList);
+              }),
+              _buildMiniActionChip('Tomorrow', () async {
+                await _snoozeSingleDeal(deal, const Duration(days: 1), setModalState, dialogList);
+              }),
+              const SizedBox(width: 6),
+              // Mark Done
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await _markDoneSingleDeal(deal, setModalState, dialogList);
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF16A34A),
+                  side: const BorderSide(color: Color(0xFF16A34A), width: 1.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  minimumSize: Size.zero,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.check_circle_outline_rounded, size: 14),
+                label: const Text('Mark Done', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+              ),
+              // Reschedule
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(dialogCtx);
+                  _showFollowUpDialog(deal);
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFD97706),
+                  side: const BorderSide(color: Color(0xFFD97706), width: 1.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  minimumSize: Size.zero,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.schedule_rounded, size: 14),
+                label: const Text('Reschedule', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+              ),
+              // View Lead
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(dialogCtx);
+                  _showLeadDetailsDialog(deal);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: Size.zero,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                label: const Text('View Lead', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniActionChip(String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFCBD5E1)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: Color(0xFF334155), fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _snoozeSingleDeal(Deal deal, Duration duration, StateSetter setModalState, List<Deal> dialogList) async {
+    final snoozeTime = DateTime.now().add(duration);
+    final updated = deal.copyWith(postponedDate: snoozeTime);
+    await _dealService.updateDeal(updated);
+    _notifiedReminderDealIds.remove(deal.id?.toString());
+    _escalatedToAdminDealIds.remove(deal.id?.toString());
+    if (mounted) {
+      setState(() {
+        final idx = _deals.indexWhere((d) => d.id?.toString() == updated.id?.toString());
+        if (idx != -1) _deals[idx] = updated;
+      });
+    }
+    setModalState(() {
+      dialogList.removeWhere((d) => d.id?.toString() == deal.id?.toString());
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Snoozed "${deal.name}" for ${duration.inMinutes >= 60 ? "${duration.inHours} hour(s)" : "${duration.inMinutes} min"}')),
+      );
+    }
+  }
+
+  Future<void> _markDoneSingleDeal(Deal deal, StateSetter setModalState, List<Deal> dialogList) async {
+    final updated = deal.copyWith(postponedDate: null);
+    await _dealService.updateDeal(updated);
+    _notifiedReminderDealIds.remove(deal.id?.toString());
+    _escalatedToAdminDealIds.remove(deal.id?.toString());
+    if (mounted) {
+      setState(() {
+        final idx = _deals.indexWhere((d) => d.id?.toString() == updated.id?.toString());
+        if (idx != -1) _deals[idx] = updated;
+      });
+    }
+    setModalState(() {
+      dialogList.removeWhere((d) => d.id?.toString() == deal.id?.toString());
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Follow-up for "${deal.name}" marked as completed!'),
+          backgroundColor: const Color(0xFF16A34A),
+        ),
+      );
+    }
+  }
+
+  Future<void> _batchSnooze(List<Deal> deals, Duration duration, StateSetter setModalState, BuildContext dialogCtx) async {
+    final snoozeTime = DateTime.now().add(duration);
+    final count = deals.length;
+    for (final deal in deals) {
+      final updated = deal.copyWith(postponedDate: snoozeTime);
+      await _dealService.updateDeal(updated);
+      _notifiedReminderDealIds.remove(deal.id?.toString());
+      _escalatedToAdminDealIds.remove(deal.id?.toString());
+      final idx = _deals.indexWhere((d) => d.id?.toString() == updated.id?.toString());
+      if (idx != -1) _deals[idx] = updated;
+    }
+    if (mounted) setState(() {});
+    setModalState(() {
+      deals.clear();
+    });
+    if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Snoozed $count follow-up reminders!'),
+          backgroundColor: const Color(0xFFD97706),
+        ),
+      );
+    }
+  }
+
+  Future<void> _batchMarkDone(List<Deal> deals, StateSetter setModalState, BuildContext dialogCtx) async {
+    final count = deals.length;
+    for (final deal in deals) {
+      final updated = deal.copyWith(postponedDate: null);
+      await _dealService.updateDeal(updated);
+      _notifiedReminderDealIds.remove(deal.id?.toString());
+      _escalatedToAdminDealIds.remove(deal.id?.toString());
+      final idx = _deals.indexWhere((d) => d.id?.toString() == updated.id?.toString());
+      if (idx != -1) _deals[idx] = updated;
+    }
+    if (mounted) setState(() {});
+    setModalState(() {
+      deals.clear();
+    });
+    if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Marked $count follow-ups as completed!'),
+          backgroundColor: const Color(0xFF16A34A),
+        ),
+      );
+    }
   }
 
   List<Deal> get _dueRemindersNow {
@@ -709,18 +1222,98 @@ class _CrmScreenState extends State<CrmScreen>
   }
 
   void _onPeriodChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {
+        final p = FiscalYearService.currentPeriod.value;
+        if (p == FiscalYearService.period2025_2026) {
+          _selectedTimeframe = timeframePrevPeriod;
+        } else if (p == FiscalYearService.periodAll) {
+          _selectedTimeframe = timeframeAll;
+        } else {
+          _selectedTimeframe = timeframeCurrent;
+        }
+      });
+    }
   }
 
-  List<Deal> get _crmDeals => _deals.where((d) {
+  bool _matchesTimeframe(Deal deal) {
+    // When Old Follow-ups filter is active, always allow active old follow-ups through
+    if (_selectedFollowUpFilter == fuFilterOld) {
+      final st = getCrmStage(deal);
+      if (st == stageCreated || st == stageFollowUp) {
+        if (deal.postponedDate != null) {
+          final fu = toIst(deal.postponedDate!);
+          final now = nowIst;
+          final today = DateTime(now.year, now.month, now.day);
+          if (fu.isBefore(today) || FiscalYearService.isOldFile(deal.createdAt)) {
+            return true;
+          }
+        } else if (FiscalYearService.isOldFile(deal.createdAt) && st == stageFollowUp) {
+          return true;
+        }
+      }
+    }
+
+    final created = deal.createdAt != null ? toIst(deal.createdAt!) : null;
+
+    switch (_selectedTimeframe) {
+      case timeframeAll:
+        return true;
+
+      case timeframePrevMonth:
+        if (created == null) return false;
+        final now = nowIst;
+        final prevMonth = now.month == 1 ? 12 : now.month - 1;
+        final prevYear = now.month == 1 ? now.year - 1 : now.year;
+        return created.year == prevYear && created.month == prevMonth;
+
+      case timeframePrevPeriod:
+        return FiscalYearService.isOldFile(deal.createdAt);
+
+      case timeframeCurrent:
+      default:
+        if (FiscalYearService.isCurrentPeriod(deal.createdAt)) {
+          return true;
+        }
+        // Active follow-ups carry-over so unconverted clients are never lost
+        if (_includeActiveOldFollowups) {
+          final st = getCrmStage(deal);
+          if ((st == stageCreated || st == stageFollowUp) && deal.postponedDate != null) {
+            return true;
+          }
+        }
+        return false;
+    }
+  }
+
+  List<Deal> get _allCrmDeals => _deals.where((d) {
         final p = d.pipeline.toLowerCase();
-        if (p != 'crm' && p != 'lead') return false;
-        return FiscalYearService.matchesCurrentPeriod(d.createdAt);
+        return p == 'crm' || p == 'lead';
       }).toList();
+
+  List<Deal> get _crmDeals => _allCrmDeals.where(_matchesTimeframe).toList();
+
+  List<Deal> get _oldFollowUpDeals {
+    final now = nowIst;
+    final today = DateTime(now.year, now.month, now.day);
+    return _allCrmDeals.where((d) {
+      final st = getCrmStage(d);
+      if (st != stageCreated && st != stageFollowUp) return false;
+      if (d.postponedDate == null) {
+        return FiscalYearService.isOldFile(d.createdAt) && st == stageFollowUp;
+      }
+      final fu = toIst(d.postponedDate!);
+      return fu.isBefore(today) || FiscalYearService.isOldFile(d.createdAt);
+    }).toList();
+  }
+
+  List<Deal> get _previousMonthDeals {
+    return _allCrmDeals.where((d) => FiscalYearService.isOldFile(d.createdAt)).toList();
+  }
 
   List<Deal> get _scopedDeals {
     final base = _showAllPipelines
-        ? _deals.where((d) => FiscalYearService.matchesCurrentPeriod(d.createdAt)).toList()
+        ? _deals.where(_matchesTimeframe).toList()
         : _crmDeals;
     final groups = <String, List<Deal>>{};
     for (final d in base) {
@@ -815,6 +1408,7 @@ class _CrmScreenState extends State<CrmScreen>
       }
 
       await FiscalYearService.setPeriod(FiscalYearService.period2026_2027);
+      _selectedTimeframe = timeframeCurrent;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -937,10 +1531,20 @@ class _CrmScreenState extends State<CrmScreen>
   }
 
   bool _matchesFollowUpFilter(Deal deal) {
-    if (_selectedFollowUpFilter == 'All') return true;
+    if (_selectedFollowUpFilter == fuFilterAll) return true;
     final d = deal.postponedDate;
-    if (_selectedFollowUpFilter == 'Pending Set') {
+    if (_selectedFollowUpFilter == fuFilterPending) {
       return d == null;
+    }
+    if (_selectedFollowUpFilter == fuFilterOld) {
+      final now = nowIst;
+      final today = DateTime(now.year, now.month, now.day);
+      if (d != null) {
+        final dIst = toIst(d);
+        final target = DateTime(dIst.year, dIst.month, dIst.day);
+        if (target.isBefore(today)) return true;
+      }
+      return FiscalYearService.isOldFile(deal.createdAt);
     }
     if (d == null) return false;
     final dIst = toIst(d);
@@ -949,11 +1553,11 @@ class _CrmScreenState extends State<CrmScreen>
     final target = DateTime(dIst.year, dIst.month, dIst.day);
 
     switch (_selectedFollowUpFilter) {
-      case 'Due Today':
+      case fuFilterToday:
         return target.isAtSameMomentAs(today);
-      case 'Overdue':
+      case fuFilterOverdue:
         return target.isBefore(today);
-      case 'Upcoming':
+      case fuFilterUpcoming:
         return target.isAfter(today);
       default:
         return true;
@@ -4608,7 +5212,7 @@ class _CrmScreenState extends State<CrmScreen>
                                 const SizedBox(width: 8),
                                 InkWell(
                                   onTap: () {
-                                    _triggerLiveReminderPopup(_dueRemindersNow.first);
+                                    _showDueRemindersListDialog();
                                   },
                                   borderRadius: BorderRadius.circular(20),
                                   child: Container(
@@ -4640,6 +5244,41 @@ class _CrmScreenState extends State<CrmScreen>
                                         ),
                                       ],
                                     ),
+                                  ),
+                                ),
+                              ],
+                              if (_oldFollowUpDeals.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedFollowUpFilter = _selectedFollowUpFilter == fuFilterOld ? fuFilterAll : fuFilterOld;
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: _buildStatBadge(
+                                    'Old Follow-ups',
+                                    _oldFollowUpDeals.length.toString(),
+                                    const Color(0xFFD97706),
+                                    isActive: _selectedFollowUpFilter == fuFilterOld,
+                                  ),
+                                ),
+                              ],
+                              if (_previousMonthDeals.isNotEmpty && _selectedTimeframe != timeframePrevPeriod) ...[
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedTimeframe = timeframePrevPeriod;
+                                      FiscalYearService.setPeriod(FiscalYearService.period2025_2026);
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: _buildStatBadge(
+                                    'Old Leads',
+                                    _previousMonthDeals.length.toString(),
+                                    const Color(0xFF8B5CF6),
+                                    isActive: _selectedTimeframe == timeframePrevPeriod,
                                   ),
                                 ),
                               ],
@@ -4782,6 +5421,12 @@ class _CrmScreenState extends State<CrmScreen>
                                   ),
                                 ),
                               ],
+                              const SizedBox(width: 10),
+                              FiscalYearHeaderPill(
+                                onSwitched: () {
+                                  if (mounted) setState(() {});
+                                },
+                              ),
                             ],
                           ),
                         ),
@@ -4844,6 +5489,26 @@ class _CrmScreenState extends State<CrmScreen>
                     items: _stages,
                     onChanged: (v) => setState(() => _selectedStage = v!),
                     hint: 'Stage',
+                  ),
+                  const SizedBox(width: 8),
+                  _buildDropdown(
+                    value: _timeframeOptions.contains(_selectedTimeframe) ? _selectedTimeframe : _timeframeOptions.first,
+                    items: _timeframeOptions,
+                    onChanged: (v) {
+                      if (v == null) return;
+                      setState(() {
+                        _selectedTimeframe = v;
+                        if (v == timeframePrevPeriod) {
+                          FiscalYearService.setPeriod(FiscalYearService.period2025_2026);
+                        } else if (v == timeframeCurrent) {
+                          FiscalYearService.setPeriod(FiscalYearService.period2026_2027);
+                        } else if (v == timeframeAll) {
+                          FiscalYearService.setPeriod(FiscalYearService.periodAll);
+                        }
+                      });
+                    },
+                    hint: 'Period / Month',
+                    prefixIcon: Icons.calendar_month_rounded,
                   ),
                   const SizedBox(width: 8),
                   _buildDropdown(

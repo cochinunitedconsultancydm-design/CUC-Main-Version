@@ -47,6 +47,7 @@ class FiscalYearService {
   }
 
   static bool matchesCurrentPeriod(DateTime? dt) {
+    if (currentPeriod.value == periodAll) return true;
     if (currentPeriod.value == period2025_2026) {
       return isOldFile(dt);
     }
@@ -71,7 +72,7 @@ class FiscalYearService {
     } else if (currentPeriod.value == period2026_2027) {
       return '2026-2027 (Fresh Clean)';
     }
-    return 'All Records';
+    return 'All Records (All Months)';
   }
 
   /// Shows the selection dialog for choosing between 2025-2026 and 2026-2027
@@ -215,6 +216,20 @@ class _FiscalYearSelectionDialogState extends State<FiscalYearSelectionDialog> {
                     accentColor: const Color(0xFF047857),
                     badgeBg: const Color(0xFFD1FAE5),
                     badgeBorder: const Color(0xFF10B981),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  // Option 3: All Records (All Time)
+                  _buildOptionCard(
+                    id: FiscalYearService.periodAll,
+                    title: 'All Records',
+                    badgeText: 'COMPLETE ARCHIVE & PRESENT',
+                    description: 'Access all previous months, historical archives, and current workspace without date restrictions',
+                    icon: Icons.all_inclusive_rounded,
+                    accentColor: const Color(0xFF6D28D9),
+                    badgeBg: const Color(0xFFEDE9FE),
+                    badgeBorder: const Color(0xFF8B5CF6),
                   ),
                 ],
               ),
@@ -360,24 +375,41 @@ class FiscalYearHeaderPill extends StatelessWidget {
       valueListenable: FiscalYearService.currentPeriod,
       builder: (context, period, _) {
         final isOld = period == FiscalYearService.period2025_2026;
-        final bg = isOld ? const Color(0xFFFEF3C7) : const Color(0xFFD1FAE5);
-        final border = isOld ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
-        final textCol = isOld ? const Color(0xFFB45309) : const Color(0xFF047857);
-        final icon = isOld ? Icons.history_rounded : Icons.auto_awesome_rounded;
-        final label = isOld ? '2025-2026' : '2026-2027';
-        final sublabel = isOld ? 'Old Files' : 'Fresh';
+        final isAll = period == FiscalYearService.periodAll;
+
+        final bg = isAll
+            ? const Color(0xFFEDE9FE)
+            : (isOld ? const Color(0xFFFEF3C7) : const Color(0xFFD1FAE5));
+        final border = isAll
+            ? const Color(0xFF8B5CF6)
+            : (isOld ? const Color(0xFFF59E0B) : const Color(0xFF10B981));
+        final textCol = isAll
+            ? const Color(0xFF6D28D9)
+            : (isOld ? const Color(0xFFB45309) : const Color(0xFF047857));
+        final icon = isAll
+            ? Icons.all_inclusive_rounded
+            : (isOld ? Icons.history_rounded : Icons.auto_awesome_rounded);
+        final label = isAll
+            ? 'All Records'
+            : (isOld ? '2025-2026' : '2026-2027');
+        final sublabel = isAll ? 'All Time' : (isOld ? 'Old Files' : 'Fresh');
 
         return Tooltip(
-          message: isOld
-              ? 'Active: 2025-2026 (Old Files). Click to switch to 2026-2027 (Fresh).'
-              : 'Active: 2026-2027 (Fresh Clean). Click to switch to 2025-2026 (Old Files).',
+          message: isAll
+              ? 'Active: All Records (Showing all months & periods). Click to switch.'
+              : (isOld
+                  ? 'Active: 2025-2026 (Old Files / Previous Months). Click to switch.'
+                  : 'Active: 2026-2027 (Fresh Clean). Click to switch.'),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
               onTap: () async {
-                final targetPeriod = isOld
-                    ? FiscalYearService.period2026_2027
-                    : FiscalYearService.period2025_2026;
+                // Cycle: 2026-2027 -> 2025-2026 -> All -> 2026-2027
+                final targetPeriod = period == FiscalYearService.period2026_2027
+                    ? FiscalYearService.period2025_2026
+                    : (period == FiscalYearService.period2025_2026
+                        ? FiscalYearService.periodAll
+                        : FiscalYearService.period2026_2027);
                 await FiscalYearService.setPeriod(targetPeriod);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -386,26 +418,40 @@ class FiscalYearHeaderPill extends StatelessWidget {
                       content: Row(
                         children: [
                           Icon(
-                            isOld ? Icons.auto_awesome_rounded : Icons.history_rounded,
+                            targetPeriod == FiscalYearService.periodAll
+                                ? Icons.all_inclusive_rounded
+                                : (targetPeriod == FiscalYearService.period2025_2026
+                                    ? Icons.history_rounded
+                                    : Icons.auto_awesome_rounded),
                             color: Colors.white,
                             size: 18,
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            isOld
-                                ? 'Switched to 2026–2027 (Fresh Clean Workspace)'
-                                : 'Switched to 2025–2026 (Old Files)',
+                            targetPeriod == FiscalYearService.periodAll
+                                ? 'Switched to All Records (All Months & Periods)'
+                                : (targetPeriod == FiscalYearService.period2025_2026
+                                    ? 'Switched to 2025–2026 (Old Files & Previous Months)'
+                                    : 'Switched to 2026–2027 (Fresh Clean Workspace)'),
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
-                      backgroundColor: isOld ? const Color(0xFF047857) : const Color(0xFFB45309),
+                      backgroundColor: targetPeriod == FiscalYearService.periodAll
+                          ? const Color(0xFF6D28D9)
+                          : (targetPeriod == FiscalYearService.period2025_2026
+                              ? const Color(0xFFB45309)
+                              : const Color(0xFF047857)),
                       duration: const Duration(seconds: 2),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
                 }
                 onSwitched?.call();
+              },
+              onLongPress: () async {
+                final chosen = await FiscalYearService.showSelectionDialog(context);
+                if (chosen != null) onSwitched?.call();
               },
               borderRadius: BorderRadius.circular(20),
               child: AnimatedContainer(

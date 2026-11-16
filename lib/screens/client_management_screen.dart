@@ -1800,6 +1800,8 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                       const SizedBox(width: 16),
                       _buildSortDropdown(),
                       const SizedBox(width: 12),
+                      FiscalYearHeaderPill(onSwitched: () { if (mounted) setState(() {}); }),
+                      const SizedBox(width: 12),
                       _headerAction(Icons.refresh_rounded, 'Refresh', AppTheme.primaryColor, _fetchClients),
                       const SizedBox(width: 12),
                       _headerAction(Icons.download_rounded, 'Export to Excel', Colors.green, _exportToExcel),
@@ -1888,6 +1890,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     ),
                   ),
                   _buildSortDropdown(),
+                  FiscalYearHeaderPill(onSwitched: () { if (mounted) setState(() {}); }),
                   _headerAction(Icons.refresh_rounded, 'Refresh', AppTheme.primaryColor, _fetchClients),
                   _headerAction(Icons.download_rounded, 'Export', Colors.green, _exportToExcel),
                   if (_selectedPeriod == '2026-2027' && _count2025_2026 > 0)

@@ -12,9 +12,9 @@ class BackupAwareApi {
 
   final _backup = SupabaseBackupService();
 
-  Future<GraphQLResponse<T>> create<T extends Model>(T model) async {
+  Future<GraphQLResponse<T>> create<T extends Model>(T model, {APIAuthorizationType? authorizationMode}) async {
     final response = await Amplify.API
-        .mutate(request: ModelMutations.create(model))
+        .mutate(request: ModelMutations.create(model, authorizationMode: authorizationMode))
         .response;
 
     if (response.hasErrors) {
@@ -29,9 +29,9 @@ class BackupAwareApi {
   }
 
   /// Update a record in DynamoDB and backup to Supabase.
-  Future<GraphQLResponse<T>> update<T extends Model>(T model) async {
+  Future<GraphQLResponse<T>> update<T extends Model>(T model, {APIAuthorizationType? authorizationMode}) async {
     final response = await Amplify.API
-        .mutate(request: ModelMutations.update(model))
+        .mutate(request: ModelMutations.update(model, authorizationMode: authorizationMode))
         .response;
 
     if (response.hasErrors) {
@@ -46,9 +46,9 @@ class BackupAwareApi {
   }
 
   /// Delete a record from DynamoDB and Supabase.
-  Future<GraphQLResponse<T>> delete<T extends Model>(T model) async {
+  Future<GraphQLResponse<T>> delete<T extends Model>(T model, {APIAuthorizationType? authorizationMode}) async {
     final response = await Amplify.API
-        .mutate(request: ModelMutations.delete(model))
+        .mutate(request: ModelMutations.delete(model, authorizationMode: authorizationMode))
         .response;
 
     if (response.hasErrors) {

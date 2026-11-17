@@ -131,26 +131,20 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
         debugPrint('Supabase users cross-reference notice: $sbErr');
       }
 
-      if (deletedKeys.isNotEmpty || activeSupabaseKeys != null) {
-        usersResRaw.removeWhere((u) {
-          final uid = u.id.toLowerCase().trim();
-          final uname = (u.username ?? '').toLowerCase().trim();
-          final uemail = (u.email ?? '').toLowerCase().trim();
-          
-          if (deletedKeys.contains(uid) || (uname.isNotEmpty && deletedKeys.contains(uname)) || (uemail.isNotEmpty && deletedKeys.contains(uemail))) {
-            return true;
-          }
+      usersResRaw.removeWhere((u) {
+        if (u.role?.toLowerCase() == 'deleted') return true;
+        final uid = u.id.toLowerCase().trim();
+        final uname = (u.username ?? '').toLowerCase().trim();
+        final uemail = (u.email ?? '').toLowerCase().trim();
+        
+        if (deletedKeys.contains(uid) || 
+            (uname.isNotEmpty && deletedKeys.contains(uname)) || 
+            (uemail.isNotEmpty && deletedKeys.contains(uemail))) {
+          return true;
+        }
 
-          if (activeSupabaseKeys != null && activeSupabaseKeys.isNotEmpty) {
-            final matches = activeSupabaseKeys.contains(uid) ||
-                (uname.isNotEmpty && activeSupabaseKeys.contains(uname)) ||
-                (uemail.isNotEmpty && activeSupabaseKeys.contains(uemail));
-            if (!matches) return true;
-          }
-
-          return false;
-        });
-      }
+        return false;
+      });
       
       // Deduplicate users by username, prioritizing UUID-based IDs (Cognito)
       final Map<String, amplify_models.Users> uniqueUsers = {};
@@ -515,6 +509,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     final username = TextEditingController(text: user?['username']);
     final email = TextEditingController(text: user?['email']);
     final password = TextEditingController();
+    bool obscurePassword = true;
     
     final designation = TextEditingController(text: user?['designation']);
     final personalPhone = TextEditingController(text: user?['personal_phone']);
@@ -786,7 +781,19 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                         buildRow([
                           TextField(controller: username, decoration: inputDec('Username', Icons.alternate_email_rounded), maxLength: 50),
                           if (user == null)
-                            TextField(controller: password, decoration: inputDec('Initial Password', Icons.lock_outline_rounded), obscureText: true, maxLength: 128)
+                            TextField(
+                              controller: password,
+                              decoration: inputDec('Initial Password', Icons.lock_outline_rounded).copyWith(
+                                helperText: 'Min 8 chars, uppercase, lowercase, number & symbol',
+                                helperMaxLines: 2,
+                                suffixIcon: IconButton(
+                                  icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+                                  onPressed: () => setModalState(() => obscurePassword = !obscurePassword),
+                                ),
+                              ),
+                              obscureText: obscurePassword,
+                              maxLength: 128,
+                            )
                           else
                             const SizedBox(),
                         ]),
@@ -848,12 +855,22 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                             _msg('Please fill required fields (Name, Username, Email, Password)', false);
                             return;
                           }
+                          if (user == null) {
+                            final passErr = SecurityService().validatePassword(password.text);
+                            if (passErr != null) {
+                              _msg('Password policy error: $passErr', false);
+                              return;
+                            }
+                          }
                           try {
                             if (user == null) {
                               try {
                                 final normalizedUser = username.text.toLowerCase().trim();
                                 final userPart = normalizedUser.contains('@') ? normalizedUser.split('@')[0] : normalizedUser;
-                                final loginEmail = normalizedUser.contains('@') ? normalizedUser : '$userPart@cuc.local';
+                                final inputEmail = email.text.trim().toLowerCase();
+                                final loginEmail = inputEmail.contains('@') 
+                                    ? inputEmail 
+                                    : (normalizedUser.contains('@') ? normalizedUser : '$userPart@cuc.local');
 
                                 await Amplify.Auth.signUp(
                                   username: loginEmail,
@@ -898,7 +915,16 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                                 company_email: companyEmail.text.isNotEmpty ? companyEmail.text : null,
                                 company_phone: companyPhone.text.isNotEmpty ? companyPhone.text : null,
                               );
-                              await BackupAwareApi().create(newUser);
+                              await BackupAwareApi().create(newUser, authorizationMode: APIAuthorizationType.userPools);
+                              await SupabaseBackupService().backupRecord('Users', newUser.toJson());
+
+                              // Clear from deleted_staff_keys in case this username or email was previously deleted
+                              final prefs = await SharedPreferences.getInstance();
+                              final deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? []).toSet();
+                              deletedKeys.remove(newUser.id.toLowerCase().trim());
+                              deletedKeys.remove(username.text.toLowerCase().trim());
+                              deletedKeys.remove(email.text.toLowerCase().trim());
+                              await prefs.setStringList('deleted_staff_keys', deletedKeys.toList());
                               await LoggingService().logAction(action: 'CREATE_STAFF', targetType: 'Staff', targetId: username.text, details: 'Added new staff member: ${name.text}');
                             } else {
                               final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()), limit: 10000, authorizationMode: APIAuthorizationType.userPools);
@@ -938,7 +964,11 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                             _fetchStaff();
                             _msg('Saved successfully', true);
                           } catch (e) {
-                            _msg('Error: $e', false);
+                            if (e.toString().contains('SignedOutException') || e.toString().contains('No user is currently signed in')) {
+                              _msg('Your session has expired. Please log out (Exit Admin) and log back in.', false);
+                            } else {
+                              _msg('Error: $e', false);
+                            }
                           }
                         },
                         icon: Icon(user == null ? Icons.add_circle_outline : Icons.save_rounded, size: 20),
@@ -969,29 +999,93 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     }
     final passController = TextEditingController();
     bool isSaving = false;
+    bool obscurePass = true;
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
           title: Text('Reset Password for ${user['name']}'),
-          content: TextField(
-            controller: passController,
-            decoration: const InputDecoration(labelText: 'New Password', border: OutlineInputBorder()),
-            obscureText: true,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: passController,
+                decoration: InputDecoration(
+                  labelText: 'New Password',
+                  border: const OutlineInputBorder(),
+                  helperText: 'Min 8 chars, uppercase, lowercase, number & symbol',
+                  helperMaxLines: 2,
+                  suffixIcon: IconButton(
+                    icon: Icon(obscurePass ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+                    onPressed: () => setModalState(() => obscurePass = !obscurePass),
+                  ),
+                ),
+                obscureText: obscurePass,
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 18, color: Colors.amber.shade900),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Note: Cognito account username is ${user['username']}@cuc.local',
+                        style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: isSaving ? null : () async {
                 if (passController.text.trim().isEmpty) return;
-                if (passController.text.length < 6) {
-                  _msg('Password must be at least 6 characters', false);
+                final passErr = SecurityService().validatePassword(passController.text.trim());
+                if (passErr != null) {
+                  _msg('Password policy error: $passErr', false);
                   return;
                 }
                 setModalState(() => isSaving = true);
                 try {
+                  final newPass = passController.text.trim();
+                  final normalizedUser = (user['username'] ?? '').toString().toLowerCase().trim();
+                  final userPart = normalizedUser.contains('@') ? normalizedUser.split('@')[0] : normalizedUser;
+                  final userEmailStr = (user['email'] ?? '').toString().trim().toLowerCase();
+                  final loginEmail = userEmailStr.contains('@') 
+                      ? userEmailStr 
+                      : (normalizedUser.contains('@') ? normalizedUser : '$userPart@cuc.local');
+
+                  bool createdCognito = false;
+                  try {
+                    await Amplify.Auth.signUp(
+                      username: loginEmail,
+                      password: newPass,
+                      options: SignUpOptions(
+                        userAttributes: {
+                          CognitoUserAttributeKey.email: loginEmail,
+                          CognitoUserAttributeKey.name: (user['name'] ?? userPart).toString(),
+                        },
+                      ),
+                    );
+                    createdCognito = true;
+                    debugPrint('Created missing Cognito user for $loginEmail');
+                  } catch (cogErr) {
+                    debugPrint('Cognito signUp check during reset: $cogErr');
+                  }
+
                   // SECURITY: Hash password before storing
-                  final hashedPassword = SecurityService().hashPassword(passController.text);
+                  final hashedPassword = SecurityService().hashPassword(newPass);
                   final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()), limit: 10000, authorizationMode: APIAuthorizationType.userPools);
                   final res = await Amplify.API.query(request: req).response;
                   if (res.data?.items.isNotEmpty == true) {
@@ -1001,9 +1095,13 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                   }
                   await LoggingService().logAction(action: 'RESET_PASSWORD', targetType: 'Staff', targetId: user['username'], details: 'Reset password for ${user['name']}');
                   if (mounted) Navigator.pop(context);
-                  _msg('Password reset successfully for ${user['name']}', true);
+                  _msg(createdCognito ? 'Created on Cognito & password set for ${user['name']}' : 'Password reset successfully for ${user['name']}', true);
                 } catch (e) {
-                  _msg('Error: $e', false);
+                  if (e.toString().contains('SignedOutException') || e.toString().contains('No user is currently signed in')) {
+                    _msg('Your session has expired. Please log out (Exit Admin) and log back in.', false);
+                  } else {
+                    _msg('Error: $e', false);
+                  }
                 } finally {
                   if (mounted) setModalState(() => isSaving = false);
                 }
@@ -1059,17 +1157,31 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           email: staffEmail,
         );
 
-        // 3. Delete from AppSync with quiet catch for cloud auth restrictions
+        // 3. Mark deleted & delete from AppSync for all matching records
         try {
-          final req = ModelQueries.list(
+          final allReq = ModelQueries.list(
             amplify_models.Users.classType,
-            where: amplify_models.Users.ID.eq(id.toString()),
             limit: 10000,
             authorizationMode: APIAuthorizationType.userPools,
           );
-          final res = await Amplify.API.query(request: req).response;
-          if (res.data?.items.isNotEmpty == true && res.data!.items.first != null) {
-            await BackupAwareApi().delete(res.data!.items.first!);
+          final allRes = await Amplify.API.query(request: allReq).response;
+          final matchItems = (allRes.data?.items ?? []).whereType<amplify_models.Users>().where((u) {
+            final uid = u.id.toLowerCase().trim();
+            final uname = (u.username ?? '').toLowerCase().trim();
+            final uemail = (u.email ?? '').toLowerCase().trim();
+            return uid == id.toString().toLowerCase().trim() ||
+                (staffUsername != null && uname == staffUsername.toLowerCase().trim()) ||
+                (staffEmail != null && uemail == staffEmail.toLowerCase().trim());
+          }).toList();
+
+          for (final item in matchItems) {
+            try {
+              final marked = item.copyWith(role: 'deleted');
+              await BackupAwareApi().update(marked, authorizationMode: APIAuthorizationType.userPools);
+            } catch (_) {}
+            try {
+              await BackupAwareApi().delete(item, authorizationMode: APIAuthorizationType.userPools);
+            } catch (_) {}
           }
         } catch (_) {}
 

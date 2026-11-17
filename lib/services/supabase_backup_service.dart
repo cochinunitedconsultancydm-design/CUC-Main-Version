@@ -352,6 +352,31 @@ class SupabaseBackupService {
         );
         if (res.statusCode >= 200 && res.statusCode < 300) deleted = true;
       }
+
+      // If hard delete is blocked by foreign keys in Supabase, soft delete by setting role = 'deleted'
+      final patchBody = json.encode({'role': 'deleted'});
+      if (id != null && int.tryParse(id.toString()) != null) {
+        await http.patch(
+          Uri.parse('$_supabaseUrl/rest/v1/users?id=eq.$id'),
+          headers: _headers,
+          body: patchBody,
+        );
+      }
+      if (username != null && username.isNotEmpty) {
+        await http.patch(
+          Uri.parse('$_supabaseUrl/rest/v1/users?username=eq.$username'),
+          headers: _headers,
+          body: patchBody,
+        );
+      }
+      if (email != null && email.isNotEmpty) {
+        await http.patch(
+          Uri.parse('$_supabaseUrl/rest/v1/users?email=eq.$email'),
+          headers: _headers,
+          body: patchBody,
+        );
+      }
+
       return deleted;
     } catch (e) {
       debugPrint('Supabase deleteUser error: $e');
@@ -667,12 +692,15 @@ class SupabaseBackupService {
   Future<List<Map<String, dynamic>>> getFullUsersData() async {
     try {
       final response = await http.get(
-        Uri.parse('$_supabaseUrl/rest/v1/users'),
+        Uri.parse('$_supabaseUrl/rest/v1/users?role=neq.deleted'),
         headers: _headers,
       ).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        return data.cast<Map<String, dynamic>>();
+        return data
+            .cast<Map<String, dynamic>>()
+            .where((u) => (u['role'] ?? '').toString().toLowerCase() != 'deleted')
+            .toList();
       }
     } catch (e) {
       debugPrint('Supabase getFullUsersData error: $e');
@@ -750,24 +778,15 @@ class SupabaseBackupService {
 
         // Doesn't exist, download from S3
         debugPrint('Downloading missing file from S3: ${item.path}');
-        final tempDir = await getTemporaryDirectory();
-        final localFile = File('${tempDir.path}/${item.path.replaceAll('/', '_')}');
-        
-        await Amplify.Storage.downloadFile(
+        final downloadResult = await Amplify.Storage.downloadData(
           path: StoragePath.fromString(item.path),
-          localFile: AWSFile.fromPath(localFile.path),
         ).result;
 
         // Upload to Supabase
-        final bytes = await localFile.readAsBytes();
+        final bytes = Uint8List.fromList(downloadResult.bytes);
         final success = await backupFile(item.path, bytes);
         if (success) {
           syncedCount++;
-        }
-
-        // Cleanup temp file
-        if (await localFile.exists()) {
-          await localFile.delete();
         }
       }
       debugPrint('Finished file sync. Uploaded $syncedCount missing files.');

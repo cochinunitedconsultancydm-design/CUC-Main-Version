@@ -553,6 +553,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
     final username = TextEditingController(text: user?['username']);
     final email = TextEditingController(text: user?['email']);
     final password = TextEditingController();
+    bool obscurePassword = true;
     
     final designation = TextEditingController(text: user?['designation']);
     final personalPhone = TextEditingController(text: user?['personal_phone']);
@@ -824,7 +825,19 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                         buildRow([
                           TextField(controller: username, decoration: inputDec('Username', Icons.alternate_email_rounded), maxLength: 50),
                           if (user == null)
-                            TextField(controller: password, decoration: inputDec('Initial Password', Icons.lock_outline_rounded), obscureText: true, maxLength: 128)
+                            TextField(
+                              controller: password,
+                              decoration: inputDec('Initial Password', Icons.lock_outline_rounded).copyWith(
+                                helperText: 'Min 8 chars, uppercase, lowercase, number & symbol',
+                                helperMaxLines: 2,
+                                suffixIcon: IconButton(
+                                  icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+                                  onPressed: () => setModalState(() => obscurePassword = !obscurePassword),
+                                ),
+                              ),
+                              obscureText: obscurePassword,
+                              maxLength: 128,
+                            )
                           else
                             const SizedBox(),
                         ]),
@@ -885,6 +898,13 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                           if (name.text.isEmpty || username.text.isEmpty || email.text.isEmpty || (user == null && password.text.isEmpty)) {
                             _msg('Please fill required fields (Name, Username, Email, Password)', false);
                             return;
+                          }
+                          if (user == null) {
+                            final passErr = SecurityService().validatePassword(password.text);
+                            if (passErr != null) {
+                              _msg('Password policy error: $passErr', false);
+                              return;
+                            }
                           }
                           try {
                             if (user == null) {
@@ -976,7 +996,11 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                             _fetchStaff();
                             _msg('Saved successfully', true);
                           } catch (e) {
-                            _msg('Error: $e', false);
+                            if (e.toString().contains('SignedOutException') || e.toString().contains('No user is currently signed in')) {
+                              _msg('Your session has expired. Please log out (Exit Admin) and log back in.', false);
+                            } else {
+                              _msg('Error: $e', false);
+                            }
                           }
                         },
                         icon: Icon(user == null ? Icons.add_circle_outline : Icons.save_rounded, size: 20),
@@ -1003,29 +1027,67 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
   void _resetPassword(Map<String, dynamic> user) {
     final passController = TextEditingController();
     bool isSaving = false;
+    bool obscurePass = true;
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
           title: Text('Reset Password for ${user['name']}'),
-          content: TextField(
-            controller: passController,
-            decoration: const InputDecoration(labelText: 'New Password', border: OutlineInputBorder()),
-            obscureText: true,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: passController,
+                decoration: InputDecoration(
+                  labelText: 'New Password',
+                  border: const OutlineInputBorder(),
+                  helperText: 'Min 8 chars, uppercase, lowercase, number & symbol',
+                  helperMaxLines: 2,
+                  suffixIcon: IconButton(
+                    icon: Icon(obscurePass ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+                    onPressed: () => setModalState(() => obscurePass = !obscurePass),
+                  ),
+                ),
+                obscureText: obscurePass,
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 18, color: Colors.amber.shade900),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Note: Cognito account username is ${user['username']}@cuc.local',
+                        style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: isSaving ? null : () async {
                 if (passController.text.trim().isEmpty) return;
-                if (passController.text.length < 6) {
-                  _msg('Password must be at least 6 characters', false);
+                final passErr = SecurityService().validatePassword(passController.text.trim());
+                if (passErr != null) {
+                  _msg('Password policy error: $passErr', false);
                   return;
                 }
                 setModalState(() => isSaving = true);
                 try {
                   // SECURITY: Hash password before storing
-                  final hashedPassword = SecurityService().hashPassword(passController.text);
+                  final hashedPassword = SecurityService().hashPassword(passController.text.trim());
                   final req = ModelQueries.list(amplify_models.Users.classType, where: amplify_models.Users.ID.eq(user['id'].toString()), limit: 10000, authorizationMode: APIAuthorizationType.userPools);
                   final res = await Amplify.API.query(request: req).response;
                   if (res.data?.items.isNotEmpty == true) {
@@ -1037,7 +1099,11 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
                   if (mounted) Navigator.pop(context);
                   _msg('Password reset successfully for ${user['name']}', true);
                 } catch (e) {
-                  _msg('Error: $e', false);
+                  if (e.toString().contains('SignedOutException') || e.toString().contains('No user is currently signed in')) {
+                    _msg('Your session has expired. Please log out (Exit Admin) and log back in.', false);
+                  } else {
+                    _msg('Error: $e', false);
+                  }
                 } finally {
                   if (mounted) setModalState(() => isSaving = false);
                 }

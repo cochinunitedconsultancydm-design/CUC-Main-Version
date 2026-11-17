@@ -32,7 +32,16 @@ class AuthService {
 
       final normalizedUser = username.toLowerCase().trim();
       final userPart = normalizedUser.contains('@') ? normalizedUser.split('@')[0] : normalizedUser;
-      final loginEmail = normalizedUser.contains('@') ? normalizedUser : '$userPart@cuc.local';
+      String loginEmail;
+      if (normalizedUser.contains('@')) {
+        loginEmail = normalizedUser;
+      } else if (userPart == 'harshina') {
+        loginEmail = 'cochinunitedconsultancy2020@gmail.com';
+      } else if (userPart == 'arya') {
+        loginEmail = 'cucarya@gmail.com';
+      } else {
+        loginEmail = '$userPart@cuc.local';
+      }
 
       // Determine default role for new users if they don't exist
       String defaultRole = 'staff';
@@ -52,10 +61,28 @@ class AuthService {
       }
 
       // SECURITY: Authenticate against AWS Cognito securely!
-      var signInResult = await Amplify.Auth.signIn(
-        username: loginEmail,
-        password: password,
-      );
+      SignInResult signInResult;
+      try {
+        signInResult = await Amplify.Auth.signIn(
+          username: loginEmail,
+          password: password,
+        );
+      } catch (firstErr) {
+        // Fallback for alternate email formats if primary failed
+        if (!normalizedUser.contains('@')) {
+          try {
+            final fallbackEmail = userPart == 'harshina' ? 'harshina@cuc.local' : '$userPart@cuc.com';
+            signInResult = await Amplify.Auth.signIn(
+              username: fallbackEmail,
+              password: password,
+            );
+          } catch (_) {
+            rethrow;
+          }
+        } else {
+          rethrow;
+        }
+      }
 
       if (signInResult.nextStep.signInStep == AuthSignInStep.confirmSignInWithNewPassword) {
         debugPrint('User requires password change. Automatically setting permanent password.');

@@ -40,6 +40,8 @@ class _BillingScreenState extends State<BillingScreen> {
   List<Billing> _billings = [];
   bool _isAdmin = false;
   bool _isAmarnath = false;
+  String _currentUserName = '';
+  String _currentUserRole = '';
   bool _isLoading = true;
   bool _isFetchingMore = false;
   final int _limit = 50;
@@ -57,6 +59,17 @@ class _BillingScreenState extends State<BillingScreen> {
   int _totalInvoices = 0;
   int _totalPaid = 0;
   int _totalPending = 0;
+
+  static const List<String> _editReasonCategories = [
+    'Price / Amount Correction',
+    'Client Information / Address Update',
+    'Scope / Items Modification',
+    'Payment Terms / Due Date Adjustment',
+    'Discount / Advance Revision',
+    'Quotation Negotiation Update',
+    'Typo or Billing Mistake',
+    'Other (Specify Reason Below)',
+  ];
 
   static const staffMapping = {
     'Sarath': 'A',
@@ -83,11 +96,14 @@ class _BillingScreenState extends State<BillingScreen> {
   Future<void> _initRole() async {
     final isAdmin = await AuthService().isAdmin();
     final userName = await AuthService().getUserName();
+    final role = await AuthService().getUserRole();
     final isAmarnath = userName?.toLowerCase().trim() == 'amarnath';
     if (mounted) {
       setState(() {
         _isAdmin = isAdmin;
         _isAmarnath = isAmarnath;
+        _currentUserName = userName ?? '';
+        _currentUserRole = role ?? 'staff';
       });
     }
   }
@@ -828,17 +844,565 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 
+  Future<void> _downloadInvoice(Billing b) async {
+    try {
+      final auths = b.authorities ?? '';
+      final category = b.category ?? 'Consultancy';
+      final items = List<Map<String, dynamic>>.from(b.items);
+      final d = b.data ?? {};
+      final amtInWords = b.amountInWords.isEmpty
+          ? NumberToWords.convert(NumberToWords.parseCurrency(b.amount ?? '0').round())
+          : b.amountInWords;
+
+      await InvoicePdfService.printInvoice(
+        type: b.type ?? 'INVOICE',
+        category: category,
+        clientName: b.clientName ?? '',
+        clientAddress: d['client_address'] ?? '',
+        date: b.date ?? '',
+        invoiceNo: b.invoiceNo ?? '',
+        authorities: auths,
+        items: items,
+        totalAmount: b.amount ?? '0/-',
+        amountInWords: amtInWords,
+        outstandingAmount: b.outstandingAmount,
+        advanceReceived: d['advance_received'] ?? '',
+        discount: d['discount'] ?? '',
+        grandTotal: b.grandTotal.isNotEmpty ? b.grandTotal : (b.amount ?? '0/-'),
+        balanceDue: d['balance_due'] ?? '',
+        quotationTerms: d['quotation_terms'] != null ? List<String>.from(d['quotation_terms']) : null,
+        isReceipt: false,
+        isToSameAsClient: d['is_to_same_as_client'] ?? true,
+        customTo: d['custom_to'] ?? '',
+      );
+    } catch (e) {
+      _msg('Failed to generate PDF: $e', false);
+    }
+  }
+
+  bool _canEditBilling(Billing? b) {
+    if (b == null) return true; // Can create new
+    if (_isAdmin) return true;
+    final editReq = b.data?['edit_request'];
+    if (editReq != null && editReq['status'] == 'APPROVED') {
+      final reqUser = (editReq['requested_by'] ?? '').toString().toLowerCase().trim();
+      final current = _currentUserName.toLowerCase().trim();
+      if (reqUser.isNotEmpty && (reqUser == current || current.contains(reqUser) || reqUser.contains(current))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _showRequestEditDialog(Billing b) {
+    String selectedCategory = _editReasonCategories.first;
+    final detailsController = TextEditingController();
+    bool isSubmitting = false;
+
+    final existingReq = b.data?['edit_request'];
+    final bool hasPending = existingReq != null && existingReq['status'] == 'PENDING';
+    final bool wasRejected = existingReq != null && existingReq['status'] == 'REJECTED';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.edit_calendar_rounded, color: Colors.blue.shade700),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Request Edit Permission', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text('${b.invoiceNo ?? "Bill"} • ${b.clientName ?? ""}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.normal)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 480,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (hasPending)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.amber.shade300)),
+                      child: Row(
+                        children: [
+                          Icon(Icons.hourglass_top_rounded, color: Colors.amber.shade900, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'A request by ${existingReq['requested_by']} is already pending admin review.\nReason: ${existingReq['reason_category']}',
+                              style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (wasRejected)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.red.shade200)),
+                      child: Row(
+                        children: [
+                          Icon(Icons.cancel_outlined, color: Colors.red.shade900, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Previous request was rejected: ${existingReq['review_remarks'] ?? "No remarks provided"}\nYou may submit a new request below.',
+                              style: TextStyle(fontSize: 12, color: Colors.red.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const Text('Defined Reason *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    items: _editReasonCategories.map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 13)))).toList(),
+                    onChanged: (val) {
+                      if (val != null) setModalState(() => selectedCategory = val);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Detailed Explanation *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: detailsController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: 'Explain what needs to be changed and why (minimum 5 characters)...',
+                      hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'This request will be sent to the Admin with an option to Approve or Not Approve.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              ElevatedButton.icon(
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        final details = detailsController.text.trim();
+                        if (details.length < 5) {
+                          _msg('Please enter a detailed explanation (minimum 5 characters)', false);
+                          return;
+                        }
+                        setModalState(() => isSubmitting = true);
+                        try {
+                          final d = Map<String, dynamic>.from(b.data ?? {});
+                          d['edit_request'] = {
+                            'requested_by': _currentUserName.isNotEmpty ? _currentUserName : 'staff',
+                            'requested_by_name': _currentUserName.isNotEmpty ? _currentUserName : 'Staff Member',
+                            'requested_at': DateTime.now().toIso8601String(),
+                            'reason_category': selectedCategory,
+                            'reason_details': details,
+                            'status': 'PENDING',
+                          };
+                          await _billingService.updateBilling(b.id!, {'data': d});
+                          await _log.logAction(
+                            action: 'INVOICE_EDIT_REQUESTED',
+                            targetType: 'Invoice',
+                            targetId: b.invoiceNo ?? '',
+                            details: 'Staff $_currentUserName requested edit. Reason: $selectedCategory - $details',
+                          );
+                          if (mounted) Navigator.pop(context);
+                          _fetchBillings(refresh: true);
+                          _msg('Edit request submitted to Admin for approval', true);
+                        } catch (e) {
+                          _msg('Failed to submit request: $e', false);
+                        } finally {
+                          if (mounted) setModalState(() => isSubmitting = false);
+                        }
+                      },
+                icon: const Icon(Icons.send_rounded, size: 16),
+                label: isSubmitting
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Submit Request'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAdminReviewDialog(Billing b) {
+    final editReq = b.data?['edit_request'];
+    if (editReq == null) return;
+
+    final remarksCtrl = TextEditingController();
+    bool isProcessing = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.admin_panel_settings_rounded, color: Colors.purple),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Review Bill Edit Request', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text('${b.invoiceNo ?? "Bill"} • ${b.clientName ?? ""}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.normal)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 500,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text('Requested By: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text('${editReq['requested_by']}', style: TextStyle(fontSize: 13, color: Colors.blue.shade800, fontWeight: FontWeight.bold)),
+                            const Spacer(),
+                            if (editReq['requested_at'] != null)
+                              Text(
+                                DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.tryParse(editReq['requested_at']) ?? DateTime.now()),
+                                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Reason: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            Expanded(child: Text('${editReq['reason_category']}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('Details / Explanation:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 4),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.grey.shade300)),
+                          child: Text('${editReq['reason_details'] ?? "No details provided"}', style: const TextStyle(fontSize: 12, height: 1.4)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Admin Remarks (Mandatory for rejection):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: remarksCtrl,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      hintText: 'Enter approval notes or reason for rejection...',
+                      hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      contentPadding: const EdgeInsets.all(10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              OutlinedButton.icon(
+                onPressed: isProcessing
+                    ? null
+                    : () async {
+                        final remarks = remarksCtrl.text.trim();
+                        if (remarks.isEmpty) {
+                          _msg('Please enter a rejection reason in Admin Remarks', false);
+                          return;
+                        }
+                        setModalState(() => isProcessing = true);
+                        try {
+                          final d = Map<String, dynamic>.from(b.data ?? {});
+                          d['edit_request'] = {
+                            ...?editReq,
+                            'status': 'REJECTED',
+                            'reviewed_by': _currentUserName,
+                            'reviewed_at': DateTime.now().toIso8601String(),
+                            'review_remarks': remarks,
+                          };
+                          await _billingService.updateBilling(b.id!, {'data': d});
+                          await _log.logAction(
+                            action: 'INVOICE_EDIT_REJECTED',
+                            targetType: 'Invoice',
+                            targetId: b.invoiceNo ?? '',
+                            details: 'Admin $_currentUserName rejected edit request for ${b.invoiceNo}. Remarks: $remarks',
+                          );
+                          if (mounted) Navigator.pop(context);
+                          _fetchBillings(refresh: true);
+                          _msg('Edit request marked as NOT APPROVED', true);
+                        } catch (e) {
+                          _msg('Error rejecting request: $e', false);
+                        } finally {
+                          if (mounted) setModalState(() => isProcessing = false);
+                        }
+                      },
+                icon: const Icon(Icons.cancel_outlined, size: 16, color: Colors.red),
+                label: const Text('Not Approve (Reject)', style: TextStyle(color: Colors.red)),
+                style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
+              ),
+              ElevatedButton.icon(
+                onPressed: isProcessing
+                    ? null
+                    : () async {
+                        setModalState(() => isProcessing = true);
+                        try {
+                          final d = Map<String, dynamic>.from(b.data ?? {});
+                          d['edit_request'] = {
+                            ...?editReq,
+                            'status': 'APPROVED',
+                            'reviewed_by': _currentUserName,
+                            'reviewed_at': DateTime.now().toIso8601String(),
+                            'review_remarks': remarksCtrl.text.trim(),
+                          };
+                          await _billingService.updateBilling(b.id!, {'data': d});
+                          await _log.logAction(
+                            action: 'INVOICE_EDIT_APPROVED',
+                            targetType: 'Invoice',
+                            targetId: b.invoiceNo ?? '',
+                            details: 'Admin $_currentUserName approved edit request for ${b.invoiceNo} for staff ${editReq['requested_by']}',
+                          );
+                          if (mounted) Navigator.pop(context);
+                          _fetchBillings(refresh: true);
+                          _msg('Edit request APPROVED! Staff can now edit this bill.', true);
+                        } catch (e) {
+                          _msg('Error approving request: $e', false);
+                        } finally {
+                          if (mounted) setModalState(() => isProcessing = false);
+                        }
+                      },
+                icon: const Icon(Icons.check_circle_rounded, size: 16),
+                label: const Text('Approve Edit'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade600,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showPendingRequestsListDialog() {
+    final pending = _billings.where((b) => b.data?['edit_request']?['status'] == 'PENDING').toList();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.pending_actions_rounded, color: Colors.amber),
+            const SizedBox(width: 10),
+            Text('Pending Edit Requests (${pending.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: SizedBox(
+          width: 550,
+          child: pending.isEmpty
+              ? const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No pending edit requests.')))
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: pending.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, idx) {
+                    final b = pending[idx];
+                    final req = b.data!['edit_request'];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      title: Text('${b.invoiceNo ?? "Bill"} - ${b.clientName ?? ""}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 2),
+                          Text('Requested by: ${req['requested_by']} • ${req['reason_category']}', style: TextStyle(fontSize: 12, color: Colors.blue.shade900, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 2),
+                          Text('"${req['reason_details'] ?? ""}"', style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
+                        ],
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 24),
+                            tooltip: 'Approve',
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _showAdminReviewDialog(b);
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.cancel_rounded, color: Colors.red, size: 24),
+                            tooltip: 'Not Approve / Reject',
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _showAdminReviewDialog(b);
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStaffEditRequestButton(Billing b, {bool isSmall = false}) {
+    final editReq = b.data?['edit_request'];
+    final status = editReq?['status'];
+
+    if (status == 'PENDING') {
+      return IconButton(
+        onPressed: () => _showRequestEditDialog(b),
+        icon: Icon(Icons.hourglass_top_rounded, color: Colors.amber.shade800, size: isSmall ? 20 : 22),
+        tooltip: 'Edit Request Pending Admin Approval (Click to view)',
+        constraints: isSmall ? const BoxConstraints() : null,
+        padding: isSmall ? const EdgeInsets.all(8) : null,
+      );
+    } else if (status == 'REJECTED') {
+      return IconButton(
+        onPressed: () => _showRequestEditDialog(b),
+        icon: Icon(Icons.edit_off_rounded, color: Colors.redAccent, size: isSmall ? 20 : 22),
+        tooltip: 'Edit Request Rejected (Click to re-request)',
+        constraints: isSmall ? const BoxConstraints() : null,
+        padding: isSmall ? const EdgeInsets.all(8) : null,
+      );
+    } else {
+      return IconButton(
+        onPressed: () => _showRequestEditDialog(b),
+        icon: Icon(Icons.edit_calendar_rounded, color: Colors.grey.shade400, size: isSmall ? 20 : 22),
+        tooltip: 'Request Edit Permission',
+        constraints: isSmall ? const BoxConstraints() : null,
+        padding: isSmall ? const EdgeInsets.all(8) : null,
+      );
+    }
+  }
+
+  Widget _buildEditRequestTag(Billing b) {
+    final req = b.data?['edit_request'];
+    if (req == null) return const SizedBox();
+    final status = req['status']?.toString();
+    final requestedBy = req['requested_by'] ?? 'Staff';
+
+    Color tagColor = Colors.grey;
+    String tagLabel = '';
+    IconData tagIcon = Icons.info_outline;
+
+    if (status == 'PENDING') {
+      tagColor = Colors.amber.shade800;
+      tagLabel = 'Edit Req: $requestedBy';
+      tagIcon = Icons.hourglass_top_rounded;
+    } else if (status == 'APPROVED') {
+      tagColor = Colors.green.shade700;
+      tagLabel = 'Edit Approved';
+      tagIcon = Icons.check_circle_outline;
+    } else if (status == 'REJECTED') {
+      tagColor = Colors.red.shade700;
+      tagLabel = 'Edit Rejected';
+      tagIcon = Icons.cancel_outlined;
+    } else {
+      return const SizedBox();
+    }
+
+    return InkWell(
+      onTap: _isAdmin && status == 'PENDING' 
+          ? () => _showAdminReviewDialog(b) 
+          : () => _showRequestEditDialog(b),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: tagColor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: tagColor.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(tagIcon, size: 12, color: tagColor),
+            const SizedBox(width: 4),
+            Text(
+              tagLabel,
+              style: TextStyle(color: tagColor, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.3),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _msg(String t, bool ok) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
     content: Text(t), behavior: SnackBarBehavior.floating, backgroundColor: ok ? Colors.green.shade600 : Colors.redAccent,
   ));
 
-  void _openCreator([Billing? b]) {
-    if (b != null && !_isAdmin) {
-      _msg('Permission Denied: Only Admin can edit invoices', false);
-      return;
-    }
+  void _openCreator([Billing? b, bool forceReadOnly = false]) {
+    final canEdit = _canEditBilling(b);
+    final isReadOnly = forceReadOnly || (b != null && !canEdit);
+
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => InvoiceCreatorPage(billing: b, onSaved: (dynamic id) { _fetchBillings(refresh: true); Navigator.pop(context); }),
+      builder: (_) => InvoiceCreatorPage(
+        billing: b,
+        isReadOnly: isReadOnly,
+        canEdit: canEdit,
+        onRequestEdit: b != null ? () => _showRequestEditDialog(b) : null,
+        onSaved: (dynamic id) {
+          _fetchBillings(refresh: true);
+          Navigator.pop(context);
+        },
+      ),
     ));
   }
 
@@ -897,6 +1461,30 @@ class _BillingScreenState extends State<BillingScreen> {
                       _statBadge('$_totalInvoices Total', Colors.blue),
                       _statBadge('$_totalPaid Paid', Colors.green),
                       _statBadge('$_totalPending Pending', Colors.orange),
+                      if (_billings.any((b) => b.data?['edit_request']?['status'] == 'PENDING'))
+                        InkWell(
+                          onTap: _showPendingRequestsListDialog,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.amber.shade400),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.pending_actions_rounded, size: 14, color: Colors.amber.shade900),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${_billings.where((b) => b.data?['edit_request']?['status'] == 'PENDING').length} Edit Requests',
+                                  style: TextStyle(color: Colors.amber.shade900, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ]),
                   ]),
                     Expanded(child: Wrap(alignment: WrapAlignment.end, crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 8, children: [
@@ -1058,6 +1646,30 @@ class _BillingScreenState extends State<BillingScreen> {
                   _statBadge('$_totalInvoices Total', Colors.blue),
                   _statBadge('$_totalPaid Paid', Colors.green),
                   _statBadge('$_totalPending Pending', Colors.orange),
+                  if (_billings.any((b) => b.data?['edit_request']?['status'] == 'PENDING'))
+                    InkWell(
+                      onTap: _showPendingRequestsListDialog,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.amber.shade400),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.pending_actions_rounded, size: 14, color: Colors.amber.shade900),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${_billings.where((b) => b.data?['edit_request']?['status'] == 'PENDING').length} Edit Requests',
+                              style: TextStyle(color: Colors.amber.shade900, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ]),
               ]),
               const SizedBox(height: 16),
@@ -1232,6 +1844,7 @@ class _BillingScreenState extends State<BillingScreen> {
       } catch (_) {}
     }
     final typeColor = b.type == 'QUOTATION' ? Colors.purple : const Color(0xFF2563EB);
+    final staffName = _getStaffDisplayName(b.authorities, b.invoiceNo);
     
     final innerContent = isWide 
       ? Row(children: [
@@ -1248,7 +1861,6 @@ class _BillingScreenState extends State<BillingScreen> {
                 const SizedBox(width: 8),
                 Text(b.category!, style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w500)),
               ],
-              final staffName = _getStaffDisplayName(b.authorities, b.invoiceNo);
               if (staffName.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 Container(
@@ -1307,6 +1919,10 @@ class _BillingScreenState extends State<BillingScreen> {
                     )
                   ),
                 ),
+              ],
+              if (b.data != null && b.data!['edit_request'] != null) ...[
+                const SizedBox(width: 8),
+                _buildEditRequestTag(b),
               ],
             ]),
             const SizedBox(height: 6),
@@ -1382,10 +1998,15 @@ class _BillingScreenState extends State<BillingScreen> {
           ),
           const SizedBox(width: 12),
           SizedBox(
-            width: 340,
+            width: 410,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                IconButton(
+                  onPressed: () => _downloadInvoice(b),
+                  icon: const Icon(Icons.download_rounded, color: Color(0xFF2563EB), size: 22),
+                  tooltip: 'Download / Print PDF',
+                ),
                 IconButton(onPressed: () => _shareViaWhatsApp(b), icon: const Icon(Icons.chat_rounded, color: Colors.green), tooltip: 'Share via WhatsApp'),
                 if (!isPaid && b.type != 'QUOTATION') IconButton(onPressed: () => _markPaid(b), icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.green), tooltip: 'Mark Paid'),
                 if (!isPaid) IconButton(onPressed: () => _setPaymentDeadlineDialog(context, b), icon: const Icon(Icons.schedule_rounded, color: Colors.redAccent), tooltip: 'Set Deadline'),
@@ -1395,8 +2016,16 @@ class _BillingScreenState extends State<BillingScreen> {
                   IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.cancel_outlined, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 22), tooltip: 'Not Interested'),
                 ],
                 IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 22), tooltip: 'Duplicate'),
-                if (_isAdmin)
-                  IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 28), tooltip: 'Edit'),
+                if (_canEditBilling(b))
+                  IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: _isAdmin ? Colors.grey.shade700 : Colors.green.shade700, size: 28), tooltip: _isAdmin ? 'Edit Invoice' : 'Edit (Approved)'),
+                if (!_canEditBilling(b))
+                  _buildStaffEditRequestButton(b),
+                if (_isAdmin && b.data?['edit_request']?['status'] == 'PENDING')
+                  IconButton(
+                    onPressed: () => _showAdminReviewDialog(b),
+                    icon: const Icon(Icons.pending_actions_rounded, color: Colors.amber, size: 24),
+                    tooltip: 'Review Edit Request',
+                  ),
                 if (_isAdmin)
                   IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 24), tooltip: 'Delete'),
               ]
@@ -1423,7 +2052,7 @@ class _BillingScreenState extends State<BillingScreen> {
                           children: [
                             Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: typeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                               child: Text(b.type ?? 'INVOICE', style: TextStyle(color: typeColor, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 0.5))),
-                            if (_getStaffDisplayName(b.authorities, b.invoiceNo).isNotEmpty)
+                            if (staffName.isNotEmpty)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                                 decoration: BoxDecoration(
@@ -1432,10 +2061,12 @@ class _BillingScreenState extends State<BillingScreen> {
                                   border: Border.all(color: Colors.orange.withValues(alpha: 0.35), width: 0.8),
                                 ),
                                 child: Text(
-                                  _getStaffDisplayName(b.authorities, b.invoiceNo),
+                                  staffName,
                                   style: const TextStyle(color: Colors.orange, fontSize: 8.5, fontWeight: FontWeight.w900, letterSpacing: 0.5),
                                 ),
                               ),
+                            if (b.data != null && b.data!['edit_request'] != null)
+                              _buildEditRequestTag(b),
                           ],
                         ),
                       ]),
@@ -1495,6 +2126,7 @@ class _BillingScreenState extends State<BillingScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
+                      IconButton(onPressed: () => _downloadInvoice(b), icon: const Icon(Icons.download_rounded, color: Color(0xFF2563EB), size: 20), tooltip: 'Download / Print PDF', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       IconButton(onPressed: () => _shareViaWhatsApp(b), icon: const Icon(Icons.chat_rounded, color: Colors.green, size: 20), tooltip: 'WhatsApp', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       if (!isPaid && b.type != 'QUOTATION') IconButton(onPressed: () => _markPaid(b), icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 20), tooltip: 'Mark Paid', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       if (!isPaid) IconButton(onPressed: () => _setPaymentDeadlineDialog(context, b), icon: const Icon(Icons.schedule_rounded, color: Colors.redAccent, size: 20), tooltip: 'Set Deadline', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
@@ -1504,8 +2136,12 @@ class _BillingScreenState extends State<BillingScreen> {
                         IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.cancel_outlined, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 18), tooltip: 'Not Interested', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       ],
                       IconButton(onPressed: () => _duplicateBilling(b), icon: Icon(Icons.copy_rounded, color: Colors.blue.shade300, size: 20), tooltip: 'Duplicate', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
-                      if (_isAdmin)
-                        IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: Colors.grey.shade400, size: 24), tooltip: 'Edit', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
+                      if (_canEditBilling(b))
+                        IconButton(onPressed: () => _openCreator(b), icon: Icon(Icons.edit_note_rounded, color: _isAdmin ? Colors.grey.shade700 : Colors.green.shade700, size: 24), tooltip: _isAdmin ? 'Edit' : 'Edit (Approved)', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
+                      if (!_canEditBilling(b))
+                        _buildStaffEditRequestButton(b, isSmall: true),
+                      if (_isAdmin && b.data?['edit_request']?['status'] == 'PENDING')
+                        IconButton(onPressed: () => _showAdminReviewDialog(b), icon: const Icon(Icons.pending_actions_rounded, color: Colors.amber, size: 20), tooltip: 'Review Edit Request', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       if (_isAdmin)
                         IconButton(onPressed: () => _deleteBilling(b), icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.5), size: 20), tooltip: 'Delete', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                     ],
@@ -1579,11 +2215,19 @@ class _BillingScreenState extends State<BillingScreen> {
 // ─── PREMIUM INVOICE CREATOR PAGE ───
 class InvoiceCreatorPage extends StatefulWidget {
   final Billing? billing;
+  final bool isReadOnly;
+  final bool canEdit;
+  final VoidCallback? onRequestEdit;
   final void Function(dynamic id) onSaved;
 
-  const InvoiceCreatorPage({super.key, this.billing, required this.onSaved});
-  
-  // static const auths = ['CUC - Cochin United Consultancy', 'AA - Aakrithi'];
+  const InvoiceCreatorPage({
+    super.key,
+    this.billing,
+    this.isReadOnly = false,
+    this.canEdit = true,
+    this.onRequestEdit,
+    required this.onSaved,
+  });
 
   @override
   State<InvoiceCreatorPage> createState() => _InvoiceCreatorPageState();
@@ -1609,6 +2253,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
   final _billingService = BillingService();
   bool _isAdmin = false;
   bool _isAmarnath = false;
+  String _currentUserName = '';
   
   Future<void> _initRole() async {
     final isAdmin = await AuthService().isAdmin();
@@ -1618,6 +2263,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       setState(() {
         _isAdmin = isAdmin;
         _isAmarnath = isAmarnath;
+        _currentUserName = userName ?? '';
       });
     }
   }
@@ -2071,9 +2717,14 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
       }
     }
 
+    if (widget.isReadOnly) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot save: Viewing in Read-Only mode')));
+      return;
+    }
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      final currentUserName = prefs.getString('user_name') ?? 'Unknown User';
+      final currentUserName = prefs.getString('user_name') ?? (_currentUserName.isNotEmpty ? _currentUserName : 'Unknown User');
 
       String? discountBy = widget.billing?.data?['discount_given_by'];
       final currentDiscountText = widget.billing?.data?['discount']?.toString() ?? '';
@@ -2102,6 +2753,16 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         'edit_count': (widget.billing?.data?['edit_count'] ?? 0) + (widget.billing != null && widget.billing!.id != null ? 1 : 0),
         'marked_paid_by': widget.billing?.data?['marked_paid_by'],
       };
+
+      if (widget.billing?.data?['edit_request'] != null) {
+        final req = Map<String, dynamic>.from(widget.billing!.data!['edit_request']);
+        if (req['status'] == 'APPROVED') {
+          req['status'] = 'COMPLETED';
+          req['completed_at'] = DateTime.now().toIso8601String();
+          req['completed_by'] = currentUserName;
+        }
+        d['edit_request'] = req;
+      }
       
       if (d['payment_received'] == true && widget.billing?.data?['payment_received'] != true) {
         d['marked_paid_by'] = currentUserName;
@@ -2211,16 +2872,19 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                         Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF2563EB), borderRadius: BorderRadius.circular(6)),
                           child: const Text('CUC', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14))),
                         const SizedBox(width: 12),
-                        const Text('Billing', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                        Text(widget.isReadOnly ? 'View ${widget.billing?.type ?? "Bill"}' : 'Billing', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
                       ]),
                       const SizedBox(height: 16),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 13))),
-                        ElevatedButton.icon(onPressed: _save, icon: const Icon(Icons.save_rounded, size: 14), label: const Text('Save', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
-                        if (canPrint) ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 14), label: const Text('Print', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
+                        TextButton(onPressed: () => Navigator.pop(context), child: Text(widget.isReadOnly ? 'Close' : 'Cancel', style: const TextStyle(color: Colors.grey, fontSize: 13))),
+                        if (!widget.isReadOnly)
+                          ElevatedButton.icon(onPressed: _save, icon: const Icon(Icons.save_rounded, size: 14), label: const Text('Save', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
+                        if (widget.isReadOnly && widget.onRequestEdit != null)
+                          ElevatedButton.icon(onPressed: widget.onRequestEdit, icon: const Icon(Icons.edit_calendar_rounded, size: 14), label: const Text('Request Edit', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade700, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
+                        ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 14), label: const Text('Print / Download', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
                       ]),
                     ],
                   )
@@ -2232,22 +2896,42 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                         Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF2563EB), borderRadius: BorderRadius.circular(6)),
                           child: const Text('CUC', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14))),
                         const SizedBox(width: 12),
-                        const Text('Billing', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                        Text(widget.isReadOnly ? 'View ${widget.billing?.type ?? "Bill"}' : 'Billing', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                        if (widget.isReadOnly) ...[
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.amber.shade300)),
+                            child: Text('VIEW ONLY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.amber.shade900)),
+                          ),
+                        ],
                       ]),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         alignment: WrapAlignment.end,
                         children: [
-                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 13))),
-                        ElevatedButton.icon(onPressed: _save, icon: const Icon(Icons.save_rounded, size: 14), label: const Text('Save', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
-                        if (canPrint) ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 14), label: const Text('Print', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
+                        TextButton(onPressed: () => Navigator.pop(context), child: Text(widget.isReadOnly ? 'Close' : 'Cancel', style: const TextStyle(color: Colors.grey, fontSize: 13))),
+                        if (!widget.isReadOnly)
+                          ElevatedButton.icon(onPressed: _save, icon: const Icon(Icons.save_rounded, size: 14), label: const Text('Save', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
+                        if (widget.isReadOnly && widget.onRequestEdit != null)
+                          ElevatedButton.icon(onPressed: widget.onRequestEdit, icon: const Icon(Icons.edit_calendar_rounded, size: 14), label: const Text('Request Edit', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade700, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
+                        ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 14), label: const Text('Print / Download', style: TextStyle(fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
                       ]),
                     ],
                   ),
             ),
             // Form Content
             Expanded(child: SingleChildScrollView(padding: EdgeInsets.all(isMobile ? 16 : 24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (widget.isReadOnly) ...[
+                _buildReadOnlyBanner(),
+                const SizedBox(height: 16),
+              ],
+              IgnorePointer(
+                ignoring: widget.isReadOnly,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16), decoration: BoxDecoration(color: const Color(0xFF2563EB), borderRadius: BorderRadius.circular(12)),
                 child: const Row(children: [Icon(Icons.description_rounded, color: Colors.white, size: 18), SizedBox(width: 10), Text('Invoice Details', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)), Spacer(), Text('Items', style: TextStyle(color: Colors.white70, fontSize: 11))]),
               ),
@@ -2479,30 +3163,51 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
                   ]),
                 ]),
               ),
-              const SizedBox(height: 100),
-            ]))),
+            ])),
+            const SizedBox(height: 100),
+          ]))),
             // Footer Actions
-            Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.grey.shade100))),
-              child: isMobile
-                ? Column(
-                    children: [
-                      SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _save, style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Save Progress'))),
-                      if (canPrint) ...[
-                        const SizedBox(height: 12),
-                        SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 18), label: const Text('Finalize & Print'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
-                      ]
-                    ],
-                  )
-                : Row(
-                    children: [
-                      Expanded(child: SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _save, style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Save Progress')))),
-                      if (canPrint) ...[
-                        const SizedBox(width: 16),
-                        Expanded(child: SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 18), label: const Text('Finalize & Print'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)))))),
-                      ]
-                    ],
+            if (!widget.isReadOnly)
+              Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.grey.shade100))),
+                child: isMobile
+                  ? Column(
+                      children: [
+                        SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _save, style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Save Progress'))),
+                        if (canPrint) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 18), label: const Text('Finalize & Print'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
+                        ]
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(child: SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _save, style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Save Progress')))),
+                        if (canPrint) ...[
+                          const SizedBox(width: 16),
+                          Expanded(child: SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _print, icon: const Icon(Icons.print_rounded, size: 18), label: const Text('Finalize & Print'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)))))),
+                        ]
+                      ],
+                    ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.grey.shade100))),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _print,
+                    icon: const Icon(Icons.print_rounded, size: 18),
+                    label: const Text('Print / Download PDF'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E293B),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
-            ),
+                ),
+              ),
             // Version Footer
             Container(padding: const EdgeInsets.symmetric(vertical: 12), width: double.infinity, alignment: Alignment.center, decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.grey.shade50))), child: Text('Billing Software v1.0', style: TextStyle(color: Colors.grey.shade400, fontSize: 10))),
           ]),
@@ -2527,7 +3232,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
             child: Scaffold(
               backgroundColor: const Color(0xFFF8FAFC),
               appBar: PremiumAppBar(
-                title: const Text('Invoice Creator', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                title: Text(widget.isReadOnly ? 'View ${widget.billing?.type ?? "Bill"}' : 'Invoice Creator', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                 leading: IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20)),
                 bottom: const TabBar(
                   tabs: [
@@ -2551,6 +3256,74 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           body: Row(children: [formPanel, Expanded(child: previewPanel)]),
         );
       },
+    );
+  }
+
+  Widget _buildReadOnlyBanner() {
+    final editReq = widget.billing?.data?['edit_request'];
+    final status = editReq?['status'];
+
+    Color bannerColor = Colors.blue.shade50;
+    Color borderColor = Colors.blue.shade200;
+    Color textColor = Colors.blue.shade900;
+    IconData icon = Icons.visibility_rounded;
+    String title = 'View-Only Mode';
+    String message = 'You are currently viewing this bill in read-only mode. You can view all line items, terms, and print/download the PDF.';
+
+    if (status == 'PENDING') {
+      bannerColor = Colors.amber.shade50;
+      borderColor = Colors.amber.shade300;
+      textColor = Colors.amber.shade900;
+      icon = Icons.hourglass_top_rounded;
+      title = 'Edit Request Pending Admin Approval';
+      message = 'Requested by ${editReq['requested_by']}: ${editReq['reason_category']}.\n"${editReq['reason_details']}"';
+    } else if (status == 'REJECTED') {
+      bannerColor = Colors.red.shade50;
+      borderColor = Colors.red.shade200;
+      textColor = Colors.red.shade900;
+      icon = Icons.cancel_outlined;
+      title = 'Edit Request Not Approved (Rejected)';
+      message = 'Admin Remarks: ${editReq['review_remarks'] ?? "No reason given"}. You can submit a new request if needed.';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bannerColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: textColor, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+                const SizedBox(height: 3),
+                Text(message, style: TextStyle(fontSize: 12, color: textColor, height: 1.3)),
+              ],
+            ),
+          ),
+          if (widget.onRequestEdit != null && status != 'PENDING') ...[
+            const SizedBox(width: 10),
+            ElevatedButton.icon(
+              onPressed: widget.onRequestEdit,
+              icon: const Icon(Icons.edit_calendar_rounded, size: 14),
+              label: const Text('Request Edit'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber.shade700,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 

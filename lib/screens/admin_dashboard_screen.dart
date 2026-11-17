@@ -2,6 +2,8 @@ import 'package:amplify_api/amplify_api.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../utils/file_saver_helper.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -256,19 +258,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<void> _runBackup() async {
+    bool isDialogShowing = false;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 16),
-            Text('Downloading backup...'),
-          ],
-        ),
-      ),
+      builder: (_) {
+        isDialogShowing = true;
+        return const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Downloading backup...'),
+            ],
+          ),
+        );
+      },
     );
+    isDialogShowing = true;
 
     try {
       final Map<String, List<Map<String, dynamic>>> backupData = {};
@@ -310,21 +317,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         'tables': backupData,
       });
 
-      if (mounted) Navigator.pop(context);
-
-      // Save to app documents directory
-      final dir = await getApplicationDocumentsDirectory();
       final fileName = 'CUC_Backup_${DateFormat('yyyy-MM-dd_HHmmss').format(DateTime.now())}.json';
-      final file = File('${dir.path}/$fileName');
-      await file.writeAsString(jsonString);
+      final savedLocation = await FileSaverHelper.saveJsonFile(
+        jsonString: jsonString,
+        fileName: fileName,
+      );
+
+      if (isDialogShowing && mounted) {
+        isDialogShowing = false;
+        Navigator.of(context, rootNavigator: true).pop();
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Backup saved to: ${file.path}'), backgroundColor: Colors.green, duration: const Duration(seconds: 5)),
+          SnackBar(
+            content: Text(kIsWeb ? 'Backup downloaded: $fileName' : 'Backup saved to: $savedLocation'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } catch (e) {
-      if (mounted) Navigator.pop(context);
+      if (isDialogShowing && mounted) {
+        isDialogShowing = false;
+        Navigator.of(context, rootNavigator: true).pop();
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Backup failed: $e'), backgroundColor: Colors.red),
@@ -352,33 +369,53 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     if (confirm != true) return;
 
+    bool isDialogShowing = false;
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
+        withData: true,
       );
 
-      if (result == null || result.files.single.path == null) return;
+      if (result == null || result.files.isEmpty) return;
 
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('Restoring backup...'),
-            ],
-          ),
-        ),
+        builder: (_) {
+          isDialogShowing = true;
+          return const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text('Restoring backup...'),
+              ],
+            ),
+          );
+        },
       );
+      isDialogShowing = true;
 
-      final file = File(result.files.single.path!);
-      final jsonString = await file.readAsString();
+      String? jsonString;
+      final pickedFile = result.files.single;
+      if (pickedFile.bytes != null) {
+        jsonString = utf8.decode(pickedFile.bytes!);
+      } else if (!kIsWeb && pickedFile.path != null) {
+        final file = File(pickedFile.path!);
+        jsonString = await file.readAsString();
+      }
+
+      if (jsonString == null) {
+        throw Exception('Could not read backup file.');
+      }
+
       final data = json.decode(jsonString);
 
-      if (mounted) Navigator.pop(context);
+      if (isDialogShowing && mounted) {
+        isDialogShowing = false;
+        Navigator.of(context, rootNavigator: true).pop();
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -388,7 +425,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         );
       }
     } catch (e) {
-      if (mounted) Navigator.pop(context);
+      if (isDialogShowing && mounted) {
+        isDialogShowing = false;
+        Navigator.of(context, rootNavigator: true).pop();
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Restore failed: $e'), backgroundColor: Colors.red),
@@ -664,6 +704,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return FutureBuilder<Map<String, dynamic>>(
       future: _fetchSystemMetrics(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error loading health metrics: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
+          );
+        }
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         final metrics = snapshot.data!;
         final stats = metrics['tables'] as Map<String, int>;
@@ -753,25 +798,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     String lastBackup = 'Never';
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final backupFiles = directory.listSync().where((f) => f.path.contains('CUC_SystemBackup_') || f.path.contains('CUC_Backup_')).toList();
-      if (backupFiles.isNotEmpty) {
-        backupFiles.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
-        final lastModified = backupFiles.first.statSync().modified;
-        final diff = DateTime.now().difference(lastModified);
-        if (diff.inDays > 0) {
-          lastBackup = '${diff.inDays}d ago';
-        } else if (diff.inHours > 0) {
-          lastBackup = '${diff.inHours}h ago';
-        } else if (diff.inMinutes > 0) {
-          lastBackup = '${diff.inMinutes}m ago';
-        } else {
-          lastBackup = 'Just now';
+    if (!kIsWeb) {
+      try {
+        final directory = await getApplicationDocumentsDirectory();
+        final backupFiles = directory.listSync().where((f) => f.path.contains('CUC_SystemBackup_') || f.path.contains('CUC_Backup_')).toList();
+        if (backupFiles.isNotEmpty) {
+          backupFiles.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+          final lastModified = backupFiles.first.statSync().modified;
+          final diff = DateTime.now().difference(lastModified);
+          if (diff.inDays > 0) {
+            lastBackup = '${diff.inDays}d ago';
+          } else if (diff.inHours > 0) {
+            lastBackup = '${diff.inHours}h ago';
+          } else if (diff.inMinutes > 0) {
+            lastBackup = '${diff.inMinutes}m ago';
+          } else {
+            lastBackup = 'Just now';
+          }
         }
+      } catch (e) {
+        // ignore
       }
-    } catch (e) {
-      // ignore
+    } else {
+      lastBackup = 'Cloud Synced';
     }
 
     return {
@@ -1125,6 +1174,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _fetchAuditLogs(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error loading audit logs: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
+          );
+        }
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         var logsList = snapshot.data ?? [];
         return Column(

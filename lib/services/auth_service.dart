@@ -32,20 +32,33 @@ class AuthService {
 
       final normalizedUser = username.toLowerCase().trim();
       final userPart = normalizedUser.contains('@') ? normalizedUser.split('@')[0] : normalizedUser;
-      String loginEmail;
+
+      // Candidate emails in prioritized order:
+      final List<String> candidateEmails = [];
       if (normalizedUser.contains('@')) {
-        loginEmail = normalizedUser;
-      } else if (userPart == 'harshina') {
-        loginEmail = 'cochinunitedconsultancy2020@gmail.com';
-      } else if (userPart == 'arya') {
-        loginEmail = 'cucarya@gmail.com';
+        candidateEmails.add(normalizedUser);
+        if (normalizedUser == 'cochinunitedconsultancy2020@gmail.com') {
+          candidateEmails.add('harshina@cuc.local');
+        } else if (normalizedUser == 'cucarya@gmail.com') {
+          candidateEmails.add('arya@cuc.local');
+        } else {
+          candidateEmails.add('$userPart@cuc.local');
+        }
       } else {
-        loginEmail = '$userPart@cuc.local';
+        // Plain username (e.g. 'harshina', 'admin', 'midhun', 'arya')
+        // Primary Cognito email for all staff is <userPart>@cuc.local
+        candidateEmails.add('$userPart@cuc.local');
+        if (userPart == 'harshina') {
+          candidateEmails.add('cochinunitedconsultancy2020@gmail.com');
+        } else if (userPart == 'arya') {
+          candidateEmails.add('cucarya@gmail.com');
+        }
+        candidateEmails.add('$userPart@cuc.com');
       }
 
       // Determine default role for new users if they don't exist
       String defaultRole = 'staff';
-      if (userPart == 'jesna') {
+      if (userPart == 'jesna' || userPart == 'harshina') {
         defaultRole = 'manager';
       } else if (userPart == 'irshad') {
         defaultRole = 'hr';
@@ -61,27 +74,33 @@ class AuthService {
       }
 
       // SECURITY: Authenticate against AWS Cognito securely!
-      SignInResult signInResult;
-      try {
-        signInResult = await Amplify.Auth.signIn(
-          username: loginEmail,
-          password: password,
-        );
-      } catch (firstErr) {
-        // Fallback for alternate email formats if primary failed
-        if (!normalizedUser.contains('@')) {
+      SignInResult? signInResult;
+      String successfulLoginEmail = candidateEmails.first;
+      Object? lastError;
+
+      for (final emailToTry in candidateEmails) {
+        try {
+          debugPrint('Trying Cognito signIn with: $emailToTry');
+          final res = await Amplify.Auth.signIn(
+            username: emailToTry,
+            password: password,
+          );
+          signInResult = res;
+          successfulLoginEmail = emailToTry;
+          break;
+        } catch (err) {
+          lastError = err;
+          debugPrint('Cognito signIn attempt failed for $emailToTry: $err');
           try {
-            final fallbackEmail = userPart == 'harshina' ? 'harshina@cuc.local' : '$userPart@cuc.com';
-            signInResult = await Amplify.Auth.signIn(
-              username: fallbackEmail,
-              password: password,
-            );
-          } catch (_) {
-            rethrow;
-          }
-        } else {
-          rethrow;
+            await Amplify.Auth.signOut();
+          } catch (_) {}
         }
+      }
+
+      if (signInResult == null) {
+        debugPrint('All Cognito signIn attempts failed. Last error: $lastError');
+        _security.recordFailedAttempt(username);
+        return false;
       }
 
       if (signInResult.nextStep.signInStep == AuthSignInStep.confirmSignInWithNewPassword) {
@@ -108,10 +127,14 @@ class AuthService {
         final allUsers = (response.data?.items ?? []).whereType<Users>().toList() ?? [];
 
         final users = allUsers.where((u) {
+          final uName = u.username?.toLowerCase().trim();
+          final uMail = u.email?.toLowerCase().trim();
           if (normalizedUser.contains('@')) {
-            return u.email?.toLowerCase().trim() == normalizedUser;
+            return uMail == normalizedUser || uName == userPart;
           }
-          return u.username?.toLowerCase().trim() == normalizedUser;
+          return uName == normalizedUser ||
+                 uMail == '$normalizedUser@cuc.local' ||
+                 (userPart == 'harshina' && (uName == 'harshina' || uMail == 'harshina@cuc.local'));
         }).toList();
 
         if (users.isNotEmpty) {
@@ -127,7 +150,7 @@ class AuthService {
       if (dbUser == null) {
         dbUser = Users(
           username: username,
-          email: loginEmail,
+          email: successfulLoginEmail,
           role: defaultRole,
           name: username,
         );

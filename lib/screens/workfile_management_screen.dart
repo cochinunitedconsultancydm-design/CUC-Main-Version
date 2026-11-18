@@ -21,6 +21,8 @@ import 'client_files_dialog.dart';
 import 'task_management_screen.dart';
 import 'verification_history_view.dart';
 import 'company_bill_management_screen.dart';
+import 'inward_post_screen.dart';
+import '../services/auth_service.dart';
 
 class WorkfileManagementScreen extends StatefulWidget {
   final Deal? existingDeal;
@@ -948,6 +950,23 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
             _buildPremiumDivider(),
             _buildPremiumActionButton(Icons.history_rounded, 'Activity Log', 'Audit & history', () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const VerificationHistoryView()));
+            }),
+            _buildPremiumDivider(),
+            _buildPremiumActionButton(Icons.forward_to_inbox_rounded, 'Letters & Posts', 'Track posts & ack', () async {
+              final userName = await AuthService().getUserName();
+              final role = await AuthService().getUserRole();
+              if (context.mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => InwardPostScreen(
+                      currentUserRole: role ?? 'staff',
+                      currentUserName: userName ?? 'Staff',
+                      initialWorkfileId: _dealId,
+                    ),
+                  ),
+                );
+              }
             }),
           ],
         ),

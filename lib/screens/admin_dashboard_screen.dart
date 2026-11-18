@@ -45,6 +45,7 @@ import '../services/auto_backup_service.dart';
 import 'formats_screen.dart';
 import 'attendance_screen.dart';
 import 'crm_screen.dart';
+import 'inward_post_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -555,6 +556,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _sidebarItem(19, Icons.cloud_sync, 'Google Docs Vault', isWide),
                 _sidebarItem(29, Icons.format_list_bulleted_rounded, 'Formats', isWide),
                 _sidebarItem(22, Icons.handshake_rounded, 'File Acknowledgement', isWide),
+                _sidebarItem(18, Icons.mark_email_unread_rounded, 'Post & Letter Register', isWide),
                 _sidebarItem(20, Icons.history_rounded, 'Verification History', isWide),
                 _sidebarItem(21, Icons.real_estate_agent_rounded, 'Property Management', isWide),
                 _sidebarItem(27, Icons.business_rounded, 'Office Details', isWide),
@@ -682,6 +684,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 8: return const TravelLogScreen();
       case 12: return const ChecklistScreen();
       case 17: return const ReminderCalendarScreen();
+      case 18: return const InwardPostScreen(currentUserRole: 'admin', currentUserName: 'Admin');
       case 11: return CompanyBillManagementScreen();
       case 19: return const DocumentListScreen(userEmail: 'admin@cochinunited.com');
       case 20: return const VerificationHistoryView();

@@ -76,7 +76,11 @@ class _CrmScreenState extends State<CrmScreen>
   ];
 
   String getCrmStage(Deal deal) {
-    if (deal.isWon || deal.stage == 'Passed to Work' || deal.stage == 'Won') {
+    if (deal.isWon ||
+        deal.stage == 'Passed to Work' ||
+        deal.stage == 'Won' ||
+        deal.stage.toLowerCase() == 'work started' ||
+        (deal.registerNo != null && deal.registerNo!.trim().toUpperCase().startsWith('CC'))) {
       return stagePassed;
     }
     final s = deal.stage.toLowerCase().trim();
@@ -1272,12 +1276,18 @@ class _CrmScreenState extends State<CrmScreen>
 
       case timeframeCurrent:
       default:
-        if (FiscalYearService.isCurrentPeriod(deal.createdAt)) {
+        if (FiscalYearService.isCurrentPeriod(deal.createdAt) ||
+            (deal.closedAt != null && FiscalYearService.isCurrentPeriod(deal.closedAt)) ||
+            (deal.updatedAt != null && FiscalYearService.isCurrentPeriod(deal.updatedAt))) {
+          return true;
+        }
+        // Converted/Passed leads stay visible in CRM
+        final st = getCrmStage(deal);
+        if (st == stagePassed) {
           return true;
         }
         // Active follow-ups carry-over so unconverted clients are never lost
         if (_includeActiveOldFollowups) {
-          final st = getCrmStage(deal);
           if ((st == stageCreated || st == stageFollowUp) && deal.postponedDate != null) {
             return true;
           }
@@ -1288,7 +1298,11 @@ class _CrmScreenState extends State<CrmScreen>
 
   List<Deal> get _allCrmDeals => _deals.where((d) {
         final p = d.pipeline.toLowerCase();
-        return p == 'crm' || p == 'lead';
+        if (p == 'crm' || p == 'lead') return true;
+        if (d.isWon || d.stage == 'Passed to Work' || (d.registerNo != null && d.registerNo!.trim().toUpperCase().startsWith('CC') && (p == 'crm' || p == 'lead' || p.isEmpty))) {
+          return true;
+        }
+        return false;
       }).toList();
 
   List<Deal> get _crmDeals => _allCrmDeals.where(_matchesTimeframe).toList();
@@ -1334,6 +1348,8 @@ class _CrmScreenState extends State<CrmScreen>
         list.sort((a, b) {
           final aStage = getCrmStage(a);
           final bStage = getCrmStage(b);
+          if (aStage == stagePassed && bStage != stagePassed) return -1;
+          if (bStage == stagePassed && aStage != stagePassed) return 1;
           if (aStage != stageCreated && bStage == stageCreated) return -1;
           if (bStage != stageCreated && aStage == stageCreated) return 1;
           if (a.postponedDate != null && b.postponedDate == null) return -1;
@@ -1658,8 +1674,11 @@ class _CrmScreenState extends State<CrmScreen>
       final matchesStage = _selectedStage == 'All' || crmStage == _selectedStage;
       final matchesPriority =
           _selectedPriority == 'All' || deal.priority == _selectedPriority;
+      final matchesFollowUp = _selectedFollowUpFilter == fuFilterAll ||
+          crmStage != stageFollowUp ||
+          _matchesFollowUpFilter(deal);
 
-      return matchesSearch && matchesStage && matchesPriority && _matchesStaffFilter(deal) && _matchesFollowUpFilter(deal);
+      return matchesSearch && matchesStage && matchesPriority && _matchesStaffFilter(deal) && matchesFollowUp;
     }).toList();
   }
 
@@ -5653,8 +5672,11 @@ class _CrmScreenState extends State<CrmScreen>
         _selectedPriority == 'All' || deal.priority == _selectedPriority;
     final crmStage = getCrmStage(deal);
     final matchesStage = _selectedStage == 'All' || crmStage == _selectedStage;
+    final matchesFollowUp = _selectedFollowUpFilter == fuFilterAll ||
+        crmStage != stageFollowUp ||
+        _matchesFollowUpFilter(deal);
 
-    return matchesSearch && matchesPriority && matchesStage && _matchesStaffFilter(deal) && _matchesFollowUpFilter(deal);
+    return matchesSearch && matchesPriority && matchesStage && _matchesStaffFilter(deal) && matchesFollowUp;
   }
 
   Widget _buildTabBar() {

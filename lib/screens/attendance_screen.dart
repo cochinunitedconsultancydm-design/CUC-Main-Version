@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -39,10 +40,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools);
       final uRes = await Amplify.API.query(request: uReq).response;
       final usersRaw = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList();
+
+      Set<String> deletedKeys = {};
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? [])
+            .map((k) => k.toLowerCase().trim())
+            .toSet();
+      } catch (_) {}
       
       // Deduplicate and filter staff
       final Map<String, amplify_models.Users> uniqueUsers = {};
       for (var u in usersRaw) {
+        if ((u.role ?? '').toLowerCase().trim() == 'deleted') continue;
+        final uid = u.id.toLowerCase().trim();
+        final uname = (u.username ?? '').toLowerCase().trim();
+        final uemail = (u.email ?? '').toLowerCase().trim();
+        final uNameStr = (u.name ?? '').toLowerCase().trim();
+        if (deletedKeys.contains(uid) ||
+            (uname.isNotEmpty && deletedKeys.contains(uname)) ||
+            (uemail.isNotEmpty && deletedKeys.contains(uemail)) ||
+            (uNameStr.isNotEmpty && deletedKeys.contains(uNameStr))) {
+          continue;
+        }
+
         final name = (u.name ?? '').toLowerCase().trim();
         if (name.isEmpty) continue;
         var key = (u.username ?? u.email ?? name).toLowerCase().trim();

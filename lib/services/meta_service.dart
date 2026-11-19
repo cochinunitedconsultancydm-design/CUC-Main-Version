@@ -1066,6 +1066,14 @@ class WhatsAppCloudService {
   Future<List<Map<String, dynamic>>> getStaffDirectoryWithPhones() async {
     final Map<String, Map<String, dynamic>> staffMap = {};
 
+    Set<String> deletedKeys = {};
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? [])
+          .map((k) => k.toLowerCase().trim())
+          .toSet();
+    } catch (_) {}
+
     void registerOrMerge({
       required String id,
       required String? name,
@@ -1081,11 +1089,27 @@ class WhatsAppCloudService {
       final normName = (name ?? '').trim();
       final normUser = (username ?? '').trim().toLowerCase();
       final normEmail = (email ?? '').trim().toLowerCase();
-
-      if (normName.isEmpty && normUser.isEmpty && normEmail.isEmpty) return;
+      final normRole = (role ?? '').trim().toLowerCase();
+      final normId = id.trim().toLowerCase();
 
       var key = normUser.isNotEmpty ? normUser : (normEmail.isNotEmpty ? normEmail : normName.toLowerCase());
       if (key.contains('jithasree')) key = 'jitha';
+
+      // Exclude completely if marked deleted by role or registered in deleted_staff_keys
+      if (normRole == 'deleted' ||
+          deletedKeys.contains(normId) ||
+          (normUser.isNotEmpty && deletedKeys.contains(normUser)) ||
+          (normEmail.isNotEmpty && deletedKeys.contains(normEmail)) ||
+          (normName.isNotEmpty && deletedKeys.contains(normName.toLowerCase())) ||
+          (key.isNotEmpty && deletedKeys.contains(key))) {
+        staffMap.remove(key);
+        if (normUser.isNotEmpty) staffMap.remove(normUser);
+        if (normEmail.isNotEmpty) staffMap.remove(normEmail);
+        if (normName.isNotEmpty) staffMap.remove(normName.toLowerCase());
+        return;
+      }
+
+      if (normName.isEmpty && normUser.isEmpty && normEmail.isEmpty) return;
 
       // Pick best valid phone (company_phone > personal_phone > emergency_contact)
       String? cleanPhone;
@@ -1227,7 +1251,21 @@ class WhatsAppCloudService {
       debugPrint('Supabase backup users lookup error: $e');
     }
 
-    final list = staffMap.values.toList();
+    final list = staffMap.values.where((s) {
+      final r = (s['role'] ?? '').toString().toLowerCase().trim();
+      if (r == 'deleted') return false;
+      final uid = (s['id'] ?? '').toString().toLowerCase().trim();
+      final uname = (s['username'] ?? '').toString().toLowerCase().trim();
+      final uemail = (s['email'] ?? '').toString().toLowerCase().trim();
+      final unameStr = (s['name'] ?? '').toString().toLowerCase().trim();
+      if (deletedKeys.contains(uid) ||
+          (uname.isNotEmpty && deletedKeys.contains(uname)) ||
+          (uemail.isNotEmpty && deletedKeys.contains(uemail)) ||
+          (unameStr.isNotEmpty && deletedKeys.contains(unameStr))) {
+        return false;
+      }
+      return true;
+    }).toList();
     list.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
     return list;
   }

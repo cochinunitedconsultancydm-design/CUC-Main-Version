@@ -72,14 +72,19 @@ class _TestWhatsAppDialogState extends State<TestWhatsAppDialog> {
       final list = await _waService.getStaffDirectoryWithPhones();
       if (!mounted) return;
 
+      final activeList = list.where((s) {
+        final r = (s['role'] ?? '').toString().toLowerCase().trim();
+        return r != 'deleted';
+      }).toList();
+
       setState(() {
-        _staffDirectory = list;
+        _staffDirectory = activeList;
         _isLoading = false;
 
         // Try to match initialStaffUserId or initialPhone
         if (widget.initialStaffUserId != null) {
           final idStr = widget.initialStaffUserId.toString().trim().toLowerCase();
-          final found = list.firstWhere(
+          final found = activeList.firstWhere(
             (s) => s['id']?.toString() == idStr ||
                    s['username']?.toString().toLowerCase() == idStr ||
                    s['name']?.toString().toLowerCase() == idStr,
@@ -91,7 +96,7 @@ class _TestWhatsAppDialogState extends State<TestWhatsAppDialog> {
           }
         } else if (widget.initialPhone != null && widget.initialPhone!.isNotEmpty) {
           final clean = WhatsAppCloudService.formatPhone(widget.initialPhone!);
-          final found = list.firstWhere(
+          final found = activeList.firstWhere(
             (s) => s['phone']?.toString() == clean,
             orElse: () => <String, dynamic>{},
           );
@@ -101,8 +106,8 @@ class _TestWhatsAppDialogState extends State<TestWhatsAppDialog> {
             _useCustomPhone = true;
           }
           _phoneCtrl.text = clean;
-        } else if (list.isNotEmpty) {
-          _selectedStaff = list.first;
+        } else if (activeList.isNotEmpty) {
+          _selectedStaff = activeList.first;
           _phoneCtrl.text = _selectedStaff!['phone']?.toString() ?? '';
         }
 

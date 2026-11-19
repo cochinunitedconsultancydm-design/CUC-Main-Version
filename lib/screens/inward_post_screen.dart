@@ -6,6 +6,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
@@ -115,7 +116,31 @@ class _InwardPostScreenState extends State<InwardPostScreen> {
     try {
       final req = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
-      final usersList = (res.data?.items ?? []).whereType<amplify_models.Users>().toList();
+      var usersList = (res.data?.items ?? []).whereType<amplify_models.Users>().toList();
+
+      Set<String> deletedKeys = {};
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? [])
+            .map((k) => k.toLowerCase().trim())
+            .toSet();
+      } catch (_) {}
+
+      usersList = usersList.where((u) {
+        if ((u.role ?? '').toLowerCase().trim() == 'deleted') return false;
+        final uid = u.id.toLowerCase().trim();
+        final uname = (u.username ?? '').toLowerCase().trim();
+        final uemail = (u.email ?? '').toLowerCase().trim();
+        final uNameStr = (u.name ?? '').toLowerCase().trim();
+        if (deletedKeys.contains(uid) ||
+            (uname.isNotEmpty && deletedKeys.contains(uname)) ||
+            (uemail.isNotEmpty && deletedKeys.contains(uemail)) ||
+            (uNameStr.isNotEmpty && deletedKeys.contains(uNameStr))) {
+          return false;
+        }
+        return true;
+      }).toList();
+
       usersList.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
       if (mounted) {
         setState(() {

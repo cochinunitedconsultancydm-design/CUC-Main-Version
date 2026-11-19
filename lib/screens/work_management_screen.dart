@@ -113,8 +113,28 @@ class _WorkManagementScreenState extends State<WorkManagementScreen> {
       final fetched = (res.data?.items ?? []).whereType<amplify_models.Users>().toList();
       final sbUserMap = await SupabaseBackupService().getUsernameToIdMap();
 
+      Set<String> deletedKeys = {};
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? [])
+            .map((k) => k.toLowerCase().trim())
+            .toSet();
+      } catch (_) {}
+
       final Map<String, amplify_models.Users> byName = {};
       for (final u in fetched) {
+        if ((u.role ?? '').toLowerCase().trim() == 'deleted') continue;
+        final uid = u.id.toLowerCase().trim();
+        final uname = (u.username ?? '').toLowerCase().trim();
+        final uemail = (u.email ?? '').toLowerCase().trim();
+        final uNameStr = (u.name ?? '').toLowerCase().trim();
+        if (deletedKeys.contains(uid) ||
+            (uname.isNotEmpty && deletedKeys.contains(uname)) ||
+            (uemail.isNotEmpty && deletedKeys.contains(uemail)) ||
+            (uNameStr.isNotEmpty && deletedKeys.contains(uNameStr))) {
+          continue;
+        }
+
         final displayName = (u.name?.isNotEmpty == true ? u.name! : (u.username ?? '')).trim();
         if (displayName.isEmpty) continue;
         final key = displayName.toLowerCase();

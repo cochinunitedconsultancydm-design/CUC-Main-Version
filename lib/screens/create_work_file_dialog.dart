@@ -73,8 +73,29 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
       if (res.data != null) {
         final List<amplify_models.Users> fetched = res.data!.items.whereType<amplify_models.Users>().toList();
         final sbUserMap = await SupabaseBackupService().getUsernameToIdMap();
+
+        Set<String> deletedKeys = {};
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? [])
+              .map((k) => k.toLowerCase().trim())
+              .toSet();
+        } catch (_) {}
+
         final List<amplify_models.Users> deduplicated = [];
         for (var staff in fetched) {
+          if ((staff.role ?? '').toLowerCase().trim() == 'deleted') continue;
+          final sid = staff.id.toLowerCase().trim();
+          final suser = (staff.username ?? '').toLowerCase().trim();
+          final semail = (staff.email ?? '').toLowerCase().trim();
+          final sname = (staff.name ?? '').toLowerCase().trim();
+          if (deletedKeys.contains(sid) ||
+              (suser.isNotEmpty && deletedKeys.contains(suser)) ||
+              (semail.isNotEmpty && deletedKeys.contains(semail)) ||
+              (sname.isNotEmpty && deletedKeys.contains(sname))) {
+            continue;
+          }
+
           final intId = sbUserMap[staff.username] ?? sbUserMap[staff.email];
           if (intId != null) {
             _staffIdMap[staff.id] = intId;

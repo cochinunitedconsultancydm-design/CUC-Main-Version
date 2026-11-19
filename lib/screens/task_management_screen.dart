@@ -169,8 +169,29 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> with Single
       final req = ModelQueries.list(amplify_models.Users.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
       var items = (res.data?.items ?? []).whereType<amplify_models.Users>().toList();
+
+      Set<String> deletedKeys = {};
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? [])
+            .map((k) => k.toLowerCase().trim())
+            .toSet();
+      } catch (_) {}
+
       final Map<String, amplify_models.Users> uniqueUsers = {};
       for (var user in items) {
+        if ((user.role ?? '').toLowerCase().trim() == 'deleted') continue;
+        final uid = user.id.toLowerCase().trim();
+        final uname = (user.username ?? '').toLowerCase().trim();
+        final uemail = (user.email ?? '').toLowerCase().trim();
+        final uNameStr = (user.name ?? '').toLowerCase().trim();
+        if (deletedKeys.contains(uid) ||
+            (uname.isNotEmpty && deletedKeys.contains(uname)) ||
+            (uemail.isNotEmpty && deletedKeys.contains(uemail)) ||
+            (uNameStr.isNotEmpty && deletedKeys.contains(uNameStr))) {
+          continue;
+        }
+
         final name = (user.name ?? '').trim();
         if (name.isEmpty) continue;
         final firstWord = name.split(' ').first.toLowerCase();

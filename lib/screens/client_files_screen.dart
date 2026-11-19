@@ -81,6 +81,14 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
       final res = await Amplify.API.query(request: req).response;
       final fetched = (res.data?.items ?? []).whereType<amplify_models.Users>().toList();
       final sbUserMap = await SupabaseBackupService().getUsernameToIdMap();
+
+      Set<String> deletedKeys = {};
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? [])
+            .map((k) => k.toLowerCase().trim())
+            .toSet();
+      } catch (_) {}
       
       for (var staff in fetched) {
         final intId = sbUserMap[staff.username] ?? sbUserMap[staff.email];
@@ -91,6 +99,18 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
       
       final deduplicated = <amplify_models.Users>[];
       for (var staff in fetched) {
+        if ((staff.role ?? '').toLowerCase().trim() == 'deleted') continue;
+        final sid = staff.id.toLowerCase().trim();
+        final suser = (staff.username ?? '').toLowerCase().trim();
+        final semail = (staff.email ?? '').toLowerCase().trim();
+        final sname = (staff.name ?? '').toLowerCase().trim();
+        if (deletedKeys.contains(sid) ||
+            (suser.isNotEmpty && deletedKeys.contains(suser)) ||
+            (semail.isNotEmpty && deletedKeys.contains(semail)) ||
+            (sname.isNotEmpty && deletedKeys.contains(sname))) {
+          continue;
+        }
+
         final name = (staff.name ?? staff.username ?? 'Unknown').trim();
         final idx = deduplicated.indexWhere((s) => (s.name ?? s.username ?? '').trim().toLowerCase() == name.toLowerCase());
         if (idx != -1) {
@@ -2089,8 +2109,29 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
       final res = await Amplify.API.query(request: req).response;
       if (res.data != null) {
         final List<amplify_models.Users> fetched = res.data!.items.whereType<amplify_models.Users>().toList();
+
+        Set<String> deletedKeys = {};
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? [])
+              .map((k) => k.toLowerCase().trim())
+              .toSet();
+        } catch (_) {}
+
         final List<amplify_models.Users> deduplicated = [];
         for (var staff in fetched) {
+          if ((staff.role ?? '').toLowerCase().trim() == 'deleted') continue;
+          final sid = staff.id.toLowerCase().trim();
+          final suser = (staff.username ?? '').toLowerCase().trim();
+          final semail = (staff.email ?? '').toLowerCase().trim();
+          final sname = (staff.name ?? '').toLowerCase().trim();
+          if (deletedKeys.contains(sid) ||
+              (suser.isNotEmpty && deletedKeys.contains(suser)) ||
+              (semail.isNotEmpty && deletedKeys.contains(semail)) ||
+              (sname.isNotEmpty && deletedKeys.contains(sname))) {
+            continue;
+          }
+
           final name = (staff.name ?? staff.username ?? 'Unknown').trim();
           if (name == 'Unknown' || name.isEmpty) continue;
           
@@ -2283,8 +2324,29 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
       final res = await Amplify.API.query(request: req).response;
       if (res.data != null) {
         final List<amplify_models.Users> fetched = res.data!.items.whereType<amplify_models.Users>().toList();
+
+        Set<String> deletedKeys = {};
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? [])
+              .map((k) => k.toLowerCase().trim())
+              .toSet();
+        } catch (_) {}
+
         final List<amplify_models.Users> deduplicated = [];
         for (var staff in fetched) {
+          if ((staff.role ?? '').toLowerCase().trim() == 'deleted') continue;
+          final sid = staff.id.toLowerCase().trim();
+          final suser = (staff.username ?? '').toLowerCase().trim();
+          final semail = (staff.email ?? '').toLowerCase().trim();
+          final sname = (staff.name ?? '').toLowerCase().trim();
+          if (deletedKeys.contains(sid) ||
+              (suser.isNotEmpty && deletedKeys.contains(suser)) ||
+              (semail.isNotEmpty && deletedKeys.contains(semail)) ||
+              (sname.isNotEmpty && deletedKeys.contains(sname))) {
+            continue;
+          }
+
           final name = (staff.name ?? staff.username ?? 'Unknown').trim();
           if (name == 'Unknown' || name.isEmpty) continue;
           

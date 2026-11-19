@@ -130,16 +130,20 @@ class _MyAppState extends State<MyApp> with WindowListener, WidgetsBindingObserv
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
       // App is being swiped away / killed
-      // Location tracking features have been removed
+      AuthService().logout(waitNetwork: true);
     }
   }
 
   @override
   void onWindowClose() async {
-    // Flush time tracker and logout before exiting
-    TimeTrackingService.instance.stopTracking();
-    await AuthService().logout();
-    await windowManager.destroy();
+    // Flush time tracker and logout before exiting window
+    try {
+      await AuthService().logout(waitNetwork: true);
+    } catch (e) {
+      debugPrint('Error during onWindowClose logout: $e');
+    } finally {
+      await windowManager.destroy();
+    }
   }
 
   @override

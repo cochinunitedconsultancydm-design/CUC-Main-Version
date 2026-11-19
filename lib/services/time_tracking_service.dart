@@ -46,7 +46,7 @@ class TimeTrackingService with WindowListener {
     });
   }
 
-  void stopTracking() {
+  Future<void> stopTracking() async {
     if (!_isTracking) return;
     debugPrint('Stopping TimeTracking for session $_currentSessionId');
     _isTracking = false;
@@ -56,7 +56,7 @@ class TimeTrackingService with WindowListener {
     
     if (_currentSessionId != null) {
       _status = 'Offline';
-      syncToDatabase(isLogout: true);
+      await syncToDatabase(isLogout: true);
     }
     _currentSessionId = null;
   }

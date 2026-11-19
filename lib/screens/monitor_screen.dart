@@ -90,7 +90,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
       for (var row in logs) {
         if (row.created_at != null) {
           try {
-            final dt = DateTime.parse(row.created_at!).toLocal();
+            final dt = parseToIST(row.created_at);
             hoursMap[dt.hour] = (hoursMap[dt.hour] ?? 0) + 1;
           } catch (_) {}
         }
@@ -170,8 +170,12 @@ class _MonitorScreenState extends State<MonitorScreen> {
       final res = await Amplify.API.query(request: req).response;
       final fetchedSessions = (res.data?.items ?? []).whereType<amplify_models.UserSessions>().toList() ?? [];
       
-      // Sort in Dart
-      fetchedSessions.sort((a, b) => (b.login_time ?? '').compareTo(a.login_time ?? ''));
+      // Sort in Dart chronologically (most recent first)
+      fetchedSessions.sort((a, b) {
+        final dtA = parseToIST(a.login_time);
+        final dtB = parseToIST(b.login_time);
+        return dtB.compareTo(dtA);
+      });
 
       // Fetch user names from Supabase (where integer user_id maps to)
       final supabaseNameMap = await _fetchSupabaseUserNames();
@@ -195,9 +199,24 @@ class _MonitorScreenState extends State<MonitorScreen> {
     }
   }
 
+  static DateTime parseToIST(String? ts) {
+    if (ts == null || ts.isEmpty) return DateTime.now();
+    try {
+      final parsed = DateTime.parse(ts);
+      if (parsed.isUtc) {
+        final ist = parsed.add(const Duration(hours: 5, minutes: 30));
+        return DateTime(ist.year, ist.month, ist.day, ist.hour, ist.minute, ist.second);
+      }
+      return parsed.toLocal();
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+
   String _formatDuration(DateTime login, DateTime? logout) {
     final end = logout ?? DateTime.now();
     final diff = end.difference(login);
+    if (diff.isNegative) return '0m';
     if (diff.inHours > 0) return '${diff.inHours}h ${diff.inMinutes % 60}m';
     return '${diff.inMinutes}m';
   }
@@ -344,18 +363,12 @@ class _MonitorScreenState extends State<MonitorScreen> {
               itemCount: _sessions.length,
               itemBuilder: (context, index) {
                 final s = _sessions[index];
-                
-                DateTime toIST(String? ts) {
-                  if (ts == null || ts.isEmpty) return DateTime.now();
-                  String iso = ts;
-                  if (!iso.endsWith('Z') && !iso.contains('+')) iso += 'Z';
-                  return DateTime.parse(iso).toUtc().add(const Duration(hours: 5, minutes: 30));
-                }
 
-                final loginTime = toIST(s['login_time']?.toString());
-                final logoutTime = s['logout_time'] != null ? toIST(s['logout_time']?.toString()) : null;
-                final isActive = s['is_active'] == true;
-                final duration = _formatDuration(loginTime, logoutTime);
+                final loginTime = parseToIST(s['login_time']?.toString());
+                final logoutTime = s['logout_time'] != null ? parseToIST(s['logout_time']?.toString()) : null;
+                final isStale = DateTime.now().difference(loginTime).inHours >= 16;
+                final isActive = (s['is_active'] == true) && (logoutTime == null) && !isStale;
+                final duration = _formatDuration(loginTime, logoutTime ?? (isStale ? loginTime : null));
 
                 final userColor = Colors.primaries[s['user_name'].toString().hashCode % Colors.primaries.length];
 
@@ -456,17 +469,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
               itemBuilder: (context, index) {
                 final l = _logs[index];
                 
-                DateTime parseTime(String? ts) {
-                  if (ts == null || ts.isEmpty) return DateTime.now();
-                  try {
-                    // Dart automatically handles 'Z' (UTC) vs no 'Z' (Local) correctly.
-                    return DateTime.parse(ts).toLocal();
-                  } catch (e) {
-                    return DateTime.now();
-                  }
-                }
-                
-                final time = parseTime(l['created_at']?.toString());
+                final time = parseToIST(l['created_at']?.toString());
                 
                 Color actionColor = Colors.blue;
                 if (l['action'].toString().contains('DELETE')) actionColor = Colors.red;

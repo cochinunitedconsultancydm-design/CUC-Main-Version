@@ -168,12 +168,33 @@ class AuthService {
 
       int supabaseUserId = await SupabaseBackupService().getUserIdByUsername(username) ?? 0;
 
+      // Close any previous dangling active sessions for this user before creating a new one
+      try {
+        final oldReq = ModelQueries.list(
+          UserSessions.classType,
+          where: UserSessions.USER_ID.eq(supabaseUserId).and(UserSessions.IS_ACTIVE.eq(true)),
+          limit: 20,
+        );
+        final oldRes = await Amplify.API.query(request: oldReq).response;
+        for (final oldSession in (oldRes.data?.items ?? []).whereType<UserSessions>()) {
+          final closed = oldSession.copyWith(
+            is_active: false,
+            logout_time: DateTime.now().toIso8601String(),
+            status: 'Offline',
+          );
+          await BackupAwareApi().update(closed);
+        }
+      } catch (e) {
+        debugPrint('Error closing dangling sessions: $e');
+      }
+
       String? sessionId;
       try {
         final session = UserSessions(
           user_id: supabaseUserId,
           login_time: DateTime.now().toIso8601String(),
           is_active: true,
+          status: 'Active',
         );
         final sessionReq = ModelMutations.create(session);
         final sessionRes = await Amplify.API.mutate(request: sessionReq).response;
@@ -192,7 +213,7 @@ class AuthService {
 
       if (sessionId != null) {
         await prefs.setString('${_sessionIdKey}_str', sessionId);
-        TimeTrackingService.instance.startTracking(int.tryParse(sessionId) ?? 0);
+        TimeTrackingService.instance.startTracking(sessionId);
       }
 
       await prefs.setString('${_userIdKey}_str', res.id);
@@ -332,27 +353,20 @@ class AuthService {
     return false;
   }
 
-  Future<void> logout() async {
+  Future<void> logout({bool waitNetwork = false}) async {
     final prefs = await SharedPreferences.getInstance();
     final sessionIdStr = prefs.getString('${_sessionIdKey}_str');
     final userName = prefs.getString(_userKey) ?? 'Unknown';
 
-    // Clear local prefs immediately so UI is not blocked
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_userKey);
-    await prefs.remove(_roleKey);
-    await prefs.remove(_sessionIdKey);
-    await prefs.remove(_userIdKey);
-    await prefs.remove('${_sessionIdKey}_str');
-    await prefs.remove('${_userIdKey}_str');
-    await prefs.remove(SecurityService.lastActivityKey);
+    Future<void> performNetworkLogout() async {
+      try {
+        await TimeTrackingService.instance.stopTracking();
+      } catch (e) {
+        debugPrint('stopTracking error: $e');
+      }
 
-    // Perform network operations in the background
-    Future.microtask(() async {
-      if (sessionIdStr != null) {
+      if (sessionIdStr != null && sessionIdStr.isNotEmpty) {
         try {
-          TimeTrackingService.instance.stopTracking();
-
           final request = ModelQueries.get(
             UserSessions.classType,
             UserSessionsModelIdentifier(id: sessionIdStr),
@@ -363,6 +377,7 @@ class AuthService {
             final updatedSession = session.copyWith(
               logout_time: DateTime.now().toIso8601String(),
               is_active: false,
+              status: 'Offline',
             );
             await BackupAwareApi().update(updatedSession);
           }
@@ -383,7 +398,27 @@ class AuthService {
       } catch (e) {
         debugPrint('Cognito SignOut error: $e');
       }
-    });
+    }
+
+    if (waitNetwork) {
+      try {
+        await performNetworkLogout().timeout(const Duration(seconds: 4));
+      } catch (e) {
+        debugPrint('Logout network wait timed out: $e');
+      }
+    } else {
+      unawaited(performNetworkLogout());
+    }
+
+    // Clear local prefs immediately so session state is wiped
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_userKey);
+    await prefs.remove(_roleKey);
+    await prefs.remove(_sessionIdKey);
+    await prefs.remove(_userIdKey);
+    await prefs.remove('${_sessionIdKey}_str');
+    await prefs.remove('${_userIdKey}_str');
+    await prefs.remove(SecurityService.lastActivityKey);
   }
 
   Future<bool> isLoggedIn() async {

@@ -4,6 +4,8 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:async';
+import 'package:intl/intl.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../models/client.dart';
@@ -13,6 +15,7 @@ import '../widgets/google_docs_picker_dialog.dart';
 import '../services/logging_service.dart';
 import '../services/fiscal_year_service.dart';
 import '../services/deal_service.dart';
+import '../services/meta_service.dart';
 
 class CreateWorkFileDialog extends StatefulWidget {
   final VoidCallback onSaved;
@@ -211,6 +214,21 @@ class _CreateWorkFileDialogState extends State<CreateWorkFileDialog> {
       );
 
       await BackupAwareApi().create(newDeal);
+
+      // Send automated WhatsApp alert to the assigned responsible staff
+      if (_selectedStaff != null) {
+        final staffId = _staffIdMap[_selectedStaff!.id] ?? int.tryParse(_selectedStaff!.id) ?? _selectedStaff!.id;
+        unawaited(WhatsAppCloudService().notifyStaffOfAssignment(
+          staffUserId: staffId,
+          assignmentTitle: newDeal.name ?? 'Work File',
+          workOrTaskType: newDeal.work_type ?? 'Work File',
+          clientName: _selectedClient?.name,
+          dueDate: _selectedDeadline != null ? DateFormat('dd-MMM-yyyy').format(_selectedDeadline!) : null,
+          priority: 'Normal',
+          assignedByName: currentUserName,
+          details: 'New Work File "${newDeal.name ?? ''}" (File No: ${newDeal.register_no ?? fileNo}) assigned to you in CUC System.',
+        ));
+      }
 
       await LoggingService().logAction(
         action: 'WORK_FILE_CREATED',

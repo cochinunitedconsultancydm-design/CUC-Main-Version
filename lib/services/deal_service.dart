@@ -393,11 +393,12 @@ class DealService {
     );
 
     // Send WhatsApp notification to assigned staff member if assigned
-    if (lead.responsibleId != null) {
+    final targetStaff = lead.responsibleId ?? (lead.responsibleName?.trim().isNotEmpty == true ? lead.responsibleName!.trim() : null);
+    if (targetStaff != null) {
       final prefs = await SharedPreferences.getInstance();
       final currentUserName = prefs.getString('user_name') ?? prefs.getString('current_user_name') ?? 'Management';
       unawaited(WhatsAppCloudService().notifyStaffOfAssignment(
-        staffUserId: lead.responsibleId,
+        staffUserId: targetStaff,
         assignmentTitle: lead.name,
         workOrTaskType: 'Work File (Passed from CRM)',
         clientName: clientName,

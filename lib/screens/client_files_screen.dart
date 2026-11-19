@@ -4,6 +4,8 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:convert';
+import 'dart:async';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
@@ -17,6 +19,8 @@ import '../services/deal_service.dart';
 import '../services/supabase_backup_service.dart';
 import '../services/fiscal_year_service.dart';
 import '../services/auth_service.dart';
+import '../services/meta_service.dart';
+import '../widgets/test_whatsapp_dialog.dart';
 
 class ClientFilesScreen extends StatefulWidget {
   const ClientFilesScreen({super.key});
@@ -705,6 +709,21 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
         responsible_name: staffName,
       );
       await BackupAwareApi().update(updatedDeal);
+
+      if (staff != null) {
+        final prefs = await SharedPreferences.getInstance();
+        final currentUserName = prefs.getString('user_name') ?? 'Management';
+        unawaited(WhatsAppCloudService().notifyStaffOfAssignment(
+          staffUserId: staffIntId ?? staff.id,
+          assignmentTitle: workFile.name ?? 'Work File',
+          workOrTaskType: workFile.work_type ?? 'Work File Assignment',
+          clientName: workFile.client_name,
+          dueDate: workFile.closed_at != null ? workFile.closed_at!.split('T').first : null,
+          priority: workFile.priority ?? 'Normal',
+          assignedByName: currentUserName,
+          details: 'Work File "${workFile.name}" (File No: ${workFile.register_no ?? ''}) has been assigned to you in CUC System.',
+        ));
+      }
 
       if (staffIntId != null) {
         try {
@@ -1518,6 +1537,19 @@ class _ClientFilesScreenState extends State<ClientFilesScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: () => TestWhatsAppDialog.show(context),
+                  icon: const Icon(Icons.mark_chat_unread_rounded, size: 16),
+                  label: const Text('Test WhatsApp', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF16A34A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 IconButton(
                   onPressed: _fetchWorkFiles,
                   icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor),
@@ -2180,6 +2212,17 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
         if (reason != null && reason.isNotEmpty) detailsText += ' - Reason: $reason';
         if (remarks != null && remarks.isNotEmpty) detailsText += ' - Remarks: $remarks';
 
+        final prefs = await SharedPreferences.getInstance();
+        final currentUserName = prefs.getString('user_name') ?? 'Management';
+        unawaited(WhatsAppCloudService().notifyStaffOfAssignment(
+          staffUserId: int.tryParse(selectedStaff.id) ?? selectedStaff.id,
+          assignmentTitle: updatedDeal.name ?? 'Work File',
+          workOrTaskType: updatedDeal.work_type ?? 'Work File Handover',
+          clientName: updatedDeal.client_name,
+          assignedByName: currentUserName,
+          details: detailsText,
+        ));
+
         await LoggingService().logAction(
           action: 'WORK_FILE_HANDOVER',
           targetType: 'WorkFile',
@@ -2360,6 +2403,18 @@ class _WorkFileDetailDialogState extends State<WorkFileDetailDialog> {
                       );
                       
                       await BackupAwareApi().create(newSubWork);
+
+                      if (selectedStaff != null) {
+                        unawaited(WhatsAppCloudService().notifyStaffOfAssignment(
+                          staffUserId: int.tryParse(selectedStaff!.id) ?? selectedStaff!.id,
+                          assignmentTitle: newSubWork.name ?? 'Sub Work',
+                          workOrTaskType: 'Sub Work File',
+                          clientName: _currentWorkFile.client_name,
+                          dueDate: selectedDeadline != null ? DateFormat('dd-MMM-yyyy').format(selectedDeadline!) : null,
+                          assignedByName: currentUserName,
+                          details: 'New Sub Work "${newSubWork.name ?? ''}" created under "${_currentWorkFile.name}" and assigned to you in CUC System.',
+                        ));
+                      }
                       
                       await LoggingService().logAction(
                         action: 'SUB_WORK_CREATED',

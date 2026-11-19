@@ -14,6 +14,7 @@ import '../services/crm_data_importer.dart';
 import '../services/notification_service.dart';
 import '../services/meta_service.dart';
 import '../widgets/meta_hub_dialog.dart';
+import '../widgets/test_whatsapp_dialog.dart';
 import '../services/fiscal_year_service.dart';
 import '../services/backup_aware_api.dart';
 import '../models/ModelProvider.dart' as amplify_models;
@@ -5351,6 +5352,34 @@ class _CrmScreenState extends State<CrmScreen>
                                         'Meta & WhatsApp Hub',
                                         style: TextStyle(
                                           color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              InkWell(
+                                onTap: () => TestWhatsAppDialog.show(context),
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.3)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.mark_chat_unread_rounded, size: 14, color: Color(0xFF16A34A)),
+                                      SizedBox(width: 5),
+                                      Text(
+                                        'Test WhatsApp',
+                                        style: TextStyle(
+                                          color: Color(0xFF16A34A),
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
                                         ),

@@ -14,6 +14,7 @@ import '../services/supabase_backup_service.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import '../services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/test_whatsapp_dialog.dart';
 
 class StaffManagementScreen extends StatefulWidget {
   const StaffManagementScreen({super.key});
@@ -1246,17 +1247,35 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           children: [
             const Text('Directory Overview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             if (_isAdmin)
-              ElevatedButton.icon(
-                onPressed: () => _showForm(),
-                icon: const Icon(Icons.person_add_rounded, size: 18),
-                label: const Text('Add Member'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor, 
-                  foregroundColor: Colors.white, 
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => TestWhatsAppDialog.show(context),
+                    icon: const Icon(Icons.mark_chat_unread_rounded, size: 16),
+                    label: const Text('Test WhatsApp'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF16A34A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => _showForm(),
+                    icon: const Icon(Icons.person_add_rounded, size: 18),
+                    label: const Text('Add Member'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor, 
+                      foregroundColor: Colors.white, 
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
               ),
           ],
         ),
@@ -1366,6 +1385,18 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              _actionBtn(
+                                Icons.chat_bubble_outline_rounded,
+                                const Color(0xFF16A34A),
+                                'Send Test WhatsApp',
+                                () => TestWhatsAppDialog.show(
+                                  context,
+                                  initialStaffName: s['name'],
+                                  initialPhone: s['company_phone'] ?? s['phone'] ?? s['personal_phone'],
+                                  initialStaffUserId: s['id'],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               _actionBtn(Icons.lock_reset_rounded, Colors.orange, 'Reset Password', () => _resetPassword(s)),
                               const SizedBox(width: 8),
                               _actionBtn(Icons.edit_rounded, Colors.blueGrey, 'Edit', () => _showForm(s)),

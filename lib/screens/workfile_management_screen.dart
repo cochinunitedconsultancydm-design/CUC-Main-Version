@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
@@ -14,6 +15,8 @@ import '../services/deal_service.dart';
 import '../services/client_service.dart';
 import '../services/logging_service.dart';
 import '../services/fiscal_year_service.dart';
+import '../services/meta_service.dart';
+import '../widgets/test_whatsapp_dialog.dart';
 import '../theme.dart';
 
 import 'billing_screen.dart';
@@ -548,6 +551,26 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
           targetId: dealToSave.name,
           details: 'Created workfile for ${dealToSave.clientName}',
         );
+
+        // Send WhatsApp alert to assigned handling staff
+        if (_selectedHandlingStaffList.isNotEmpty) {
+          for (final staffName in _selectedHandlingStaffList) {
+            final matchedStaff = _allStaff.firstWhere(
+              (s) => (s.name?.trim().toLowerCase() == staffName.trim().toLowerCase()) ||
+                     (s.username?.trim().toLowerCase() == staffName.trim().toLowerCase()),
+              orElse: () => amplify_models.Users(id: '', username: staffName, name: staffName),
+            );
+            unawaited(WhatsAppCloudService().notifyStaffOfAssignment(
+              staffUserId: matchedStaff.id.isNotEmpty ? matchedStaff.id : staffName,
+              assignmentTitle: dealToSave.name,
+              workOrTaskType: dealToSave.workType,
+              clientName: dealToSave.clientName,
+              priority: dealToSave.priority,
+              assignedByName: _currentUserName,
+              details: 'New Workfile "${dealToSave.name}" (File No: ${dealToSave.registerNo ?? ''}) has been assigned to you in CUC System.',
+            ));
+          }
+        }
       }
 
       setState(() => _deal = dealToSave);
@@ -726,6 +749,11 @@ class _WorkfileManagementScreenState extends State<WorkfileManagementScreen> {
                 ),
               ),
             ),
+          IconButton(
+            icon: const Icon(Icons.mark_chat_unread_rounded, color: Color(0xFF16A34A), size: 20),
+            onPressed: () => TestWhatsAppDialog.show(context),
+            tooltip: 'Test WhatsApp Message',
+          ),
           if (_dealId != null && _isAdmin)
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),

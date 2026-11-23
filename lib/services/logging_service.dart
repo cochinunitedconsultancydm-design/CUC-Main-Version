@@ -16,8 +16,15 @@ class LoggingService {
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('current_user_id');
+      int? userId = prefs.getInt('current_user_id');
       final userName = prefs.getString('user_name');
+      
+      if (userId == null || userId == 0) {
+        final idStr = prefs.getString('current_user_id_str');
+        if (idStr != null) {
+          userId = int.tryParse(idStr);
+        }
+      }
       
       String finalDetails = details ?? '';
       if (userName != null && userName.isNotEmpty) {
@@ -26,17 +33,15 @@ class LoggingService {
         finalDetails = 'Action logged';
       }
       
-      if (userId != null) {
-        final logEntry = ActivityLogs(
-          user_id: userId,
-          action: action,
-          target_type: targetType,
-          target_id: targetId,
-          details: finalDetails,
-          created_at: DateTime.now().toIso8601String(),
-        );
-        await BackupAwareApi().create(logEntry);
-      }
+      final logEntry = ActivityLogs(
+        user_id: userId ?? 0,
+        action: action,
+        target_type: targetType,
+        target_id: targetId,
+        details: finalDetails,
+        created_at: DateTime.now().toIso8601String(),
+      );
+      await BackupAwareApi().create(logEntry);
     } catch (e) {
       debugPrint('Logging error: $e');
     }

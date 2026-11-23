@@ -708,11 +708,17 @@ class SupabaseBackupService {
     return [];
   }
 
-  /// Get user ID by username
+  /// Get user ID by username or email
   Future<int?> getUserIdByUsername(String username) async {
     try {
+      final clean = username.trim().toLowerCase();
+      final map = await getUsernameToIdMap();
+      if (map.containsKey(clean)) return map[clean];
+      final userPart = clean.contains('@') ? clean.split('@')[0] : clean;
+      if (map.containsKey(userPart)) return map[userPart];
+
       final response = await http.get(
-        Uri.parse('$_supabaseUrl/rest/v1/users?username=eq.$username&select=id'),
+        Uri.parse('$_supabaseUrl/rest/v1/users?or=(username.ilike.$userPart,email.ilike.$clean)&select=id'),
         headers: _headers,
       ).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {

@@ -13,31 +13,37 @@ class LoggingService {
     required String targetType,
     String? targetId,
     String? details,
+    int? userId,
+    String? userName,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      int? userId = prefs.getInt('current_user_id');
-      final userName = prefs.getString('user_name');
+      int? effectiveUserId = userId ?? prefs.getInt('current_user_id');
+      final effectiveUserName = (userName != null && userName.isNotEmpty && userName != 'Unknown')
+          ? userName
+          : prefs.getString('user_name');
       
-      if (userId == null || userId == 0) {
+      if (effectiveUserId == null || effectiveUserId == 0) {
         final idStr = prefs.getString('current_user_id_str');
         if (idStr != null) {
-          userId = int.tryParse(idStr);
+          effectiveUserId = int.tryParse(idStr);
         }
       }
       
       String finalDetails = details ?? '';
-      if (userName != null && userName.isNotEmpty) {
-        finalDetails = finalDetails.isEmpty ? '[User: $userName]' : '$finalDetails [User: $userName]';
+      if (effectiveUserName != null && effectiveUserName.isNotEmpty && effectiveUserName != 'Unknown') {
+        if (!finalDetails.contains('[User:')) {
+          finalDetails = finalDetails.isEmpty ? '[User: $effectiveUserName]' : '$finalDetails [User: $effectiveUserName]';
+        }
       } else if (finalDetails.isEmpty) {
         finalDetails = 'Action logged';
       }
       
       final logEntry = ActivityLogs(
-        user_id: userId ?? 0,
+        user_id: effectiveUserId ?? 0,
         action: action,
         target_type: targetType,
-        target_id: targetId,
+        target_id: targetId ?? effectiveUserName,
         details: finalDetails,
         created_at: DateTime.now().toIso8601String(),
       );

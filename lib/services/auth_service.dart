@@ -357,6 +357,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final sessionIdStr = prefs.getString('${_sessionIdKey}_str');
     final userName = prefs.getString(_userKey) ?? 'Unknown';
+    final userId = prefs.getInt(_userIdKey) ?? int.tryParse(prefs.getString('${_userIdKey}_str') ?? '') ?? 0;
 
     Future<void> performNetworkLogout() async {
       try {
@@ -391,6 +392,8 @@ class AuthService {
         targetType: 'System',
         targetId: userName,
         details: 'User logged out',
+        userId: userId,
+        userName: userName,
       );
 
       try {
@@ -400,14 +403,10 @@ class AuthService {
       }
     }
 
-    if (waitNetwork) {
-      try {
-        await performNetworkLogout().timeout(const Duration(seconds: 4));
-      } catch (e) {
-        debugPrint('Logout network wait timed out: $e');
-      }
-    } else {
-      unawaited(performNetworkLogout());
+    try {
+      await performNetworkLogout().timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('Logout network wait error: $e');
     }
 
     // Clear local prefs immediately so session state is wiped

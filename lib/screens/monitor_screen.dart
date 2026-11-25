@@ -178,7 +178,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
     }
   }
 
-  String _resolveStaffName({int? userId, String? details, String? username}) {
+  String _resolveStaffName({int? userId, String? details, String? username, String? targetId}) {
     // 1. Try extracting [User: ...] from details
     if (details != null && details.isNotEmpty) {
       final userMatch = RegExp(r'\[User:\s*([^\]]+)\]', caseSensitive: false).firstMatch(details);
@@ -200,15 +200,39 @@ class _MonitorScreenState extends State<MonitorScreen> {
       }
     }
 
-    // 2. Try looking up numeric userId
-    if (userId != null) {
+    // 2. Try targetId if provided and looks like a staff name or username
+    if (targetId != null && targetId.isNotEmpty) {
+      final tLower = targetId.toLowerCase().trim();
+      if (tLower != 'system' && tLower != 'null' && !tLower.startsWith('http') && tLower != 'unknown') {
+        if (tLower == 'admin' || tLower == 'admin@cuc.local') {
+          return 'Master Admin';
+        }
+        if (_usernameToNameMap.containsKey(tLower)) {
+          return _usernameToNameMap[tLower]!;
+        }
+        if (_emailToNameMap.containsKey(tLower)) {
+          return _emailToNameMap[tLower]!;
+        }
+        final staffMatch = _staffList.firstWhere(
+          (s) => (s['name'] ?? '').toString().toLowerCase() == tLower || (s['username'] ?? '').toString().toLowerCase() == tLower,
+          orElse: () => {},
+        );
+        if (staffMatch.isNotEmpty && staffMatch['name'] != null) {
+          return staffMatch['name'].toString();
+        }
+        return targetId;
+      }
+    }
+
+    // 3. Try looking up numeric userId
+    if (userId != null && userId != 0) {
       if (userId == 1) return 'Master Admin';
       if (_idToNameMap.containsKey(userId)) {
         return _idToNameMap[userId]!;
       }
     }
 
-    // 3. Try username if provided
+    // 4. Try username if provided
     if (username != null && username.isNotEmpty) {
       final uLower = username.toLowerCase().trim();
       if (uLower == 'admin' || uLower == 'admin@cuc.local') {
@@ -266,6 +290,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
         final resolvedName = _resolveStaffName(
           userId: l.user_id,
           details: l.details,
+          targetId: l.target_id,
         );
         unifiedLogs.add({
           'id': id,
@@ -288,10 +313,12 @@ class _MonitorScreenState extends State<MonitorScreen> {
         final displayTime = s['created_at']?.toString() ?? s['timestamp']?.toString();
         final details = s['details']?.toString() ?? '';
         final username = s['username']?.toString();
+        final targetId = s['target_id']?.toString();
         final resolvedName = _resolveStaffName(
           userId: uid,
           details: details,
           username: username,
+          targetId: targetId,
         );
 
         unifiedLogs.add({
@@ -299,14 +326,38 @@ class _MonitorScreenState extends State<MonitorScreen> {
           'user_id': uid,
           'action': s['action']?.toString() ?? '',
           'target_type': s['target_type']?.toString() ?? '',
-          'target_id': s['target_id']?.toString() ?? '',
+          'target_id': targetId ?? '',
           'details': details,
           'created_at': displayTime,
           'user_name': resolvedName,
         });
       }
 
-      // Sort chronological descending (most recent first)
+      // Chronological forward pass: resolve any 'LOGOUT' showing 'System' to the preceding active staff member
+      unifiedLogs.sort((a, b) {
+        final tA = a['created_at'] != null ? (DateTime.tryParse(a['created_at'].toString()) ?? DateTime(2000)) : DateTime(2000);
+        final tB = b['created_at'] != null ? (DateTime.tryParse(b['created_at'].toString()) ?? DateTime(2000)) : DateTime(2000);
+        return tA.compareTo(tB);
+      });
+
+      String lastActiveStaff = '';
+      for (var log in unifiedLogs) {
+        final action = (log['action'] ?? '').toString().toUpperCase();
+        final currentStaff = (log['user_name'] ?? '').toString();
+
+        if (action == 'LOGIN' && currentStaff.isNotEmpty && currentStaff != 'System') {
+          lastActiveStaff = currentStaff;
+        } else if (action == 'LOGOUT') {
+          if ((currentStaff.isEmpty || currentStaff == 'System') && lastActiveStaff.isNotEmpty) {
+            log['user_name'] = lastActiveStaff;
+          }
+          lastActiveStaff = '';
+        } else if (currentStaff.isNotEmpty && currentStaff != 'System') {
+          lastActiveStaff = currentStaff;
+        }
+      }
+
+      // Sort chronological descending (most recent first) for UI display
       unifiedLogs.sort((a, b) {
         final tA = a['created_at'] != null ? (DateTime.tryParse(a['created_at'].toString()) ?? DateTime(2000)) : DateTime(2000);
         final tB = b['created_at'] != null ? (DateTime.tryParse(b['created_at'].toString()) ?? DateTime(2000)) : DateTime(2000);

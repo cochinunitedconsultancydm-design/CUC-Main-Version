@@ -36,19 +36,26 @@ class BillingService {
     
     int total = all.length;
     int paid = 0;
+    int pendingInvoices = 0;
     
     for (var b in all) {
-      if (b.status == 'Received') {
-        paid++;
-        continue;
-      }
-      if (b.data != null) {
+      bool isQuotation = b.type == 'QUOTATION';
+      bool isPaid = b.status == 'Received';
+      if (!isPaid && b.data != null) {
         try {
           final dataMap = jsonDecode(b.data!);
           if (dataMap['payment_received'] == true || dataMap['payment_received'] == 'true') {
-            paid++;
+            isPaid = true;
           }
         } catch (_) {}
+      }
+      
+      if (isPaid) {
+        paid++;
+      } else {
+        if (!isQuotation) {
+          pendingInvoices++;
+        }
       }
     }
     
@@ -56,6 +63,7 @@ class BillingService {
       'total': total,
       'paid': paid,
       'pending': total - paid,
+      'pendingInvoices': pendingInvoices,
     };
   }
 
@@ -217,16 +225,28 @@ class BillingService {
 
       if (statusFilter == 'All') {
         match = true;
-      } else if (statusFilter == 'Paid' && isPaid) match = true;
-      else if (statusFilter == 'Pending' && isPending) match = true;
-      else if (statusFilter == 'Overdue' && isPending) match = true;
-      else if (statusFilter == 'Interested' && b.status == 'Interested') match = true;
-      else if (statusFilter == 'Not Interested' && b.status == 'Not Interested') match = true;
+      } else if (statusFilter == 'Paid' && isPaid) {
+        match = true;
+      } else if (statusFilter == 'Pending' && isPending) {
+        match = true;
+      } else if (statusFilter == 'Pending Invoices' && isPending && b.type != 'QUOTATION') {
+        match = true;
+      } else if (statusFilter == 'Overdue' && isPending) {
+        match = true;
+      } else if (statusFilter == 'Interested' && b.status == 'Interested') {
+        match = true;
+      } else if (statusFilter == 'Not Interested' && b.status == 'Not Interested') {
+        match = true;
+      }
       
       if (match && typeFilter != 'All') {
         if (typeFilter == 'Quotation' && b.type != 'QUOTATION') {
           match = false;
-        } else if (typeFilter == 'Invoice' && b.type == 'QUOTATION') match = false;
+        } else if (typeFilter == 'Invoice' && b.type == 'QUOTATION') {
+          match = false;
+        } else if (typeFilter == 'Pending Invoice' && (b.type == 'QUOTATION' || !isPending)) {
+          match = false;
+        }
       }
       
       if (match && searchTerm.isNotEmpty) {

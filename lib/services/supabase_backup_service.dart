@@ -410,12 +410,17 @@ class SupabaseBackupService {
         // Fetch existing Amplify billings
         var req = ModelQueries.list(amplify_models.Billings.classType, limit: 10000);
         var res = await Amplify.API.query(request: req).response;
-        final existingIds = (res.data?.items ?? []).map((b) => b?.id).toSet();
+        final existingMap = {
+          for (var b in (res.data?.items ?? []).whereType<amplify_models.Billings>())
+            b.id: b
+        };
         
         int importedCount = 0;
+        int updatedCount = 0;
         for (var sbData in sbBillings) {
           final String sbId = sbData['id'].toString();
-          if (!existingIds.contains(sbId)) {
+          final existing = existingMap[sbId];
+          if (existing == null) {
             final newBilling = amplify_models.Billings(
               id: sbId,
               client_name: sbData['client_name']?.toString(),
@@ -432,9 +437,19 @@ class SupabaseBackupService {
             final mutReq = ModelMutations.create(newBilling);
             await Amplify.API.mutate(request: mutReq).response;
             importedCount++;
+          } else {
+            final sbAuth = sbData['authorities']?.toString();
+            if (sbAuth != null && sbAuth.isNotEmpty && sbAuth != existing.authorities) {
+              final updatedBilling = existing.copyWith(
+                authorities: sbAuth,
+              );
+              final mutReq = ModelMutations.update(updatedBilling);
+              await Amplify.API.mutate(request: mutReq).response;
+              updatedCount++;
+            }
           }
         }
-        debugPrint('Successfully imported $importedCount missing billings from Supabase.');
+        debugPrint('Successfully imported $importedCount missing, synced $updatedCount updated billings from Supabase.');
       } else {
         debugPrint('Supabase import failed: ${response.statusCode} ${response.body}');
       }

@@ -26,7 +26,9 @@ import '../widgets/premium_app_bar.dart';
 import '../services/supabase_backup_service.dart';
 import '../services/meta_service.dart';
 class BillingScreen extends StatefulWidget {
-  const BillingScreen({super.key});
+  final String? initialStatusFilter;
+  final String? initialTypeFilter;
+  const BillingScreen({super.key, this.initialStatusFilter, this.initialTypeFilter});
   @override
   State<BillingScreen> createState() => _BillingScreenState();
 }
@@ -59,6 +61,7 @@ class _BillingScreenState extends State<BillingScreen> {
   int _totalInvoices = 0;
   int _totalPaid = 0;
   int _totalPending = 0;
+  int _totalPendingInvoices = 0;
 
   static const List<String> _editReasonCategories = [
     'Price / Amount Correction',
@@ -80,15 +83,21 @@ class _BillingScreenState extends State<BillingScreen> {
     'Construction & Supervising': 'F',
     'Aswini': 'G',
     'Ashwini': 'G',
-    'Jitha': 'J',
+    'Harshina': 'H',
     'Darshana': 'I',
-    'Jayan & Midhun': 'VP',
+    'Jitha': 'J',
     'Sariga': 'K',
+    'Anoop': 'AN',
+    'Arya': 'AR',
+    'Pooja': 'P',
+    'Jayan & Midhun': 'VP',
   };
 
   @override
   void initState() { 
     super.initState();
+    if (widget.initialStatusFilter != null) _statusFilter = widget.initialStatusFilter!;
+    if (widget.initialTypeFilter != null) _typeFilter = widget.initialTypeFilter!;
     _initRole();
     _fetchBillings(refresh: true); 
   }
@@ -115,9 +124,35 @@ class _BillingScreenState extends State<BillingScreen> {
     super.dispose();
   }
 
-  String _getFullAuthorityName(String? auth, [String? invNo]) {
-    if (auth != null && auth.trim().isNotEmpty) {
-      final clean = auth.trim();
+  String _getFullAuthorityName(String? auth, [String? invNo, dynamic data]) {
+    String? cleanAuth = auth?.trim();
+
+    // Check if data payload has 'created_by'
+    if ((cleanAuth == null || cleanAuth.isEmpty || cleanAuth.toLowerCase() == 'admin') && data != null) {
+      String? cb;
+      if (data is Map) {
+        cb = data['created_by']?.toString().trim();
+      } else if (data is String) {
+        try {
+          final decoded = jsonDecode(data);
+          if (decoded is Map) cb = decoded['created_by']?.toString().trim();
+        } catch (_) {}
+      }
+      if (cb != null && cb.isNotEmpty && cb.toLowerCase() != 'admin') {
+        cleanAuth = cb;
+      }
+    }
+
+    // Fallback for bills created by Harshina that defaulted to Admin
+    if ((cleanAuth == null || cleanAuth.isEmpty || cleanAuth.toLowerCase() == 'admin') && invNo != null) {
+      const knownHarshinaInvoices = {'AA-049', 'AA-050', 'AA-051', 'CC-056'};
+      if (knownHarshinaInvoices.contains(invNo.trim().toUpperCase())) {
+        cleanAuth = 'H - Harshina';
+      }
+    }
+
+    if (cleanAuth != null && cleanAuth.isNotEmpty) {
+      final clean = cleanAuth;
       
       // If already formatted as "K - Sariga", format nicely as "Sariga (K)"
       if (clean.contains('-')) {
@@ -164,9 +199,35 @@ class _BillingScreenState extends State<BillingScreen> {
     return 'Admin';
   }
 
-  String _getStaffDisplayName(String? auth, [String? invNo]) {
-    if (auth != null && auth.trim().isNotEmpty) {
-      final clean = auth.trim();
+  String _getStaffDisplayName(String? auth, [String? invNo, dynamic data]) {
+    String? cleanAuth = auth?.trim();
+
+    // Check if data payload has 'created_by'
+    if ((cleanAuth == null || cleanAuth.isEmpty || cleanAuth.toLowerCase() == 'admin') && data != null) {
+      String? cb;
+      if (data is Map) {
+        cb = data['created_by']?.toString().trim();
+      } else if (data is String) {
+        try {
+          final decoded = jsonDecode(data);
+          if (decoded is Map) cb = decoded['created_by']?.toString().trim();
+        } catch (_) {}
+      }
+      if (cb != null && cb.isNotEmpty && cb.toLowerCase() != 'admin') {
+        cleanAuth = cb;
+      }
+    }
+
+    // Fallback for bills created by Harshina that defaulted to Admin
+    if ((cleanAuth == null || cleanAuth.isEmpty || cleanAuth.toLowerCase() == 'admin') && invNo != null) {
+      const knownHarshinaInvoices = {'AA-049', 'AA-050', 'AA-051', 'CC-056'};
+      if (knownHarshinaInvoices.contains(invNo.trim().toUpperCase())) {
+        cleanAuth = 'H - Harshina';
+      }
+    }
+
+    if (cleanAuth != null && cleanAuth.isNotEmpty) {
+      final clean = cleanAuth;
       
       // If it's formatted as "K - Sariga", extract the full staff name
       if (clean.contains('-')) {
@@ -205,7 +266,7 @@ class _BillingScreenState extends State<BillingScreen> {
     return '';
   }
 
-  String _getStaffPrefix(String? auth, [String? invNo]) => _getStaffDisplayName(auth, invNo);
+  String _getStaffPrefix(String? auth, [String? invNo, dynamic data]) => _getStaffDisplayName(auth, invNo, data);
 
   Future<void> _fetchStats() async {
     try {
@@ -215,6 +276,7 @@ class _BillingScreenState extends State<BillingScreen> {
           _totalInvoices = stats['total']!;
           _totalPaid = stats['paid']!;
           _totalPending = stats['pending']!;
+          _totalPendingInvoices = stats['pendingInvoices'] ?? stats['pending']!;
         });
       }
     } catch (_) {}
@@ -1424,7 +1486,7 @@ class _BillingScreenState extends State<BillingScreen> {
           final cName = b.clientName?.toLowerCase() ?? '';
           final invNo = b.invoiceNo?.toLowerCase() ?? '';
           final amt = b.amount?.toLowerCase() ?? '';
-          final staffStr = _getFullAuthorityName(b.authorities, b.invoiceNo).toLowerCase();
+          final staffStr = _getFullAuthorityName(b.authorities, b.invoiceNo, b.data).toLowerCase();
           final dataStr = b.data?.toString().toLowerCase() ?? '';
           return cName.contains(query) || invNo.contains(query) || amt.contains(query) || staffStr.contains(query) || dataStr.contains(query);
         }).toList();
@@ -1457,10 +1519,53 @@ class _BillingScreenState extends State<BillingScreen> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Wrap(spacing: 8, runSpacing: 4, children: [
-                      _statBadge('$_totalInvoices Total', Colors.blue),
-                      _statBadge('$_totalPaid Paid', Colors.green),
-                      _statBadge('$_totalPending Pending', Colors.orange),
+                    Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                      _statBadge(
+                        '$_totalInvoices Total',
+                        Colors.blue,
+                        isSelected: _statusFilter == 'All' && _typeFilter == 'All',
+                        onTap: () {
+                          setState(() {
+                            _statusFilter = 'All';
+                            _typeFilter = 'All';
+                          });
+                          _fetchBillings(refresh: true);
+                        },
+                      ),
+                      _statBadge(
+                        '$_totalPaid Paid',
+                        Colors.green,
+                        isSelected: _statusFilter == 'Paid' && _typeFilter == 'Invoice',
+                        onTap: () {
+                          setState(() {
+                            if (_statusFilter == 'Paid' && _typeFilter == 'Invoice') {
+                              _statusFilter = 'All';
+                              _typeFilter = 'All';
+                            } else {
+                              _statusFilter = 'Paid';
+                              _typeFilter = 'Invoice';
+                            }
+                          });
+                          _fetchBillings(refresh: true);
+                        },
+                      ),
+                      _statBadge(
+                        '$_totalPendingInvoices Pending Invoices',
+                        Colors.orange,
+                        isSelected: (_statusFilter == 'Pending' || _statusFilter == 'Pending Invoices') && _typeFilter == 'Invoice',
+                        onTap: () {
+                          setState(() {
+                            if ((_statusFilter == 'Pending' || _statusFilter == 'Pending Invoices') && _typeFilter == 'Invoice') {
+                              _statusFilter = 'All';
+                              _typeFilter = 'All';
+                            } else {
+                              _statusFilter = 'Pending';
+                              _typeFilter = 'Invoice';
+                            }
+                          });
+                          _fetchBillings(refresh: true);
+                        },
+                      ),
                       if (_billings.any((b) => b.data?['edit_request']?['status'] == 'PENDING'))
                         InkWell(
                           onTap: _showPendingRequestsListDialog,
@@ -1489,6 +1594,42 @@ class _BillingScreenState extends State<BillingScreen> {
                   ]),
                     Expanded(child: Wrap(alignment: WrapAlignment.end, crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 8, children: [
                       ElevatedButton.icon(
+                        icon: Icon(
+                          (_statusFilter == 'Pending' || _statusFilter == 'Pending Invoices') && _typeFilter == 'Invoice'
+                              ? Icons.filter_alt_rounded
+                              : Icons.pending_actions_rounded,
+                          size: 18,
+                        ),
+                        label: Text(
+                          (_statusFilter == 'Pending' || _statusFilter == 'Pending Invoices') && _typeFilter == 'Invoice'
+                              ? 'Pending Invoices (Active)'
+                              : 'Pending Invoices',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: (_statusFilter == 'Pending' || _statusFilter == 'Pending Invoices') && _typeFilter == 'Invoice'
+                              ? Colors.orange.shade700
+                              : Colors.orange.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: (_statusFilter == 'Pending' || _statusFilter == 'Pending Invoices') && _typeFilter == 'Invoice' ? 3 : 1,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            if ((_statusFilter == 'Pending' || _statusFilter == 'Pending Invoices') && _typeFilter == 'Invoice') {
+                              _statusFilter = 'All';
+                              _typeFilter = 'All';
+                            } else {
+                              _statusFilter = 'Pending';
+                              _typeFilter = 'Invoice';
+                            }
+                          });
+                          _fetchBillings(refresh: true);
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
                         icon: const Icon(Icons.sync_rounded, size: 18),
                         label: const Text('Sync Old Bills'),
                         style: ElevatedButton.styleFrom(
@@ -1512,9 +1653,9 @@ class _BillingScreenState extends State<BillingScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: () async {
-                          _msg('Importing missing billings...', true);
+                          _msg('Importing missing & updated billings...', true);
                           await SupabaseBackupService().importMissingBillings();
-                          _msg('Import complete.', true);
+                          _msg('Sync complete.', true);
                           _fetchBillings(refresh: true);
                         },
                       ),
@@ -1527,10 +1668,17 @@ class _BillingScreenState extends State<BillingScreen> {
                           child: DropdownButton<String>(
                             value: _typeFilter,
                             icon: const Icon(Icons.filter_alt_outlined, size: 20, color: Colors.indigo),
-                            items: ['All', 'Invoice', 'Quotation'].map((s) => DropdownMenuItem(value: s, child: Text(s == 'All' ? 'All Types' : s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
+                            items: ['All', 'Invoice', 'Pending Invoice', 'Quotation'].map((s) => DropdownMenuItem(value: s, child: Text(s == 'All' ? 'All Types' : s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
                             onChanged: (v) {
                               if (v != null) {
-                                setState(() => _typeFilter = v);
+                                setState(() {
+                                  if (v == 'Pending Invoice') {
+                                    _typeFilter = 'Invoice';
+                                    _statusFilter = 'Pending';
+                                  } else {
+                                    _typeFilter = v;
+                                  }
+                                });
                                 _fetchBillings(refresh: true);
                               }
                             },
@@ -1544,12 +1692,19 @@ class _BillingScreenState extends State<BillingScreen> {
                         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: _statusFilter,
+                            value: (_statusFilter == 'Pending Invoices') ? 'Pending Invoices' : _statusFilter,
                             icon: const Icon(Icons.fact_check_outlined, size: 20, color: Colors.teal),
-                            items: ['All', 'Paid', 'Pending', 'Overdue', 'Interested', 'Not Interested'].map((s) => DropdownMenuItem(value: s, child: Text(s == 'All' ? 'All Statuses' : s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
+                            items: ['All', 'Pending Invoices', 'Paid', 'Pending', 'Overdue', 'Interested', 'Not Interested'].map((s) => DropdownMenuItem(value: s, child: Text(s == 'All' ? 'All Statuses' : s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
                             onChanged: (v) {
                               if (v != null) {
-                                setState(() => _statusFilter = v);
+                                setState(() {
+                                  if (v == 'Pending Invoices') {
+                                    _statusFilter = 'Pending Invoices';
+                                    _typeFilter = 'Invoice';
+                                  } else {
+                                    _statusFilter = v;
+                                  }
+                                });
                                 _fetchBillings(refresh: true);
                               }
                             },
@@ -1642,10 +1797,53 @@ class _BillingScreenState extends State<BillingScreen> {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Wrap(spacing: 8, runSpacing: 4, children: [
-                  _statBadge('$_totalInvoices Total', Colors.blue),
-                  _statBadge('$_totalPaid Paid', Colors.green),
-                  _statBadge('$_totalPending Pending', Colors.orange),
+                Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  _statBadge(
+                    '$_totalInvoices Total',
+                    Colors.blue,
+                    isSelected: _statusFilter == 'All' && _typeFilter == 'All',
+                    onTap: () {
+                      setState(() {
+                        _statusFilter = 'All';
+                        _typeFilter = 'All';
+                      });
+                      _fetchBillings(refresh: true);
+                    },
+                  ),
+                  _statBadge(
+                    '$_totalPaid Paid',
+                    Colors.green,
+                    isSelected: _statusFilter == 'Paid' && _typeFilter == 'Invoice',
+                    onTap: () {
+                      setState(() {
+                        if (_statusFilter == 'Paid' && _typeFilter == 'Invoice') {
+                          _statusFilter = 'All';
+                          _typeFilter = 'All';
+                        } else {
+                          _statusFilter = 'Paid';
+                          _typeFilter = 'Invoice';
+                        }
+                      });
+                      _fetchBillings(refresh: true);
+                    },
+                  ),
+                  _statBadge(
+                    '$_totalPendingInvoices Pending Invoices',
+                    Colors.orange,
+                    isSelected: (_statusFilter == 'Pending' || _statusFilter == 'Pending Invoices') && _typeFilter == 'Invoice',
+                    onTap: () {
+                      setState(() {
+                        if ((_statusFilter == 'Pending' || _statusFilter == 'Pending Invoices') && _typeFilter == 'Invoice') {
+                          _statusFilter = 'All';
+                          _typeFilter = 'All';
+                        } else {
+                          _statusFilter = 'Pending';
+                          _typeFilter = 'Invoice';
+                        }
+                      });
+                      _fetchBillings(refresh: true);
+                    },
+                  ),
                   if (_billings.any((b) => b.data?['edit_request']?['status'] == 'PENDING'))
                     InkWell(
                       onTap: _showPendingRequestsListDialog,
@@ -1684,12 +1882,19 @@ class _BillingScreenState extends State<BillingScreen> {
                       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
-                          value: _statusFilter,
+                          value: (_statusFilter == 'Pending Invoices') ? 'Pending Invoices' : _statusFilter,
                           isExpanded: true,
-                          items: ['All', 'Paid', 'Pending', 'Overdue', 'Interested', 'Not Interested'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
+                          items: ['All', 'Pending Invoices', 'Paid', 'Pending', 'Overdue', 'Interested', 'Not Interested'].map((s) => DropdownMenuItem(value: s, child: Text(s == 'All' ? 'All Statuses' : s, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))).toList(),
                           onChanged: (v) {
                             if (v != null) {
-                              setState(() => _statusFilter = v);
+                              setState(() {
+                                if (v == 'Pending Invoices') {
+                                  _statusFilter = 'Pending Invoices';
+                                  _typeFilter = 'Invoice';
+                                } else {
+                                  _statusFilter = v;
+                                }
+                              });
                               _fetchBillings(refresh: true);
                             }
                           },
@@ -1778,9 +1983,22 @@ class _BillingScreenState extends State<BillingScreen> {
           // List
           Expanded(child: _isLoading ? const Center(child: CircularProgressIndicator())
             : filtered.isEmpty ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.receipt_long_rounded, size: 80, color: Colors.grey.shade200),
+                Icon(
+                  ((_statusFilter == 'Pending' || _statusFilter == 'Pending Invoices') && _typeFilter == 'Invoice')
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.receipt_long_rounded,
+                  size: 80,
+                  color: ((_statusFilter == 'Pending' || _statusFilter == 'Pending Invoices') && _typeFilter == 'Invoice')
+                      ? Colors.green.shade200
+                      : Colors.grey.shade200,
+                ),
                 const SizedBox(height: 16),
-                Text('No records found', style: TextStyle(color: Colors.grey.shade400, fontSize: 18, fontWeight: FontWeight.w500)),
+                Text(
+                  ((_statusFilter == 'Pending' || _statusFilter == 'Pending Invoices') && _typeFilter == 'Invoice')
+                      ? 'No pending invoices! All invoices are settled.'
+                      : 'No records found',
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w500),
+                ),
               ]))
             : Card(
                 margin: EdgeInsets.zero,
@@ -1814,10 +2032,41 @@ class _BillingScreenState extends State<BillingScreen> {
   )));
 }
 
-  Widget _statBadge(String text, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
-    child: Text(text, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 12, fontWeight: FontWeight.w700)),
+  Widget _statBadge(String text, Color color, {bool isSelected = false, VoidCallback? onTap}) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(20),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: isSelected ? color : color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected ? color : color.withValues(alpha: 0.25),
+          width: isSelected ? 1.5 : 1,
+        ),
+        boxShadow: isSelected
+            ? [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 6, offset: const Offset(0, 2))]
+            : null,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isSelected) ...[
+            const Icon(Icons.check_rounded, size: 14, color: Colors.white),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              color: isSelected ? Colors.white : color.withValues(alpha: 0.9),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    ),
   );
 
   Widget _actionBtn(IconData icon, String tooltip, Color color, VoidCallback onTap) => Tooltip(
@@ -1844,7 +2093,7 @@ class _BillingScreenState extends State<BillingScreen> {
       } catch (_) {}
     }
     final typeColor = b.type == 'QUOTATION' ? Colors.purple : const Color(0xFF2563EB);
-    final staffName = _getStaffDisplayName(b.authorities, b.invoiceNo);
+    final staffName = _getStaffDisplayName(b.authorities, b.invoiceNo, b.data);
     
     final innerContent = isWide 
       ? Row(children: [
@@ -1939,7 +2188,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 Icon(Icons.badge_outlined, size: 12, color: Colors.grey.shade600),
                 const SizedBox(width: 4),
                 Text(
-                  'Issued by: ${_getFullAuthorityName(b.authorities, b.invoiceNo)}',
+                  'Issued by: ${_getFullAuthorityName(b.authorities, b.invoiceNo, b.data)}',
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
                 ),
               ],
@@ -2105,7 +2354,7 @@ class _BillingScreenState extends State<BillingScreen> {
               Icon(Icons.badge_outlined, size: 11, color: Colors.grey.shade600),
               const SizedBox(width: 4),
               Text(
-                'By: ${_getFullAuthorityName(b.authorities, b.invoiceNo)}',
+                'By: ${_getFullAuthorityName(b.authorities, b.invoiceNo, b.data)}',
                 style: TextStyle(fontSize: 10.5, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
               ),
             ],
@@ -2495,19 +2744,22 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
 
   Future<void> _fetchStaffs() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentUserName = (prefs.getString('user_name') ?? _currentUserName).trim();
+      final isCurrentUserAdmin = _isAdmin || currentUserName.toLowerCase() == 'admin';
+
       final users = await DealService().getAllUsers();
       final List<String> fetchedStaffs = users
           .map((u) => u['name'].toString())
           .where((name) {
-            final lower = name.toLowerCase();
+            final lower = name.toLowerCase().trim();
+            // Don't include admin in staff dropdown unless the current logged in user is admin
+            if (lower == 'admin' && !isCurrentUserAdmin) return false;
             return !lower.contains('master admin') && 
                    !lower.contains('jayan') && 
                    !lower.contains('midhun');
           })
           .toList();
-      
-      final prefs = await SharedPreferences.getInstance();
-      final currentUserName = prefs.getString('user_name') ?? '';
 
       setState(() {
         _staffs = fetchedStaffs.map((name) {
@@ -2522,21 +2774,51 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           return n;
         }).toSet().toList();
 
+        if (isCurrentUserAdmin && !_staffs.any((s) => s.toLowerCase() == 'admin')) {
+          _staffs.add('Admin');
+        }
+
         if (widget.billing == null && _authorities.isEmpty) {
-          final matchKey = _BillingScreenState.staffMapping.keys.firstWhere(
-            (k) => currentUserName.toLowerCase().contains(k.toLowerCase()) || k.toLowerCase().contains(currentUserName.toLowerCase()),
-            orElse: () => ''
-          );
-          if (matchKey.isNotEmpty) {
-            final matchedStaff = _staffs.firstWhere(
-              (s) => s.toLowerCase().contains(matchKey.toLowerCase()),
+          // 1. First attempt: direct match of current user against _staffs
+          String matched = '';
+          if (currentUserName.isNotEmpty) {
+            matched = _staffs.firstWhere(
+              (s) {
+                final sName = s.contains('-') ? s.split('-').last.trim().toLowerCase() : s.toLowerCase();
+                final uName = currentUserName.toLowerCase();
+                return sName == uName || sName.contains(uName) || uName.contains(sName);
+              },
+              orElse: () => '',
+            );
+          }
+
+          // 2. Second attempt: match via staffMapping keys
+          if (matched.isEmpty && currentUserName.isNotEmpty) {
+            final matchKey = _BillingScreenState.staffMapping.keys.firstWhere(
+              (k) => currentUserName.toLowerCase().contains(k.toLowerCase()) || k.toLowerCase().contains(currentUserName.toLowerCase()),
               orElse: () => ''
             );
-            if (matchedStaff.isNotEmpty) {
-              _authorities = matchedStaff;
-            } else if (_staffs.isNotEmpty) {
-              _authorities = _staffs.first;
+            if (matchKey.isNotEmpty) {
+              matched = _staffs.firstWhere(
+                (s) => s.toLowerCase().contains(matchKey.toLowerCase()),
+                orElse: () => '${_BillingScreenState.staffMapping[matchKey]} - $matchKey',
+              );
             }
+          }
+
+          if (matched.isNotEmpty) {
+            if (!_staffs.contains(matched)) _staffs.add(matched);
+            _authorities = matched;
+          } else if (currentUserName.isNotEmpty && !isCurrentUserAdmin) {
+            final matchKey = _BillingScreenState.staffMapping.keys.firstWhere(
+              (k) => currentUserName.toLowerCase().contains(k.toLowerCase()) || k.toLowerCase().contains(currentUserName.toLowerCase()),
+              orElse: () => ''
+            );
+            final formatted = matchKey.isNotEmpty 
+                ? '${_BillingScreenState.staffMapping[matchKey]} - $matchKey' 
+                : currentUserName;
+            if (!_staffs.contains(formatted)) _staffs.add(formatted);
+            _authorities = formatted;
           } else if (_staffs.isNotEmpty) {
             _authorities = _staffs.first;
           }
@@ -2725,6 +3007,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final currentUserName = prefs.getString('user_name') ?? (_currentUserName.isNotEmpty ? _currentUserName : 'Unknown User');
+      final isCurrentUserAdmin = _isAdmin || currentUserName.toLowerCase() == 'admin';
 
       String? discountBy = widget.billing?.data?['discount_given_by'];
       final currentDiscountText = widget.billing?.data?['discount']?.toString() ?? '';
@@ -2747,6 +3030,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         'approved_amount': _approvedAmount.text,
         'discount': _discount.text,
         'workfile_id': _selectedDealId,
+        'created_by': widget.billing?.data?['created_by'] ?? (currentUserName.isNotEmpty ? currentUserName : 'Unknown User'),
         if (discountBy != null) 'discount_given_by': discountBy,
         'payment_received': (NumberToWords.parseCurrency(_advanceReceived.text) > 0 && NumberToWords.parseCurrency(_advanceReceived.text) >= NumberToWords.parseCurrency(_grandTotal.isEmpty ? _totalAmount : _grandTotal)) || (widget.billing?.data?['payment_received'] == true), 
         'payment_date': widget.billing?.data?['payment_date'],
@@ -2768,6 +3052,11 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
         d['marked_paid_by'] = currentUserName;
       }
       
+      String saveAuth = _authorities.trim();
+      if (saveAuth.isEmpty) {
+        saveAuth = currentUserName.isNotEmpty && !isCurrentUserAdmin ? currentUserName : 'Admin';
+      }
+
       dynamic savedId;
       if (widget.billing == null || widget.billing!.id == null) { 
         final nextId = await _billingService.getNextBillingId();
@@ -2779,7 +3068,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           amount: _totalAmount,
           type: _type,
           category: _category,
-          authorities: _authorities,
+          authorities: saveAuth,
           status: _status,
           data: jsonEncode(d),
         );
@@ -2803,7 +3092,7 @@ class _InvoiceCreatorPageState extends State<InvoiceCreatorPage> {
           amount: _totalAmount,
           type: _type,
           category: _category,
-          authorities: _authorities,
+          authorities: saveAuth,
           status: _status,
           created_at: widget.billing?.createdAt,
           data: jsonEncode(d),

@@ -15,7 +15,12 @@ import '../models/OfficeLocations.dart';
 import '../models/ModelProvider.dart';
 import 'supabase_backup_service.dart';
 
+// Top-level unawaited helper
+void unawaited(Future<void>? future) {}
+
 class CompanyVaultService {
+  // Instance unawaited helper
+  void unawaited(Future<void>? future) {}
   static const String _storageKey = 'cuc_our_office_vault_data_v1';
   static const String _vaultOfficeId = 'cuc_our_office_vault_singleton';
 

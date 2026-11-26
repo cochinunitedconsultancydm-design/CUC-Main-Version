@@ -24,6 +24,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import '../widgets/premium_app_bar.dart';
 import '../widgets/compact_date_range_picker.dart';
+import '../services/razorpay_service.dart';
 import '../services/supabase_backup_service.dart';
 import '../services/meta_service.dart';
 class BillingScreen extends StatefulWidget {
@@ -774,8 +775,332 @@ class _BillingScreenState extends State<BillingScreen> {
     _openCreator(converted);
   }
 
+  double _getPayableAmount(Billing b) {
+    try {
+      final grandTotal = double.tryParse(b.amount?.replaceAll(',', '').trim() ?? '0') ?? 0;
+      final previouslyReceived = double.tryParse(b.data?['received_amount']?.toString().replaceAll(',', '').trim() ?? '0') ?? 0;
+      final discount = double.tryParse(b.data?['discount']?.toString().replaceAll(',', '').trim() ?? '0') ?? 0;
+      final balance = grandTotal - previouslyReceived - discount;
+      if (balance > 0) return balance;
+      return grandTotal;
+    } catch (_) {
+      return double.tryParse(b.amount?.replaceAll(',', '').trim() ?? '0') ?? 0;
+    }
+  }
+
+  Future<void> _showRazorpayPaymentLinkDialog(Billing b) async {
+    if (b.clientName == null || b.clientName!.isEmpty) {
+      _msg('Client name is required to generate payment link.', false);
+      return;
+    }
+
+    String phone = await _billingService.getClientPhone(b.clientName!) ?? '';
+    if (phone.isEmpty && b.data != null && b.data?['client_phone'] != null) {
+      phone = b.data!['client_phone'].toString();
+    }
+
+    double payableAmt = _getPayableAmount(b);
+    if (payableAmt <= 0) {
+      payableAmt = double.tryParse(b.amount?.replaceAll(',', '').trim() ?? '0') ?? 0;
+    }
+
+    final amountController = TextEditingController(text: payableAmt > 0 ? payableAmt.toStringAsFixed(0) : '');
+    final phoneController = TextEditingController(text: phone);
+    String existingLink = b.data?['razorpay_payment_link']?.toString() ?? '';
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        bool isGenerating = false;
+        String? generatedUrl = existingLink.isNotEmpty ? existingLink : null;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              backgroundColor: Colors.white,
+              child: Container(
+                width: 480,
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0C2340).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.payment_rounded, color: Color(0xFF0C2340), size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Razorpay Payment Link', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0C2340))),
+                              Text('Send instant online payment link via WhatsApp', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('INVOICE / BILL', style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 2),
+                                Text(b.invoiceNo ?? 'N/A', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B))),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('CLIENT', style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 2),
+                                Text(b.clientName ?? 'N/A', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: amountController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Payment Amount (₹)',
+                        prefixIcon: const Icon(Icons.currency_rupee_rounded, size: 20),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Client WhatsApp Phone Number',
+                        prefixIcon: const Icon(Icons.phone_iphone_rounded, size: 20),
+                        hintText: 'e.g. 9876543210',
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    if (generatedUrl != null && generatedUrl.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.link_rounded, color: Colors.green, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: SelectableText(
+                                generatedUrl,
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.green.shade900),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.copy_rounded, size: 18, color: Colors.green),
+                              tooltip: 'Copy Link',
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: generatedUrl));
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment link copied to clipboard!'), duration: Duration(seconds: 2)));
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: isGenerating ? null : () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 10),
+                        ElevatedButton.icon(
+                          onPressed: isGenerating ? null : () async {
+                            final enteredAmount = double.tryParse(amountController.text.replaceAll(',', '').trim()) ?? 0;
+                            final enteredPhone = phoneController.text.trim();
+
+                            if (enteredAmount <= 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid amount'), backgroundColor: Colors.red));
+                              return;
+                            }
+                            if (enteredPhone.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter client WhatsApp number'), backgroundColor: Colors.red));
+                              return;
+                            }
+
+                            setModalState(() => isGenerating = true);
+
+                            try {
+                              final linkResult = await RazorpayService().createPaymentLink(
+                                amount: enteredAmount,
+                                invoiceNo: b.invoiceNo ?? 'INV',
+                                clientName: b.clientName ?? 'Valued Client',
+                                clientPhone: enteredPhone,
+                                billingId: b.id,
+                              );
+
+                              final updatedData = Map<String, dynamic>.from(b.data ?? {});
+                              updatedData['razorpay_payment_link'] = linkResult.shortUrl;
+                              updatedData['razorpay_link_id'] = linkResult.id;
+                              await _billingService.updateBilling(b.id, {'data': updatedData});
+
+                              final amtFormatted = NumberToWords.formatIndianCurrency(linkResult.amount).replaceAll('/-', '');
+                              final message = "*Cochin United Consultancy*\n"
+                                  "Payment Request for Invoice: *${b.invoiceNo ?? ''}*\n\n"
+                                  "Dear *${b.clientName ?? 'Client'}*,\n"
+                                  "Please use the secure link below to complete your payment of *₹$amtFormatted*:\n\n"
+                                  "🔗 *Payment Link:* ${linkResult.shortUrl}\n\n"
+                                  "Accepted Payment Modes:\n"
+                                  "✅ UPI (Google Pay, PhonePe, Paytm, BHIM)\n"
+                                  "✅ Debit / Credit Cards\n"
+                                  "✅ Net Banking\n\n"
+                                  "Thank you for choosing Cochin United Consultancy!";
+
+                              await WhatsAppCloudService.launchWhatsAppApp(
+                                phone: enteredPhone,
+                                message: message,
+                              );
+
+                              await Clipboard.setData(ClipboardData(text: linkResult.shortUrl));
+
+                              await LoggingService().logAction(
+                                action: 'PAYMENT_LINK_SENT',
+                                targetType: 'Invoice',
+                                targetId: b.invoiceNo ?? b.id ?? '',
+                                details: 'Sent Razorpay payment link of ₹${linkResult.amount} for ${b.invoiceNo} to $enteredPhone',
+                              );
+
+                              if (mounted) {
+                                Navigator.pop(context);
+                                _msg('Payment link generated & opened in WhatsApp!', true);
+                                _fetchBillings();
+                              }
+                            } catch (e) {
+                              setModalState(() => isGenerating = false);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red));
+                              }
+                            }
+                          },
+                          icon: isGenerating
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : const Icon(Icons.send_rounded, size: 18),
+                          label: Text(isGenerating ? 'Generating Link...' : 'Send on WhatsApp'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF25D366),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _shareViaWhatsApp(Billing b) async {
     if (b.clientName == null || b.clientName!.isEmpty) return;
+
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.chat_rounded, color: Colors.green),
+            SizedBox(width: 10),
+            Text('Share via WhatsApp', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Choose an option to send to ${b.clientName}:', style: const TextStyle(fontSize: 13, color: Colors.black87)),
+            const SizedBox(height: 16),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.payment_rounded, color: Color(0xFF0284C7)),
+              ),
+              title: const Text('Razorpay Payment Link', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              subtitle: const Text('Generate online payment link & send on WhatsApp', style: TextStyle(fontSize: 12)),
+              onTap: () => Navigator.pop(ctx, 'payment_link'),
+            ),
+            const Divider(),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.receipt_long_rounded, color: Colors.green),
+              ),
+              title: const Text('Invoice Summary Message', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              subtitle: const Text('Send invoice details & attached note', style: TextStyle(fontSize: 12)),
+              onTap: () => Navigator.pop(ctx, 'invoice_summary'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        ],
+      ),
+    );
+
+    if (choice == 'payment_link') {
+      await _showRazorpayPaymentLinkDialog(b);
+      return;
+    } else if (choice != 'invoice_summary') {
+      return;
+    }
+
     try {
       final phone = await _billingService.getClientPhone(b.clientName!);
       if (phone == null || phone.isEmpty) {
@@ -2248,7 +2573,7 @@ class _BillingScreenState extends State<BillingScreen> {
           ),
           const SizedBox(width: 12),
           SizedBox(
-            width: 410,
+            width: 450,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -2258,6 +2583,7 @@ class _BillingScreenState extends State<BillingScreen> {
                   tooltip: 'Download / Print PDF',
                 ),
                 IconButton(onPressed: () => _shareViaWhatsApp(b), icon: const Icon(Icons.chat_rounded, color: Colors.green), tooltip: 'Share via WhatsApp'),
+                if (!isPaid) IconButton(onPressed: () => _showRazorpayPaymentLinkDialog(b), icon: const Icon(Icons.payment_rounded, color: Color(0xFF0284C7)), tooltip: 'Send Razorpay Payment Link (WhatsApp)'),
                 if (!isPaid && b.type != 'QUOTATION') IconButton(onPressed: () => _markPaid(b), icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.green), tooltip: 'Mark Paid'),
                 if (!isPaid) IconButton(onPressed: () => _setPaymentDeadlineDialog(context, b), icon: const Icon(Icons.schedule_rounded, color: Colors.redAccent), tooltip: 'Set Deadline'),
                 if (isPaid) IconButton(onPressed: () => _generateReceipt(b), icon: const Icon(Icons.receipt_rounded, color: Colors.teal), tooltip: 'Generate Receipt'),
@@ -2378,6 +2704,7 @@ class _BillingScreenState extends State<BillingScreen> {
                     children: [
                       IconButton(onPressed: () => _downloadInvoice(b), icon: const Icon(Icons.download_rounded, color: Color(0xFF2563EB), size: 20), tooltip: 'Download / Print PDF', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       IconButton(onPressed: () => _shareViaWhatsApp(b), icon: const Icon(Icons.chat_rounded, color: Colors.green, size: 20), tooltip: 'WhatsApp', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
+                      if (!isPaid) IconButton(onPressed: () => _showRazorpayPaymentLinkDialog(b), icon: const Icon(Icons.payment_rounded, color: Color(0xFF0284C7), size: 20), tooltip: 'Payment Link', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       if (!isPaid && b.type != 'QUOTATION') IconButton(onPressed: () => _markPaid(b), icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 20), tooltip: 'Mark Paid', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       if (!isPaid) IconButton(onPressed: () => _setPaymentDeadlineDialog(context, b), icon: const Icon(Icons.schedule_rounded, color: Colors.redAccent, size: 20), tooltip: 'Set Deadline', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       if (isPaid) IconButton(onPressed: () => _generateReceipt(b), icon: const Icon(Icons.receipt_rounded, color: Colors.teal, size: 20), tooltip: 'Receipt', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),

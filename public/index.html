@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cochin United Consultancy - Razorpay Standard Checkout</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Razorpay Standard Checkout SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    :root {
+      --primary: #0C2340;
+      --primary-accent: #2563EB;
+      --success: #16A34A;
+      --danger: #DC2626;
+      --warning: #D97706;
+      --bg: #F8FAFC;
+      --card-bg: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --text-muted: #64748B;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      background: var(--card-bg);
+      border-radius: 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #0C2340 0%, #1E3A8A 100%);
+      padding: 28px 24px;
+      color: white;
+      text-align: center;
+      position: relative;
+    }
+
+    .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 52px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 14px;
+      margin-bottom: 12px;
+      font-weight: 800;
+      font-size: 20px;
+      color: #FCD34D;
+      letter-spacing: 1px;
+    }
+
+    .header h1 {
+      font-size: 19px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .header p {
+      font-size: 13px;
+      color: #93C5FD;
+    }
+
+    .body-content {
+      padding: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .currency-symbol {
+      position: absolute;
+      left: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    input {
+      width: 100%;
+      padding: 11px 14px;
+      font-size: 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      background: #F8FAFC;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--primary-accent);
+      background: #FFFFFF;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .with-currency {
+      padding-left: 32px;
+      font-weight: 700;
+      font-size: 16px;
+      color: #1E293B;
+    }
+
+    .pay-btn {
+      width: 100%;
+      padding: 14px;
+      background: #2563EB;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+      margin-top: 20px;
+    }
+
+    .pay-btn:hover {
+      background: #1D4ED8;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .pay-btn:active {
+      transform: translateY(0);
+    }
+
+    .pay-btn:disabled {
+      background: #94A3B8;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Status Notifications */
+    .status-card {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .status-card.success {
+      display: block;
+      background: #ECFDF5;
+      border: 1px solid #A7F3D0;
+      color: #065F46;
+    }
+
+    .status-card.error {
+      display: block;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      color: #991B1B;
+    }
+
+    .status-card.warning {
+      display: block;
+      background: #FFFBEB;
+      border: 1px solid #FDE68A;
+      color: #92400E;
+    }
+
+    .status-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-detail {
+      font-size: 12px;
+      word-break: break-all;
+      margin-top: 4px;
+      font-family: monospace;
+    }
+
+    .badges {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 18px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .badge-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo-badge">CUC</div>
+      <h1>Cochin United Consultancy</h1>
+      <p>Razorpay Standard Web Checkout</p>
+    </div>
+
+    <div class="body-content">
+      <form id="checkout-form">
+        <div class="form-group">
+          <label for="invoiceNo">Invoice / Reference No.</label>
+          <input type="text" id="invoiceNo" value="INV-2026-001" placeholder="e.g. INV-1001" required>
+        </div>
+
+        <div class="form-group">
+          <label for="clientName">Customer Full Name</label>
+          <input type="text" id="clientName" value="Rahul Menon" placeholder="e.g. John Doe" required>
+        </div>
+
+        <div class="form-group">
+          <label for="clientEmail">Email Address</label>
+          <input type="email" id="clientEmail" value="client@cuc.local" placeholder="client@example.com">
+        </div>
+
+        <div class="form-group">
+          <label for="clientPhone">WhatsApp / Mobile Number</label>
+          <input type="tel" id="clientPhone" value="9876543210" placeholder="10-digit mobile number" required>
+        </div>
+
+        <div class="form-group">
+          <label for="amount">Payment Amount (₹)</label>
+          <div class="input-wrapper">
+            <span class="currency-symbol">₹</span>
+            <input type="number" id="amount" class="with-currency" value="500" min="1" step="any" required>
+          </div>
+        </div>
+
+        <button type="submit" id="payButton" class="pay-btn">
+          <span id="btnText">Pay with Razorpay</span>
+        </button>
+      </form>
+
+      <!-- Status Notification Box -->
+      <div id="statusBox" class="status-card">
+        <div id="statusTitle" class="status-title"></div>
+        <div id="statusMessage"></div>
+        <div id="statusDetail" class="status-detail"></div>
+      </div>
+
+      <div class="badges">
+        <div class="badge-item">🔒 256-Bit SSL Encrypted</div>
+        <div class="badge-item">⚡ Instant Verification</div>
+        <div class="badge-item">UPI • Cards • NetBanking</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('checkout-form');
+    const payBtn = document.getElementById('payButton');
+    const btnText = document.getElementById('btnText');
+    const statusBox = document.getElementById('statusBox');
+    const statusTitle = document.getElementById('statusTitle');
+    const statusMessage = document.getElementById('statusMessage');
+    const statusDetail = document.getElementById('statusDetail');
+
+    function showStatus(type, title, message, detail = '') {
+      statusBox.className = `status-card ${type}`;
+      statusTitle.innerHTML = title;
+      statusMessage.textContent = message;
+      statusDetail.textContent = detail;
+    }
+
+    function setLoading(isLoading) {
+      payBtn.disabled = isLoading;
+      if (isLoading) {
+        btnText.innerHTML = '<span class="spinner"></span> Processing Order...';
+      } else {
+        btnText.textContent = 'Pay with Razorpay';
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusBox.style.display = 'none';
+
+      const amountVal = parseFloat(document.getElementById('amount').value);
+      const invoiceNo = document.getElementById('invoiceNo').value.trim();
+      const clientName = document.getElementById('clientName').value.trim();
+      const clientEmail = document.getElementById('clientEmail').value.trim();
+      const clientPhone = document.getElementById('clientPhone').value.trim();
+
+      if (isNaN(amountVal) || amountVal < 1) {
+        showStatus('error', '⚠️ Invalid Amount', 'Amount must be at least ₹1.00');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        // STEP 1: Call Backend to Create Razorpay Order (amount in paise)
+        const amountInPaise = Math.round(amountVal * 100);
+        const orderResponse = await fetch('/api/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: amountInPaise,
+            currency: 'INR',
+            receipt: `rcpt_${invoiceNo}`,
+            notes: {
+              invoice_no: invoiceNo,
+              client_name: clientName,
+              company: 'Cochin United Consultancy'
+            }
+          })
+        });
+
+        const orderData = await orderResponse.json();
+
+        if (!orderResponse.ok || !orderData.order_id) {
+          throw new Error(orderData.error || 'Failed to create order on server');
+        }
+
+        console.log('Order created successfully:', orderData);
+
+        // STEP 2: Configure Razorpay Standard Checkout Options
+        const options = {
+          key: orderData.key_id,
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: 'Cochin United Consultancy',
+          description: `Payment for Invoice #${invoiceNo}`,
+          image: 'https://cdn.razorpay.com/static/assets/logo/rzp.png',
+          order_id: orderData.order_id,
+          prefill: {
+            name: clientName,
+            email: clientEmail,
+            contact: clientPhone ? `+91${clientPhone.replace(/^(\+91|0)/, '')}` : ''
+          },
+          theme: {
+            color: '#0C2340'
+          },
+          // Success Handler: Trigger Signature Verification on Backend
+          handler: async function (response) {
+            console.log('Payment completed on Razorpay modal. Verifying signature...', response);
+            setLoading(true);
+
+            try {
+              // STEP 3: Verify Payment Signature on Backend
+              const verifyResponse = await fetch('/api/verify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature
+                })
+              });
+
+              const verifyData = await verifyResponse.json();
+
+              if (verifyResponse.ok && verifyData.status === 'success') {
+                showStatus(
+                  'success',
+                  '✅ Payment Successful & Verified!',
+                  'Your payment has been verified by the backend server.',
+                  `Payment ID: ${response.razorpay_payment_id}\nOrder ID: ${response.razorpay_order_id}`
+                );
+              } else {
+                showStatus(
+                  'error',
+                  '❌ Verification Failed',
+                  verifyData.error || 'Payment signature could not be verified by backend.',
+                  `Payment ID: ${response.razorpay_payment_id}`
+                );
+              }
+            } catch (vErr) {
+              showStatus('error', '⚠️ Network Error', `Could not verify payment: ${vErr.message}`);
+            } finally {
+              setLoading(false);
+            }
+          },
+          // Modal cancellation handler
+          modal: {
+            ondismiss: function () {
+              console.warn('Checkout modal closed by user without completing payment.');
+              showStatus('warning', 'ℹ️ Checkout Cancelled', 'You dismissed the payment window without completing the transaction.');
+              setLoading(false);
+            }
+          }
+        };
+
+        const rzp = new Razorpay(options);
+
+        // Handle payment failure event
+        rzp.on('payment.failed', function (failResponse) {
+          console.error('Payment failed event:', failResponse.error);
+          showStatus(
+            'error',
+            '❌ Payment Failed',
+            failResponse.error.description || 'Transaction was declined.',
+            `Code: ${failResponse.error.code} | Reason: ${failResponse.error.reason}`
+          );
+          setLoading(false);
+        });
+
+        // Open Razorpay Standard Checkout Modal
+        rzp.open();
+        setLoading(false);
+
+      } catch (err) {
+        console.error('Checkout error:', err);
+        showStatus('error', '⚠️ Error', err.message || 'An unexpected error occurred.');
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>

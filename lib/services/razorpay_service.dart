@@ -2,6 +2,29 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+class RazorpayOrder {
+  final String orderId;
+  final int amount;
+  final String currency;
+  final String keyId;
+
+  RazorpayOrder({
+    required this.orderId,
+    required this.amount,
+    required this.currency,
+    required this.keyId,
+  });
+
+  factory RazorpayOrder.fromJson(Map<String, dynamic> json) {
+    return RazorpayOrder(
+      orderId: json['order_id']?.toString() ?? '',
+      amount: (json['amount'] as num?)?.toInt() ?? 0,
+      currency: json['currency']?.toString() ?? 'INR',
+      keyId: json['key_id']?.toString() ?? '',
+    );
+  }
+}
+
 class RazorpayPaymentLink {
   final String id;
   final String shortUrl;
@@ -33,8 +56,8 @@ class RazorpayService {
   factory RazorpayService() => _instance;
   RazorpayService._internal();
 
-  static const String keyId = 'rzp_test_U4g76ID5dKIyBc';
-  static const String keySecret = '7rn9h8sDCaFoSHNLOFf8h4uA';
+  static const String keyId = 'rzp_test_U4jLB7rZ20MRyi';
+  static const String keySecret = 'Onz58XhC0gc5193jPIKbbgm2';
   static const String _baseUrl = 'https://api.razorpay.com/v1';
 
   String get _basicAuthHeader {
@@ -130,5 +153,69 @@ class RazorpayService {
       } catch (_) {}
       throw Exception(errorMsg);
     }
+  }
+
+  static const String _backendBaseUrl = 'http://localhost:5000/api';
+
+  /// Create a Razorpay Order via backend (POST /api/create-order)
+  Future<RazorpayOrder> createOrder({
+    required double amount,
+    required String invoiceNo,
+    required String clientName,
+    String? clientPhone,
+    String? clientEmail,
+    String? billingId,
+  }) async {
+    final int amountInPaise = (amount * 100).round();
+    final url = Uri.parse('$_backendBaseUrl/create-order');
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'amount': amountInPaise,
+        'currency': 'INR',
+        'receipt': 'rcpt_$invoiceNo',
+        'notes': {
+          'invoice_no': invoiceNo,
+          'client_name': clientName,
+          'client_phone': clientPhone ?? '',
+          'billing_id': billingId ?? '',
+        },
+      }),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body);
+      return RazorpayOrder.fromJson(data);
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to create order on server');
+    }
+  }
+
+  /// Verify Payment Signature via backend (POST /api/verify-payment)
+  Future<bool> verifyPayment({
+    required String orderId,
+    required String paymentId,
+    required String signature,
+  }) async {
+    final url = Uri.parse('$_backendBaseUrl/verify-payment');
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'razorpay_order_id': orderId,
+        'razorpay_payment_id': paymentId,
+        'razorpay_signature': signature,
+      }),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body);
+      return data['status'] == 'success';
+    }
+    return false;
   }
 }

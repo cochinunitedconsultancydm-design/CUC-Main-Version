@@ -8,6 +8,8 @@
     "test": "test"
   },
   "scripts": {
+    "start": "node server.js",
+    "server": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -40,6 +42,10 @@
     "@aws-sdk/lib-dynamodb": "^3.1073.0",
     "@aws-sdk/protocol-http": "^3.370.0",
     "@aws-sdk/signature-v4": "^3.370.0",
-    "aws-amplify": "^6.18.0"
+    "aws-amplify": "^6.18.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "razorpay": "^2.9.8"
   }
 }

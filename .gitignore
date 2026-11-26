@@ -48,6 +48,10 @@ app.*.map.json
 # Ignore temporary files
 tmp/
 
+# Environment variables
+.env
+.env.*
+
 # amplify
 node_modules
 .amplify

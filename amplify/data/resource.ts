@@ -172,7 +172,7 @@ const schema = a.schema({
     target_id: a.string(),
     details: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager'])]),
+  }).authorization((allow) => [allow.owner(), allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create'])]),
   ClientLicenses: a.model({
     id: a.id().required(),
     client_id: a.integer(),

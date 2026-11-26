@@ -108,9 +108,27 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools);
       final uRes = await Amplify.API.query(request: uReq).response;
       if (uRes.hasErrors) {
-        _msg('GraphQL Errors: ${uRes.errors.map((e) => e.message).join(", ")}', false);
+        debugPrint('Staff Directory AppSync notice: ${uRes.errors.map((e) => e.message).join(", ")}');
       }
-      var usersResRaw = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
+      var usersResRaw = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList();
+
+      List<Map<String, dynamic>> rawSupabaseUsers = [];
+      try {
+        rawSupabaseUsers = await SupabaseBackupService().getFullUsersData();
+      } catch (sbErr) {
+        debugPrint('Supabase users fetch notice: $sbErr');
+      }
+
+      // If AppSync returned no users, fall back to Supabase mirror
+      if (usersResRaw.isEmpty && rawSupabaseUsers.isNotEmpty) {
+        usersResRaw = rawSupabaseUsers.map((su) => amplify_models.Users(
+          id: su['id']?.toString() ?? '',
+          name: su['name'],
+          username: su['username'],
+          email: su['email'],
+          role: su['role'],
+        )).toList();
+      }
 
       // Exclude staff members deleted locally or removed from Supabase
       final prefs = await SharedPreferences.getInstance();
@@ -119,18 +137,13 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           .toSet();
 
       Set<String>? activeSupabaseKeys;
-      try {
-        final supabaseUsers = await SupabaseBackupService().getFullUsersData();
-        if (supabaseUsers.isNotEmpty) {
-          activeSupabaseKeys = {};
-          for (var su in supabaseUsers) {
-            if (su['id'] != null) activeSupabaseKeys.add(su['id'].toString().toLowerCase().trim());
-            if (su['username'] != null) activeSupabaseKeys.add(su['username'].toString().toLowerCase().trim());
-            if (su['email'] != null) activeSupabaseKeys.add(su['email'].toString().toLowerCase().trim());
-          }
+      if (rawSupabaseUsers.isNotEmpty) {
+        activeSupabaseKeys = {};
+        for (var su in rawSupabaseUsers) {
+          if (su['id'] != null) activeSupabaseKeys.add(su['id'].toString().toLowerCase().trim());
+          if (su['username'] != null) activeSupabaseKeys.add(su['username'].toString().toLowerCase().trim());
+          if (su['email'] != null) activeSupabaseKeys.add(su['email'].toString().toLowerCase().trim());
         }
-      } catch (sbErr) {
-        debugPrint('Supabase users cross-reference notice: $sbErr');
       }
 
       usersResRaw.removeWhere((u) {

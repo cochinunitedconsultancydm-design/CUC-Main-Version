@@ -485,99 +485,11 @@ class Users extends amplify_core.Model {
     ));
     
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.CREATED_AT,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.LAST_SEEN,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: Users.EMAIL,
       isRequired: false,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
     ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.DESIGNATION,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.PERSONAL_PHONE,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.AADHAR_CARD,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.DRIVING_LICENSE,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.INSURANCE,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.EMERGENCY_CONTACT,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.OFFER_LETTER,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.DOB,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.SALARY,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.WORK_TIME,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.BLOOD_GROUP,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.WEDDING_ANNIVERSARY,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-    ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.PERSONAL_EMAIL,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.COMPANY_EMAIL,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: Users.COMPANY_PHONE,
-      isRequired: false,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.string)
-      ));
-// //     
+
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
       fieldName: 'createdAt',
       isRequired: false,

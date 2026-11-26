@@ -242,7 +242,7 @@ class _HrPerformanceScreenState extends State<HrPerformanceScreen> {
       final uReq = ModelQueries.list(amplify_models.Users.classType, limit: 10000, authorizationMode: APIAuthorizationType.userPools);
       final uRes = await Amplify.API.query(request: uReq).response;
       if (uRes.hasErrors) {
-        _msg('GraphQL Errors: ${uRes.errors.map((e) => e.message).join(", ")}', false);
+        debugPrint('HR Directory AppSync notice: ${uRes.errors.map((e) => e.message).join(", ")}');
       }
       var usersResRaw = (uRes.data?.items ?? []).whereType<amplify_models.Users>().toList() ?? [];
       

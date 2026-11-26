@@ -70,14 +70,6 @@ class AuthService {
         defaultRole = 'admin';
       }
 
-      // Only sign out if a previous session is still active
-      try {
-        final currentSession = await Amplify.Auth.fetchAuthSession().timeout(const Duration(seconds: 2));
-        if (currentSession.isSignedIn) {
-          await Amplify.Auth.signOut().timeout(const Duration(seconds: 3));
-        }
-      } catch (_) {}
-
       // SECURITY: Authenticate against AWS Cognito securely!
       SignInResult? signInResult;
       String successfulLoginEmail = candidateEmails.first;
@@ -89,7 +81,8 @@ class AuthService {
           final res = await Amplify.Auth.signIn(
             username: emailToTry,
             password: password,
-          ).timeout(const Duration(seconds: 12));
+          ).timeout(const Duration(seconds: 20));
+          debugPrint('Cognito signIn result: isSignedIn=${res.isSignedIn}, step=${res.nextStep.signInStep}');
           signInResult = res;
           successfulLoginEmail = emailToTry;
           break;
@@ -368,8 +361,21 @@ class AuthService {
   Future<void> logout({bool waitNetwork = false}) async {
     final prefs = await SharedPreferences.getInstance();
     final sessionIdStr = prefs.getString('${_sessionIdKey}_str');
-    final userName = prefs.getString(_userKey) ?? 'Unknown';
+    final userName = prefs.getString(_userKey);
     final userId = prefs.getInt(_userIdKey) ?? int.tryParse(prefs.getString('${_userIdKey}_str') ?? '') ?? 0;
+
+    // If no user was logged in, clean up local prefs and return immediately
+    if ((sessionIdStr == null || sessionIdStr.isEmpty) && userName == null && userId == 0) {
+      await prefs.remove(_tokenKey);
+      await prefs.remove(_userKey);
+      await prefs.remove(_roleKey);
+      await prefs.remove(_sessionIdKey);
+      await prefs.remove(_userIdKey);
+      await prefs.remove('${_sessionIdKey}_str');
+      await prefs.remove('${_userIdKey}_str');
+      await prefs.remove(SecurityService.lastActivityKey);
+      return;
+    }
 
     Future<void> performNetworkLogout() async {
       try {
@@ -399,14 +405,16 @@ class AuthService {
         }
       }
 
-      await LoggingService().logAction(
-        action: 'LOGOUT',
-        targetType: 'System',
-        targetId: userName,
-        details: 'User logged out',
-        userId: userId,
-        userName: userName,
-      );
+      if (userName != null && userName != 'Unknown' && userId > 0) {
+        await LoggingService().logAction(
+          action: 'LOGOUT',
+          targetType: 'System',
+          targetId: userName,
+          details: 'User logged out',
+          userId: userId,
+          userName: userName,
+        );
+      }
 
       try {
         await Amplify.Auth.signOut();

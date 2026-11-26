@@ -114,6 +114,11 @@ class SupabaseBackupService {
         cleanData['password'] = 'managed_by_cognito';
       }
 
+      // If user_id is 0 or '0', convert to null so it does not violate foreign key constraints in Supabase
+      if (cleanData.containsKey('user_id') && (cleanData['user_id'] == 0 || cleanData['user_id'] == '0')) {
+        cleanData['user_id'] = null;
+      }
+
       // Convert ID to int if it's a numeric string (Supabase uses int IDs for some tables)
       if (cleanData['id'] != null) {
         final idVal = int.tryParse(cleanData['id'].toString());

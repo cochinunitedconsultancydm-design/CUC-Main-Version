@@ -137,6 +137,12 @@ class _SopScreenState extends State<SopScreen> {
         try {
           final res = await Amplify.Storage.getUrl(
             path: StoragePath.fromString(path),
+            options: const StorageGetUrlOptions(
+              pluginOptions: S3GetUrlPluginOptions(
+                validateObjectExistence: false,
+                expiresIn: Duration(hours: 4),
+              ),
+            ),
           ).result;
           openUrl = res.url.toString();
         } catch (s3Error) {
@@ -946,157 +952,103 @@ class _SopScreenState extends State<SopScreen> {
                                                 ),
                                               );
                                             }),
-                                          Builder(
-                                            builder: (context) {
-                                              final pdfUrls = _getPdfUrls(sop);
-                                              if (pdfUrls.isNotEmpty) {
-                                                return Column(
-                                                  children: [
-                                                    ...pdfUrls.asMap().entries.map((entry) {
-                                                      final rawUrlOrKey = entry.value;
-                                                      String displayName = 'Document ' + (entry.key + 1).toString();
-                                                      if (rawUrlOrKey.contains('_')) {
-                                                        final parts = rawUrlOrKey.split('/').last.split('_');
-                                                        if (parts.length > 1) {
-                                                          displayName = parts.sublist(1).join('_');
-                                                        }
-                                                      } else if (rawUrlOrKey.contains('/')) {
-                                                        displayName = rawUrlOrKey.split('/').last;
-                                                      }
-                                                      if (displayName.contains('?')) {
-                                                        displayName = displayName.split('?').first;
-                                                      }
-
-                                                      return Container(
-                                                        margin: const EdgeInsets.only(left: 24, right: 24, bottom: 10),
-                                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.red.shade50.withValues(alpha: 0.6),
-                                                          borderRadius: BorderRadius.circular(12),
-                                                          border: Border.all(color: Colors.red.shade200),
-                                                        ),
-                                                        child: Row(
-                                                          children: [
-                                                            Container(
-                                                              padding: const EdgeInsets.all(8),
-                                                              decoration: BoxDecoration(
-                                                                color: Colors.red.shade100,
-                                                                borderRadius: BorderRadius.circular(8),
-                                                              ),
-                                                              child: Icon(Icons.picture_as_pdf_rounded, color: Colors.red.shade700, size: 24),
-                                                            ),
-                                                            const SizedBox(width: 14),
-                                                            Expanded(
-                                                              child: Column(
-                                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                                children: [
-                                                                  Text(
-                                                                    displayName,
-                                                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textColor),
-                                                                    maxLines: 1,
-                                                                    overflow: TextOverflow.ellipsis,
-                                                                  ),
-                                                                  const SizedBox(height: 2),
-                                                                  Text(
-                                                                    'Attached Reference Document',
-                                                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ),
-                                                            const SizedBox(width: 8),
-                                                            ElevatedButton.icon(
-                                                              onPressed: () => _openPdf(rawUrlOrKey),
-                                                              icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                                                              label: const Text('View / Open'),
-                                                              style: ElevatedButton.styleFrom(
-                                                                backgroundColor: Colors.red.shade700,
-                                                                foregroundColor: Colors.white,
-                                                                elevation: 0,
-                                                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                                              ),
-                                                            ),
-                                                            if (_isAdmin) ...[
-                                                              const SizedBox(width: 6),
-                                                              IconButton(
-                                                                icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade400, size: 20),
-                                                                tooltip: 'Remove Document',
-                                                                onPressed: () => _removePdfFromSop(sop, rawUrlOrKey),
-                                                              ),
-                                                            ],
-                                                          ],
-                                                        ),
-                                                      );
-                                                    }),
-                                                    if (_isAdmin)
-                                                      Container(
-                                                        alignment: Alignment.centerLeft,
-                                                        margin: const EdgeInsets.only(left: 24, right: 24, bottom: 12),
-                                                        child: TextButton.icon(
-                                                          onPressed: () => _quickAttachPdf(sop),
-                                                          icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                                                          label: const Text('Attach Another Document', style: TextStyle(fontWeight: FontWeight.w600)),
-                                                          style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
-                                                        ),
-                                                      ),
-                                                  ],
-                                                );
+                                          if (sop.pdf_url != null && sop.pdf_url!.isNotEmpty)
+                                            ..._parseJsonStringArray(sop.pdf_url).asMap().entries.map((entry) {
+                                              final rawUrlOrKey = entry.value;
+                                              String displayName = 'Document ${entry.key + 1}';
+                                              if (rawUrlOrKey.contains('_')) {
+                                                final parts = rawUrlOrKey.split('/').last.split('_');
+                                                if (parts.length > 1) {
+                                                  displayName = parts.sublist(1).join('_');
+                                                }
+                                              } else if (rawUrlOrKey.contains('/')) {
+                                                displayName = rawUrlOrKey.split('/').last;
+                                              }
+                                              if (displayName.contains('?')) {
+                                                displayName = displayName.split('?').first;
                                               }
 
                                               return Container(
-                                                margin: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
-                                                padding: const EdgeInsets.all(16),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.blue.shade50.withValues(alpha: 0.5),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  border: Border.all(color: Colors.blue.shade200),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Container(
-                                                      padding: const EdgeInsets.all(10),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.blue.shade100,
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                      child: Icon(Icons.picture_as_pdf_outlined, color: Colors.blue.shade800, size: 24),
+                                                margin: const EdgeInsets.only(left: 24, right: 24, bottom: 8),
+                                                child: ElevatedButton.icon(
+                                                  onPressed: () async {
+                                                    try {
+                                                      String openUrl = rawUrlOrKey;
+
+                                                      if (!rawUrlOrKey.startsWith('http://') && !rawUrlOrKey.startsWith('https://')) {
+                                                        final path = rawUrlOrKey.startsWith('public/') ? rawUrlOrKey : 'public/$rawUrlOrKey';
+                                                        final res = await Amplify.Storage.getUrl(
+                                                          path: StoragePath.fromString(path),
+                                                        ).result;
+                                                        openUrl = res.url.toString();
+                                                      } else if (rawUrlOrKey.contains('.amazonaws.com/')) {
+                                                        final uri = Uri.parse(rawUrlOrKey);
+                                                        String s3Path = uri.path;
+                                                        if (s3Path.startsWith('/')) s3Path = s3Path.substring(1);
+                                                        if (s3Path.contains('public/')) {
+                                                          s3Path = s3Path.substring(s3Path.indexOf('public/'));
+                                                        }
+                                                        final res = await Amplify.Storage.getUrl(
+                                                          path: StoragePath.fromString(s3Path),
+                                                        ).result;
+                                                        openUrl = res.url.toString();
+                                                      }
+
+                                                      final url = Uri.parse(openUrl);
+                                                      await launchUrl(url, mode: LaunchMode.externalApplication, webOnlyWindowName: '_blank');
+                                                    } catch (e) {
+                                                      debugPrint('Error opening PDF: $e');
+                                                      if (context.mounted) {
+                                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                                          content: Text('Error opening PDF: $e'),
+                                                          backgroundColor: Colors.red.shade800,
+                                                        ));
+                                                      }
+                                                    }
+                                                  },
+                                                  icon: const Icon(Icons.picture_as_pdf_rounded),
+                                                  label: Text('View Attached PDF: $displayName'),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: Colors.red.shade50,
+                                                    foregroundColor: Colors.red.shade700,
+                                                    elevation: 0,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      side: BorderSide(color: Colors.red.shade200),
                                                     ),
-                                                    const SizedBox(width: 16),
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: [
-                                                          Text(
-                                                            'No PDF document attached to this procedure',
-                                                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900, fontSize: 14),
-                                                          ),
-                                                          const SizedBox(height: 2),
-                                                          Text(
-                                                            'Attach a PDF or reference file for this procedure so team members can view and download it.',
-                                                            style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 12),
-                                                    ElevatedButton.icon(
-                                                      onPressed: () => _quickAttachPdf(sop),
-                                                      icon: const Icon(Icons.upload_file_rounded, size: 18),
-                                                      label: const Text('Attach PDF', style: TextStyle(fontWeight: FontWeight.bold)),
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: AppTheme.primaryColor,
-                                                        foregroundColor: Colors.white,
-                                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                                        elevation: 1,
-                                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                                      ),
-                                                    ),
-                                                  ],
+                                                  ),
                                                 ),
                                               );
-                                            },
-                                          ),
+                                            })
+                                          else
+                                            Container(
+                                              margin: const EdgeInsets.only(left: 24, right: 24, bottom: 12),
+                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade50,
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(color: Colors.grey.shade200),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.info_outline, size: 18, color: Colors.grey.shade600),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      'No PDF currently attached to this procedure.',
+                                                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                                                    ),
+                                                  ),
+                                                  if (_isAdmin)
+                                                    TextButton.icon(
+                                                      onPressed: () => _showAddEditSopDialog(sop),
+                                                      icon: const Icon(Icons.attach_file_rounded, size: 16),
+                                                      label: const Text('Attach PDF', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                                      style: TextButton.styleFrom(foregroundColor: Colors.blue.shade700),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
                                           const SizedBox(height: 16),
                                       ],
                                     ),

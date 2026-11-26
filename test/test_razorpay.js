@@ -5,7 +5,7 @@ async function runTests() {
   console.log('🧪 Starting Razorpay Standard Web Checkout tests...\n');
 
   // Test 1: Test signature verification math
-  const secret = 'Onz58XhC0gc5193jPIKbbgm2';
+  const secret = process.env.RAZORPAY_KEY_SECRET || 'efiFExSfMvkFivwMKpdSi2Tz';
   const orderId = 'order_test_123456';
   const paymentId = 'pay_test_789012';
   const expectedSig = crypto

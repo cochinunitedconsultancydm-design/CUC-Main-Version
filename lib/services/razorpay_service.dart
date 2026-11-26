@@ -56,8 +56,8 @@ class RazorpayService {
   factory RazorpayService() => _instance;
   RazorpayService._internal();
 
-  static const String keyId = 'rzp_test_U4jLB7rZ20MRyi';
-  static const String keySecret = 'Onz58XhC0gc5193jPIKbbgm2';
+  static const String keyId = 'rzp_live_U4lCR99bYHAmr9';
+  static const String keySecret = 'efiFExSfMvkFivwMKpdSi2Tz';
   static const String _baseUrl = 'https://api.razorpay.com/v1';
 
   String get _basicAuthHeader {

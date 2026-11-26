@@ -1,9 +1,9 @@
 const amplifyConfig = '''{
   "auth": {
-    "user_pool_id": "ap-south-1_B6hwTTY9V",
+    "user_pool_id": "ap-south-1_nPbNyXUnX",
     "aws_region": "ap-south-1",
-    "user_pool_client_id": "ne0j4s5aeipjj4po8sf2h57o6",
-    "identity_pool_id": "ap-south-1:bfe2bca5-8438-4c13-9b77-51ed504f9127",
+    "user_pool_client_id": "15fjocunv8ej67qbv1cb7gsq02",
+    "identity_pool_id": "ap-south-1:a2b2af0d-d48b-4bf7-a7e0-33f5ac1a7541",
     "mfa_methods": [],
     "standard_required_attributes": [
       "email"
@@ -26,7 +26,7 @@ const amplifyConfig = '''{
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://qipvsr4renaa3a7gua6mo7pvge.appsync-api.ap-south-1.amazonaws.com/graphql",
+    "url": "https://qz4fcne5d5eszmucr5o4hhkizi.appsync-api.ap-south-1.amazonaws.com/graphql",
     "aws_region": "ap-south-1",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": [
@@ -117,22 +117,11 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
                       "read"
                     ]
                   }
@@ -235,22 +224,11 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
                       "read"
                     ]
                   }
@@ -325,22 +303,11 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
                       "read"
                     ]
                   }
@@ -464,38 +431,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "provider": "userPools",
-                    "ownerField": "owner",
-                    "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin"
-                    ],
-                    "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
-                  },
-                  {
                     "allow": "private",
                     "operations": [
-                      "read",
                       "create",
                       "update",
-                      "delete"
+                      "delete",
+                      "read"
                     ]
                   }
                 ]
@@ -618,27 +559,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -747,22 +673,11 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
                       "read"
                     ]
                   }
@@ -858,22 +773,11 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
                       "read"
                     ]
                   }
@@ -995,36 +899,6 @@ const amplifyConfig = '''{
               "isRequired": false,
               "attributes": []
             },
-            "registration_number": {
-              "name": "registration_number",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "bank_account_details": {
-              "name": "bank_account_details",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "companies": {
-              "name": "companies",
-              "isArray": true,
-              "type": "String",
-              "isRequired": false,
-              "attributes": [],
-              "isArrayNullable": true
-            },
-            "custom_fields": {
-              "name": "custom_fields",
-              "isArray": true,
-              "type": "String",
-              "isRequired": false,
-              "attributes": [],
-              "isArrayNullable": true
-            },
             "createdAt": {
               "name": "createdAt",
               "isArray": false,
@@ -1062,27 +936,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -1219,179 +1078,11 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
-                    ]
-                  }
-                ]
-              }
-            }
-          ],
-          "primaryKeyInfo": {
-            "isCustomPrimaryKey": false,
-            "primaryKeyFieldName": "id",
-            "sortKeyFieldNames": []
-          }
-        },
-        "OfficeLocations": {
-          "name": "OfficeLocations",
-          "fields": {
-            "id": {
-              "name": "id",
-              "isArray": false,
-              "type": "ID",
-              "isRequired": true,
-              "attributes": []
-            },
-            "name": {
-              "name": "name",
-              "isArray": false,
-              "type": "String",
-              "isRequired": true,
-              "attributes": []
-            },
-            "place": {
-              "name": "place",
-              "isArray": false,
-              "type": "String",
-              "isRequired": true,
-              "attributes": []
-            },
-            "location_link": {
-              "name": "location_link",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "office_phone_numbers": {
-              "name": "office_phone_numbers",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "front_view_photo": {
-              "name": "front_view_photo",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "designation_boards_photos": {
-              "name": "designation_boards_photos",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "notice_boards_photos": {
-              "name": "notice_boards_photos",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "officers_contacts": {
-              "name": "officers_contacts",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "other_photos": {
-              "name": "other_photos",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "created_at": {
-              "name": "created_at",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "updated_at": {
-              "name": "updated_at",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "createdAt": {
-              "name": "createdAt",
-              "isArray": false,
-              "type": "AWSDateTime",
-              "isRequired": false,
-              "attributes": [],
-              "isReadOnly": true
-            },
-            "updatedAt": {
-              "name": "updatedAt",
-              "isArray": false,
-              "type": "AWSDateTime",
-              "isRequired": false,
-              "attributes": [],
-              "isReadOnly": true
-            }
-          },
-          "syncable": true,
-          "pluralName": "OfficeLocations",
-          "attributes": [
-            {
-              "type": "model",
-              "properties": {}
-            },
-            {
-              "type": "key",
-              "properties": {
-                "fields": [
-                  "id"
-                ]
-              }
-            },
-            {
-              "type": "auth",
-              "properties": {
-                "rules": [
-                  {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin"
-                    ],
-                    "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
                       "read"
                     ]
                   }
@@ -1522,22 +1213,11 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
                       "read"
                     ]
                   }
@@ -1633,27 +1313,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -1734,25 +1399,7 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "provider": "userPools",
-                    "ownerField": "owner",
-                    "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
@@ -1845,22 +1492,11 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
                       "read"
                     ]
                   }
@@ -1963,27 +1599,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -2085,25 +1706,7 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "provider": "userPools",
-                    "ownerField": "owner",
-                    "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
@@ -2238,27 +1841,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -2353,27 +1941,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -2399,7 +1972,7 @@ const amplifyConfig = '''{
             "deal_id": {
               "name": "deal_id",
               "isArray": false,
-              "type": "String",
+              "type": "Int",
               "isRequired": false,
               "attributes": []
             },
@@ -2489,27 +2062,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -2639,27 +2197,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -3099,27 +2642,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -3207,35 +2735,11 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "provider": "userPools",
-                    "ownerField": "owner",
-                    "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
-                    "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
-                  },
-                  {
                     "allow": "private",
                     "operations": [
+                      "create",
+                      "update",
+                      "delete",
                       "read"
                     ]
                   }
@@ -3359,27 +2863,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -3453,27 +2942,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -3687,36 +3161,11 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "provider": "userPools",
-                    "ownerField": "owner",
-                    "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager",
-                      "HR"
-                    ],
-                    "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
-                  },
-                  {
                     "allow": "private",
                     "operations": [
+                      "create",
+                      "update",
+                      "delete",
                       "read"
                     ]
                   }
@@ -3826,27 +3275,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -3962,36 +3396,11 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "provider": "userPools",
-                    "ownerField": "owner",
-                    "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
-                  },
-                  {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager",
-                      "HR"
-                    ],
-                    "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
-                  },
-                  {
                     "allow": "private",
                     "operations": [
+                      "create",
+                      "update",
+                      "delete",
                       "read"
                     ]
                   }
@@ -4122,27 +3531,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -4230,27 +3624,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -4366,27 +3745,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -4637,27 +4001,12 @@ const amplifyConfig = '''{
               "properties": {
                 "rules": [
                   {
-                    "groupClaim": "cognito:groups",
-                    "provider": "userPools",
-                    "allow": "groups",
-                    "groups": [
-                      "Admin",
-                      "Manager"
-                    ],
+                    "allow": "private",
                     "operations": [
                       "create",
                       "update",
                       "delete",
                       "read"
-                    ]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
                     ]
                   }
                 ]
@@ -4677,11 +4026,11 @@ const amplifyConfig = '''{
   },
   "storage": {
     "aws_region": "ap-south-1",
-    "bucket_name": "amplify-d3aqx1amhf34pb-ma-clientfilesbucket5d3f5cb-il4lwz7l1rus",
+    "bucket_name": "amplify-d2vemu3lyp451b-ma-clientfilesbucket5d3f5cb-jrikjkvthbom",
     "buckets": [
       {
         "name": "clientFiles",
-        "bucket_name": "amplify-d3aqx1amhf34pb-ma-clientfilesbucket5d3f5cb-il4lwz7l1rus",
+        "bucket_name": "amplify-d2vemu3lyp451b-ma-clientfilesbucket5d3f5cb-jrikjkvthbom",
         "aws_region": "ap-south-1",
         "paths": {
           "public/*": {
@@ -4704,8 +4053,5 @@ const amplifyConfig = '''{
       }
     ]
   },
-  "version": "1.4",
-  "custom": {
-    "metaWebhookUrl": "https://sef5hsxguvjdi64fm3s7ysschm0aommo.lambda-url.ap-south-1.on.aws/"
-  }
+  "version": "1.4"
 }''';

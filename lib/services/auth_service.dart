@@ -18,12 +18,16 @@ class AuthService {
   static const String _sessionIdKey = 'session_id';
   static const String _userIdKey = 'current_user_id';
 
+  String? lastLoginError;
+
   final SecurityService _security = SecurityService();
 
   Future<bool> login(String username, String password) async {
+    lastLoginError = null;
     try {
       final lockMessage = _security.checkRateLimit(username);
       if (lockMessage != null) {
+        lastLoginError = lockMessage;
         debugPrint('Login blocked: $lockMessage');
         return false;
       }
@@ -66,12 +70,13 @@ class AuthService {
         defaultRole = 'admin';
       }
 
-      // Clear any stale Cognito session before attempting new sign-in
+      // Only sign out if a previous session is still active
       try {
-        await Amplify.Auth.signOut();
-      } catch (e) {
-        // Ignore
-      }
+        final currentSession = await Amplify.Auth.fetchAuthSession().timeout(const Duration(seconds: 2));
+        if (currentSession.isSignedIn) {
+          await Amplify.Auth.signOut().timeout(const Duration(seconds: 3));
+        }
+      } catch (_) {}
 
       // SECURITY: Authenticate against AWS Cognito securely!
       SignInResult? signInResult;
@@ -84,16 +89,23 @@ class AuthService {
           final res = await Amplify.Auth.signIn(
             username: emailToTry,
             password: password,
-          );
+          ).timeout(const Duration(seconds: 12));
           signInResult = res;
           successfulLoginEmail = emailToTry;
           break;
         } catch (err) {
           lastError = err;
           debugPrint('Cognito signIn attempt failed for $emailToTry: $err');
-          try {
-            await Amplify.Auth.signOut();
-          } catch (_) {}
+          final errStr = err.toString();
+          if (errStr.contains('Incorrect username or password') || errStr.contains('NotAuthorizedException')) {
+            lastLoginError = 'Incorrect username or password.';
+          } else if (errStr.contains('UserNotFoundException') || errStr.contains('User does not exist')) {
+            lastLoginError = 'User account does not exist in Cognito.';
+          } else if (errStr.contains('TimeoutException')) {
+            lastLoginError = 'Login request timed out. Please check your network connection.';
+          } else {
+            lastLoginError = 'Login failed: $err';
+          }
         }
       }
 

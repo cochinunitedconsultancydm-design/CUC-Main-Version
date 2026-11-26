@@ -84,11 +84,13 @@ Future<void> main() async {
   // Wire up desktop notification toast support
   NotificationService.scaffoldMessengerKey = _scaffoldMessengerKey;
 
-  // Start embedded Meta Webhook Server for inbound WhatsApp & Lead automation
-  try {
-    MetaWebhookServer().startServer(port: 8088);
-  } catch (e) {
-    debugPrint('Meta Webhook Server startup note: $e');
+  // Start embedded Meta Webhook Server for inbound WhatsApp & Lead automation (Desktop only)
+  if (!kIsWeb) {
+    try {
+      MetaWebhookServer().startServer(port: 8088);
+    } catch (e) {
+      debugPrint('Meta Webhook Server startup note: $e');
+    }
   }
 
   // Force login on every startup to track time accurately

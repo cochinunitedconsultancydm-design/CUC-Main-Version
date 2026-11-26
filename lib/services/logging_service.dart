@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ModelProvider.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
+import 'supabase_backup_service.dart';
 
 class LoggingService {
   static final LoggingService _instance = LoggingService._internal();
@@ -47,7 +48,14 @@ class LoggingService {
         details: finalDetails,
         created_at: DateTime.now().toIso8601String(),
       );
-      await BackupAwareApi().create(logEntry);
+      try {
+        await BackupAwareApi().create(logEntry);
+      } catch (e) {
+        // AppSync requires active authentication; during logout or pre-auth, fall back to direct Supabase backup
+        try {
+          await SupabaseBackupService().backupRecord('ActivityLogs', logEntry.toJson());
+        } catch (_) {}
+      }
     } catch (e) {
       debugPrint('Logging error: $e');
     }

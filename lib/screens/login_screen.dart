@@ -108,11 +108,12 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           // Check if now locked after this attempt
           final lockMsg = _auth.getRateLimitMessage(_userController.text.trim());
+          final displayError = _auth.lastLoginError ?? lockMsg ?? 'Login failed. Please check your credentials.';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(lockMsg ?? 'Login failed. Please check your credentials.'),
+              content: Text(displayError),
               backgroundColor: lockMsg != null ? Colors.orange : Colors.redAccent,
-              duration: Duration(seconds: lockMsg != null ? 5 : 3),
+              duration: Duration(seconds: lockMsg != null ? 5 : 4),
             ),
           );
         }

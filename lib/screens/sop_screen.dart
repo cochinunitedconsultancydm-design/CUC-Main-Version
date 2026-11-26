@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../services/supabase_backup_service.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -41,8 +42,12 @@ class _SopScreenState extends State<SopScreen> {
   }
 
   Future<void> _checkAdminRole() async {
-    final isAdmin = await AuthService().isAdmin();
-    if (mounted) setState(() => _isAdmin = isAdmin);
+    final auth = AuthService();
+    final isAdmin = await auth.isAdmin();
+    final isManager = await auth.isManager();
+    final role = await auth.getUserRole();
+    final canManage = isAdmin || isManager || role == 'hr' || role == 'admin' || role == 'manager';
+    if (mounted) setState(() => _isAdmin = canManage);
   }
 
   @override
@@ -149,7 +154,7 @@ class _SopScreenState extends State<SopScreen> {
     final contentController = TextEditingController(text: sop?.details);
     bool isSaving = false;
     List<String> uploadedPdfUrls = _parseJsonStringArray(sop?.pdf_url);
-    List<File> newPdfs = [];
+    List<PlatformFile> newPdfs = [];
     List<String> selectedCaseIds = _parseJsonStringArray(sop?.previous_case_id);
 
     showDialog(
@@ -270,13 +275,12 @@ class _SopScreenState extends State<SopScreen> {
                           type: FileType.custom,
                           allowedExtensions: ['pdf'],
                           allowMultiple: true,
+                          withData: true,
                         );
                         if (result != null) {
                           setDialogState(() {
                             for (var file in result.files) {
-                              if (file.path != null) {
-                                newPdfs.add(File(file.path!));
-                              }
+                              newPdfs.add(file);
                             }
                           });
                         }
@@ -306,7 +310,7 @@ class _SopScreenState extends State<SopScreen> {
                           return ListTile(
                             dense: true,
                             leading: const Icon(Icons.upload_file, color: Colors.green),
-                            title: Text(entry.value.path.split(Platform.pathSeparator).last, style: const TextStyle(fontSize: 12)),
+                            title: Text(entry.value.name, style: const TextStyle(fontSize: 12)),
                             trailing: IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red, size: 18),
                               onPressed: () => setDialogState(() => newPdfs.removeAt(entry.key)),
@@ -337,24 +341,36 @@ class _SopScreenState extends State<SopScreen> {
                                   try {
                                     for (var file in newPdfs) {
                                       try {
-                                        final s3Key = 'sops/${UUID.getUUID()}.pdf';
-                                        await Amplify.Storage.uploadFile(
-                                          localFile: AWSFile.fromPath(file.path),
-                                          path: StoragePath.fromString('public/$s3Key'),
-                                        ).result;
-        try {
-          final bytes = await File(file.path).readAsBytes();
-          SupabaseBackupService().backupFileInBackground('public/$s3Key', bytes);
-        } catch (_) {}
+                                        final cleanName = file.name.replaceAll(' ', '_').replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '');
+                                        final s3Key = 'public/sops/${UUID.getUUID()}_$cleanName';
                                         
-                                        final urlResult = await Amplify.Storage.getUrl(
-                                          path: StoragePath.fromString('public/$s3Key'),
+                                        AWSFile localFile;
+                                        if (file.bytes != null) {
+                                          localFile = AWSFile.fromData(file.bytes!);
+                                        } else if (!kIsWeb && file.path != null) {
+                                          localFile = AWSFile.fromPath(file.path!);
+                                        } else {
+                                          continue;
+                                        }
+
+                                        await Amplify.Storage.uploadFile(
+                                          localFile: localFile,
+                                          path: StoragePath.fromString(s3Key),
                                         ).result;
-                                        uploadedPdfUrls.add(urlResult.url.toString());
+
+                                        try {
+                                          final bytes = file.bytes ?? (!kIsWeb && file.path != null ? await File(file.path!).readAsBytes() : null);
+                                          if (bytes != null) {
+                                            SupabaseBackupService().backupFileInBackground(s3Key, bytes);
+                                          }
+                                        } catch (_) {}
+                                        
+                                        uploadedPdfUrls.add(s3Key);
                                       } catch (e) {
+                                        debugPrint('Failed to upload PDF: $e');
                                         if (mounted) {
                                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                            content: Text('Failed to upload PDF: $e'),
+                                            content: Text('Failed to upload PDF "${file.name}": $e'),
                                             backgroundColor: Colors.red.shade800,
                                           ));
                                         }
@@ -725,17 +741,60 @@ class _SopScreenState extends State<SopScreen> {
                                             }),
                                           if (sop.pdf_url != null && sop.pdf_url!.isNotEmpty)
                                             ..._parseJsonStringArray(sop.pdf_url).asMap().entries.map((entry) {
+                                              final rawUrlOrKey = entry.value;
+                                              String displayName = 'Document ${entry.key + 1}';
+                                              if (rawUrlOrKey.contains('_')) {
+                                                final parts = rawUrlOrKey.split('/').last.split('_');
+                                                if (parts.length > 1) {
+                                                  displayName = parts.sublist(1).join('_');
+                                                }
+                                              } else if (rawUrlOrKey.contains('/')) {
+                                                displayName = rawUrlOrKey.split('/').last;
+                                              }
+                                              if (displayName.contains('?')) {
+                                                displayName = displayName.split('?').first;
+                                              }
+
                                               return Container(
                                                 margin: const EdgeInsets.only(left: 24, right: 24, bottom: 8),
                                                 child: ElevatedButton.icon(
                                                   onPressed: () async {
-                                                    final url = Uri.parse(entry.value);
-                                                    if (await canLaunchUrl(url)) {
-                                                      await launchUrl(url);
+                                                    try {
+                                                      String openUrl = rawUrlOrKey;
+
+                                                      if (!rawUrlOrKey.startsWith('http://') && !rawUrlOrKey.startsWith('https://')) {
+                                                        final path = rawUrlOrKey.startsWith('public/') ? rawUrlOrKey : 'public/$rawUrlOrKey';
+                                                        final res = await Amplify.Storage.getUrl(
+                                                          path: StoragePath.fromString(path),
+                                                        ).result;
+                                                        openUrl = res.url.toString();
+                                                      } else if (rawUrlOrKey.contains('.amazonaws.com/')) {
+                                                        final uri = Uri.parse(rawUrlOrKey);
+                                                        String s3Path = uri.path;
+                                                        if (s3Path.startsWith('/')) s3Path = s3Path.substring(1);
+                                                        if (s3Path.contains('public/')) {
+                                                          s3Path = s3Path.substring(s3Path.indexOf('public/'));
+                                                        }
+                                                        final res = await Amplify.Storage.getUrl(
+                                                          path: StoragePath.fromString(s3Path),
+                                                        ).result;
+                                                        openUrl = res.url.toString();
+                                                      }
+
+                                                      final url = Uri.parse(openUrl);
+                                                      await launchUrl(url, mode: LaunchMode.externalApplication, webOnlyWindowName: '_blank');
+                                                    } catch (e) {
+                                                      debugPrint('Error opening PDF: $e');
+                                                      if (context.mounted) {
+                                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                                          content: Text('Error opening PDF: $e'),
+                                                          backgroundColor: Colors.red.shade800,
+                                                        ));
+                                                      }
                                                     }
                                                   },
                                                   icon: const Icon(Icons.picture_as_pdf_rounded),
-                                                  label: Text('View Attached PDF ${entry.key + 1}'),
+                                                  label: Text('View Attached PDF: $displayName'),
                                                   style: ElevatedButton.styleFrom(
                                                     backgroundColor: Colors.red.shade50,
                                                     foregroundColor: Colors.red.shade700,

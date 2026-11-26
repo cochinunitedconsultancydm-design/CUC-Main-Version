@@ -826,6 +826,7 @@ class _BillingScreenState extends State<BillingScreen> {
       context: context,
       builder: (dialogCtx) {
         bool isGenerating = false;
+        bool autoSendViaHook = true;
         String? generatedUrl = existingLink.isNotEmpty ? existingLink : null;
 
         return StatefulBuilder(
@@ -924,6 +925,69 @@ class _BillingScreenState extends State<BillingScreen> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () => setModalState(() => autoSendViaHook = !autoSendViaHook),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: autoSendViaHook ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: autoSendViaHook ? const Color(0xFF86EFAC) : Colors.grey.shade300,
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: autoSendViaHook ? const Color(0xFFDCFCE7) : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                autoSendViaHook ? Icons.bolt_rounded : Icons.chat_bubble_outline_rounded,
+                                color: autoSendViaHook ? const Color(0xFF16A34A) : Colors.grey.shade700,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    autoSendViaHook ? 'Auto-Send via WhatsApp Hook (API)' : 'Open via WhatsApp App (wa.me)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12.5,
+                                      color: autoSendViaHook ? const Color(0xFF15803D) : const Color(0xFF334155),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    autoSendViaHook
+                                        ? 'Dispatches directly to client in background via Meta API'
+                                        : 'Opens WhatsApp desktop/web app with pre-filled message',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      color: autoSendViaHook ? const Color(0xFF166534) : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: autoSendViaHook,
+                              activeColor: const Color(0xFF16A34A),
+                              onChanged: (val) => setModalState(() => autoSendViaHook = val),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     if (generatedUrl != null && generatedUrl.isNotEmpty) ...[
                       const SizedBox(height: 14),
                       Container(
@@ -951,6 +1015,25 @@ class _BillingScreenState extends State<BillingScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment link copied to clipboard!'), duration: Duration(seconds: 2)));
                               },
                             ),
+                            IconButton(
+                              icon: const Icon(Icons.open_in_new_rounded, size: 18, color: Colors.green),
+                              tooltip: 'Open in WhatsApp App',
+                              onPressed: () async {
+                                final enteredPhone = phoneController.text.trim();
+                                final amtFormatted = amountController.text.trim();
+                                final message = "*Cochin United Consultancy*\n"
+                                    "Payment Request for Invoice: *${b.invoiceNo ?? ''}*\n\n"
+                                    "Dear *${b.clientName ?? 'Client'}*,\n"
+                                    "Please use the secure link below to complete your payment of *₹$amtFormatted*:\n\n"
+                                    "🔗 *Payment Link:* $generatedUrl\n\n"
+                                    "Accepted Payment Modes:\n"
+                                    "✅ UPI (Google Pay, PhonePe, Paytm, BHIM)\n"
+                                    "✅ Debit / Credit Cards\n"
+                                    "✅ Net Banking\n\n"
+                                    "Thank you for choosing Cochin United Consultancy!";
+                                await WhatsAppCloudService.launchWhatsAppApp(phone: enteredPhone, message: message);
+                              },
+                            ),
                           ],
                         ),
                       ),
@@ -963,7 +1046,35 @@ class _BillingScreenState extends State<BillingScreen> {
                           onPressed: isGenerating ? null : () => Navigator.pop(context),
                           child: const Text('Cancel'),
                         ),
-                        const SizedBox(width: 10),
+                        if (generatedUrl != null && generatedUrl.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: isGenerating ? null : () async {
+                              final enteredPhone = phoneController.text.trim();
+                              final amtFormatted = amountController.text.trim();
+                              final message = "*Cochin United Consultancy*\n"
+                                  "Payment Request for Invoice: *${b.invoiceNo ?? ''}*\n\n"
+                                  "Dear *${b.clientName ?? 'Client'}*,\n"
+                                  "Please use the secure link below to complete your payment of *₹$amtFormatted*:\n\n"
+                                  "🔗 *Payment Link:* $generatedUrl\n\n"
+                                  "Accepted Payment Modes:\n"
+                                  "✅ UPI (Google Pay, PhonePe, Paytm, BHIM)\n"
+                                  "✅ Debit / Credit Cards\n"
+                                  "✅ Net Banking\n\n"
+                                  "Thank you for choosing Cochin United Consultancy!";
+                              await WhatsAppCloudService.launchWhatsAppApp(phone: enteredPhone, message: message);
+                            },
+                            icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                            label: const Text('Open App'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF334155),
+                              side: BorderSide(color: Colors.grey.shade300),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 8),
                         ElevatedButton.icon(
                           onPressed: isGenerating ? null : () async {
                             final enteredAmount = double.tryParse(amountController.text.replaceAll(',', '').trim()) ?? 0;
@@ -1006,24 +1117,67 @@ class _BillingScreenState extends State<BillingScreen> {
                                   "✅ Net Banking\n\n"
                                   "Thank you for choosing Cochin United Consultancy!";
 
-                              await WhatsAppCloudService.launchWhatsAppApp(
-                                phone: enteredPhone,
-                                message: message,
-                              );
-
                               await Clipboard.setData(ClipboardData(text: linkResult.shortUrl));
 
-                              await LoggingService().logAction(
-                                action: 'PAYMENT_LINK_SENT',
-                                targetType: 'Invoice',
-                                targetId: b.invoiceNo ?? b.id ?? '',
-                                details: 'Sent Razorpay payment link of ₹${linkResult.amount} for ${b.invoiceNo} to $enteredPhone',
-                              );
+                              if (autoSendViaHook) {
+                                // Auto-send directly through WhatsApp Cloud API Hook
+                                final sendResult = await WhatsAppCloudService().sendMessage(
+                                  toPhone: enteredPhone,
+                                  message: message,
+                                );
 
-                              if (mounted) {
-                                Navigator.pop(context);
-                                _msg('Payment link generated & opened in WhatsApp!', true);
-                                _fetchBillings();
+                                if (sendResult.success) {
+                                  await LoggingService().logAction(
+                                    action: 'PAYMENT_LINK_SENT_VIA_HOOK',
+                                    targetType: 'Invoice',
+                                    targetId: b.invoiceNo ?? b.id ?? '',
+                                    details: 'Sent Razorpay payment link of ₹${linkResult.amount} for ${b.invoiceNo} automatically to $enteredPhone via WhatsApp Hook (Message ID: ${sendResult.messageId ?? "N/A"})',
+                                  );
+
+                                  if (mounted) {
+                                    Navigator.pop(context);
+                                    _msg('✅ Payment link automatically sent to $enteredPhone via WhatsApp Hook!', true);
+                                    _fetchBillings();
+                                  }
+                                } else {
+                                  // Graceful fallback to WhatsApp App
+                                  await LoggingService().logAction(
+                                    action: 'PAYMENT_LINK_HOOK_FALLBACK',
+                                    targetType: 'Invoice',
+                                    targetId: b.invoiceNo ?? b.id ?? '',
+                                    details: 'WhatsApp Hook note: ${sendResult.error}. Opening WhatsApp App fallback for $enteredPhone',
+                                  );
+
+                                  await WhatsAppCloudService.launchWhatsAppApp(
+                                    phone: enteredPhone,
+                                    message: message,
+                                  );
+
+                                  if (mounted) {
+                                    Navigator.pop(context);
+                                    _msg('WhatsApp Hook note (${sendResult.error}). Opened in WhatsApp App.', true);
+                                    _fetchBillings();
+                                  }
+                                }
+                              } else {
+                                // Manual send via WhatsApp App
+                                await WhatsAppCloudService.launchWhatsAppApp(
+                                  phone: enteredPhone,
+                                  message: message,
+                                );
+
+                                await LoggingService().logAction(
+                                  action: 'PAYMENT_LINK_SENT_APP',
+                                  targetType: 'Invoice',
+                                  targetId: b.invoiceNo ?? b.id ?? '',
+                                  details: 'Opened Razorpay payment link of ₹${linkResult.amount} in WhatsApp App for $enteredPhone',
+                                );
+
+                                if (mounted) {
+                                  Navigator.pop(context);
+                                  _msg('Payment link opened in WhatsApp App!', true);
+                                  _fetchBillings();
+                                }
                               }
                             } catch (e) {
                               setModalState(() => isGenerating = false);
@@ -1034,10 +1188,10 @@ class _BillingScreenState extends State<BillingScreen> {
                           },
                           icon: isGenerating
                               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Icon(Icons.send_rounded, size: 18),
-                          label: Text(isGenerating ? 'Generating Link...' : 'Send on WhatsApp'),
+                              : Icon(autoSendViaHook ? Icons.bolt_rounded : Icons.send_rounded, size: 18),
+                          label: Text(isGenerating ? 'Processing...' : (autoSendViaHook ? 'Auto-Send via Hook' : 'Open in WhatsApp')),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF25D366),
+                            backgroundColor: const Color(0xFF16A34A),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1121,12 +1275,30 @@ class _BillingScreenState extends State<BillingScreen> {
       }
       final typeStr = b.type == 'QUOTATION' ? 'Quotation' : 'Invoice';
       final text = "Hello ${b.clientName},\n\nPlease find your $typeStr (${b.invoiceNo}) for ₹${b.amount} attached.\n\nThank you,\nCochin United Consultancy";
-      await WhatsAppCloudService.launchWhatsAppApp(
-        phone: phone,
+      
+      // Auto-send via WhatsApp Cloud API Hook first
+      final res = await WhatsAppCloudService().sendMessage(
+        toPhone: phone,
         message: text,
       );
+
+      if (res.success) {
+        await LoggingService().logAction(
+          action: 'INVOICE_SUMMARY_SENT_VIA_HOOK',
+          targetType: 'Invoice',
+          targetId: b.invoiceNo ?? b.id ?? '',
+          details: 'Sent $typeStr summary automatically to $phone via WhatsApp Hook',
+        );
+        _msg('✅ $typeStr summary sent automatically via WhatsApp Hook to $phone!', true);
+      } else {
+        await WhatsAppCloudService.launchWhatsAppApp(
+          phone: phone,
+          message: text,
+        );
+        _msg('WhatsApp Hook (${res.error}). Opened in WhatsApp App.', true);
+      }
     } catch (e) {
-      _msg('Failed to open WhatsApp: $e', false);
+      _msg('Failed to send WhatsApp message: $e', false);
     }
   }
 

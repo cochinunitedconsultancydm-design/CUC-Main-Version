@@ -1914,7 +1914,7 @@ class MetaWebhookServer {
       }
     }
 
-    if (path == '/webhook' || path == '/webhook/' || path == '/') {
+    if (path == '/webhook' || path == '/webhook/' || path == '/' || path == '/webhook/razorpay' || path == '/razorpay-webhook') {
       if (request.method == 'GET') {
         final mode = request.uri.queryParameters['hub.mode'] ??
             request.uri.queryParameters['hub_mode'] ??
@@ -1934,8 +1934,8 @@ class MetaWebhookServer {
             ..headers.contentType = ContentType.html
             ..write(
               '<html><body style="font-family:sans-serif;background:#0f172a;color:#f8fafc;padding:30px;">'
-              '<h2>✅ CUC Meta Webhook Server is Active</h2>'
-              '<p>Listening on port 8088. Ready for Meta WhatsApp and Lead Ads events.</p>'
+              '<h2>✅ CUC Meta & Razorpay Webhook Server is Active</h2>'
+              '<p>Listening on port 8088. Ready for Meta WhatsApp and Razorpay Payment events.</p>'
               '<p style="color:#94a3b8;font-size:13px;">Expected Verify Token: <code>cuc_meta_verify_token_2026</code></p>'
               '</body></html>',
             );
@@ -1964,7 +1964,7 @@ class MetaWebhookServer {
           return;
         }
       } else if (request.method == 'POST') {
-        // Inbound Event from Meta
+        // Inbound Event from Meta or Razorpay
         try {
           final bodyStr = await utf8.decoder.bind(request).join();
           request.response
@@ -1974,11 +1974,16 @@ class MetaWebhookServer {
 
           lastEventTime = DateTime.now();
           lastEventSummary = 'Received event (${bodyStr.length} bytes)';
-          debugPrint('📩 Meta Webhook POST received: $bodyStr');
+          debugPrint('📩 Webhook POST received: $bodyStr');
 
           final data = jsonDecode(bodyStr);
           if (data is Map<String, dynamic>) {
-            await WhatsAppInboundProcessor().processWebhookPayload(data);
+            final event = data['event']?.toString();
+            if (event != null && (event == 'payment_link.paid' || event == 'payment.captured' || event.startsWith('payment'))) {
+              await _processRazorpayPaymentWebhook(data);
+            } else {
+              await WhatsAppInboundProcessor().processWebhookPayload(data);
+            }
           }
         } catch (e) {
           debugPrint('Error handling webhook POST: $e');
@@ -1991,5 +1996,129 @@ class MetaWebhookServer {
       ..statusCode = HttpStatus.notFound
       ..write('Not Found');
     await request.response.close();
+  }
+
+  /// Process incoming Razorpay payment hooks (payment_link.paid, payment.captured)
+  Future<void> _processRazorpayPaymentWebhook(Map<String, dynamic> payload) async {
+    try {
+      final event = payload['event']?.toString();
+      debugPrint('💳 Razorpay Payment Webhook received: $event');
+
+      final paymentLinkEntity = payload['payload']?['payment_link']?['entity'];
+      final paymentEntity = payload['payload']?['payment']?['entity'];
+
+      String? invoiceNo;
+      String? billingId;
+      double paidAmount = 0.0;
+      String? customerPhone;
+      String? customerName;
+
+      if (paymentLinkEntity is Map<String, dynamic>) {
+        final notes = paymentLinkEntity['notes'] as Map<String, dynamic>?;
+        invoiceNo = notes?['invoice_no']?.toString();
+        billingId = notes?['billing_id']?.toString();
+        final amtNum = paymentLinkEntity['amount_paid'] ?? paymentLinkEntity['amount'];
+        if (amtNum is num) paidAmount = amtNum.toDouble() / 100.0;
+        customerPhone = paymentLinkEntity['customer']?['contact']?.toString();
+        customerName = paymentLinkEntity['customer']?['name']?.toString();
+      }
+
+      if (paymentEntity is Map<String, dynamic>) {
+        final notes = paymentEntity['notes'] as Map<String, dynamic>?;
+        invoiceNo ??= notes?['invoice_no']?.toString();
+        billingId ??= notes?['billing_id']?.toString();
+        if (paidAmount == 0 && paymentEntity['amount'] is num) {
+          paidAmount = (paymentEntity['amount'] as num).toDouble() / 100.0;
+        }
+        customerPhone ??= paymentEntity['contact']?.toString();
+      }
+
+      if ((invoiceNo == null || invoiceNo.isEmpty) && (billingId == null || billingId.isEmpty)) {
+        debugPrint('⚠️ Razorpay webhook received but no invoice_no or billing_id found in notes.');
+        return;
+      }
+
+      amplify_models.Billings? targetBill;
+      if (billingId != null && billingId.isNotEmpty) {
+        final req = ModelQueries.get(
+          amplify_models.Billings.classType,
+          amplify_models.BillingsModelIdentifier(id: billingId),
+        );
+        final res = await Amplify.API.query(request: req).response;
+        targetBill = res.data;
+      }
+
+      if (targetBill == null && invoiceNo != null && invoiceNo.isNotEmpty) {
+        final listReq = ModelQueries.list(
+          amplify_models.Billings.classType,
+          where: amplify_models.Billings.INVOICE_NO.eq(invoiceNo),
+        );
+        final res = await Amplify.API.query(request: listReq).response;
+        if (res.data != null && res.data!.items.isNotEmpty) {
+          targetBill = res.data!.items.first;
+        }
+      }
+
+      if (targetBill != null) {
+        Map<String, dynamic> updatedData = {};
+        if (targetBill.data != null && targetBill.data!.isNotEmpty) {
+          try {
+            updatedData = Map<String, dynamic>.from(jsonDecode(targetBill.data!));
+          } catch (_) {}
+        }
+        updatedData['razorpay_paid_at'] = DateTime.now().toIso8601String();
+        updatedData['razorpay_payment_id'] = paymentEntity?['id']?.toString() ?? paymentLinkEntity?['id']?.toString();
+        if (paidAmount > 0) {
+          updatedData['advance_received'] = paidAmount.toStringAsFixed(0);
+        }
+
+        final updatedModel = targetBill.copyWith(
+          status: 'Paid',
+          data: jsonEncode(updatedData),
+        );
+
+        final mutateReq = ModelMutations.update(updatedModel);
+        await Amplify.API.mutate(request: mutateReq).response;
+
+        await LoggingService().logAction(
+          action: 'PAYMENT_RECEIVED_VIA_WEBHOOK',
+          targetType: 'Invoice',
+          targetId: targetBill.invoice_no ?? targetBill.id,
+          details: 'Razorpay payment hook received ($event). Marked invoice ${targetBill.invoice_no} as Paid for ₹${paidAmount > 0 ? paidAmount.toStringAsFixed(2) : targetBill.amount}.',
+        );
+
+        // Send automated confirmation via WhatsApp hook to client
+        if (customerPhone != null && customerPhone.isNotEmpty) {
+          final amtStr = paidAmount > 0 ? paidAmount.toStringAsFixed(0) : (targetBill.amount ?? '');
+          final clientConfirmMsg = "✅ *Payment Received!*\n\n"
+              "Dear *${targetBill.client_name ?? customerName ?? 'Client'}*,\n"
+              "We have successfully received your online payment of *₹$amtStr* for Invoice *${targetBill.invoice_no}*.\n\n"
+              "Payment Status: *PAID / COMPLETED*\n"
+              "Thank you for choosing Cochin United Consultancy!";
+          await WhatsAppCloudService().sendMessage(
+            toPhone: customerPhone,
+            message: clientConfirmMsg,
+          );
+        }
+
+        // Notify Admin on WhatsApp
+        final cfg = await MetaConfig.load();
+        if (cfg.notifyAdminPhone.isNotEmpty) {
+          final phoneList = cfg.notifyAdminPhone.split(',').map((p) => p.trim()).where((p) => p.isNotEmpty);
+          for (final aPhone in phoneList) {
+            await WhatsAppCloudService().sendMessage(
+              toPhone: aPhone,
+              message: "💰 *Payment Received Alert*\n\n"
+                  "Invoice: *${targetBill.invoice_no}*\n"
+                  "Client: *${targetBill.client_name}*\n"
+                  "Amount: *₹${paidAmount > 0 ? paidAmount.toStringAsFixed(0) : targetBill.amount}*\n"
+                  "Status: *Marked Paid Automatically via Webhook*",
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error processing Razorpay webhook: $e');
+    }
   }
 }

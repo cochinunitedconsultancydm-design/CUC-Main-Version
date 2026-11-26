@@ -16,6 +16,7 @@ import 'notification_service.dart';
 import 'logging_service.dart';
 import 'supabase_backup_service.dart';
 import 'billing_service.dart';
+import 'receipt_service.dart';
 
 /// Configuration for Meta Developer Platform & WhatsApp Cloud API
 class MetaConfig {
@@ -49,6 +50,7 @@ class MetaConfig {
   String notifyAdminPhone;
   bool notifyOnNewLead;
   bool notifyStaffOnAssignment;
+  bool autoSendReceiptOnPayment;
 
   MetaConfig({
     this.appId = defaultAppId,
@@ -65,6 +67,7 @@ class MetaConfig {
     this.notifyAdminPhone = defaultNotifyAdminPhone,
     this.notifyOnNewLead = true,
     this.notifyStaffOnAssignment = true,
+    this.autoSendReceiptOnPayment = true,
   });
 
   static Future<MetaConfig> load() async {
@@ -110,6 +113,7 @@ class MetaConfig {
       notifyAdminPhone: (savedNotifyPhone != null && savedNotifyPhone.trim().isNotEmpty) ? savedNotifyPhone : defaultNotifyAdminPhone,
       notifyOnNewLead: prefs.getBool('meta_notify_on_new_lead') ?? true,
       notifyStaffOnAssignment: prefs.getBool('meta_notify_staff_on_assignment') ?? true,
+      autoSendReceiptOnPayment: prefs.getBool('meta_auto_send_receipt_on_payment') ?? true,
     );
   }
 
@@ -130,6 +134,7 @@ class MetaConfig {
     await prefs.setString('meta_notify_phone', notifyAdminPhone.trim());
     await prefs.setBool('meta_notify_on_new_lead', notifyOnNewLead);
     await prefs.setBool('meta_notify_staff_on_assignment', notifyStaffOnAssignment);
+    await prefs.setBool('meta_auto_send_receipt_on_payment', autoSendReceiptOnPayment);
   }
 }
 
@@ -797,6 +802,81 @@ class WhatsAppCloudService {
         error: 'Connection error: $e',
         canFallbackToWaMe: true,
       );
+    }
+  }
+
+  /// Send a document (such as a PDF receipt) via Meta WhatsApp Cloud API
+  Future<WhatsAppSendResult> sendDocumentMessage({
+    required String toPhone,
+    required String documentUrl,
+    required String fileName,
+    String? caption,
+    String? senderPhoneNumberId,
+    MetaConfig? config,
+  }) async {
+    final cfg = config ?? await MetaConfig.load();
+    final cleanPhone = formatPhone(toPhone);
+
+    if (cleanPhone.isEmpty) {
+      return WhatsAppSendResult(
+        success: false,
+        error: 'Recipient phone number is invalid or empty.',
+        canFallbackToWaMe: false,
+      );
+    }
+
+    final activePhoneId = (senderPhoneNumberId != null && senderPhoneNumberId.trim().isNotEmpty)
+        ? senderPhoneNumberId.trim()
+        : cfg.whatsappPhoneNumberId;
+
+    if (activePhoneId.isEmpty || cfg.accessToken.isEmpty) {
+      return WhatsAppSendResult(
+        success: false,
+        error: 'WhatsApp Cloud API Phone Number ID or Access Token is not configured.',
+        canFallbackToWaMe: true,
+      );
+    }
+
+    final url = Uri.parse(
+      'https://graph.facebook.com/${cfg.graphApiVersion}/$activePhoneId/messages',
+    );
+
+    final payload = {
+      'messaging_product': 'whatsapp',
+      'recipient_type': 'individual',
+      'to': cleanPhone,
+      'type': 'document',
+      'document': {
+        'link': documentUrl,
+        'filename': fileName,
+        if (caption != null && caption.isNotEmpty) 'caption': caption,
+      },
+    };
+
+    try {
+      final res = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer ${cfg.accessToken}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(payload),
+      );
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final data = jsonDecode(res.body);
+        final msgId = (data['messages'] is List && (data['messages'] as List).isNotEmpty)
+            ? data['messages'][0]['id']?.toString()
+            : null;
+        return WhatsAppSendResult(success: true, messageId: msgId);
+      } else {
+        final err = jsonDecode(res.body);
+        final errMsg = err['error']?['message']?.toString() ?? res.body;
+        debugPrint('WhatsApp send document failed: $errMsg');
+        return WhatsAppSendResult(success: false, error: errMsg, canFallbackToWaMe: true);
+      }
+    } catch (e) {
+      return WhatsAppSendResult(success: false, error: e.toString(), canFallbackToWaMe: true);
     }
   }
 
@@ -2098,34 +2178,19 @@ class MetaWebhookServer {
           details: 'Razorpay payment hook received ($event). Marked invoice ${targetBill.invoice_no} as Received/Paid for ₹${paidAmount > 0 ? paidAmount.toStringAsFixed(2) : targetBill.amount}.',
         );
 
-        // Send automated confirmation via WhatsApp hook to client
-        if (customerPhone != null && customerPhone.isNotEmpty) {
-          final amtStr = paidAmount > 0 ? paidAmount.toStringAsFixed(0) : (targetBill.amount ?? '');
-          final clientConfirmMsg = "✅ *Payment Received!*\n\n"
-              "Dear *${targetBill.client_name ?? customerName ?? 'Client'}*,\n"
-              "We have successfully received your online payment of *₹$amtStr* for Invoice *${targetBill.invoice_no}*.\n\n"
-              "Payment Status: *PAID / COMPLETED*\n"
-              "Thank you for choosing Cochin United Consultancy!";
-          await WhatsAppCloudService().sendMessage(
-            toPhone: customerPhone,
-            message: clientConfirmMsg,
+        // Automatically generate and dispatch official receipt via WhatsApp & Email to client
+        try {
+          final customerEmail = paymentEntity?['email']?.toString() ?? paymentLinkEntity?['customer']?['email']?.toString();
+          await ReceiptService().sendReceiptAutomatically(
+            billing: targetBill,
+            paidAmount: paidAmount > 0 ? paidAmount : null,
+            paymentId: paymentEntity?['id']?.toString() ?? paymentLinkEntity?['id']?.toString(),
+            paymentMode: 'Razorpay Online',
+            targetPhone: customerPhone,
+            targetEmail: customerEmail,
           );
-        }
-
-        // Notify Admin on WhatsApp
-        final cfg = await MetaConfig.load();
-        if (cfg.notifyAdminPhone.isNotEmpty) {
-          final phoneList = cfg.notifyAdminPhone.split(',').map((p) => p.trim()).where((p) => p.isNotEmpty);
-          for (final aPhone in phoneList) {
-            await WhatsAppCloudService().sendMessage(
-              toPhone: aPhone,
-              message: "💰 *Payment Received Alert*\n\n"
-                  "Invoice: *${targetBill.invoice_no}*\n"
-                  "Client: *${targetBill.client_name}*\n"
-                  "Amount: *₹${paidAmount > 0 ? paidAmount.toStringAsFixed(0) : targetBill.amount}*\n"
-                  "Status: *Marked Paid Automatically via Webhook*",
-            );
-          }
+        } catch (receiptErr) {
+          debugPrint('Error sending automated receipt on webhook: $receiptErr');
         }
       }
     } catch (e) {

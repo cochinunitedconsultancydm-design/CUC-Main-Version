@@ -11,6 +11,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../services/backup_aware_api.dart';
 import '../services/logging_service.dart';
 import '../services/auth_service.dart';
@@ -124,30 +125,111 @@ class _SopScreenState extends State<SopScreen> {
   Future<void> _openPdf(String rawUrlOrKey) async {
     try {
       String openUrl = rawUrlOrKey.trim();
+      if (openUrl.isEmpty) return;
 
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                ),
+                SizedBox(width: 12),
+                Text('Opening document...'),
+              ],
+            ),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      // If it's a local file that exists, launch it directly
+      if (!kIsWeb && File(openUrl).existsSync()) {
+        final uri = Uri.file(openUrl);
+        await launchUrl(uri);
+        return;
+      }
+
+      // Normalize path
+      String storagePath = openUrl;
       if (!openUrl.startsWith('http://') && !openUrl.startsWith('https://')) {
-        // If it's a local file that exists, launch it
-        if (!kIsWeb && File(openUrl).existsSync()) {
-          final uri = Uri.file(openUrl);
-          await launchUrl(uri);
-          return;
-        }
+        storagePath = openUrl.startsWith('public/') ? openUrl : 'public/$openUrl';
+      } else if (openUrl.contains('.amazonaws.com/')) {
+        final uri = Uri.parse(openUrl);
+        String p = uri.path;
+        if (p.startsWith('/')) p = p.substring(1);
+        if (p.contains('public/')) p = p.substring(p.indexOf('public/'));
+        storagePath = p;
+      }
 
-        final path = openUrl.startsWith('public/') ? openUrl : 'public/$openUrl';
+      final supabaseFallbackUrl = 'https://bzxtgiqjgfojblezdubd.supabase.co/storage/v1/object/public/cuc-backups/$storagePath';
+
+      // On Windows Desktop: attempt to download bytes and open locally for 100% reliable viewing!
+      if (!kIsWeb && Platform.isWindows) {
+        try {
+          List<int>? bytes;
+
+          // 1. Try Amplify Storage download
+          try {
+            final downloadRes = await Amplify.Storage.downloadData(
+              path: StoragePath.fromString(storagePath),
+            ).result;
+            bytes = downloadRes.bytes;
+          } catch (e) {
+            debugPrint('Amplify downloadData failed: $e');
+          }
+
+          // 2. Try Supabase Storage download if Amplify failed
+          if (bytes == null || bytes.isEmpty) {
+            try {
+              final supRes = await http.get(Uri.parse(supabaseFallbackUrl)).timeout(const Duration(seconds: 8));
+              if (supRes.statusCode == 200 && supRes.bodyBytes.isNotEmpty) {
+                bytes = supRes.bodyBytes;
+              }
+            } catch (e) {
+              debugPrint('Supabase download failed: $e');
+            }
+          }
+
+          // 3. Try direct HTTP if openUrl was a full URL
+          if ((bytes == null || bytes.isEmpty) && (openUrl.startsWith('http://') || openUrl.startsWith('https://'))) {
+            try {
+              final directRes = await http.get(Uri.parse(openUrl)).timeout(const Duration(seconds: 8));
+              if (directRes.statusCode == 200 && directRes.bodyBytes.isNotEmpty) {
+                bytes = directRes.bodyBytes;
+              }
+            } catch (e) {
+              debugPrint('Direct HTTP download failed: $e');
+            }
+          }
+
+          if (bytes != null && bytes.isNotEmpty) {
+            final cleanFileName = storagePath.split('/').last.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+            final finalName = cleanFileName.toLowerCase().endsWith('.pdf') ? cleanFileName : '$cleanFileName.pdf';
+            final tempDir = Directory.systemTemp;
+            final tempFile = File('${tempDir.path}\\$finalName');
+            await tempFile.writeAsBytes(bytes);
+            await Process.run('cmd', ['/c', 'start', '""', tempFile.path]);
+            return;
+          }
+        } catch (winErr) {
+          debugPrint('Windows local download/open failed: $winErr');
+        }
+      }
+
+      // Web / Browser fallback
+      if (!openUrl.startsWith('http://') && !openUrl.startsWith('https://')) {
         try {
           final res = await Amplify.Storage.getUrl(
-            path: StoragePath.fromString(path),
-            options: const StorageGetUrlOptions(
-              pluginOptions: S3GetUrlPluginOptions(
-                validateObjectExistence: false,
-                expiresIn: Duration(hours: 4),
-              ),
-            ),
+            path: StoragePath.fromString(storagePath),
           ).result;
           openUrl = res.url.toString();
         } catch (s3Error) {
           debugPrint('Amplify getUrl failed, trying Supabase storage fallback: $s3Error');
-          openUrl = 'https://bzxtgiqjgfojblezdubd.supabase.co/storage/v1/object/public/cuc-backups/$path';
+          openUrl = supabaseFallbackUrl;
         }
       }
 
@@ -164,7 +246,7 @@ class _SopScreenState extends State<SopScreen> {
       }
 
       if (!launched && !kIsWeb && Platform.isWindows) {
-        await Process.run('cmd', ['/c', 'start', '', openUrl]);
+        await Process.run('cmd', ['/c', 'start', '""', openUrl]);
         launched = true;
       }
 
@@ -952,103 +1034,157 @@ class _SopScreenState extends State<SopScreen> {
                                                 ),
                                               );
                                             }),
-                                          if (sop.pdf_url != null && sop.pdf_url!.isNotEmpty)
-                                            ..._parseJsonStringArray(sop.pdf_url).asMap().entries.map((entry) {
-                                              final rawUrlOrKey = entry.value;
-                                              String displayName = 'Document ${entry.key + 1}';
-                                              if (rawUrlOrKey.contains('_')) {
-                                                final parts = rawUrlOrKey.split('/').last.split('_');
-                                                if (parts.length > 1) {
-                                                  displayName = parts.sublist(1).join('_');
-                                                }
-                                              } else if (rawUrlOrKey.contains('/')) {
-                                                displayName = rawUrlOrKey.split('/').last;
-                                              }
-                                              if (displayName.contains('?')) {
-                                                displayName = displayName.split('?').first;
+                                          Builder(
+                                            builder: (context) {
+                                              final pdfUrls = _getPdfUrls(sop);
+                                              if (pdfUrls.isNotEmpty) {
+                                                return Column(
+                                                  children: [
+                                                    ...pdfUrls.asMap().entries.map((entry) {
+                                                      final rawUrlOrKey = entry.value;
+                                                      String displayName = 'Document ' + (entry.key + 1).toString();
+                                                      if (rawUrlOrKey.contains('_')) {
+                                                        final parts = rawUrlOrKey.split('/').last.split('_');
+                                                        if (parts.length > 1) {
+                                                          displayName = parts.sublist(1).join('_');
+                                                        }
+                                                      } else if (rawUrlOrKey.contains('/')) {
+                                                        displayName = rawUrlOrKey.split('/').last;
+                                                      }
+                                                      if (displayName.contains('?')) {
+                                                        displayName = displayName.split('?').first;
+                                                      }
+
+                                                      return Container(
+                                                        margin: const EdgeInsets.only(left: 24, right: 24, bottom: 10),
+                                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.red.shade50.withValues(alpha: 0.6),
+                                                          borderRadius: BorderRadius.circular(12),
+                                                          border: Border.all(color: Colors.red.shade200),
+                                                        ),
+                                                        child: Row(
+                                                          children: [
+                                                            Container(
+                                                              padding: const EdgeInsets.all(8),
+                                                              decoration: BoxDecoration(
+                                                                color: Colors.red.shade100,
+                                                                borderRadius: BorderRadius.circular(8),
+                                                              ),
+                                                              child: Icon(Icons.picture_as_pdf_rounded, color: Colors.red.shade700, size: 24),
+                                                            ),
+                                                            const SizedBox(width: 14),
+                                                            Expanded(
+                                                              child: Column(
+                                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                                children: [
+                                                                  Text(
+                                                                    displayName,
+                                                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textColor),
+                                                                    maxLines: 1,
+                                                                    overflow: TextOverflow.ellipsis,
+                                                                  ),
+                                                                  const SizedBox(height: 2),
+                                                                  Text(
+                                                                    'Attached Reference Document',
+                                                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                            const SizedBox(width: 8),
+                                                            ElevatedButton.icon(
+                                                              onPressed: () => _openPdf(rawUrlOrKey),
+                                                              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                                                              label: const Text('View / Open'),
+                                                              style: ElevatedButton.styleFrom(
+                                                                backgroundColor: Colors.red.shade700,
+                                                                foregroundColor: Colors.white,
+                                                                elevation: 0,
+                                                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                                              ),
+                                                            ),
+                                                            if (_isAdmin) ...[
+                                                              const SizedBox(width: 6),
+                                                              IconButton(
+                                                                icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade400, size: 20),
+                                                                tooltip: 'Remove Document',
+                                                                onPressed: () => _removePdfFromSop(sop, rawUrlOrKey),
+                                                              ),
+                                                            ],
+                                                          ],
+                                                        ),
+                                                      );
+                                                    }),
+                                                    if (_isAdmin)
+                                                      Container(
+                                                        alignment: Alignment.centerLeft,
+                                                        margin: const EdgeInsets.only(left: 24, right: 24, bottom: 12),
+                                                        child: TextButton.icon(
+                                                          onPressed: () => _quickAttachPdf(sop),
+                                                          icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                                                          label: const Text('Attach Another Document', style: TextStyle(fontWeight: FontWeight.w600)),
+                                                          style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                );
                                               }
 
                                               return Container(
-                                                margin: const EdgeInsets.only(left: 24, right: 24, bottom: 8),
-                                                child: ElevatedButton.icon(
-                                                  onPressed: () async {
-                                                    try {
-                                                      String openUrl = rawUrlOrKey;
-
-                                                      if (!rawUrlOrKey.startsWith('http://') && !rawUrlOrKey.startsWith('https://')) {
-                                                        final path = rawUrlOrKey.startsWith('public/') ? rawUrlOrKey : 'public/$rawUrlOrKey';
-                                                        final res = await Amplify.Storage.getUrl(
-                                                          path: StoragePath.fromString(path),
-                                                        ).result;
-                                                        openUrl = res.url.toString();
-                                                      } else if (rawUrlOrKey.contains('.amazonaws.com/')) {
-                                                        final uri = Uri.parse(rawUrlOrKey);
-                                                        String s3Path = uri.path;
-                                                        if (s3Path.startsWith('/')) s3Path = s3Path.substring(1);
-                                                        if (s3Path.contains('public/')) {
-                                                          s3Path = s3Path.substring(s3Path.indexOf('public/'));
-                                                        }
-                                                        final res = await Amplify.Storage.getUrl(
-                                                          path: StoragePath.fromString(s3Path),
-                                                        ).result;
-                                                        openUrl = res.url.toString();
-                                                      }
-
-                                                      final url = Uri.parse(openUrl);
-                                                      await launchUrl(url, mode: LaunchMode.externalApplication, webOnlyWindowName: '_blank');
-                                                    } catch (e) {
-                                                      debugPrint('Error opening PDF: $e');
-                                                      if (context.mounted) {
-                                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                                          content: Text('Error opening PDF: $e'),
-                                                          backgroundColor: Colors.red.shade800,
-                                                        ));
-                                                      }
-                                                    }
-                                                  },
-                                                  icon: const Icon(Icons.picture_as_pdf_rounded),
-                                                  label: Text('View Attached PDF: $displayName'),
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: Colors.red.shade50,
-                                                    foregroundColor: Colors.red.shade700,
-                                                    elevation: 0,
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius: BorderRadius.circular(8),
-                                                      side: BorderSide(color: Colors.red.shade200),
+                                                margin: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
+                                                padding: const EdgeInsets.all(16),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.shade50.withValues(alpha: 0.5),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  border: Border.all(color: Colors.blue.shade200),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      padding: const EdgeInsets.all(10),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.blue.shade100,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Icon(Icons.picture_as_pdf_outlined, color: Colors.blue.shade800, size: 24),
                                                     ),
-                                                  ),
+                                                    const SizedBox(width: 16),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Text(
+                                                            'No PDF document attached to this procedure',
+                                                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900, fontSize: 14),
+                                                          ),
+                                                          const SizedBox(height: 2),
+                                                          Text(
+                                                            'Attach a PDF or reference file for this procedure so team members can view and download it.',
+                                                            style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 12),
+                                                    ElevatedButton.icon(
+                                                      onPressed: () => _quickAttachPdf(sop),
+                                                      icon: const Icon(Icons.upload_file_rounded, size: 18),
+                                                      label: const Text('Attach PDF', style: TextStyle(fontWeight: FontWeight.bold)),
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: AppTheme.primaryColor,
+                                                        foregroundColor: Colors.white,
+                                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                                        elevation: 1,
+                                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               );
-                                            })
-                                          else
-                                            Container(
-                                              margin: const EdgeInsets.only(left: 24, right: 24, bottom: 12),
-                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey.shade50,
-                                                borderRadius: BorderRadius.circular(8),
-                                                border: Border.all(color: Colors.grey.shade200),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons.info_outline, size: 18, color: Colors.grey.shade600),
-                                                  const SizedBox(width: 8),
-                                                  Expanded(
-                                                    child: Text(
-                                                      'No PDF currently attached to this procedure.',
-                                                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
-                                                    ),
-                                                  ),
-                                                  if (_isAdmin)
-                                                    TextButton.icon(
-                                                      onPressed: () => _showAddEditSopDialog(sop),
-                                                      icon: const Icon(Icons.attach_file_rounded, size: 16),
-                                                      label: const Text('Attach PDF', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                                      style: TextButton.styleFrom(foregroundColor: Colors.blue.shade700),
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
+                                            },
+                                          ),
                                           const SizedBox(height: 16),
                                       ],
                                     ),

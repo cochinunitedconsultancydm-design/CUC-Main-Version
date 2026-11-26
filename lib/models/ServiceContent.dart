@@ -187,7 +187,16 @@ class ServiceContent extends amplify_core.Model {
       _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
   
   Map<String, dynamic> toJson() => {
-    'id': id, 'service_id': _service_id, 'title': _title, 'description': _description, 'image_path': _image_path, 'details': _details, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
+    'id': id,
+    'service_id': _service_id,
+    'title': _title,
+    'description': _description,
+    'image_path': _image_path,
+    'details': _details,
+    'pdf_url': _pdf_url,
+    'previous_case_id': _previous_case_id,
+    'createdAt': _createdAt?.format(),
+    'updatedAt': _updatedAt?.format()
   };
   
   Map<String, Object?> toMap() => {

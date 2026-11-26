@@ -7,6 +7,7 @@ import '../models/billing.dart';
 import '../utils/number_to_words.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import 'razorpay_service.dart';
+import 'receipt_service.dart';
 
 class BillingService {
   Future<List<Billing>> getPendingBillings() async {
@@ -580,6 +581,47 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
     return null;
   }
 
+  Future<String?> getClientEmail(String clientName) async {
+    final clean = clientName.trim().toLowerCase();
+    if (clean.isEmpty) return null;
+
+    // 1. Check client details cache
+    try {
+      final detailsMap = await _getClientDetailsMap();
+      if (detailsMap[clientName]?['email']?.isNotEmpty == true) {
+        return detailsMap[clientName]!['email'];
+      }
+      if (detailsMap[clean]?['email']?.isNotEmpty == true) {
+        return detailsMap[clean]!['email'];
+      }
+      for (final entry in detailsMap.entries) {
+        final k = entry.key.toLowerCase().trim();
+        if ((k == clean || k.contains(clean) || clean.contains(k)) &&
+            entry.value['email']?.isNotEmpty == true) {
+          return entry.value['email'];
+        }
+      }
+    } catch (_) {}
+
+    // 2. Query Clients table directly
+    try {
+      final req = ModelQueries.list(Clients.classType, limit: 1000);
+      final res = await Amplify.API.query(request: req).response;
+      final clients = (res.data?.items ?? []).whereType<Clients>().toList();
+
+      for (final c in clients) {
+        final cName = (c.name ?? '').trim().toLowerCase();
+        if ((cName == clean || cName.contains(clean) || clean.contains(cName)) &&
+            c.email != null &&
+            c.email!.trim().isNotEmpty) {
+          return c.email!.trim();
+        }
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
   Future<List<Billing>> getClientLedger(String clientName) async {
     var req = ModelQueries.list(Billings.classType, where: Billings.CLIENT_NAME.contains(clientName), limit: 10000);
     List<Billings> all = [];
@@ -693,6 +735,18 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
       try {
         await syncClientBalance(billing.clientName!);
       } catch (_) {}
+    }
+
+    // Automatically generate and dispatch official receipt via WhatsApp & Email
+    try {
+      await ReceiptService().sendReceiptAutomatically(
+        billing: billing,
+        paidAmount: paidAmount,
+        paymentId: paymentId,
+        paymentMode: 'Razorpay Online',
+      );
+    } catch (e) {
+      safePrint('Notice: Error auto-sending receipt for ${billing.invoiceNo}: $e');
     }
   }
 }

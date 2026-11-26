@@ -27,6 +27,7 @@ import '../widgets/compact_date_range_picker.dart';
 import '../services/razorpay_service.dart';
 import '../services/supabase_backup_service.dart';
 import '../services/meta_service.dart';
+import '../services/receipt_service.dart';
 class BillingScreen extends StatefulWidget {
   final String? initialStatusFilter;
   final String? initialTypeFilter;
@@ -348,6 +349,7 @@ class _BillingScreenState extends State<BillingScreen> {
     }
 
     bool isFullPayment = true;
+    bool sendReceipt = true;
     final receivedController = TextEditingController(text: currentBalance.toStringAsFixed(0));
     String dialogDiscount = b.data?['discount']?.toString() ?? '0';
     double newBalance = 0;
@@ -409,6 +411,15 @@ class _BillingScreenState extends State<BillingScreen> {
                 const SizedBox(height: 12),
               ] else const SizedBox(height: 12),
               Text('Remaining Balance: ₹${NumberToWords.formatIndianCurrency(newBalance).replaceAll('/-', '')}', style: TextStyle(color: newBalance > 0 ? Colors.orange.shade700 : Colors.green.shade700, fontWeight: FontWeight.bold)),
+              const Divider(height: 20),
+              SwitchListTile(
+                title: const Text('Send Receipt via WhatsApp & Email', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: const Text('Sends official PDF receipt to client & cochinunitedconsultancydm@gmail.com', style: TextStyle(fontSize: 11)),
+                value: sendReceipt,
+                activeThumbColor: const Color(0xFF25D366),
+                contentPadding: EdgeInsets.zero,
+                onChanged: (val) => setState(() => sendReceipt = val),
+              ),
             ],
           ),
           actions: [
@@ -464,10 +475,149 @@ class _BillingScreenState extends State<BillingScreen> {
         _fetchBillings(refresh: true); 
         _msg('Payment recorded successfully', true);
         await _log.logAction(action: 'INVOICE_PAYMENT', targetType: 'Invoice', targetId: b.invoiceNo ?? '', details: 'Recorded payment of ₹$newlyReceived');
+
+        if (sendReceipt) {
+          unawaited(ReceiptService().sendReceiptAutomatically(
+            billing: b,
+            paidAmount: newlyReceived > 0 ? newlyReceived : currentBalance,
+            forceSend: true,
+          ));
+        }
       } catch (e) { 
         _msg('Failed: $e', false); 
       }
     }
+  }
+
+  Future<void> _sendReceiptViaWhatsAppAndEmail(Billing b) async {
+    final clientName = b.clientName ?? '';
+    final dataMap = b.data ?? {};
+
+    // Resolve initial phone
+    String initialPhone = '';
+    for (final key in ['client_phone', 'phone', 'customer_phone', 'phone_number']) {
+      final val = dataMap[key]?.toString().trim() ?? '';
+      if (val.isNotEmpty) {
+        initialPhone = val;
+        break;
+      }
+    }
+    if (initialPhone.isEmpty && clientName.isNotEmpty) {
+      initialPhone = (await _billingService.getClientPhone(clientName)) ?? '';
+    }
+
+    // Resolve initial email
+    String initialEmail = '';
+    for (final key in ['client_email', 'email', 'customer_email', 'mail']) {
+      final val = dataMap[key]?.toString().trim() ?? '';
+      if (val.isNotEmpty && val.contains('@')) {
+        initialEmail = val;
+        break;
+      }
+    }
+    if (initialEmail.isEmpty && clientName.isNotEmpty) {
+      initialEmail = (await _billingService.getClientEmail(clientName)) ?? '';
+    }
+
+    final phoneCtrl = TextEditingController(text: initialPhone);
+    final emailCtrl = TextEditingController(text: initialEmail);
+    bool isSending = false;
+
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
+                  child: const Icon(Icons.mark_email_read_rounded, color: Colors.green, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text('Send Payment Receipt', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Invoice: ${b.invoiceNo ?? "N/A"} • Client: $clientName', style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87)),
+                  const SizedBox(height: 6),
+                  Text('Amount: ${b.amount ?? "₹0"}', style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  const Text('Receipt PDF will be automatically generated and sent via WhatsApp and Email (with PDF attachment to both client and cochinunitedconsultancydm@gmail.com).', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      labelText: 'Client WhatsApp Number',
+                      prefixIcon: Icon(Icons.chat_rounded, color: Colors.green),
+                      hintText: 'e.g. 919876543210',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'Client Email Address',
+                      prefixIcon: Icon(Icons.email_outlined, color: Colors.blue),
+                      hintText: 'e.g. client@example.com',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSending ? null : () => Navigator.pop(dialogCtx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton.icon(
+                onPressed: isSending
+                    ? null
+                    : () async {
+                        setDialogState(() => isSending = true);
+                        try {
+                          final result = await ReceiptService().sendReceiptAutomatically(
+                            billing: b,
+                            targetPhone: phoneCtrl.text.trim(),
+                            targetEmail: emailCtrl.text.trim(),
+                            forceSend: true,
+                          );
+                          if (mounted) Navigator.pop(dialogCtx);
+                          if (result.success) {
+                            _msg('Receipt sent successfully via WhatsApp & Email!', true);
+                          } else {
+                            _msg('Result: ${result.message}', false);
+                          }
+                        } catch (e) {
+                          if (mounted) Navigator.pop(dialogCtx);
+                          _msg('Failed to send receipt: $e', false);
+                        }
+                      },
+                icon: isSending
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.send_rounded, size: 16),
+                label: Text(isSending ? 'Sending Receipt...' : 'Send Receipt Now'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade700, foregroundColor: Colors.white),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _updateStatus(Billing b, String status, {String? approvedAmount, String? partPayment}) async {
@@ -2872,7 +3022,10 @@ class _BillingScreenState extends State<BillingScreen> {
                 if (!isPaid) IconButton(onPressed: () => _showRazorpayPaymentLinkDialog(b), icon: const Icon(Icons.payment_rounded, color: Color(0xFF0284C7)), tooltip: 'Send Razorpay Payment Link (WhatsApp)'),
                 if (!isPaid && b.type != 'QUOTATION') IconButton(onPressed: () => _markPaid(b), icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.green), tooltip: 'Mark Paid'),
                 if (!isPaid) IconButton(onPressed: () => _setPaymentDeadlineDialog(context, b), icon: const Icon(Icons.schedule_rounded, color: Colors.redAccent), tooltip: 'Set Deadline'),
-                if (isPaid) IconButton(onPressed: () => _generateReceipt(b), icon: const Icon(Icons.receipt_rounded, color: Colors.teal), tooltip: 'Generate Receipt'),
+                if (isPaid) ...[
+                  IconButton(onPressed: () => _generateReceipt(b), icon: const Icon(Icons.receipt_rounded, color: Colors.teal), tooltip: 'Generate Receipt PDF'),
+                  IconButton(onPressed: () => _sendReceiptViaWhatsAppAndEmail(b), icon: const Icon(Icons.mark_email_read_rounded, color: Colors.green), tooltip: 'Send Receipt (WhatsApp & Email)'),
+                ],
                 if (b.type == 'QUOTATION') ...[
                   IconButton(onPressed: () => _markInterested(b), icon: Icon(Icons.check_circle_outline_rounded, color: b.status == 'Interested' ? Colors.teal : Colors.grey.shade400, size: 22), tooltip: 'Interested'),
                   IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.cancel_outlined, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 22), tooltip: 'Not Interested'),
@@ -2993,7 +3146,10 @@ class _BillingScreenState extends State<BillingScreen> {
                       if (!isPaid) IconButton(onPressed: () => _showRazorpayPaymentLinkDialog(b), icon: const Icon(Icons.payment_rounded, color: Color(0xFF0284C7), size: 20), tooltip: 'Payment Link', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       if (!isPaid && b.type != 'QUOTATION') IconButton(onPressed: () => _markPaid(b), icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 20), tooltip: 'Mark Paid', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                       if (!isPaid) IconButton(onPressed: () => _setPaymentDeadlineDialog(context, b), icon: const Icon(Icons.schedule_rounded, color: Colors.redAccent, size: 20), tooltip: 'Set Deadline', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
-                      if (isPaid) IconButton(onPressed: () => _generateReceipt(b), icon: const Icon(Icons.receipt_rounded, color: Colors.teal, size: 20), tooltip: 'Receipt', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
+                      if (isPaid) ...[
+                        IconButton(onPressed: () => _generateReceipt(b), icon: const Icon(Icons.receipt_rounded, color: Colors.teal, size: 20), tooltip: 'Receipt', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
+                        IconButton(onPressed: () => _sendReceiptViaWhatsAppAndEmail(b), icon: const Icon(Icons.mark_email_read_rounded, color: Colors.green, size: 20), tooltip: 'Send Receipt (WhatsApp & Email)', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
+                      ],
                       if (b.type == 'QUOTATION') ...[
                         IconButton(onPressed: () => _markInterested(b), icon: Icon(Icons.check_circle_outline_rounded, color: b.status == 'Interested' ? Colors.teal : Colors.grey.shade400, size: 18), tooltip: 'Interested', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),
                         IconButton(onPressed: () => _updateStatus(b, 'Not Interested'), icon: Icon(Icons.cancel_outlined, color: b.status == 'Not Interested' ? Colors.red.shade300 : Colors.grey.shade400, size: 18), tooltip: 'Not Interested', constraints: const BoxConstraints(), padding: const EdgeInsets.all(8)),

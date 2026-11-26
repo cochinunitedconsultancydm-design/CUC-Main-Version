@@ -3,15 +3,136 @@ const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
 const Razorpay = require('razorpay');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS and JSON parsing
+// Enable CORS and JSON parsing (limit up to 10mb for attached PDF bytes)
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Setup Nodemailer Gmail SMTP Transporter
+function getEmailTransporter() {
+  const user = process.env.SMTP_USER || 'cochinunitedconsultancydm@gmail.com';
+  const pass = (process.env.SMTP_PASS || 'wswpwxsrskromlkp').replace(/\s+/g, '');
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass }
+  });
+}
+
+/**
+ * Send official Payment Receipt Email to client with PDF attachment and admin copy
+ */
+async function sendReceiptEmail({ to, clientName, invoiceNo, amount, paymentMode, paymentId, receiptPdfUrl, pdfBytesBase64 }) {
+  try {
+    const transporter = getEmailTransporter();
+    const adminEmail = 'cochinunitedconsultancydm@gmail.com';
+    const recipient = (to && to.includes('@')) ? to.trim() : adminEmail;
+    const isClientCopy = recipient !== adminEmail;
+
+    const formattedAmount = String(amount || '0').replace('/-', '');
+    const cleanInvoiceNo = (invoiceNo || 'INV').replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    const attachments = [];
+    if (pdfBytesBase64) {
+      attachments.push({
+        filename: `Payment_Receipt_RCPT_${cleanInvoiceNo}.pdf`,
+        content: Buffer.from(pdfBytesBase64, 'base64'),
+        contentType: 'application/pdf'
+      });
+    }
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
+        <div style="background: #0f172a; padding: 24px; text-align: center; color: #ffffff;">
+          <h2 style="margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 0.5px;">COCHIN UNITED CONSULTANCY</h2>
+          <p style="margin: 4px 0 0 0; font-size: 13px; color: #94a3b8;">Official Payment Receipt</p>
+        </div>
+        <div style="padding: 24px;">
+          <p style="font-size: 15px; color: #334155; margin-top: 0;">
+            Dear <strong>${clientName || 'Valued Client'}</strong>,
+          </p>
+          <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+            Thank you for your payment. We confirm that your payment has been successfully received and recorded in our systems.
+          </p>
+          
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Receipt Number:</td>
+                <td style="padding: 6px 0; text-align: right; font-weight: bold; color: #0f172a;">RCPT-${invoiceNo || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Invoice Reference:</td>
+                <td style="padding: 6px 0; text-align: right; font-weight: bold; color: #0f172a;">${invoiceNo || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Payment Date:</td>
+                <td style="padding: 6px 0; text-align: right; font-weight: bold; color: #0f172a;">${new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Payment Mode:</td>
+                <td style="padding: 6px 0; text-align: right; font-weight: bold; color: #0f172a;">${paymentMode || 'Razorpay Online'}</td>
+              </tr>
+              ${paymentId ? `
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Transaction ID:</td>
+                <td style="padding: 6px 0; text-align: right; font-weight: bold; color: #0f172a;">${paymentId}</td>
+              </tr>
+              ` : ''}
+              <tr style="border-top: 1px dashed #cbd5e1;">
+                <td style="padding: 10px 0 4px 0; color: #0f172a; font-weight: bold; font-size: 15px;">Amount Paid:</td>
+                <td style="padding: 10px 0 4px 0; text-align: right; font-weight: bold; font-size: 17px; color: #16a34a;">₹${formattedAmount}</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px 0; color: #64748b;">Balance Due:</td>
+                <td style="padding: 4px 0; text-align: right; font-weight: bold; color: #16a34a;">₹0.00 (PAID IN FULL)</td>
+              </tr>
+            </table>
+          </div>
+
+          ${receiptPdfUrl ? `
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${receiptPdfUrl}" target="_blank" style="background: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 14px;">
+              📄 Download PDF Receipt
+            </a>
+          </div>
+          ` : ''}
+
+          <p style="font-size: 13px; color: #64748b; margin-bottom: 4px;">
+            A PDF copy of this receipt is attached to this email for your accounting records.
+          </p>
+          <p style="font-size: 13px; color: #64748b; margin-top: 0;">
+            If you have any questions, please contact us at <a href="mailto:cochinunitedconsultancydm@gmail.com" style="color: #2563eb;">cochinunitedconsultancydm@gmail.com</a> or +91 70124 66754.
+          </p>
+        </div>
+        <div style="background: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+          Cochin United Consultancy &bull; High Court Road, Ernakulam, Kerala 682031
+        </div>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `"Cochin United Consultancy" <${adminEmail}>`,
+      to: recipient,
+      bcc: isClientCopy ? adminEmail : undefined, // Keep official admin copy
+      subject: `Payment Receipt: RCPT-${invoiceNo || 'INV'} - Cochin United Consultancy`,
+      html: htmlContent,
+      attachments
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[Email] Receipt email dispatched successfully to ${recipient} (Message ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (err) {
+    console.error(`[Email] Failed to send receipt email:`, err);
+    return { success: false, error: err.message };
+  }
+}
 
 // Serve static frontend checkout assets
 app.use(express.static(path.join(__dirname, 'public')));
@@ -257,6 +378,22 @@ async function autoUpdateBillOnPayment({ orderId, paymentId, invoiceNo, billingI
           })
         });
         console.log(`[Auto-Sync] Supabase billing ${invoiceNo || billingId} updated to Received.`);
+
+        // Dispatch official payment receipt email
+        try {
+          const clientEmail = billData.client_email || billData.email || customerEmail;
+          const clientName = bill.client_name || customerName || 'Valued Client';
+          await sendReceiptEmail({
+            to: clientEmail,
+            clientName,
+            invoiceNo: bill.invoice_no || invoiceNo,
+            amount: amount || bill.amount,
+            paymentMode: 'Razorpay Online',
+            paymentId
+          });
+        } catch (emailErr) {
+          console.error(`[Auto-Sync] Failed to dispatch automated receipt email: ${emailErr.message}`);
+        }
       }
     }
   } catch (sbErr) {
@@ -294,6 +431,29 @@ app.post(['/api/webhook', '/webhook/razorpay', '/api/razorpay-webhook'], async (
   return res.status(200).json({ status: 'ok' });
 });
 
+// ---------------------------------------------------------------------------
+// 5. Send Payment Receipt Email Endpoint
+// ---------------------------------------------------------------------------
+app.post('/api/send-receipt-email', async (req, res) => {
+  const { to, clientName, invoiceNo, amount, paymentMode, paymentId, receiptPdfUrl, pdfBytesBase64 } = req.body;
+  const result = await sendReceiptEmail({
+    to,
+    clientName,
+    invoiceNo,
+    amount,
+    paymentMode,
+    paymentId,
+    receiptPdfUrl,
+    pdfBytesBase64
+  });
+
+  if (result.success) {
+    return res.status(200).json(result);
+  } else {
+    return res.status(500).json(result);
+  }
+});
+
 // Start the backend server
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
@@ -301,6 +461,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`📡 Endpoints available:`);
     console.log(`   POST http://localhost:${PORT}/api/create-order`);
     console.log(`   POST http://localhost:${PORT}/api/verify-payment`);
+    console.log(`   POST http://localhost:${PORT}/api/send-receipt-email`);
     console.log(`   GET  http://localhost:${PORT}/api/config`);
   });
 }

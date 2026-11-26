@@ -55,6 +55,7 @@ class _MetaHubDialogState extends State<MetaHubDialog> with SingleTickerProvider
   bool _preferCloudApi = true;
   bool _notifyOnNewLead = true;
   bool _notifyStaffOnAssignment = true;
+  bool _autoSendReceiptOnPayment = true;
   bool _obscureSecret = true;
   bool _obscureToken = true;
   String _statusMessage = '';
@@ -109,6 +110,7 @@ class _MetaHubDialogState extends State<MetaHubDialog> with SingleTickerProvider
         _notifyOnNewLead = cfg.notifyOnNewLead;
         _notifyStaffOnAssignment = cfg.notifyStaffOnAssignment;
         _preferCloudApi = cfg.preferCloudApi;
+        _autoSendReceiptOnPayment = cfg.autoSendReceiptOnPayment;
         _isLoading = false;
       });
     }
@@ -130,6 +132,7 @@ class _MetaHubDialogState extends State<MetaHubDialog> with SingleTickerProvider
       notifyAdminPhone: _notifyPhoneCtrl.text.trim(),
       notifyOnNewLead: _notifyOnNewLead,
       notifyStaffOnAssignment: _notifyStaffOnAssignment,
+      autoSendReceiptOnPayment: _autoSendReceiptOnPayment,
     );
     await cfg.save();
     if (mounted) {
@@ -852,6 +855,18 @@ class _MetaHubDialogState extends State<MetaHubDialog> with SingleTickerProvider
                     activeThumbColor: const Color(0xFF10B981),
                     contentPadding: EdgeInsets.zero,
                     onChanged: (val) => setState(() => _notifyStaffOnAssignment = val),
+                  ),
+                ),
+                const Divider(color: Colors.white12, height: 24),
+                Material(
+                  color: Colors.transparent,
+                  child: SwitchListTile(
+                    title: const Text('Auto-Send Receipts on Payment (WhatsApp & Email)', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                    subtitle: const Text('Instantly generates & delivers official Receipt PDF via WhatsApp and Email on payment', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                    value: _autoSendReceiptOnPayment,
+                    activeThumbColor: const Color(0xFF25D366),
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (val) => setState(() => _autoSendReceiptOnPayment = val),
                   ),
                 ),
               ],

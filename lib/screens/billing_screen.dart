@@ -777,14 +777,21 @@ class _BillingScreenState extends State<BillingScreen> {
 
   double _getPayableAmount(Billing b) {
     try {
-      final grandTotal = double.tryParse(b.amount?.replaceAll(',', '').trim() ?? '0') ?? 0;
-      final previouslyReceived = double.tryParse(b.data?['received_amount']?.toString().replaceAll(',', '').trim() ?? '0') ?? 0;
-      final discount = double.tryParse(b.data?['discount']?.toString().replaceAll(',', '').trim() ?? '0') ?? 0;
+      if (b.data?['balance_due'] != null && b.data!['balance_due'].toString().trim().isNotEmpty) {
+        final bal = NumberToWords.parseCurrency(b.data!['balance_due'].toString());
+        if (bal > 0) return bal;
+      }
+      final grandTotal = NumberToWords.parseCurrency(b.grandTotal.isNotEmpty ? b.grandTotal : (b.amount ?? '0'));
+      final previouslyReceived = NumberToWords.parseCurrency(
+        b.data?['advance_received']?.toString() ?? b.data?['received_amount']?.toString() ?? '0'
+      );
+      final discount = NumberToWords.parseCurrency(b.data?['discount']?.toString() ?? '0');
       final balance = grandTotal - previouslyReceived - discount;
       if (balance > 0) return balance;
-      return grandTotal;
+      if (grandTotal > 0) return grandTotal;
+      return NumberToWords.parseCurrency(b.amount ?? '0');
     } catch (_) {
-      return double.tryParse(b.amount?.replaceAll(',', '').trim() ?? '0') ?? 0;
+      return NumberToWords.parseCurrency(b.amount ?? '0');
     }
   }
 
@@ -801,10 +808,15 @@ class _BillingScreenState extends State<BillingScreen> {
 
     double payableAmt = _getPayableAmount(b);
     if (payableAmt <= 0) {
-      payableAmt = double.tryParse(b.amount?.replaceAll(',', '').trim() ?? '0') ?? 0;
+      payableAmt = NumberToWords.parseCurrency(b.amount ?? '0');
     }
 
-    final amountController = TextEditingController(text: payableAmt > 0 ? payableAmt.toStringAsFixed(0) : '');
+    String initialAmountStr = '';
+    if (payableAmt > 0) {
+      initialAmountStr = payableAmt % 1 == 0 ? payableAmt.toInt().toString() : payableAmt.toStringAsFixed(2);
+    }
+
+    final amountController = TextEditingController(text: initialAmountStr);
     final phoneController = TextEditingController(text: phone);
     String existingLink = b.data?['razorpay_payment_link']?.toString() ?? '';
 

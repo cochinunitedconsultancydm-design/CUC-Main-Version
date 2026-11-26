@@ -1097,6 +1097,39 @@ class _BillingScreenState extends State<BillingScreen> {
                           const SizedBox(width: 8),
                           OutlinedButton.icon(
                             onPressed: isGenerating ? null : () async {
+                              setModalState(() => isGenerating = true);
+                              try {
+                                final isPaid = await _billingService.syncRazorpayPaymentForBilling(b);
+                                if (isPaid) {
+                                  if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                                  _msg('Payment verified! Invoice marked as Paid / Received.', true);
+                                  _fetchBillings(refresh: true);
+                                } else {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                      content: Text('Payment not completed yet on Razorpay.'),
+                                      backgroundColor: Colors.orange,
+                                    ));
+                                  }
+                                }
+                              } catch (e) {
+                                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status check note: $e')));
+                              } finally {
+                                if (mounted) setModalState(() => isGenerating = false);
+                              }
+                            },
+                            icon: const Icon(Icons.sync_rounded, size: 16),
+                            label: const Text('Check Status'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF0284C7),
+                              side: const BorderSide(color: Color(0xFF38BDF8)),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: isGenerating ? null : () async {
                               final enteredPhone = phoneController.text.trim();
                               final amtFormatted = amountController.text.trim();
                               final message = "*Cochin United Consultancy*\n"
@@ -2479,6 +2512,24 @@ class _BillingScreenState extends State<BillingScreen> {
                 }),
                 const SizedBox(width: 8),
                 _actionBtn(Icons.refresh_rounded, 'Refresh', Colors.blue, () => _fetchBillings(refresh: true)),
+                const SizedBox(width: 8),
+                _actionBtn(Icons.sync_rounded, 'Sync Payments', const Color(0xFF0284C7), () async {
+                  _msg('Checking online payments on Razorpay...', true);
+                  int syncedCount = 0;
+                  for (var b in _billings) {
+                    bool isPaid = b.status == 'Received' || b.data?['payment_received'] == true;
+                    if (!isPaid && (b.data?['razorpay_link_id'] != null || b.data?['payment_link_id'] != null)) {
+                      final updated = await _billingService.syncRazorpayPaymentForBilling(b);
+                      if (updated) syncedCount++;
+                    }
+                  }
+                  if (syncedCount > 0) {
+                    _msg('Successfully synced $syncedCount paid invoice(s)!', true);
+                    _fetchBillings(refresh: true);
+                  } else {
+                    _msg('Online payments are up to date.', true);
+                  }
+                }),
                 const SizedBox(width: 8),
                 _actionBtn(Icons.file_download_rounded, 'Export', Colors.green, () async { 
                   try { final p = await _excel.exportBillings(_billings); if (p != null) _msg('Exported to $p', true); } catch (e) { _msg('$e', false); }

@@ -628,5 +628,72 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
       return (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
     }
   }
+
+  /// Check online payment status for a billing item with a Razorpay link or order.
+  /// If paid, automatically marks the bill as Received/Paid, sets payment_received=true,
+  /// balance_due='0/-', syncs client balance, and saves across DynamoDB and Supabase.
+  Future<bool> syncRazorpayPaymentForBilling(Billing billing) async {
+    final data = billing.data != null ? Map<String, dynamic>.from(billing.data!) : <String, dynamic>{};
+    final linkId = data['razorpay_link_id']?.toString() ?? data['payment_link_id']?.toString();
+
+    if (linkId == null || linkId.isEmpty) return false;
+
+    // If already marked as received, return true
+    if (billing.status == 'Received' && data['payment_received'] == true) {
+      return true;
+    }
+
+    try {
+      final link = await RazorpayService().fetchPaymentLink(linkId);
+      if (link != null && (link.status == 'paid' || link.status == 'partially_paid')) {
+        await markBillingAsPaidFromRazorpay(
+          billing: billing,
+          paidAmount: link.amount,
+          paymentId: link.id,
+        );
+        return true;
+      }
+    } catch (e) {
+      safePrint('Error syncing Razorpay payment for billing ${billing.invoiceNo}: $e');
+    }
+    return false;
+  }
+
+  Future<void> markBillingAsPaidFromRazorpay({
+    required Billing billing,
+    required double paidAmount,
+    String? paymentId,
+  }) async {
+    final data = billing.data != null ? Map<String, dynamic>.from(billing.data!) : <String, dynamic>{};
+    data['payment_received'] = true;
+    data['payment_date'] = DateTime.now().toIso8601String();
+    data['marked_paid_by'] = 'Razorpay Auto-Sync';
+    data['balance_due'] = '0/-';
+    data['advance_received'] = paidAmount.toStringAsFixed(0);
+    if (paymentId != null) {
+      data['razorpay_payment_id'] = paymentId;
+    }
+    data['razorpay_paid_at'] = DateTime.now().toIso8601String();
+
+    final model = Billings(
+      id: billing.id.toString(),
+      client_name: billing.clientName,
+      invoice_no: billing.invoiceNo,
+      date: billing.date,
+      amount: billing.amount,
+      type: billing.type,
+      category: billing.category,
+      authorities: billing.authorities,
+      status: 'Received',
+      data: jsonEncode(data),
+    );
+
+    await BackupAwareApi().update(model);
+    if (billing.clientName != null && billing.clientName!.isNotEmpty) {
+      try {
+        await syncClientBalance(billing.clientName!);
+      } catch (_) {}
+    }
+  }
 }
 

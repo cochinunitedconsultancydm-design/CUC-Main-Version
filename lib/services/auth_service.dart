@@ -523,8 +523,8 @@ class AuthService {
   }
 
   Future<bool> isManager() async {
-    final role = await getUserRole();
-    return role == 'manager';
+    final role = (await getUserRole())?.toLowerCase().trim();
+    return role == 'manager' || role == 'admin' || role == 'superadmin';
   }
 
   Future<bool> isAdmin() async {

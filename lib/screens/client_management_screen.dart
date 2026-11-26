@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -885,7 +890,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                                   clientName: c.name,
                                   clientId: c.id,
                                   contactInfo: c.phone,
-                                  company: c.companies != null && c.companies!.isNotEmpty ? c.companies!.first : null,
+                                  company: c.companies != null && c.companies!.isNotEmpty ? _extractCompanyName(c.companies!.first) : null,
                                   workType: c.typeOfWork,
                                   stage: 'Lead',
                                 ),
@@ -913,6 +918,371 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     } catch (e) {
       _showError('Failed to load works: $e');
     }
+  }
+
+  String _extractCompanyName(String raw) {
+    if (raw.trim().startsWith('{')) {
+      try {
+        final map = jsonDecode(raw);
+        if (map['name'] != null && map['name'].toString().isNotEmpty) {
+          return map['name'].toString();
+        }
+      } catch (_) {}
+    }
+    if (raw.contains('|||')) {
+      return raw.split('|||')[0].trim();
+    }
+    return raw;
+  }
+
+  Future<String?> _uploadDeedFile(PlatformFile file) async {
+    try {
+      final cleanName = file.name.replaceAll(' ', '_').replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '');
+      final s3Key = 'public/deeds/${UUID.getUUID()}_$cleanName';
+
+      AWSFile localFile;
+      if (file.bytes != null) {
+        localFile = AWSFile.fromData(file.bytes!);
+      } else if (!kIsWeb && file.path != null) {
+        localFile = AWSFile.fromPath(file.path!);
+      } else {
+        return null;
+      }
+
+      try {
+        await Amplify.Storage.uploadFile(
+          localFile: localFile,
+          path: StoragePath.fromString(s3Key),
+        ).result;
+      } catch (e) {
+        debugPrint('Deed S3 upload notice: $e');
+      }
+
+      try {
+        final bytes = file.bytes ?? (!kIsWeb && file.path != null ? await File(file.path!).readAsBytes() : null);
+        if (bytes != null) {
+          SupabaseBackupService().backupFileInBackground(s3Key, bytes);
+        }
+      } catch (_) {}
+
+      return s3Key;
+    } catch (e) {
+      debugPrint('Error uploading deed file: $e');
+      return null;
+    }
+  }
+
+  Future<void> _openDeedDocument(String keyOrUrl) async {
+    try {
+      String openUrl = keyOrUrl;
+      if (!keyOrUrl.startsWith('http://') && !keyOrUrl.startsWith('https://')) {
+        final path = keyOrUrl.startsWith('public/') ? keyOrUrl : 'public/$keyOrUrl';
+        final res = await Amplify.Storage.getUrl(path: StoragePath.fromString(path)).result;
+        openUrl = res.url.toString();
+      }
+      final uri = Uri.parse(openUrl);
+      await launchUrl(uri, mode: LaunchMode.externalApplication, webOnlyWindowName: '_blank');
+    } catch (e) {
+      debugPrint('Error opening deed document: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Could not open document: $e'),
+          backgroundColor: Colors.red.shade800,
+        ));
+      }
+    }
+  }
+
+  void _showCompanyDetailsDialog(Client c) {
+    final companiesRaw = c.companies ?? [];
+    final companies = companiesRaw.map((raw) => _CompanyFormData.fromRaw(raw)).toList();
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Colors.white,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Container(
+            width: 850,
+            constraints: const BoxConstraints(maxHeight: 750),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.business_center_rounded, color: Color(0xFF1D4ED8), size: 28),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${c.name} - Companies & Deeds', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                          Text('${companies.length} Registered Compan${companies.length > 1 ? 'ies' : 'y'} / Documentation Vault', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(dialogCtx),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: companies.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.business_outlined, size: 48, color: Colors.grey.shade400),
+                              const SizedBox(height: 12),
+                              Text('No company or deed details added yet for this client.', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                              const SizedBox(height: 12),
+                              if (_isAdmin)
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(dialogCtx);
+                                    _showClientForm(c);
+                                  },
+                                  icon: const Icon(Icons.add, size: 16),
+                                  label: const Text('Add Company Details'),
+                                ),
+                            ],
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: companies.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 20),
+                          itemBuilder: (ctx, idx) {
+                            final comp = companies[idx];
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.grey.shade300),
+                                boxShadow: [
+                                  BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Company Title Bar
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(15), topRight: Radius.circular(15)),
+                                      border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.business_rounded, color: Color(0xFF2563EB), size: 22),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            comp.nameCtrl.text.isNotEmpty ? comp.nameCtrl.text : 'Company #${idx + 1}',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E293B)),
+                                          ),
+                                        ),
+                                        if (comp.typeCtrl.text.isNotEmpty)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFDBEAFE),
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                            child: Text(
+                                              comp.typeCtrl.text,
+                                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Details Grid
+                                        Wrap(
+                                          spacing: 24,
+                                          runSpacing: 12,
+                                          children: [
+                                            if (comp.addressCtrl.text.isNotEmpty)
+                                              _buildDetailItem(Icons.location_on_outlined, 'Address', comp.addressCtrl.text),
+                                            if (comp.phoneCtrl.text.isNotEmpty)
+                                              _buildDetailItem(Icons.phone_outlined, 'Phone', comp.phoneCtrl.text),
+                                            if (comp.emailCtrl.text.isNotEmpty)
+                                              _buildDetailItem(Icons.email_outlined, 'Email', comp.emailCtrl.text),
+                                            if (comp.gstinCtrl.text.isNotEmpty)
+                                              _buildDetailItem(Icons.receipt_long_outlined, 'GSTIN', comp.gstinCtrl.text),
+                                            if (comp.panCtrl.text.isNotEmpty)
+                                              _buildDetailItem(Icons.credit_card_rounded, 'Company PAN', comp.panCtrl.text),
+                                            if (comp.regNoCtrl.text.isNotEmpty)
+                                              _buildDetailItem(Icons.tag_rounded, 'Reg / CIN', comp.regNoCtrl.text),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        const Divider(height: 1),
+                                        const SizedBox(height: 14),
+
+                                        // Deeds Card
+                                        Container(
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFFFBEB),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: const Color(0xFFFDE68A)),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.description_rounded, size: 20, color: Color(0xFFD97706)),
+                                                  const SizedBox(width: 8),
+                                                  const Text('Deed & Legal Documentation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF92400E))),
+                                                  const Spacer(),
+                                                  if (comp.deedDocUrl != null && comp.deedDocUrl!.isNotEmpty)
+                                                    ElevatedButton.icon(
+                                                      onPressed: () => _openDeedDocument(comp.deedDocUrl!),
+                                                      icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
+                                                      label: const Text('View Attached Deed', style: TextStyle(fontSize: 12)),
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: const Color(0xFFD97706),
+                                                        foregroundColor: Colors.white,
+                                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                                        elevation: 0,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 10),
+                                              Wrap(
+                                                spacing: 24,
+                                                runSpacing: 8,
+                                                children: [
+                                                  _buildDetailItem(Icons.article_outlined, 'Deed Type', comp.deedTypeCtrl.text.isNotEmpty ? comp.deedTypeCtrl.text : 'Not Specified'),
+                                                  if (comp.deedDateCtrl.text.isNotEmpty)
+                                                    _buildDetailItem(Icons.calendar_today_outlined, 'Execution Date', comp.deedDateCtrl.text),
+                                                  if (comp.deedRegNoCtrl.text.isNotEmpty)
+                                                    _buildDetailItem(Icons.confirmation_number_outlined, 'Deed Reg No.', comp.deedRegNoCtrl.text),
+                                                ],
+                                              ),
+                                              if (comp.deedNotesCtrl.text.isNotEmpty) ...[
+                                                const SizedBox(height: 8),
+                                                Text('Notes & Key Terms: ${comp.deedNotesCtrl.text}', style: TextStyle(fontSize: 12.5, color: Colors.grey.shade800)),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+
+                                        // Partners Section
+                                        Text('Partners & Directors (${comp.partners.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A))),
+                                        const SizedBox(height: 10),
+                                        if (comp.partners.isEmpty)
+                                          Text('No partners or directors recorded.', style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600, fontStyle: FontStyle.italic))
+                                        else
+                                          Table(
+                                            columnWidths: const {
+                                              0: FlexColumnWidth(2.2),
+                                              1: FlexColumnWidth(1.8),
+                                              2: FlexColumnWidth(1.8),
+                                              3: FlexColumnWidth(1.8),
+                                              4: FlexColumnWidth(1.8),
+                                              5: FlexColumnWidth(1.0),
+                                            },
+                                            children: [
+                                              TableRow(
+                                                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
+                                                children: const [
+                                                  Padding(padding: EdgeInsets.all(8), child: Text('Partner Name', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                                  Padding(padding: EdgeInsets.all(8), child: Text('Designation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                                  Padding(padding: EdgeInsets.all(8), child: Text('Phone', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                                  Padding(padding: EdgeInsets.all(8), child: Text('Aadhaar No.', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                                  Padding(padding: EdgeInsets.all(8), child: Text('PAN No.', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                                  Padding(padding: EdgeInsets.all(8), child: Text('Share %', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                                ],
+                                              ),
+                                              ...comp.partners.map((p) => TableRow(
+                                                children: [
+                                                  Padding(padding: const EdgeInsets.all(8), child: Text(p.nameCtrl.text.isNotEmpty ? p.nameCtrl.text : 'N/A', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                                                  Padding(padding: const EdgeInsets.all(8), child: Text(p.roleCtrl.text.isNotEmpty ? p.roleCtrl.text : 'Partner', style: const TextStyle(fontSize: 12))),
+                                                  Padding(padding: const EdgeInsets.all(8), child: Text(p.phoneCtrl.text.isNotEmpty ? p.phoneCtrl.text : '-', style: const TextStyle(fontSize: 12))),
+                                                  Padding(padding: const EdgeInsets.all(8), child: Text(p.aadharCtrl.text.isNotEmpty ? p.aadharCtrl.text : '-', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0369A1)))),
+                                                  Padding(padding: const EdgeInsets.all(8), child: Text(p.panCtrl.text.isNotEmpty ? p.panCtrl.text : '-', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFB45309)))),
+                                                  Padding(padding: const EdgeInsets.all(8), child: Text(p.shareCtrl.text.isNotEmpty ? '${p.shareCtrl.text}%' : '-', style: const TextStyle(fontSize: 12))),
+                                                ],
+                                              )),
+                                            ],
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogCtx),
+                      child: const Text('Close'),
+                    ),
+                    if (_isAdmin) ...[
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(dialogCtx);
+                          _showClientForm(c);
+                        },
+                        icon: const Icon(Icons.edit_rounded, size: 16),
+                        label: const Text('Edit Details'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailItem(IconData icon, String label, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: Colors.grey.shade600),
+        const SizedBox(width: 6),
+        Text('$label: ', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+        Text(value, style: const TextStyle(fontSize: 12, color: Color(0xFF1E293B), fontWeight: FontWeight.bold)),
+      ],
+    );
   }
 
   Future<void> _deleteClient(String id) async {
@@ -1012,18 +1382,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
     }
     final addressController = TextEditingController(text: client?.address);
     bool isContacted = client?.isContacted ?? false;
-    List<Map<String, TextEditingController>> companyControllers = (client?.companies ?? []).map((c) {
-      String name = c;
-      String address = '';
-      String phone = '';
-      if (c.contains('|||')) {
-        final parts = c.split('|||');
-        name = parts[0];
-        if (parts.length > 1) address = parts[1];
-        if (parts.length > 2) phone = parts[2];
-      }
-      return {'name': TextEditingController(text: name), 'address': TextEditingController(text: address), 'phone': TextEditingController(text: phone)};
-    }).toList();
+    List<_CompanyFormData> companyForms = (client?.companies ?? []).map((c) => _CompanyFormData.fromRaw(c)).toList();
 
     List<Map<String, TextEditingController>> customFieldControllers = (client?.customFields ?? []).map((c) {
       String name = '';
@@ -1323,50 +1682,424 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                     const SizedBox(height: 20),
                     _buildFormField(addressController, 'Full Address', Icons.location_on, false, maxLines: 2),
                     const SizedBox(height: 20),
-                    const Text('Companies', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
-                    const SizedBox(height: 12),
-                    ...companyControllers.asMap().entries.map((e) {
-                      int idx = e.key;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  _buildFormField(e.value['name']!, 'Company Name', Icons.business, false),
-                                  const SizedBox(height: 8),
-                                  _buildFormField(e.value['address']!, 'Company Address', Icons.location_on, false, maxLines: 2),
-                                  const SizedBox(height: 8),
-                                  _buildFormField(e.value['phone']!, 'Company Phone Number', Icons.phone, false),
-                                ]
-                              )
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                              onPressed: () {
-                                setModalState(() {
-                                  companyControllers.removeAt(idx);
-                                });
-                              }
-                            )
-                          ]
-                        )
-                      );
-                    }),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () {
-                          setModalState(() {
-                            companyControllers.add({'name': TextEditingController(), 'address': TextEditingController(), 'phone': TextEditingController()});
-                          });
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Company'),
-                      ),
+                    Row(
+                      children: [
+                        const Icon(Icons.business_center_rounded, color: AppTheme.primaryColor, size: 20),
+                        const SizedBox(width: 8),
+                        const Text('Companies, Deeds & Partners Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                        const Spacer(),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            setModalState(() {
+                              companyForms.add(_CompanyFormData(
+                                nameCtrl: TextEditingController(),
+                                typeCtrl: TextEditingController(text: 'Partnership Firm'),
+                                addressCtrl: TextEditingController(),
+                                phoneCtrl: TextEditingController(),
+                                emailCtrl: TextEditingController(),
+                                regNoCtrl: TextEditingController(),
+                                gstinCtrl: TextEditingController(),
+                                panCtrl: TextEditingController(),
+                                deedTypeCtrl: TextEditingController(text: 'Partnership Deed'),
+                                deedDateCtrl: TextEditingController(),
+                                deedRegNoCtrl: TextEditingController(),
+                                deedNotesCtrl: TextEditingController(),
+                                deedDocUrl: null,
+                                partners: [],
+                              ));
+                            });
+                          },
+                          icon: const Icon(Icons.add_rounded, size: 16),
+                          label: const Text('Add Company'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E40AF),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 12),
+                    if (companyForms.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.grey.shade500, size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'No companies added yet. Click "+ Add Company" above to add business details, deeds documentation, and partner Aadhaar/PAN.',
+                                style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ...companyForms.asMap().entries.map((e) {
+                        int idx = e.key;
+                        final company = e.value;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.blue.shade200, width: 1.2),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Company Header Bar
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(15),
+                                    topRight: Radius.circular(15),
+                                  ),
+                                  border: Border(bottom: BorderSide(color: Colors.blue.shade100)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.business_rounded, color: Color(0xFF1D4ED8), size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        company.nameCtrl.text.isNotEmpty ? company.nameCtrl.text : 'Company #${idx + 1}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1E3A8A)),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+                                      tooltip: 'Remove Company',
+                                      onPressed: () {
+                                        setModalState(() {
+                                          companyForms.removeAt(idx);
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Company Details
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 3,
+                                          child: _buildFormField(company.nameCtrl, 'Company / Firm Name *', Icons.business, false),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          flex: 2,
+                                          child: _buildFormField(company.typeCtrl, 'Constitution (e.g. Partnership / Pvt Ltd)', Icons.account_balance_outlined, false),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    _buildFormField(company.addressCtrl, 'Registered Address', Icons.location_on_outlined, false, maxLines: 2),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildFormField(company.phoneCtrl, 'Official Phone', Icons.phone_outlined, false),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: _buildFormField(company.emailCtrl, 'Official Email', Icons.email_outlined, false),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildFormField(company.gstinCtrl, 'GSTIN', Icons.receipt_long_outlined, false),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: _buildFormField(company.panCtrl, 'Company PAN', Icons.badge_outlined, false),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: _buildFormField(company.regNoCtrl, 'Reg No. / CIN / LLPIN', Icons.tag_rounded, false),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Divider(height: 1),
+                                    const SizedBox(height: 14),
+
+                                    // Deeds & Documentation Section
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.description_rounded, size: 18, color: Color(0xFFD97706)),
+                                        const SizedBox(width: 6),
+                                        const Text(
+                                          'Deeds & Documentation',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Color(0xFF92400E)),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 3,
+                                          child: _buildFormField(company.deedTypeCtrl, 'Deed Type (e.g. Partnership Deed, MOA)', Icons.article_outlined, false),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          flex: 2,
+                                          child: _buildFormField(
+                                            company.deedDateCtrl,
+                                            'Execution / Deed Date',
+                                            Icons.calendar_today_outlined,
+                                            false,
+                                            onTap: () => pickDate(context, company.deedDateCtrl),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildFormField(company.deedRegNoCtrl, 'Deed Reg No. / Doc No.', Icons.confirmation_number_outlined, false),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: _buildFormField(company.deedNotesCtrl, 'Documentation Details / SRO / Notes', Icons.notes_rounded, false),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    // Attached Deed File Row
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.shade50.withValues(alpha: 0.5),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: Colors.amber.shade200),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.attachment_rounded, size: 18, color: Colors.amber.shade900),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              company.deedDocUrl != null && company.deedDocUrl!.isNotEmpty
+                                                  ? 'Attached Deed: ${company.deedDocUrl!.split('/').last}'
+                                                  : 'No deed file attached yet',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: company.deedDocUrl != null ? FontWeight.bold : FontWeight.normal,
+                                                color: company.deedDocUrl != null ? Colors.black87 : Colors.grey.shade600,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          if (company.deedDocUrl != null && company.deedDocUrl!.isNotEmpty) ...[
+                                            IconButton(
+                                              icon: const Icon(Icons.visibility_rounded, size: 18, color: Colors.blue),
+                                              tooltip: 'View Document',
+                                              onPressed: () => _openDeedDocument(company.deedDocUrl!),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                              tooltip: 'Remove Document',
+                                              onPressed: () {
+                                                setModalState(() {
+                                                  company.deedDocUrl = null;
+                                                });
+                                              },
+                                            ),
+                                          ],
+                                          TextButton.icon(
+                                            onPressed: company.isUploadingDoc
+                                                ? null
+                                                : () async {
+                                                    final result = await FilePicker.pickFiles(
+                                                      type: FileType.custom,
+                                                      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
+                                                      withData: true,
+                                                    );
+                                                    if (result != null && result.files.isNotEmpty) {
+                                                      setModalState(() => company.isUploadingDoc = true);
+                                                      final uploadedKey = await _uploadDeedFile(result.files.first);
+                                                      setModalState(() {
+                                                        company.isUploadingDoc = false;
+                                                        if (uploadedKey != null) {
+                                                          company.deedDocUrl = uploadedKey;
+                                                        }
+                                                      });
+                                                    }
+                                                  },
+                                            icon: company.isUploadingDoc
+                                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                                : const Icon(Icons.upload_file_rounded, size: 16),
+                                            label: Text(
+                                              company.deedDocUrl != null ? 'Change File' : 'Upload Deed File',
+                                              style: const TextStyle(fontSize: 12),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Divider(height: 1),
+                                    const SizedBox(height: 14),
+
+                                    // Partners / Directors Details Section
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.groups_rounded, size: 18, color: Color(0xFF047857)),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Partners & Directors (${company.partners.length})',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Color(0xFF065F46)),
+                                        ),
+                                        const Spacer(),
+                                        TextButton.icon(
+                                          onPressed: () {
+                                            setModalState(() {
+                                              company.partners.add(_PartnerFormData(
+                                                nameCtrl: TextEditingController(),
+                                                roleCtrl: TextEditingController(text: 'Partner'),
+                                                phoneCtrl: TextEditingController(),
+                                                emailCtrl: TextEditingController(),
+                                                aadharCtrl: TextEditingController(),
+                                                panCtrl: TextEditingController(),
+                                                shareCtrl: TextEditingController(),
+                                              ));
+                                            });
+                                          },
+                                          icon: const Icon(Icons.person_add_rounded, size: 16),
+                                          label: const Text('Add Partner / Director', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                          style: TextButton.styleFrom(foregroundColor: const Color(0xFF047857)),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    if (company.partners.isEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 8),
+                                        child: Text(
+                                          'No partners or directors added yet. Click "+ Add Partner / Director" above.',
+                                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                                        ),
+                                      )
+                                    else
+                                      ...company.partners.asMap().entries.map((pEntry) {
+                                        final pIdx = pEntry.key;
+                                        final partner = pEntry.value;
+                                        return Container(
+                                          margin: const EdgeInsets.only(bottom: 10),
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: Colors.grey.shade300),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFD1FAE5),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                    ),
+                                                    child: Text(
+                                                      'Partner #${pIdx + 1}',
+                                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
+                                                    ),
+                                                  ),
+                                                  const Spacer(),
+                                                  IconButton(
+                                                    icon: const Icon(Icons.close_rounded, size: 18, color: Colors.red),
+                                                    tooltip: 'Remove Partner',
+                                                    padding: EdgeInsets.zero,
+                                                    constraints: const BoxConstraints(),
+                                                    onPressed: () {
+                                                      setModalState(() {
+                                                        company.partners.removeAt(pIdx);
+                                                      });
+                                                    },
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    flex: 3,
+                                                    child: _buildFormField(partner.nameCtrl, 'Partner / Director Name *', Icons.person_outline, false),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    flex: 2,
+                                                    child: _buildFormField(partner.roleCtrl, 'Designation (e.g. Managing Partner)', Icons.work_outline, false),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: _buildFormField(partner.phoneCtrl, 'Phone Number', Icons.phone_android_rounded, false),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: _buildFormField(partner.emailCtrl, 'Email Address', Icons.email_outlined, false),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    flex: 2,
+                                                    child: _buildFormField(partner.aadharCtrl, 'Aadhaar Number (12 Digits)', Icons.fingerprint_rounded, false),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    flex: 2,
+                                                    child: _buildFormField(partner.panCtrl, 'PAN Number (e.g. ABCDE1234F)', Icons.credit_card_rounded, false),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    flex: 1,
+                                                    child: _buildFormField(partner.shareCtrl, 'Share %', Icons.pie_chart_outline_rounded, false),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                     const SizedBox(height: 20),
                     const Text('Custom Fields', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
                     const SizedBox(height: 12),
@@ -1604,12 +2337,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                           managedBy: careOfController.text,
                           balanceDue: client?.balanceDue,
                           registrationNumber: client?.registrationNumber,
-                          companies: companyControllers.map((c) {
-                            final name = c['name']!.text.trim();
-                            final addr = c['address']!.text.trim();
-                            final phone = c['phone']!.text.trim();
-                            return '$name|||$addr|||$phone';
-                          }).where((c) => !c.startsWith('|||')).toList(),
+                          companies: companyForms.map((c) => c.toSerializedString()).where((s) => s.isNotEmpty).toList(),
                           customFields: customFieldControllers.map((c) {
                             final name = c['name']!.text.trim();
                             final val = c['value']!.text.trim();
@@ -2155,12 +2883,51 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> {
                 _buildInfoPill(Icons.access_time_outlined, 'Created: ${_formatDate(c.createdAt, c.createdBy)}', isWide),
               ],
             ),
+            if (c.companies != null && c.companies!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () => _showCompanyDetailsDialog(c),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.business_center_rounded, size: 16, color: Color(0xFF1D4ED8)),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${c.companies!.length} Compan${c.companies!.length > 1 ? 'ies' : 'y'} & Deeds / Partners',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF1E40AF)),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 11, color: Color(0xFF1D4ED8)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Wrap(
               alignment: WrapAlignment.end,
               spacing: 12,
               runSpacing: 12,
               children: [
+                if (c.companies != null && c.companies!.isNotEmpty)
+                  OutlinedButton.icon(
+                    onPressed: () => _showCompanyDetailsDialog(c),
+                    icon: const Icon(Icons.business_center_outlined, size: 16),
+                    label: Text('Company & Deeds (${c.companies!.length})'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF1D4ED8),
+                      side: const BorderSide(color: Color(0xFF93C5FD)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
                 OutlinedButton.icon(
                   onPressed: () => _showClientFilesDialog(c),
                   icon: const Icon(Icons.folder_shared, size: 16),
@@ -2350,6 +3117,164 @@ class _ClientBillsDialogState extends State<_ClientBillsDialog> {
         ),
       ),
     );
+  }
+}
+
+class _CompanyFormData {
+  final TextEditingController nameCtrl;
+  final TextEditingController typeCtrl;
+  final TextEditingController addressCtrl;
+  final TextEditingController phoneCtrl;
+  final TextEditingController emailCtrl;
+  final TextEditingController regNoCtrl;
+  final TextEditingController gstinCtrl;
+  final TextEditingController panCtrl;
+
+  // Deeds & Documentation
+  final TextEditingController deedTypeCtrl;
+  final TextEditingController deedDateCtrl;
+  final TextEditingController deedRegNoCtrl;
+  final TextEditingController deedNotesCtrl;
+  String? deedDocUrl;
+  bool isUploadingDoc;
+
+  // Partners
+  final List<_PartnerFormData> partners;
+
+  _CompanyFormData({
+    required this.nameCtrl,
+    required this.typeCtrl,
+    required this.addressCtrl,
+    required this.phoneCtrl,
+    required this.emailCtrl,
+    required this.regNoCtrl,
+    required this.gstinCtrl,
+    required this.panCtrl,
+    required this.deedTypeCtrl,
+    required this.deedDateCtrl,
+    required this.deedRegNoCtrl,
+    required this.deedNotesCtrl,
+    this.deedDocUrl,
+    this.isUploadingDoc = false,
+    required this.partners,
+  });
+
+  factory _CompanyFormData.fromRaw(String raw) {
+    if (raw.trim().startsWith('{')) {
+      try {
+        final map = jsonDecode(raw) as Map<String, dynamic>;
+        final partnersList = (map['partners'] as List?)?.map((p) {
+          final pMap = p is Map ? Map<String, dynamic>.from(p) : <String, dynamic>{};
+          return _PartnerFormData(
+            nameCtrl: TextEditingController(text: pMap['name']?.toString() ?? ''),
+            roleCtrl: TextEditingController(text: pMap['role']?.toString() ?? 'Partner'),
+            phoneCtrl: TextEditingController(text: pMap['phone']?.toString() ?? ''),
+            emailCtrl: TextEditingController(text: pMap['email']?.toString() ?? ''),
+            aadharCtrl: TextEditingController(text: pMap['aadhar']?.toString() ?? ''),
+            panCtrl: TextEditingController(text: pMap['pan']?.toString() ?? ''),
+            shareCtrl: TextEditingController(text: pMap['share']?.toString() ?? ''),
+          );
+        }).toList() ?? [];
+
+        return _CompanyFormData(
+          nameCtrl: TextEditingController(text: map['name']?.toString() ?? ''),
+          typeCtrl: TextEditingController(text: map['type']?.toString() ?? 'Partnership Firm'),
+          addressCtrl: TextEditingController(text: map['address']?.toString() ?? ''),
+          phoneCtrl: TextEditingController(text: map['phone']?.toString() ?? ''),
+          emailCtrl: TextEditingController(text: map['email']?.toString() ?? ''),
+          regNoCtrl: TextEditingController(text: map['reg_no']?.toString() ?? ''),
+          gstinCtrl: TextEditingController(text: map['gstin']?.toString() ?? ''),
+          panCtrl: TextEditingController(text: map['pan']?.toString() ?? ''),
+          deedTypeCtrl: TextEditingController(text: map['deed_type']?.toString() ?? 'Partnership Deed'),
+          deedDateCtrl: TextEditingController(text: map['deed_date']?.toString() ?? ''),
+          deedRegNoCtrl: TextEditingController(text: map['deed_reg_no']?.toString() ?? ''),
+          deedNotesCtrl: TextEditingController(text: map['deed_notes']?.toString() ?? ''),
+          deedDocUrl: map['deed_doc_url']?.toString(),
+          partners: partnersList,
+        );
+      } catch (_) {}
+    }
+
+    String name = raw;
+    String address = '';
+    String phone = '';
+    if (raw.contains('|||')) {
+      final parts = raw.split('|||');
+      name = parts[0];
+      if (parts.length > 1) address = parts[1];
+      if (parts.length > 2) phone = parts[2];
+    }
+    return _CompanyFormData(
+      nameCtrl: TextEditingController(text: name),
+      typeCtrl: TextEditingController(text: 'Partnership Firm'),
+      addressCtrl: TextEditingController(text: address),
+      phoneCtrl: TextEditingController(text: phone),
+      emailCtrl: TextEditingController(),
+      regNoCtrl: TextEditingController(),
+      gstinCtrl: TextEditingController(),
+      panCtrl: TextEditingController(),
+      deedTypeCtrl: TextEditingController(text: 'Partnership Deed'),
+      deedDateCtrl: TextEditingController(),
+      deedRegNoCtrl: TextEditingController(),
+      deedNotesCtrl: TextEditingController(),
+      deedDocUrl: null,
+      partners: [],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': nameCtrl.text.trim(),
+      'type': typeCtrl.text.trim(),
+      'address': addressCtrl.text.trim(),
+      'phone': phoneCtrl.text.trim(),
+      'email': emailCtrl.text.trim(),
+      'reg_no': regNoCtrl.text.trim(),
+      'gstin': gstinCtrl.text.trim(),
+      'pan': panCtrl.text.trim().toUpperCase(),
+      'deed_type': deedTypeCtrl.text.trim(),
+      'deed_date': deedDateCtrl.text.trim(),
+      'deed_reg_no': deedRegNoCtrl.text.trim(),
+      'deed_notes': deedNotesCtrl.text.trim(),
+      'deed_doc_url': deedDocUrl,
+      'partners': partners.map((p) => p.toMap()).toList(),
+    };
+  }
+
+  String toSerializedString() {
+    return jsonEncode(toMap());
+  }
+}
+
+class _PartnerFormData {
+  final TextEditingController nameCtrl;
+  final TextEditingController roleCtrl;
+  final TextEditingController phoneCtrl;
+  final TextEditingController emailCtrl;
+  final TextEditingController aadharCtrl;
+  final TextEditingController panCtrl;
+  final TextEditingController shareCtrl;
+
+  _PartnerFormData({
+    required this.nameCtrl,
+    required this.roleCtrl,
+    required this.phoneCtrl,
+    required this.emailCtrl,
+    required this.aadharCtrl,
+    required this.panCtrl,
+    required this.shareCtrl,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': nameCtrl.text.trim(),
+      'role': roleCtrl.text.trim(),
+      'phone': phoneCtrl.text.trim(),
+      'email': emailCtrl.text.trim(),
+      'aadhar': aadharCtrl.text.trim(),
+      'pan': panCtrl.text.trim().toUpperCase(),
+      'share': shareCtrl.text.trim(),
+    };
   }
 }
 

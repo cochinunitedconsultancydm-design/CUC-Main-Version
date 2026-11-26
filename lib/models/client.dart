@@ -62,6 +62,7 @@ class Client {
       balanceDue: map['balance_due'],
       registrationNumber: map['registration_number'],
       bankAccountDetails: map['bank_account_details'],
+      companies: (map['companies'] as List?)?.map((e) => e.toString()).toList(),
       customFields: (map['custom_fields'] as List?)?.map((e) => e.toString()).toList(),
       createdAt: map['created_at'],
     );
@@ -85,6 +86,7 @@ class Client {
       'balance_due': balanceDue,
       'registration_number': registrationNumber,
       'bank_account_details': bankAccountDetails,
+      'companies': companies,
       'custom_fields': customFields,
       'created_at': createdAt,
     };

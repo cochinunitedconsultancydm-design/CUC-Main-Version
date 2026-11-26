@@ -523,7 +523,16 @@ class _ContactDialogState extends State<_ContactDialog> {
     } catch (e) {
       debugPrint('Save error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red));
+        final errStr = e.toString();
+        if (errStr.contains('Not Authorized') || errStr.contains('Unauthorized')) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Not Authorized: Only Admin accounts can currently save contacts in the deployed backend. Push git commits to deploy permissions.'),
+            backgroundColor: Colors.redAccent,
+            duration: Duration(seconds: 5),
+          ));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red));
+        }
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);

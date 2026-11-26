@@ -181,7 +181,18 @@ class _AddOfficeLocationScreenState extends State<AddOfficeLocationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to save office location.')));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        final errStr = e.toString();
+        if (errStr.contains('Not Authorized') || errStr.contains('Unauthorized')) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Not Authorized: Only Admin accounts can currently create offices in the deployed backend. Push git commits to deploy permissions.'),
+            backgroundColor: Colors.redAccent,
+            duration: Duration(seconds: 5),
+          ));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

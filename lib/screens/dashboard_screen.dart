@@ -765,7 +765,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _sidebarItem(29, Icons.format_list_bulleted_rounded, 'Formats'),
                   _sidebarItem(18, Icons.history_rounded, 'Verification History'),
                   _sidebarItem(19, Icons.directions_car_filled_outlined, 'Travel Logs'),
-                  _sidebarItem(23, Icons.business_rounded, 'Office Details'),
+                  _sidebarItem(23, Icons.corporate_fare_rounded, 'Our Office'),
                   _sidebarItem(24, Icons.real_estate_agent_rounded, 'Property Management'),
                   _sidebarItem(25, Icons.contacts_rounded, 'Contact Book'),
                   _sidebarItem(7, Icons.settings_rounded, 'Settings'),

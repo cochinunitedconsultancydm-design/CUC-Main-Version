@@ -559,7 +559,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _sidebarItem(18, Icons.mark_email_unread_rounded, 'Post & Letter Register', isWide),
                 _sidebarItem(20, Icons.history_rounded, 'Verification History', isWide),
                 _sidebarItem(21, Icons.real_estate_agent_rounded, 'Property Management', isWide),
-                _sidebarItem(27, Icons.business_rounded, 'Office Details', isWide),
+                _sidebarItem(27, Icons.corporate_fare_rounded, 'Our Office', isWide),
               ],
             ),
           ),

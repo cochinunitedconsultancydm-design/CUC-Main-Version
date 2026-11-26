@@ -1,11 +1,13 @@
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../theme.dart';
 import '../models/dsc_record.dart';
 import '../services/logging_service.dart';
 import '../services/excel_service.dart';
+import '../services/client_service.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import 'package:cuc_app/services/backup_aware_api.dart';
@@ -20,16 +22,20 @@ class DscManagementScreen extends StatefulWidget {
 
 class _DscManagementScreenState extends State<DscManagementScreen> {
   final _excel = ExcelService();
+  final _clientService = ClientService();
   List<DscRecord> _records = [];
+  List<Map<String, dynamic>> _clientsList = [];
   bool _isLoading = true;
   bool _isAdmin = false;
   String _searchTerm = '';
+  String _statusFilter = 'All'; // All, Active, Expiring, Expired
 
   @override
   void initState() {
     super.initState();
     _checkAdminRole();
     _fetchRecords();
+    _fetchClients();
   }
 
   Future<void> _checkAdminRole() async {
@@ -37,14 +43,23 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
     if (mounted) setState(() => _isAdmin = isAdmin);
   }
 
+  Future<void> _fetchClients() async {
+    try {
+      final clients = await _clientService.getAllClients();
+      if (mounted) {
+        setState(() => _clientsList = clients);
+      }
+    } catch (_) {}
+  }
+
   Future<void> _fetchRecords() async {
     setState(() => _isLoading = true);
     try {
       final req = ModelQueries.list(amplify_models.DscRecords.classType, limit: 10000);
       final res = await Amplify.API.query(request: req).response;
-      final recordsList = (res.data?.items ?? []).whereType<amplify_models.DscRecords>().toList() ?? [];
+      final recordsList = (res.data?.items ?? []).whereType<amplify_models.DscRecords>().toList();
       recordsList.sort((a, b) => (a.dsc_expiry_date ?? '').compareTo(b.dsc_expiry_date ?? ''));
-      
+
       setState(() {
         _records = recordsList.map((row) => DscRecord(
           id: int.tryParse(row.id),
@@ -60,7 +75,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
     } catch (e) {
       _showError('Failed to fetch Digital Signature records: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -72,13 +87,20 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: const Text('Are you sure you want to delete this Digital Signature record?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            SizedBox(width: 12),
+            Text('Confirm Delete'),
+          ],
+        ),
+        content: const Text('Are you sure you want to delete this Digital Signature record? This action cannot be undone.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             child: const Text('Delete'),
           ),
         ],
@@ -87,8 +109,12 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
 
     if (confirmed == true) {
       try {
-        await BackupAwareApi().deleteById(amplify_models.DscRecords.classType, amplify_models.DscRecordsModelIdentifier(id: id.toString()));
+        await BackupAwareApi().deleteById(
+          amplify_models.DscRecords.classType,
+          amplify_models.DscRecordsModelIdentifier(id: id.toString()),
+        );
         _fetchRecords();
+        _showSuccess('Digital Signature deleted');
       } catch (e) {
         _showError('Delete failed: $e');
       }
@@ -114,327 +140,776 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
   }
 
+  // ==========================================
+  // ADD / EDIT FORM (REDESIGNED)
+  // ==========================================
   void _showRecordForm([DscRecord? record]) {
     if (record != null && !_isAdmin) {
       _showError('Permission Denied: Only Admin can edit DSC records');
       return;
     }
+
     final clientNameController = TextEditingController(text: record?.clientName);
     final emailController = TextEditingController(text: record?.emailId);
     final phoneController = TextEditingController(text: record?.phoneNo);
     final usernameController = TextEditingController(text: record?.username);
     final passwordController = TextEditingController(text: record?.password);
-    
-    DateTime? takenDate = record?.dscTakenDate;
-    DateTime? expiryDate = record?.dscExpiryDate;
+
+    DateTime? takenDate = record?.dscTakenDate ?? DateTime.now();
+    DateTime? expiryDate = record?.dscExpiryDate ?? DateTime.now().add(const Duration(days: 730)); // 2 years default
+    bool obscurePassword = true;
+    bool isSaving = false;
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
-          title: Text(record == null ? 'Add Digital Signature' : 'Edit Digital Signature'),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.9,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: clientNameController, decoration: const InputDecoration(labelText: 'Client Name')),
-                  TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email ID')),
-                  TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone No')),
-                  Row(
-                    children: [
-                      Expanded(child: TextField(controller: usernameController, decoration: const InputDecoration(labelText: 'Username'))),
-                      const SizedBox(width: 16),
-                      Expanded(child: TextField(controller: passwordController, decoration: const InputDecoration(labelText: 'Password'))),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ListTile(
-                          title: const Text('Taken Date', style: TextStyle(fontSize: 12)),
-                          subtitle: Text(takenDate == null ? 'Not set' : DateFormat('dd/MM/yyyy').format(takenDate!)),
-                          trailing: const Icon(Icons.calendar_today, size: 18),
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: takenDate ?? DateTime.now(),
-                              firstDate: DateTime(2000),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) setModalState(() => takenDate = picked);
-                          },
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          int remainingDays = expiryDate != null ? expiryDate!.difference(DateTime.now()).inDays : 0;
+          bool isExpired = remainingDays < 0;
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            backgroundColor: Colors.white,
+            elevation: 16,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Container(
+              width: 620,
+              padding: const EdgeInsets.all(28),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(Icons.vpn_key_rounded, color: Color(0xFF2563EB), size: 26),
                         ),
-                      ),
-                      Expanded(
-                        child: ListTile(
-                          title: const Text('Expiry Date', style: TextStyle(fontSize: 12)),
-                          subtitle: Text(expiryDate == null ? 'Not set' : DateFormat('dd/MM/yyyy').format(expiryDate!)),
-                          trailing: const Icon(Icons.calendar_today, size: 18),
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: expiryDate ?? DateTime.now(),
-                              firstDate: DateTime(2000),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) setModalState(() => expiryDate = picked);
-                          },
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                record == null ? 'Add Digital Signature (DSC)' : 'Edit Digital Signature',
+                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Record client DSC token details, portal credentials, and validity period',
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        IconButton(
+                          onPressed: () => Navigator.pop(dialogCtx),
+                          icon: const Icon(Icons.close_rounded, color: Colors.black54),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+
+                    // Client Selection / Autocomplete
+                    Autocomplete<Map<String, dynamic>>(
+                      initialValue: TextEditingValue(text: clientNameController.text),
+                      optionsBuilder: (TextEditingValue textVal) {
+                        if (textVal.text.trim().isEmpty) {
+                          return _clientsList.take(5);
+                        }
+                        final q = textVal.text.toLowerCase();
+                        return _clientsList.where((c) {
+                          final name = c['name']?.toString().toLowerCase() ?? '';
+                          final phone = c['phone']?.toString().toLowerCase() ?? '';
+                          return name.contains(q) || phone.contains(q);
+                        });
+                      },
+                      displayStringForOption: (option) => option['name']?.toString() ?? '',
+                      onSelected: (option) {
+                        clientNameController.text = option['name']?.toString() ?? '';
+                        if (option['phone'] != null && option['phone'].toString().isNotEmpty) {
+                          phoneController.text = option['phone'].toString();
+                        }
+                        if (option['email'] != null && option['email'].toString().isNotEmpty) {
+                          emailController.text = option['email'].toString();
+                        }
+                        setModalState(() {});
+                      },
+                      fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+                        // Keep controller in sync
+                        controller.addListener(() {
+                          clientNameController.text = controller.text;
+                        });
+
+                        return TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          onEditingComplete: onEditingComplete,
+                          decoration: InputDecoration(
+                            labelText: 'Client Name *',
+                            hintText: 'Type client name or select from directory',
+                            prefixIcon: const Icon(Icons.person_rounded, color: Color(0xFF2563EB)),
+                            filled: true,
+                            fillColor: const Color(0xFFF8FAFC),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+                            isDense: true,
+                          ),
+                        );
+                      },
+                      optionsViewBuilder: (context, onSelected, options) {
+                        return Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            elevation: 8,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              width: 560,
+                              constraints: const BoxConstraints(maxHeight: 220),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: ListView.separated(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                itemCount: options.length,
+                                separatorBuilder: (_, _) => const Divider(height: 1),
+                                itemBuilder: (context, idx) {
+                                  final opt = options.elementAt(idx);
+                                  return ListTile(
+                                    dense: true,
+                                    leading: const CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: Color(0xFFEFF6FF),
+                                      child: Icon(Icons.person, size: 16, color: Color(0xFF2563EB)),
+                                    ),
+                                    title: Text(opt['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    subtitle: Text('${opt['phone'] ?? ''} • ${opt['email'] ?? ''}', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                                    onTap: () => onSelected(opt),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Phone and Email Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: phoneController,
+                            keyboardType: TextInputType.phone,
+                            decoration: InputDecoration(
+                              labelText: 'Phone No',
+                              hintText: 'e.g. 9876543210',
+                              prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: TextField(
+                            controller: emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: InputDecoration(
+                              labelText: 'Email ID',
+                              hintText: 'client@example.com',
+                              prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Username & Password Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: usernameController,
+                            decoration: InputDecoration(
+                              labelText: 'Portal Username',
+                              hintText: 'e.g. GST / MCA Username',
+                              prefixIcon: const Icon(Icons.account_circle_outlined, size: 20),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: TextField(
+                            controller: passwordController,
+                            obscureText: obscurePassword,
+                            decoration: InputDecoration(
+                              labelText: 'Password / PIN',
+                              hintText: 'Token Password / Portal PIN',
+                              prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                              suffixIcon: IconButton(
+                                icon: Icon(obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: Colors.grey),
+                                onPressed: () => setModalState(() => obscurePassword = !obscurePassword),
+                              ),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+
+                    // Validity Dates Section
+                    const Text('VALIDITY PERIOD & DATES', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.8)),
+                    const SizedBox(height: 10),
+
+                    Row(
+                      children: [
+                        // Taken Date Card
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: takenDate ?? DateTime.now(),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                setModalState(() {
+                                  takenDate = picked;
+                                  // Keep expiry 2 years ahead by default if not modified
+                                  if (expiryDate == null || expiryDate!.isBefore(picked)) {
+                                    expiryDate = picked.add(const Duration(days: 730));
+                                  }
+                                });
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                                    child: const Icon(Icons.calendar_today_rounded, color: Color(0xFF2563EB), size: 18),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Taken / Issue Date', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          takenDate != null ? DateFormat('dd/MM/yyyy').format(takenDate!) : 'Not Set',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+
+                        // Expiry Date Card
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: expiryDate ?? (takenDate ?? DateTime.now()).add(const Duration(days: 730)),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                setModalState(() => expiryDate = picked);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: isExpired ? Colors.red.shade50.withValues(alpha: 0.5) : const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: isExpired ? Colors.red.shade300 : Colors.grey.shade300),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: isExpired ? Colors.red.shade100 : Colors.amber.shade50,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(Icons.event_busy_rounded, color: isExpired ? Colors.red : Colors.amber.shade800, size: 18),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Expiry Date', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          expiryDate != null ? DateFormat('dd/MM/yyyy').format(expiryDate!) : 'Not Set',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isExpired ? Colors.red.shade800 : Colors.black87),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Quick Expiry Presets
+                    Row(
+                      children: [
+                        const Text('Quick Validity: ', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        _buildPresetChip('+ 1 Year', () {
+                          final base = takenDate ?? DateTime.now();
+                          setModalState(() => expiryDate = DateTime(base.year + 1, base.month, base.day));
+                        }),
+                        const SizedBox(width: 6),
+                        _buildPresetChip('+ 2 Years', () {
+                          final base = takenDate ?? DateTime.now();
+                          setModalState(() => expiryDate = DateTime(base.year + 2, base.month, base.day));
+                        }),
+                        const SizedBox(width: 6),
+                        _buildPresetChip('+ 3 Years', () {
+                          final base = takenDate ?? DateTime.now();
+                          setModalState(() => expiryDate = DateTime(base.year + 3, base.month, base.day));
+                        }),
+                        const Spacer(),
+                        if (expiryDate != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isExpired ? Colors.red.shade100 : (remainingDays < 30 ? Colors.orange.shade100 : Colors.green.shade100),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              isExpired ? 'Expired' : (remainingDays < 30 ? 'Expiring in $remainingDays days' : 'Active ($remainingDays days left)'),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isExpired ? Colors.red.shade900 : (remainingDays < 30 ? Colors.orange.shade900 : Colors.green.shade900),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 28),
+
+                    // Actions
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: isSaving ? null : () => Navigator.pop(dialogCtx),
+                          child: const Text('Cancel', style: TextStyle(color: Colors.black54)),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: isSaving
+                              ? null
+                              : () async {
+                                  final clientName = clientNameController.text.trim();
+                                  if (clientName.isEmpty) {
+                                    _showError('Please enter client name');
+                                    return;
+                                  }
+
+                                  setModalState(() => isSaving = true);
+                                  try {
+                                    if (record == null) {
+                                      final newDsc = amplify_models.DscRecords(
+                                        client_name: clientName,
+                                        email_id: emailController.text.trim(),
+                                        phone_no: phoneController.text.trim(),
+                                        username: usernameController.text.trim(),
+                                        password: passwordController.text.trim(),
+                                        dsc_taken_date: takenDate?.toIso8601String(),
+                                        dsc_expiry_date: expiryDate?.toIso8601String(),
+                                      );
+                                      await BackupAwareApi().create(newDsc);
+                                      await LoggingService().logAction(
+                                        action: 'SIGNATURE_CREATED',
+                                        targetType: 'Signature',
+                                        targetId: clientName,
+                                        details: 'Added digital signature for $clientName',
+                                      );
+                                    } else {
+                                      final updateDsc = amplify_models.DscRecords(
+                                        id: record.id.toString(),
+                                        client_name: clientName,
+                                        email_id: emailController.text.trim(),
+                                        phone_no: phoneController.text.trim(),
+                                        username: usernameController.text.trim(),
+                                        password: passwordController.text.trim(),
+                                        dsc_taken_date: takenDate?.toIso8601String(),
+                                        dsc_expiry_date: expiryDate?.toIso8601String(),
+                                      );
+                                      await BackupAwareApi().update(updateDsc);
+                                      await LoggingService().logAction(
+                                        action: 'SIGNATURE_UPDATED',
+                                        targetType: 'Signature',
+                                        targetId: record.id.toString(),
+                                        details: 'Updated signature for $clientName',
+                                      );
+                                    }
+                                    if (mounted) Navigator.pop(dialogCtx);
+                                    _fetchRecords();
+                                    _showSuccess('Digital Signature saved successfully');
+                                  } catch (e) {
+                                    setModalState(() => isSaving = false);
+                                    _showError('Save failed: $e');
+                                  }
+                                },
+                          icon: isSaving
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.check_circle_rounded, size: 18),
+                          label: Text(isSaving ? 'Saving...' : 'Save Signature'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  if (record == null) {
-                    final newDsc = amplify_models.DscRecords(
-                      client_name: clientNameController.text,
-                      email_id: emailController.text,
-                      phone_no: phoneController.text,
-                      username: usernameController.text,
-                      password: passwordController.text,
-                      dsc_taken_date: takenDate?.toIso8601String(),
-                      dsc_expiry_date: expiryDate?.toIso8601String(),
-                    );
-                    await BackupAwareApi().create(newDsc);
-                    await LoggingService().logAction(action: 'SIGNATURE_CREATED', targetType: 'Signature', targetId: clientNameController.text, details: 'Added new digital signature');
-                  } else {
-                    final updateDsc = amplify_models.DscRecords(
-                      id: record.id.toString(),
-                      client_name: clientNameController.text,
-                      email_id: emailController.text,
-                      phone_no: phoneController.text,
-                      username: usernameController.text,
-                      password: passwordController.text,
-                      dsc_taken_date: takenDate?.toIso8601String(),
-                      dsc_expiry_date: expiryDate?.toIso8601String(),
-                    );
-                    await BackupAwareApi().update(updateDsc);
-                    await LoggingService().logAction(action: 'SIGNATURE_UPDATED', targetType: 'Signature', targetId: record.id.toString(), details: 'Updated signature for ${clientNameController.text}');
-                  }
-                  if (mounted) Navigator.pop(context);
-                  _fetchRecords();
-                  _showSuccess('Digital Signature record saved');
-                } catch (e) {
-                  _showError('Save failed: $e');
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
+  Widget _buildPresetChip(String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.blue.shade200),
+        ),
+        child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
+      ),
+    );
+  }
+
+  // ==========================================
+  // MAIN SCREEN VIEW
+  // ==========================================
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isWide = constraints.maxWidth > 900;
-        final filtered = _records.where((r) => 
-          (r.clientName?.toLowerCase().contains(_searchTerm.toLowerCase()) ?? false) ||
-          (r.username?.toLowerCase().contains(_searchTerm.toLowerCase()) ?? false)
-        ).toList();
 
-        return Padding(
-          padding: EdgeInsets.all(isWide ? 24 : 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-            if (isWide)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text('Digital Signature', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -1)),
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 300,
-                        child: TextField(
-                          onChanged: (val) => setState(() => _searchTerm = val),
-                          decoration: InputDecoration(
-                            hintText: 'Search...',
-                            prefixIcon: const Icon(Icons.search, size: 20),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        // Apply search & status filter
+        final filtered = _records.where((r) {
+          final query = _searchTerm.toLowerCase();
+          final matchesSearch = (r.clientName?.toLowerCase().contains(query) ?? false) ||
+              (r.username?.toLowerCase().contains(query) ?? false) ||
+              (r.phoneNo?.toLowerCase().contains(query) ?? false) ||
+              (r.emailId?.toLowerCase().contains(query) ?? false);
+
+          if (!matchesSearch) return false;
+
+          final now = DateTime.now();
+          final isExpired = r.dscExpiryDate != null && r.dscExpiryDate!.isBefore(now);
+          final isExpiringSoon = !isExpired && r.dscExpiryDate != null && r.dscExpiryDate!.isBefore(now.add(const Duration(days: 30)));
+          final isActive = !isExpired && !isExpiringSoon;
+
+          if (_statusFilter == 'Active') return isActive;
+          if (_statusFilter == 'Expiring Soon') return isExpiringSoon;
+          if (_statusFilter == 'Expired') return isExpired;
+          return true;
+        }).toList();
+
+        // Statistics
+        final now = DateTime.now();
+        final totalCount = _records.length;
+        final expiredCount = _records.where((r) => r.dscExpiryDate != null && r.dscExpiryDate!.isBefore(now)).length;
+        final expiringCount = _records.where((r) {
+          final exp = r.dscExpiryDate;
+          if (exp == null) return false;
+          return !exp.isBefore(now) && exp.isBefore(now.add(const Duration(days: 30)));
+        }).length;
+        final activeCount = totalCount - expiredCount - expiringCount;
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF8FAFC),
+          body: SingleChildScrollView(
+            padding: EdgeInsets.all(isWide ? 28 : 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Header Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Digital Signature (DSC)',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF0F172A),
+                            letterSpacing: -0.5,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: _fetchRecords,
-                        icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor, size: 20),
-                        tooltip: 'Refresh',
-                        style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1), padding: const EdgeInsets.all(12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: _exportToExcel,
-                        icon: const Icon(Icons.download_rounded, color: Colors.green, size: 20),
-                        tooltip: 'Export',
-                        style: IconButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.1), padding: const EdgeInsets.all(12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                      ),
-                      const SizedBox(width: 16),
-                      ElevatedButton.icon(
-                        onPressed: () => _showRecordForm(),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Signature'),
-                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                      ),
-                    ],
-                  ),
-                ],
-              )
-            else ...[
-              const Text('Digital Signature', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -1)),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      onChanged: (val) => setState(() => _searchTerm = val),
-                      decoration: InputDecoration(
-                        hintText: 'Search...',
-                        prefixIcon: const Icon(Icons.search, size: 20),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Manage client cryptographic USB tokens, portal credentials, and expiry alerts',
+                          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: _fetchRecords,
+                          icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor),
+                          tooltip: 'Refresh',
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                            padding: const EdgeInsets.all(12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: _exportToExcel,
+                          icon: const Icon(Icons.download_rounded, color: Colors.green),
+                          tooltip: 'Export to Excel',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.green.withValues(alpha: 0.1),
+                            padding: const EdgeInsets.all(12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        ElevatedButton.icon(
+                          onPressed: () => _showRecordForm(),
+                          icon: const Icon(Icons.add_rounded, size: 20),
+                          label: const Text('Add Signature', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+
+                // Statistics Cards
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cardWidth = (constraints.maxWidth - 36) / 4;
+                    if (constraints.maxWidth < 700) {
+                      return Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _buildStatCard('Total DSCs', totalCount.toString(), Icons.vpn_key_rounded, const Color(0xFF2563EB), constraints.maxWidth / 2 - 12),
+                          _buildStatCard('Active', activeCount.toString(), Icons.check_circle_rounded, const Color(0xFF16A34A), constraints.maxWidth / 2 - 12),
+                          _buildStatCard('Expiring Soon', expiringCount.toString(), Icons.access_time_rounded, const Color(0xFFD97706), constraints.maxWidth / 2 - 12),
+                          _buildStatCard('Expired', expiredCount.toString(), Icons.warning_rounded, const Color(0xFFDC2626), constraints.maxWidth / 2 - 12),
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: _buildStatCard('Total DSCs', totalCount.toString(), Icons.vpn_key_rounded, const Color(0xFF2563EB), cardWidth)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildStatCard('Active', activeCount.toString(), Icons.check_circle_rounded, const Color(0xFF16A34A), cardWidth)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildStatCard('Expiring (< 30d)', expiringCount.toString(), Icons.access_time_rounded, const Color(0xFFD97706), cardWidth)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildStatCard('Expired', expiredCount.toString(), Icons.warning_rounded, const Color(0xFFDC2626), cardWidth)),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 22),
+
+                // Search Bar and Status Filters
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        onChanged: (val) => setState(() => _searchTerm = val),
+                        decoration: InputDecoration(
+                          hintText: 'Search by client name, username, email, or phone...',
+                          prefixIcon: const Icon(Icons.search, size: 20, color: Colors.grey),
+                          suffixIcon: _searchTerm.isNotEmpty
+                              ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () => setState(() => _searchTerm = ''))
+                              : null,
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor)),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: _fetchRecords,
-                    icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor, size: 20),
-                    tooltip: 'Refresh',
-                    style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1), padding: const EdgeInsets.all(12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: _exportToExcel,
-                    icon: const Icon(Icons.download_rounded, color: Colors.green, size: 20),
-                    tooltip: 'Export',
-                    style: IconButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.1), padding: const EdgeInsets.all(12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showRecordForm(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('ADD NEW SIGNATURE'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    const SizedBox(width: 14),
+                    _buildFilterChip('All'),
+                    const SizedBox(width: 6),
+                    _buildFilterChip('Active'),
+                    const SizedBox(width: 6),
+                    _buildFilterChip('Expiring Soon'),
+                    const SizedBox(width: 6),
+                    _buildFilterChip('Expired'),
+                  ],
                 ),
-              ),
-            ],
-            const SizedBox(height: 32),
-            Expanded(
-              child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.separated(
+                const SizedBox(height: 20),
+
+                // Results list / cards
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+                  )
+                else if (filtered.isEmpty)
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(48),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 16)]),
+                            child: const Icon(Icons.vpn_key_outlined, size: 54, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 18),
+                          Text(
+                            _records.isEmpty ? 'No Digital Signatures added yet.' : 'No digital signatures match your search.',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _records.isEmpty ? 'Click "Add Signature" above to register your first client DSC.' : 'Try adjusting the search query or status filters.',
+                            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
                     itemCount: filtered.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, index) => _buildDscCard(filtered[index], isWide),
                   ),
-            ),
-          ],
-        ).animate().fadeIn(),
-      );
-    },
-  );
-}
-
-  Widget _buildDscCard(DscRecord r, bool isWide) {
-    final bool isExpired = r.dscExpiryDate != null && r.dscExpiryDate!.isBefore(DateTime.now());
-    final bool isExpiringSoon = r.dscExpiryDate != null && r.dscExpiryDate!.isBefore(DateTime.now().add(const Duration(days: 30)));
-    final statusColor = isExpired ? Colors.red : (isExpiringSoon ? Colors.orange : Colors.green);
-
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.1))),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.symmetric(horizontal: isWide ? 24 : 16, vertical: 8),
-        leading: isWide ? Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-          child: Icon(Icons.vpn_key_outlined, color: statusColor),
-        ) : null,
-        title: Text(r.clientName ?? 'Unknown', style: TextStyle(fontWeight: FontWeight.bold, fontSize: isWide ? 16 : 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text('User: ${r.username ?? "N/A"}', style: const TextStyle(color: AppTheme.mutedTextColor, fontSize: 12)),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(isExpired ? 'Expired' : (isExpiringSoon ? 'Expiring' : 'Active'), style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.bold)),
-                Text(r.dscExpiryDate != null ? DateFormat('dd/MM').format(r.dscExpiryDate!) : '-', style: const TextStyle(fontSize: 10, color: AppTheme.mutedTextColor)),
               ],
             ),
-            const Icon(Icons.expand_more, color: AppTheme.mutedTextColor, size: 20),
-          ],
-        ),
+          ).animate().fadeIn(duration: 300.ms),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color, double width) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(isWide ? 24 : 16, 0, isWide ? 24 : 16, isWide ? 24 : 16),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Divider(),
-                const SizedBox(height: 16),
-                if (isWide) ...[
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Expanded(child: _buildDetailItem('Username', r.username ?? 'N/A', Icons.person_outline)),
-                    Expanded(child: _buildDetailItem('Password', r.password ?? 'N/A', Icons.lock_outline)),
-                    Expanded(child: _buildDetailItem('Email ID', r.emailId ?? 'N/A', Icons.email_outlined)),
-                  ]),
-                  const SizedBox(height: 16),
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Expanded(child: _buildDetailItem('Phone No', r.phoneNo ?? 'N/A', Icons.phone_outlined)),
-                    Expanded(child: _buildDetailItem('Taken Date', r.dscTakenDate != null ? DateFormat('dd/MM/yyyy').format(r.dscTakenDate!) : 'N/A', Icons.calendar_today_outlined)),
-                    Expanded(child: _buildDetailItem('Expiry Date', r.dscExpiryDate != null ? DateFormat('dd/MM/yyyy').format(r.dscExpiryDate!) : 'N/A', Icons.event_busy_outlined)),
-                  ]),
-                ] else ...[
-                  _buildDetailItem('Username', r.username ?? 'N/A', Icons.person_outline),
-                  const SizedBox(height: 12),
-                  _buildDetailItem('Password', r.password ?? 'N/A', Icons.lock_outline),
-                  const SizedBox(height: 12),
-                  _buildDetailItem('Email', r.emailId ?? 'N/A', Icons.email_outlined),
-                  const SizedBox(height: 12),
-                  _buildDetailItem('Phone', r.phoneNo ?? 'N/A', Icons.phone_outlined),
-                  const SizedBox(height: 12),
-                  _buildDetailItem('Taken', r.dscTakenDate != null ? DateFormat('dd/MM/yyyy').format(r.dscTakenDate!) : 'N/A', Icons.calendar_today_outlined),
-                  const SizedBox(height: 12),
-                  _buildDetailItem('Expiry', r.dscExpiryDate != null ? DateFormat('dd/MM/yyyy').format(r.dscExpiryDate!) : 'N/A', Icons.event_busy_outlined),
-                ],
-                const SizedBox(height: 24),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.end,
-                  children: [
-                    if (_isAdmin)
-                      TextButton.icon(onPressed: () => _showRecordForm(r), icon: const Icon(Icons.edit_outlined, size: 18), label: const Text('Edit')),
-                    if (_isAdmin)
-                      TextButton.icon(onPressed: () => _deleteRecord(r.id!), icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent), label: const Text('Delete', style: TextStyle(color: Colors.redAccent))),
-                  ],
+                Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
                 ),
               ],
             ),
@@ -444,23 +919,260 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
     );
   }
 
-  Widget _buildDetailItem(String label, String value, IconData icon) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+  Widget _buildFilterChip(String label) {
+    final isSelected = _statusFilter == label;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (val) => setState(() => _statusFilter = label),
+      selectedColor: AppTheme.primaryColor.withValues(alpha: 0.15),
+      labelStyle: TextStyle(
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+        color: isSelected ? AppTheme.primaryColor : Colors.black87,
+        fontSize: 13,
+      ),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200),
+      ),
+    );
+  }
+
+  Widget _buildDscCard(DscRecord r, bool isWide) {
+    final now = DateTime.now();
+    final bool isExpired = r.dscExpiryDate != null && r.dscExpiryDate!.isBefore(now);
+    final bool isExpiringSoon = !isExpired && r.dscExpiryDate != null && r.dscExpiryDate!.isBefore(now.add(const Duration(days: 30)));
+    final int daysRemaining = r.dscExpiryDate != null ? r.dscExpiryDate!.difference(now).inDays : 0;
+
+    final Color statusColor = isExpired ? const Color(0xFFDC2626) : (isExpiringSoon ? const Color(0xFFD97706) : const Color(0xFF16A34A));
+    final String statusText = isExpired ? 'Expired' : (isExpiringSoon ? 'Expiring in $daysRemaining days' : 'Active');
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: ExpansionTile(
+          shape: const Border(),
+          collapsedShape: const Border(),
+          tilePadding: EdgeInsets.symmetric(horizontal: isWide ? 22 : 16, vertical: 8),
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.vpn_key_rounded, color: statusColor, size: 22),
+          ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  r.clientName ?? 'Unnamed Client',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  statusText,
+                  style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                if (r.username != null && r.username!.isNotEmpty) ...[
+                  const Icon(Icons.account_circle_outlined, size: 14, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(r.username!, style: const TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 14),
+                ],
+                if (r.dscExpiryDate != null) ...[
+                  const Icon(Icons.event_busy_outlined, size: 14, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Expiry: ${DateFormat('dd MMM yyyy').format(r.dscExpiryDate!)}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
+              ],
+            ),
+          ),
           children: [
-            Icon(icon, size: 14, color: AppTheme.mutedTextColor),
-            const SizedBox(width: 6),
-            Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.mutedTextColor, fontWeight: FontWeight.w500)),
+            Container(
+              padding: EdgeInsets.fromLTRB(isWide ? 22 : 16, 8, isWide ? 22 : 16, 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                border: Border(top: BorderSide(color: Colors.grey.shade100)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _buildDetailCard(
+                          'Portal Username',
+                          r.username ?? 'N/A',
+                          Icons.person_outline,
+                          copyable: r.username != null && r.username!.isNotEmpty,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDetailCard(
+                          'Password / PIN',
+                          r.password ?? 'N/A',
+                          Icons.lock_outline,
+                          copyable: r.password != null && r.password!.isNotEmpty,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDetailCard(
+                          'Email Address',
+                          r.emailId ?? 'N/A',
+                          Icons.email_outlined,
+                          copyable: r.emailId != null && r.emailId!.isNotEmpty,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _buildDetailCard(
+                          'Phone Number',
+                          r.phoneNo ?? 'N/A',
+                          Icons.phone_outlined,
+                          copyable: r.phoneNo != null && r.phoneNo!.isNotEmpty,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDetailCard(
+                          'Taken / Issue Date',
+                          r.dscTakenDate != null ? DateFormat('dd/MM/yyyy').format(r.dscTakenDate!) : 'N/A',
+                          Icons.calendar_today_outlined,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDetailCard(
+                          'Expiry Date',
+                          r.dscExpiryDate != null ? DateFormat('dd/MM/yyyy').format(r.dscExpiryDate!) : 'N/A',
+                          Icons.event_busy_outlined,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Actions
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (_isAdmin) ...[
+                        OutlinedButton.icon(
+                          onPressed: () => _showRecordForm(r),
+                          icon: const Icon(Icons.edit_outlined, size: 16),
+                          label: const Text('Edit'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF2563EB),
+                            side: const BorderSide(color: Color(0xFF2563EB)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        OutlinedButton.icon(
+                          onPressed: () => _deleteRecord(r.id!),
+                          icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                          label: const Text('Delete'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
-        const SizedBox(height: 4),
-        Padding(
-          padding: const EdgeInsets.only(left: 20),
-          child: Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-        ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildDetailCard(String label, String value, IconData icon, {bool copyable = false}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: Colors.grey),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (copyable) ...[
+                InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: value));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Copied $label to clipboard'), duration: const Duration(seconds: 1)),
+                    );
+                  },
+                  child: const Icon(Icons.copy_rounded, size: 14, color: AppTheme.primaryColor),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 }

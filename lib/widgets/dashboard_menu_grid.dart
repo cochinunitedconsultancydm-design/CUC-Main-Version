@@ -78,7 +78,7 @@ class _DashboardMenuGridState extends State<DashboardMenuGrid> {
       MenuItem(10, Icons.chat_bubble_outline_rounded, 'Staff Chat'),
       MenuItem(16, Icons.directions_car_filled_outlined, 'Travel Logs'),
       MenuItem(21, Icons.real_estate_agent_rounded, 'Property Management'),
-      MenuItem(27, Icons.business_rounded, 'Office Details'),
+      MenuItem(27, Icons.corporate_fare_rounded, 'Our Office'),
     ]),
     MenuCategory('System', [
       MenuItem(7, Icons.settings_rounded, 'Settings'),

@@ -144,9 +144,21 @@ app.post('/api/verify-payment', (req, res) => {
 
     if (isMatch) {
       console.log(`[Razorpay] Payment verified successfully: Payment ID: ${razorpay_payment_id}, Order ID: ${razorpay_order_id}`);
+
+      // Automatically update the bill in database and notify local server
+      autoUpdateBillOnPayment({
+        orderId: razorpay_order_id,
+        paymentId: razorpay_payment_id,
+        invoiceNo: req.body.invoice_no,
+        billingId: req.body.billing_id,
+        amount: req.body.amount,
+      }).catch((err) => {
+        console.error('[Razorpay Auto-Sync] Background update error:', err.message);
+      });
+
       return res.status(200).json({
         status: 'success',
-        message: 'Payment verified successfully',
+        message: 'Payment verified successfully and bill updated to Paid',
         payment_id: razorpay_payment_id,
         order_id: razorpay_order_id,
       });
@@ -164,6 +176,122 @@ app.post('/api/verify-payment', (req, res) => {
       error: error.message || 'Internal server error during signature verification.',
     });
   }
+});
+
+/**
+ * Automatically update the bill in database and notify local webhook server
+ */
+async function autoUpdateBillOnPayment({ orderId, paymentId, invoiceNo, billingId, amount }) {
+  console.log(`[Auto-Sync] Processing paid invoice: ${invoiceNo || billingId || orderId}`);
+  
+  // 1. Notify local Flutter embedded webhook server on port 8088
+  try {
+    const notifyPayload = {
+      event: 'payment.captured',
+      payload: {
+        payment: {
+          entity: {
+            id: paymentId,
+            order_id: orderId,
+            amount: amount ? Math.round(Number(amount) * 100) : 0,
+            status: 'captured',
+            notes: {
+              invoice_no: invoiceNo,
+              billing_id: billingId,
+            }
+          }
+        }
+      }
+    };
+    const localRes = await fetch('http://localhost:8088/webhook/razorpay', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(notifyPayload)
+    });
+    console.log(`[Auto-Sync] Local webhook notified on port 8088: HTTP ${localRes.status}`);
+  } catch (err) {
+    console.log(`[Auto-Sync] Local webhook port 8088 notice: ${err.message}`);
+  }
+
+  // 2. Direct Supabase update
+  try {
+    const supabaseUrl = process.env.SUPABASE_URL || 'https://bzxtgiqjgfojblezdubd.supabase.co';
+    const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6eHRnaXFqZ2ZvamJsZXpkdWJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3OTMxMzIsImV4cCI6MjA4MTM2OTEzMn0.E8IKI5PvnW9WoEX4EcXvcSVk0b74LGrrQhNhFX99Dxo';
+
+    let filter = '';
+    if (billingId) filter = `id=eq.${billingId}`;
+    else if (invoiceNo) filter = `invoice_no=eq.${encodeURIComponent(invoiceNo)}`;
+
+    if (filter) {
+      const getRes = await fetch(`${supabaseUrl}/rest/v1/billings?${filter}&select=*`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        }
+      });
+      const rows = await getRes.json();
+      if (Array.isArray(rows) && rows.length > 0) {
+        const bill = rows[0];
+        let billData = {};
+        if (bill.data) {
+          try { billData = typeof bill.data === 'string' ? JSON.parse(bill.data) : bill.data; } catch (_) {}
+        }
+        billData.payment_received = true;
+        billData.payment_date = new Date().toISOString();
+        billData.razorpay_payment_id = paymentId;
+        billData.marked_paid_by = 'Razorpay Web Checkout';
+        billData.balance_due = '0/-';
+        if (amount) billData.advance_received = String(amount);
+
+        await fetch(`${supabaseUrl}/rest/v1/billings?${filter}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            status: 'Received',
+            data: billData
+          })
+        });
+        console.log(`[Auto-Sync] Supabase billing ${invoiceNo || billingId} updated to Received.`);
+      }
+    }
+  } catch (sbErr) {
+    console.error(`[Auto-Sync] Supabase update notice: ${sbErr.message}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. Webhook Receiver for Razorpay Events (POST /api/webhook, /webhook/razorpay)
+// ---------------------------------------------------------------------------
+app.post(['/api/webhook', '/webhook/razorpay', '/api/razorpay-webhook'], async (req, res) => {
+  const event = req.body.event;
+  console.log(`[Razorpay Webhook] Received event: ${event}`);
+
+  if (event === 'payment.captured' || event === 'payment_link.paid' || event === 'order.paid') {
+    const payment = req.body.payload?.payment?.entity;
+    const paymentLink = req.body.payload?.payment_link?.entity;
+    const notes = payment?.notes || paymentLink?.notes || {};
+
+    const invoiceNo = notes.invoice_no;
+    const billingId = notes.billing_id;
+    const paymentId = payment?.id || paymentLink?.id;
+    const orderId = payment?.order_id || req.body.payload?.order?.entity?.id;
+    const amount = (payment?.amount || paymentLink?.amount || 0) / 100;
+
+    await autoUpdateBillOnPayment({
+      orderId,
+      paymentId,
+      invoiceNo,
+      billingId,
+      amount
+    });
+  }
+
+  return res.status(200).json({ status: 'ok' });
 });
 
 // Start the backend server

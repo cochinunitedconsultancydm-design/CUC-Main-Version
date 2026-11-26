@@ -15,6 +15,7 @@ import 'deal_service.dart';
 import 'notification_service.dart';
 import 'logging_service.dart';
 import 'supabase_backup_service.dart';
+import 'billing_service.dart';
 
 /// Configuration for Meta Developer Platform & WhatsApp Cloud API
 class MetaConfig {
@@ -2068,23 +2069,33 @@ class MetaWebhookServer {
         }
         updatedData['razorpay_paid_at'] = DateTime.now().toIso8601String();
         updatedData['razorpay_payment_id'] = paymentEntity?['id']?.toString() ?? paymentLinkEntity?['id']?.toString();
+        updatedData['payment_received'] = true;
+        updatedData['payment_date'] = DateTime.now().toIso8601String();
+        updatedData['marked_paid_by'] = 'Razorpay Online';
+        updatedData['balance_due'] = '0/-';
         if (paidAmount > 0) {
           updatedData['advance_received'] = paidAmount.toStringAsFixed(0);
+        } else if (targetBill.amount != null) {
+          updatedData['advance_received'] = targetBill.amount;
         }
 
         final updatedModel = targetBill.copyWith(
-          status: 'Paid',
+          status: 'Received',
           data: jsonEncode(updatedData),
         );
 
-        final mutateReq = ModelMutations.update(updatedModel);
-        await Amplify.API.mutate(request: mutateReq).response;
+        await BackupAwareApi().update(updatedModel);
+        if (targetBill.client_name != null && targetBill.client_name!.isNotEmpty) {
+          try {
+            await BillingService().syncClientBalance(targetBill.client_name!);
+          } catch (_) {}
+        }
 
         await LoggingService().logAction(
           action: 'PAYMENT_RECEIVED_VIA_WEBHOOK',
           targetType: 'Invoice',
           targetId: targetBill.invoice_no ?? targetBill.id,
-          details: 'Razorpay payment hook received ($event). Marked invoice ${targetBill.invoice_no} as Paid for ₹${paidAmount > 0 ? paidAmount.toStringAsFixed(2) : targetBill.amount}.',
+          details: 'Razorpay payment hook received ($event). Marked invoice ${targetBill.invoice_no} as Received/Paid for ₹${paidAmount > 0 ? paidAmount.toStringAsFixed(2) : targetBill.amount}.',
         );
 
         // Send automated confirmation via WhatsApp hook to client

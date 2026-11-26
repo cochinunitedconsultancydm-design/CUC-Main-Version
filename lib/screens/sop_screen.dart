@@ -806,7 +806,36 @@ class _SopScreenState extends State<SopScreen> {
                                                   ),
                                                 ),
                                               );
-                                            }),
+                                            })
+                                          else
+                                            Container(
+                                              margin: const EdgeInsets.only(left: 24, right: 24, bottom: 12),
+                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade50,
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(color: Colors.grey.shade200),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.info_outline, size: 18, color: Colors.grey.shade600),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      'No PDF currently attached to this procedure.',
+                                                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                                                    ),
+                                                  ),
+                                                  if (_isAdmin)
+                                                    TextButton.icon(
+                                                      onPressed: () => _showAddEditSopDialog(sop),
+                                                      icon: const Icon(Icons.attach_file_rounded, size: 16),
+                                                      label: const Text('Attach PDF', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                                      style: TextButton.styleFrom(foregroundColor: Colors.blue.shade700),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
                                           const SizedBox(height: 16),
                                       ],
                                     ),

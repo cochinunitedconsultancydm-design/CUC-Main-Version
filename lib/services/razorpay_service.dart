@@ -218,4 +218,25 @@ class RazorpayService {
     }
     return false;
   }
+
+  /// Fetch Payment Link status directly from Razorpay
+  Future<RazorpayPaymentLink?> fetchPaymentLink(String linkId) async {
+    try {
+      final url = Uri.parse('$_baseUrl/payment_links/$linkId');
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': _basicAuthHeader,
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        return RazorpayPaymentLink.fromJson(json);
+      }
+    } catch (e) {
+      debugPrint('Error fetching payment link $linkId: $e');
+    }
+    return null;
+  }
 }

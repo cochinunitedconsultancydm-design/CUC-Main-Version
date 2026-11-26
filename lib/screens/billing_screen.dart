@@ -801,9 +801,56 @@ class _BillingScreenState extends State<BillingScreen> {
       return;
     }
 
-    String phone = await _billingService.getClientPhone(b.clientName!) ?? '';
-    if (phone.isEmpty && b.data != null && b.data?['client_phone'] != null) {
-      phone = b.data!['client_phone'].toString();
+    String phone = '';
+
+    // 1. Check all potential phone fields directly stored in b.data
+    if (b.data != null) {
+      for (final key in [
+        'client_phone',
+        'phone',
+        'mobile',
+        'client_mobile',
+        'contact',
+        'customer_phone',
+        'whatsapp',
+        'whatsapp_number',
+        'phone_number'
+      ]) {
+        final val = b.data![key]?.toString().trim() ?? '';
+        final digits = val.replaceAll(RegExp(r'\D'), '');
+        if (digits.length >= 10) {
+          phone = val;
+          break;
+        }
+      }
+    }
+
+    // 2. Automatically resolve client phone via BillingService if empty
+    if (phone.isEmpty && b.clientName != null && b.clientName!.trim().isNotEmpty) {
+      phone = await _billingService.getClientPhone(b.clientName!) ?? '';
+    }
+
+    // 3. Clean phone format for input box (extract 10-digit standard Indian mobile or clean digits)
+    var displayPhone = phone.trim();
+    final digitsOnly = displayPhone.replaceAll(RegExp(r'\D'), '');
+    if (digitsOnly.length == 10) {
+      displayPhone = digitsOnly;
+    } else if (digitsOnly.length == 12 && digitsOnly.startsWith('91')) {
+      displayPhone = digitsOnly.substring(2);
+    } else if (digitsOnly.length == 11 && digitsOnly.startsWith('0')) {
+      displayPhone = digitsOnly.substring(1);
+    }
+
+    // Resolve client email if available
+    String clientEmail = '';
+    if (b.data != null) {
+      for (final key in ['client_email', 'email', 'customer_email']) {
+        final val = b.data![key]?.toString().trim() ?? '';
+        if (val.contains('@')) {
+          clientEmail = val;
+          break;
+        }
+      }
     }
 
     double payableAmt = _getPayableAmount(b);
@@ -817,7 +864,7 @@ class _BillingScreenState extends State<BillingScreen> {
     }
 
     final amountController = TextEditingController(text: initialAmountStr);
-    final phoneController = TextEditingController(text: phone);
+    final phoneController = TextEditingController(text: displayPhone);
     String existingLink = b.data?['razorpay_payment_link']?.toString() ?? '';
 
     if (!mounted) return;
@@ -1097,12 +1144,16 @@ class _BillingScreenState extends State<BillingScreen> {
                                 invoiceNo: b.invoiceNo ?? 'INV',
                                 clientName: b.clientName ?? 'Valued Client',
                                 clientPhone: enteredPhone,
+                                clientEmail: clientEmail.isNotEmpty ? clientEmail : null,
                                 billingId: b.id,
                               );
 
                               final updatedData = Map<String, dynamic>.from(b.data ?? {});
                               updatedData['razorpay_payment_link'] = linkResult.shortUrl;
                               updatedData['razorpay_link_id'] = linkResult.id;
+                              if (enteredPhone.isNotEmpty) {
+                                updatedData['client_phone'] = enteredPhone;
+                              }
                               await _billingService.updateBilling(b.id, {'data': updatedData});
 
                               final amtFormatted = NumberToWords.formatIndianCurrency(linkResult.amount).replaceAll('/-', '');

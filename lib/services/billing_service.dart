@@ -125,6 +125,8 @@ class BillingService {
               items {
                 name
                 phone
+                email
+                companies
                 case_number
                 file_no
                 registration_number
@@ -142,17 +144,43 @@ class BillingService {
           final data = jsonDecode(res.data!);
           final items = data['listClients']?['items'] as List? ?? [];
           for (var item in items) {
-            final name = item['name']?.toString();
-            if (name != null) {
+            final name = item['name']?.toString().trim();
+            final phone = item['phone']?.toString().trim() ?? '';
+            final email = item['email']?.toString().trim() ?? '';
+            if (name != null && name.isNotEmpty) {
               String regNo = item['registration_number']?.toString() ?? item['case_number']?.toString() ?? '';
               String fileNo = item['file_no']?.toString() ?? '';
               if (regNo == fileNo && !regNo.startsWith('CUC-')) {
                 regNo = ''; // Don't show file no as reg no
               }
-              _clientDetailsCacheV2![name] = {
-                'phone': item['phone']?.toString() ?? '',
+              final clientData = {
+                'phone': phone,
+                'email': email,
                 'reg_no': regNo,
               };
+              _clientDetailsCacheV2![name] = clientData;
+              _clientDetailsCacheV2![name.toLowerCase()] = clientData;
+
+              // Also index companies if present
+              final comps = item['companies'] as List?;
+              if (comps != null) {
+                for (final comp in comps) {
+                  final parts = comp.toString().split('|||');
+                  if (parts.isNotEmpty) {
+                    final compName = parts[0].trim();
+                    if (compName.isNotEmpty) {
+                      final compPhone = parts.length > 2 && parts[2].trim().isNotEmpty ? parts[2].trim() : phone;
+                      final compData = {
+                        'phone': compPhone,
+                        'email': email,
+                        'reg_no': regNo,
+                      };
+                      _clientDetailsCacheV2![compName] = compData;
+                      _clientDetailsCacheV2![compName.toLowerCase()] = compData;
+                    }
+                  }
+                }
+              }
             }
           }
           nextToken = data['listClients']?['nextToken']?.toString();
@@ -272,18 +300,36 @@ class BillingService {
       final map = m.toMap();
       map['created_at'] = m.created_at ?? m.createdAt?.toString();
       
-      String phone = clientDetails[m.client_name]?['phone'] ?? '';
-      String regNo = clientDetails[m.client_name]?['reg_no'] ?? '';
+      final clientNameKey = m.client_name?.trim() ?? '';
+      final clientInfo = clientDetails[clientNameKey] ??
+          clientDetails[clientNameKey.toLowerCase()] ??
+          clientDetails.entries.firstWhere(
+            (e) => (clientNameKey.isNotEmpty &&
+                (e.key.toLowerCase().contains(clientNameKey.toLowerCase()) ||
+                 clientNameKey.toLowerCase().contains(e.key.toLowerCase()))),
+            orElse: () => const MapEntry('', {}),
+          ).value;
+
+      String phone = clientInfo['phone'] ?? '';
+      String regNo = clientInfo['reg_no'] ?? '';
+      String email = clientInfo['email'] ?? '';
       String dataStr = map['data']?.toString() ?? '{}';
       try {
         var dataMap = jsonDecode(dataStr);
         if (dataMap is Map) {
-          dataMap['client_phone'] = phone;
-          dataMap['client_reg_no'] = regNo;
+          if (phone.isNotEmpty) {
+            dataMap['client_phone'] = phone;
+          } else if (dataMap['client_phone'] != null && dataMap['client_phone'].toString().trim().isNotEmpty) {
+            phone = dataMap['client_phone'].toString().trim();
+          }
+          if (regNo.isNotEmpty) dataMap['client_reg_no'] = regNo;
+          if (email.isNotEmpty && (dataMap['client_email'] == null || dataMap['client_email'].toString().isEmpty)) {
+            dataMap['client_email'] = email;
+          }
           map['data'] = jsonEncode(dataMap);
         }
       } catch(_) {
-        map['data'] = jsonEncode({'client_phone': phone, 'client_reg_no': regNo});
+        map['data'] = jsonEncode({'client_phone': phone, 'client_reg_no': regNo, 'client_email': email});
       }
       
       return Billing.fromMap(map);
@@ -460,11 +506,76 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
   }
 
   Future<String?> getClientPhone(String clientName) async {
-    final req = ModelQueries.list(Clients.classType, where: Clients.NAME.eq(clientName), limit: 10000);
-    final res = await Amplify.API.query(request: req).response;
-    if (res.data?.items.isNotEmpty == true) {
-      return res.data!.items.first!.phone;
-    }
+    final clean = clientName.trim().toLowerCase();
+    if (clean.isEmpty) return null;
+
+    // 1. Check client details cache
+    try {
+      final detailsMap = await _getClientDetailsMap();
+      if (detailsMap[clientName]?['phone']?.isNotEmpty == true) {
+        return detailsMap[clientName]!['phone'];
+      }
+      if (detailsMap[clean]?['phone']?.isNotEmpty == true) {
+        return detailsMap[clean]!['phone'];
+      }
+      for (final entry in detailsMap.entries) {
+        final k = entry.key.toLowerCase().trim();
+        if ((k == clean || k.contains(clean) || clean.contains(k)) &&
+            entry.value['phone']?.isNotEmpty == true) {
+          return entry.value['phone'];
+        }
+      }
+    } catch (_) {}
+
+    // 2. Query Clients table directly with case-insensitive / partial match
+    try {
+      final req = ModelQueries.list(Clients.classType, limit: 1000);
+      final res = await Amplify.API.query(request: req).response;
+      final clients = (res.data?.items ?? []).whereType<Clients>().toList();
+
+      // Exact normalized match
+      for (final c in clients) {
+        final cName = (c.name ?? '').trim().toLowerCase();
+        if (cName == clean && c.phone != null && c.phone!.trim().isNotEmpty) {
+          return c.phone!.trim();
+        }
+      }
+
+      // Partial / contains match & companies
+      for (final c in clients) {
+        final cName = (c.name ?? '').trim().toLowerCase();
+        if ((cName.contains(clean) || clean.contains(cName)) && c.phone != null && c.phone!.trim().isNotEmpty) {
+          return c.phone!.trim();
+        }
+        if (c.companies != null) {
+          for (final comp in c.companies!) {
+            final parts = comp.split('|||');
+            if (parts.isNotEmpty) {
+              final compName = parts[0].trim().toLowerCase();
+              if (compName == clean || compName.contains(clean) || clean.contains(compName)) {
+                if (parts.length > 2 && parts[2].trim().isNotEmpty) return parts[2].trim();
+                if (c.phone != null && c.phone!.trim().isNotEmpty) return c.phone!.trim();
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 3. Fallback: Search Contacts table
+    try {
+      final contactReq = ModelQueries.list(Contacts.classType, limit: 500);
+      final contactRes = await Amplify.API.query(request: contactReq).response;
+      final contacts = (contactRes.data?.items ?? []).whereType<Contacts>().toList();
+      for (final c in contacts) {
+        final cName = (c.name ?? '').trim().toLowerCase();
+        if (cName == clean || cName.contains(clean) || clean.contains(cName)) {
+          final p = c.personal_number?.trim() ?? c.official_number?.trim() ?? '';
+          if (p.isNotEmpty) return p;
+        }
+      }
+    } catch (_) {}
+
     return null;
   }
 

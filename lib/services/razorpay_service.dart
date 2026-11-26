@@ -65,13 +65,19 @@ class RazorpayService {
     };
 
     if (clientPhone != null && clientPhone.trim().isNotEmpty) {
-      var phoneDigits = clientPhone.replaceAll(RegExp(r'[^0-9]'), '');
-      if (phoneDigits.length == 10) {
-        phoneDigits = '+91$phoneDigits';
-      } else if (!phoneDigits.startsWith('+')) {
-        phoneDigits = '+$phoneDigits';
+      var digits = clientPhone.replaceAll(RegExp(r'[^0-9]'), '');
+      if (digits.startsWith('0091') && digits.length == 14) {
+        digits = digits.substring(4);
+      } else if (digits.startsWith('91') && digits.length == 12) {
+        digits = digits.substring(2);
+      } else if (digits.startsWith('0') && digits.length == 11) {
+        digits = digits.substring(1);
       }
-      customerData['contact'] = phoneDigits;
+      if (digits.length == 10) {
+        customerData['contact'] = '+91$digits';
+      } else if (digits.isNotEmpty) {
+        customerData['contact'] = digits.startsWith('+') ? digits : '+$digits';
+      }
     }
 
     if (clientEmail != null && clientEmail.trim().isNotEmpty) {

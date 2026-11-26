@@ -14,7 +14,7 @@ const schema = a.schema({
     service_cost: a.float(),
     service_date: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create', 'update', 'delete'])]),
   LicenseNotifications: a.model({
     id: a.id().required(),
     client_license_id: a.integer(),
@@ -23,12 +23,12 @@ const schema = a.schema({
     is_sent: a.boolean(),
     scheduled_date: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create', 'update', 'delete'])]),
   ServiceNames: a.model({
     id: a.id().required(),
     name: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create', 'update', 'delete'])]),
   DscRecords: a.model({
     id: a.id().required(),
     username: a.string(),
@@ -62,7 +62,7 @@ const schema = a.schema({
     details: a.string(),
     pdf_url: a.string(),
     previous_case_id: a.string(),
-  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create', 'update', 'delete'])]),
   Sops: a.model({
     id: a.id().required(),
     title: a.string(),
@@ -70,7 +70,7 @@ const schema = a.schema({
     content: a.string(),
     created_at: a.string(),
     updated_at: a.string(),
-  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create', 'update', 'delete'])]),
 
   Clients: a.model({
     id: a.id().required(),
@@ -120,7 +120,7 @@ const schema = a.schema({
     other_photos: a.string(),
     created_at: a.string(),
     updated_at: a.string(),
-  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create', 'update', 'delete'])]),
   Contacts: a.model({
     id: a.id().required(),
     name: a.string().required(),
@@ -133,7 +133,7 @@ const schema = a.schema({
     native_place: a.string(),
     working_place: a.string(),
     created_at: a.string(),
-  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create', 'update', 'delete'])]),
   DealStageHistory: a.model({
     id: a.id().required(),
     deal_id: a.integer(),
@@ -154,7 +154,7 @@ const schema = a.schema({
     description: a.string(),
     created_at: a.string(),
     updated_at: a.string(),
-  }).authorization((allow) => [allow.groups(['Admin']), allow.authenticated().to(['read'])]),
+  }).authorization((allow) => [allow.groups(['Admin', 'Manager']), allow.authenticated().to(['read', 'create', 'update', 'delete'])]),
   LicenseBilling: a.model({
     id: a.id().required(),
     client_license_id: a.integer(),

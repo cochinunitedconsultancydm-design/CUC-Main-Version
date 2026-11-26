@@ -23,6 +23,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart';
 import '../widgets/premium_app_bar.dart';
+import '../widgets/compact_date_range_picker.dart';
 import '../services/supabase_backup_service.dart';
 import '../services/meta_service.dart';
 class BillingScreen extends StatefulWidget {
@@ -1733,7 +1734,7 @@ class _BillingScreenState extends State<BillingScreen> {
                       ),
                       const SizedBox(width: 8),
                       _actionBtn(Icons.date_range_rounded, 'Filter by Date', _startDate != null ? Colors.blue : Colors.grey, () async {
-                         final picked = await showDateRangePicker(
+                         final picked = await showCompactDateRangePicker(
                            context: context,
                            firstDate: DateTime(2020),
                            lastDate: DateTime.now(),
@@ -1902,7 +1903,7 @@ class _BillingScreenState extends State<BillingScreen> {
                       ),
                     ),
                     _actionBtn(Icons.date_range_rounded, 'Filter by Date', _startDate != null ? Colors.blue : Colors.grey, () async {
-                   final picked = await showDateRangePicker(
+                   final picked = await showCompactDateRangePicker(
                      context: context,
                      firstDate: DateTime(2020),
                      lastDate: DateTime.now(),

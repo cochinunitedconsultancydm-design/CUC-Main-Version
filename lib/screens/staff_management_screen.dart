@@ -15,6 +15,7 @@ import 'package:cuc_app/services/backup_aware_api.dart';
 import '../services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/test_whatsapp_dialog.dart';
+import '../widgets/compact_date_range_picker.dart';
 
 class StaffManagementScreen extends StatefulWidget {
   const StaffManagementScreen({super.key});
@@ -2149,15 +2150,11 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                           items: ['Today', 'This Week', 'This Month', 'All Time', 'Custom'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
                           onChanged: (val) async {
                             if (val == 'Custom') {
-                              final picked = await showDateRangePicker(
+                              final picked = await showCompactDateRangePicker(
                                 context: context,
                                 firstDate: DateTime(2020),
                                 lastDate: DateTime.now(),
                                 initialDateRange: customDateRange,
-                                builder: (context, child) => Theme(
-                                  data: Theme.of(context).copyWith(colorScheme: const ColorScheme.light(primary: AppTheme.primaryColor)),
-                                  child: child!,
-                                ),
                               );
                               if (picked != null) {
                                 customDateRange = picked;

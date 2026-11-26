@@ -11,6 +11,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../services/logging_service.dart';
 import '../widgets/premium_app_bar.dart';
+import '../widgets/compact_date_range_picker.dart';
 class CompanyBillManagementScreen extends StatefulWidget {
   const CompanyBillManagementScreen({super.key});
 
@@ -773,21 +774,13 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
         actions: [
           InkWell(
             onTap: () async {
-              final range = await showDateRangePicker(
+              final range = await showCompactDateRangePicker(
                 context: context,
                 firstDate: DateTime(2020),
                 lastDate: DateTime(2100),
                 initialDateRange: _startDate != null && _endDate != null 
                     ? DateTimeRange(start: _startDate!, end: _endDate!) 
                     : null,
-                builder: (context, child) {
-                  return Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 400, maxHeight: 550),
-                      child: child,
-                    ),
-                  );
-                },
               );
               if (range != null) {
                 setState(() {

@@ -286,7 +286,9 @@ class _MonitorScreenState extends State<MonitorScreen> {
       for (var l in amplifyLogs) {
         final id = l.id;
         seenIds.add(id);
-        final displayTime = l.createdAt?.getDateTimeInUtc().toLocal().toIso8601String() ?? l.created_at;
+        final String? displayTime = (l.created_at != null && l.created_at!.isNotEmpty)
+            ? l.created_at
+            : l.createdAt?.getDateTimeInUtc().add(const Duration(hours: 5, minutes: 30)).toIso8601String();
         final resolvedName = _resolveStaffName(
           userId: l.user_id,
           details: l.details,
@@ -335,8 +337,8 @@ class _MonitorScreenState extends State<MonitorScreen> {
 
       // Chronological forward pass: resolve any 'LOGOUT' showing 'System' to the preceding active staff member
       unifiedLogs.sort((a, b) {
-        final tA = a['created_at'] != null ? (DateTime.tryParse(a['created_at'].toString()) ?? DateTime(2000)) : DateTime(2000);
-        final tB = b['created_at'] != null ? (DateTime.tryParse(b['created_at'].toString()) ?? DateTime(2000)) : DateTime(2000);
+        final tA = a['created_at'] != null ? parseToIST(a['created_at'].toString()) : DateTime(2000);
+        final tB = b['created_at'] != null ? parseToIST(b['created_at'].toString()) : DateTime(2000);
         return tA.compareTo(tB);
       });
 
@@ -359,8 +361,8 @@ class _MonitorScreenState extends State<MonitorScreen> {
 
       // Sort chronological descending (most recent first) for UI display
       unifiedLogs.sort((a, b) {
-        final tA = a['created_at'] != null ? (DateTime.tryParse(a['created_at'].toString()) ?? DateTime(2000)) : DateTime(2000);
-        final tB = b['created_at'] != null ? (DateTime.tryParse(b['created_at'].toString()) ?? DateTime(2000)) : DateTime(2000);
+        final tA = a['created_at'] != null ? parseToIST(a['created_at'].toString()) : DateTime(2000);
+        final tB = b['created_at'] != null ? parseToIST(b['created_at'].toString()) : DateTime(2000);
         return tB.compareTo(tA);
       });
 
@@ -513,12 +515,30 @@ class _MonitorScreenState extends State<MonitorScreen> {
   static DateTime parseToIST(String? ts) {
     if (ts == null || ts.isEmpty) return DateTime.now();
     try {
-      final parsed = DateTime.parse(ts);
-      if (parsed.isUtc) {
-        final ist = parsed.add(const Duration(hours: 5, minutes: 30));
-        return DateTime(ist.year, ist.month, ist.day, ist.hour, ist.minute, ist.second);
+      // In CUC, activity logs and user sessions are generated using DateTime.now()
+      // which records literal Indian Standard Time (IST) wall-clock numbers (e.g. 09:18:30).
+      // Remote databases (PostgreSQL timestamptz / Amplify) append '+00:00' or 'Z' to these numbers.
+      // Stripping the UTC offset ensures the true Indian Standard Time is displayed without an artificial +5:30 shift.
+      String clean = ts.trim();
+      if (clean.contains('+')) {
+        clean = clean.split('+')[0];
       }
-      return parsed.toLocal();
+      if (clean.endsWith('Z') || clean.endsWith('z')) {
+        clean = clean.substring(0, clean.length - 1);
+      }
+      final parsed = DateTime.tryParse(clean);
+      if (parsed != null) {
+        return DateTime(
+          parsed.year,
+          parsed.month,
+          parsed.day,
+          parsed.hour,
+          parsed.minute,
+          parsed.second,
+          parsed.millisecond,
+        );
+      }
+      return DateTime.parse(ts);
     } catch (_) {
       return DateTime.now();
     }

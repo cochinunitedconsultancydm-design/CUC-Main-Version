@@ -215,7 +215,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         debugPrint('Amplify users list query error: $e');
       }
 
-      // Fetch staff from Supabase (fallback/complement)
+      // Fetch staff from Supabase (disaster-recovery fallback only)
       List<Map<String, dynamic>> sbUsers = [];
       try {
         sbUsers = await SupabaseBackupService().getFullUsersData();
@@ -223,28 +223,112 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         debugPrint('Supabase getFullUsersData error: $e');
       }
 
-      Set<String> deletedKeys = {};
+      // If Amplify returned no users (e.g. offline/outage), fall back to Supabase mirror
+      if (usersRaw.isEmpty && sbUsers.isNotEmpty) {
+        usersRaw = sbUsers.map((su) => amplify_models.Users(
+          id: su['id']?.toString() ?? '',
+          name: su['name']?.toString() ?? su['username']?.toString(),
+          username: su['username']?.toString(),
+          email: su['email']?.toString(),
+          role: su['role']?.toString(),
+        )).toList();
+      }
+
+      // 1. Gather all deleted staff keys from SharedPreferences (local device)
+      final Set<String> deletedKeys = {
+        'amarnath',
+        'jayan',
+        'sariga',
+        'saniga',
+        'jesna',
+        'jisha',
+        'jitha',
+        'midhun',
+      };
       try {
         final prefs = await SharedPreferences.getInstance();
-        deletedKeys = (prefs.getStringList('deleted_staff_keys') ?? [])
-            .map((k) => k.toLowerCase().trim())
-            .toSet();
+        final localDeleted = prefs.getStringList('deleted_staff_keys') ?? [];
+        for (var k in localDeleted) {
+          final trimmed = k.toLowerCase().trim();
+          if (trimmed.isNotEmpty) deletedKeys.add(trimmed);
+        }
       } catch (_) {}
+
+      // 2. Harvest deleted staff from Supabase users marked with role == 'deleted'
+      for (var su in sbUsers) {
+        final role = (su['role'] ?? '').toString().toLowerCase().trim();
+        if (role == 'deleted') {
+          if (su['id'] != null) deletedKeys.add(su['id'].toString().toLowerCase().trim());
+          if (su['username'] != null) deletedKeys.add(su['username'].toString().toLowerCase().trim());
+          if (su['email'] != null) deletedKeys.add(su['email'].toString().toLowerCase().trim());
+          if (su['name'] != null) deletedKeys.add(su['name'].toString().toLowerCase().trim());
+        }
+      }
+
+      final monthStr = DateFormat('yyyy-MM').format(_selectedMonth);
+
+      // 3. Query ActivityLogs early to discover all DELETE_STAFF events from database
+      List<amplify_models.ActivityLogs> ampLogs = [];
+      try {
+        final logsReq = ModelQueries.list(
+          amplify_models.ActivityLogs.classType,
+          limit: 10000,
+          authorizationMode: APIAuthorizationType.userPools,
+        );
+        final logsRes = await Amplify.API.query(request: logsReq).response;
+        ampLogs = (logsRes.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList();
+      } catch (e) {
+        debugPrint('Amplify ActivityLogs query error: $e');
+      }
+
+      List<Map<String, dynamic>> sbLogs = [];
+      try {
+        sbLogs = await SupabaseBackupService().getActivityLogs(monthStr);
+      } catch (e) {
+        debugPrint('Supabase getActivityLogs error: $e');
+      }
+
+      void registerDeletedFromLog(String? action, dynamic targetId) {
+        final act = (action ?? '').toUpperCase().trim();
+        if (act == 'DELETE_STAFF' || act == 'STAFF_DELETED') {
+          if (targetId != null) {
+            final tid = targetId.toString().toLowerCase().trim();
+            if (tid.isNotEmpty) deletedKeys.add(tid);
+          }
+        }
+      }
+
+      for (var l in ampLogs) {
+        registerDeletedFromLog(l.action, l.target_id);
+      }
+      for (var l in sbLogs) {
+        registerDeletedFromLog(l['action']?.toString(), l['target_id']);
+      }
+
+      bool isExcludedStaff(dynamic id, String? username, String? email, String? name, String? role) {
+        final r = (role ?? '').toLowerCase().trim();
+        // Exclude system admin, clients, superadmin, or deleted roles
+        if (r == 'admin' || r == 'superadmin' || r == 'client' || r == 'deleted') return true;
+
+        final uid = id?.toString().toLowerCase().trim() ?? '';
+        final uname = (username ?? '').toLowerCase().trim();
+        final uemail = (email ?? '').toLowerCase().trim();
+        final uNameStr = (name ?? '').toLowerCase().trim();
+
+        if (uname == 'admin' || uNameStr == 'admin' || uNameStr == 'master admin') return true;
+
+        if (uid.isNotEmpty && deletedKeys.contains(uid)) return true;
+        if (uname.isNotEmpty && deletedKeys.contains(uname)) return true;
+        if (uemail.isNotEmpty && deletedKeys.contains(uemail)) return true;
+        if (uNameStr.isNotEmpty && deletedKeys.contains(uNameStr)) return true;
+
+        return false;
+      }
 
       // Deduplicate and filter staff
       final Map<String, amplify_models.Users> uniqueUsers = {};
       for (var u in usersRaw) {
-        if ((u.role ?? '').toLowerCase().trim() == 'deleted') continue;
-        final uid = u.id.toLowerCase().trim();
-        final uname = (u.username ?? '').toLowerCase().trim();
-        final uemail = (u.email ?? '').toLowerCase().trim();
-        final uNameStr = (u.name ?? '').toLowerCase().trim();
-        if (deletedKeys.contains(uid) ||
-            (uname.isNotEmpty && deletedKeys.contains(uname)) ||
-            (uemail.isNotEmpty && deletedKeys.contains(uemail)) ||
-            (uNameStr.isNotEmpty && deletedKeys.contains(uNameStr))) {
-          continue;
-        }
+        if (isExcludedStaff(u.id, u.username, u.email, u.name, u.role)) continue;
 
         final name = (u.name ?? '').toLowerCase().trim();
         if (name.isEmpty) continue;
@@ -261,41 +345,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         }
       }
 
-      // Merge any staff present in Supabase but not in Amplify
-      for (var su in sbUsers) {
-        final role = (su['role'] ?? '').toString().toLowerCase().trim();
-        if (role == 'deleted') continue;
-        final name = (su['name'] ?? su['username'] ?? '').toString().trim();
-        if (name.isEmpty) continue;
-        final username = (su['username'] ?? '').toString().trim().toLowerCase();
-        final email = (su['email'] ?? '').toString().trim().toLowerCase();
-        final idStr = (su['id'] ?? '').toString().trim();
-
-        if (deletedKeys.contains(idStr.toLowerCase()) ||
-            (username.isNotEmpty && deletedKeys.contains(username)) ||
-            (email.isNotEmpty && deletedKeys.contains(email)) ||
-            deletedKeys.contains(name.toLowerCase())) {
-          continue;
-        }
-
-        var key = (username.isNotEmpty ? username : (email.isNotEmpty ? email : name)).toLowerCase();
-        if (key.contains('jithasree')) key = 'jitha';
-
-        if (!uniqueUsers.containsKey(key)) {
-          uniqueUsers[key] = amplify_models.Users(
-            id: idStr.isNotEmpty ? idStr : key,
-            name: name,
-            username: username.isNotEmpty ? username : null,
-            email: email.isNotEmpty ? email : null,
-            role: role.isNotEmpty ? role : 'Staff',
-          );
-        }
-      }
-
-      _allStaff = uniqueUsers.values.toList();
+      _allStaff = uniqueUsers.values.where((u) {
+        return !isExcludedStaff(u.id, u.username, u.email, u.name, u.role);
+      }).toList();
       _allStaff.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
-
-      // 3. Build comprehensive Lookup map to target staffKey
+// 3. Build comprehensive Lookup map to target staffKey
       final Map<String, String> lookupToStaffKey = {};
       for (var staff in _allStaff) {
         final key = _staffKey(staff);
@@ -317,7 +371,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       }
 
       // 4. Query StaffAttendance & UserSessions for selected month
-      final monthStr = DateFormat('yyyy-MM').format(_selectedMonth);
+      // Month already defined above
 
       // A: Amplify StaffAttendance
       List<amplify_models.StaffAttendance> ampAttendance = [];
@@ -362,27 +416,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         sbSessions = await SupabaseBackupService().getUserSessions(monthStr);
       } catch (e) {
         debugPrint('Supabase getUserSessions error: $e');
-      }
-
-      // E: Activity Logs (for MNC Last-Activity Resolution)
-      List<amplify_models.ActivityLogs> ampLogs = [];
-      try {
-        final logsReq = ModelQueries.list(
-          amplify_models.ActivityLogs.classType,
-          limit: 10000,
-          authorizationMode: APIAuthorizationType.userPools,
-        );
-        final logsRes = await Amplify.API.query(request: logsReq).response;
-        ampLogs = (logsRes.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList();
-      } catch (e) {
-        debugPrint('Amplify ActivityLogs query error: $e');
-      }
-
-      List<Map<String, dynamic>> sbLogs = [];
-      try {
-        sbLogs = await SupabaseBackupService().getActivityLogs(monthStr);
-      } catch (e) {
-        debugPrint('Supabase getActivityLogs error: $e');
       }
 
       // 5. Construct Unified Matrix with Enterprise MNC Auto-Checkout Resolution

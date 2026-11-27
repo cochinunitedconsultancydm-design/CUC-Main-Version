@@ -1163,6 +1163,9 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
         if (id != null) deletedKeys.add(id.toString().toLowerCase().trim());
         if (staffUsername != null && staffUsername.isNotEmpty) deletedKeys.add(staffUsername.toLowerCase().trim());
         if (staffEmail != null && staffEmail.isNotEmpty) deletedKeys.add(staffEmail.toLowerCase().trim());
+        if (targetStaff['name'] != null && targetStaff['name'].toString().isNotEmpty) {
+          deletedKeys.add(targetStaff['name'].toString().toLowerCase().trim());
+        }
         await prefs.setStringList('deleted_staff_keys', deletedKeys.toList());
 
         // 2. Delete from Supabase

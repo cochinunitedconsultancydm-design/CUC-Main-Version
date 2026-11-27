@@ -691,6 +691,38 @@ class SupabaseBackupService {
     return [];
   }
 
+  Future<List<Map<String, dynamic>>> getStaffAttendance([String? monthPrefix]) async {
+    try {
+      String url = '$_supabaseUrl/rest/v1/staff_attendance?select=*&order=id.desc&limit=10000';
+      if (monthPrefix != null && monthPrefix.isNotEmpty) {
+        url = '$_supabaseUrl/rest/v1/staff_attendance?attendance_date=like.$monthPrefix%25&select=*&order=id.desc&limit=10000';
+      }
+      final response = await http.get(Uri.parse(url), headers: _headers).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return List<Map<String, dynamic>>.from(json.decode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Supabase getStaffAttendance error: $e');
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getUserSessions([String? monthPrefix]) async {
+    try {
+      String url = '$_supabaseUrl/rest/v1/user_sessions?select=*&order=id.desc&limit=10000';
+      if (monthPrefix != null && monthPrefix.isNotEmpty) {
+        url = '$_supabaseUrl/rest/v1/user_sessions?login_time=like.$monthPrefix%25&select=*&order=id.desc&limit=10000';
+      }
+      final response = await http.get(Uri.parse(url), headers: _headers).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return List<Map<String, dynamic>>.from(json.decode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Supabase getUserSessions error: $e');
+    }
+    return [];
+  }
+
   /// Get all users data from Supabase
   Future<List<Map<String, dynamic>>> getAllUsersData() async {
     try {

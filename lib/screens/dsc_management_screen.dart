@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme.dart';
 import '../models/dsc_record.dart';
 import '../services/logging_service.dart';
@@ -141,7 +142,201 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
   }
 
   // ==========================================
-  // ADD / EDIT FORM (REDESIGNED)
+  // CONNECT CLIENT & COMMUNICATION HELPERS
+  // ==========================================
+  Future<void> _launchWhatsApp(String phone, String clientName, DateTime? expiryDate) async {
+    String clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (clean.length == 10) clean = '91$clean';
+    final expiryStr = expiryDate != null ? DateFormat('dd MMM yyyy').format(expiryDate) : 'N/A';
+    final msg = Uri.encodeComponent(
+      'Hello $clientName,\n\n'
+      'This is Cochin United Consultancy regarding your Digital Signature Certificate (DSC).\n'
+      'Expiry Date: $expiryStr\n\n'
+      'Please let us know if you need assistance or renewal support.\n\n'
+      'Best regards,\nCochin United Consultancy',
+    );
+    try {
+      final url = Uri.parse('https://wa.me/$clean?text=$msg');
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      _showError('Could not launch WhatsApp');
+    }
+  }
+
+  Future<void> _launchCall(String phone) async {
+    final clean = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    try {
+      await launchUrl(Uri.parse('tel:$clean'));
+    } catch (_) {
+      _showError('Could not launch phone dialer');
+    }
+  }
+
+  Future<void> _launchEmail(String email, String clientName, DateTime? expiryDate) async {
+    final expiryStr = expiryDate != null ? DateFormat('dd MMM yyyy').format(expiryDate) : 'N/A';
+    final subject = Uri.encodeComponent('Digital Signature (DSC) Update - $clientName');
+    final body = Uri.encodeComponent(
+      'Dear $clientName,\n\n'
+      'This is Cochin United Consultancy regarding your Digital Signature (DSC) certificate.\n'
+      'Validity Expiry Date: $expiryStr\n\n'
+      'Please reach out to us if you need any assistance or renewal.\n\n'
+      'Best regards,\nCochin United Consultancy\n+91 70124 66754\ncochinunitedconsultancydm@gmail.com',
+    );
+    try {
+      await launchUrl(Uri.parse('mailto:$email?subject=$subject&body=$body'));
+    } catch (_) {
+      _showError('Could not launch email client');
+    }
+  }
+
+  void _showConnectClientDialog(Function(Map<String, dynamic> client) onClientSelected) {
+    String searchQuery = '';
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final filteredClients = _clientsList.where((c) {
+            final q = searchQuery.toLowerCase().trim();
+            if (q.isEmpty) return true;
+            final name = (c['name'] ?? '').toString().toLowerCase();
+            final phone = (c['phone'] ?? '').toString().toLowerCase();
+            final email = (c['email'] ?? '').toString().toLowerCase();
+            final company = (c['companies'] ?? '').toString().toLowerCase();
+            return name.contains(q) || phone.contains(q) || email.contains(q) || company.contains(q);
+          }).toList();
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: Colors.white,
+            elevation: 16,
+            child: Container(
+              width: 580,
+              height: 560,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(12)),
+                        child: const Icon(Icons.link_rounded, color: Color(0xFF2563EB), size: 24),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Connect Client', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                            SizedBox(height: 2),
+                            Text('Select an existing client from your master directory to link details', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                      IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded, color: Colors.black54)),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    autofocus: true,
+                    onChanged: (val) => setDialogState(() => searchQuery = val),
+                    decoration: InputDecoration(
+                      hintText: 'Search by client name, phone, email, or company...',
+                      prefixIcon: const Icon(Icons.search, size: 20, color: Colors.grey),
+                      suffixIcon: searchQuery.isNotEmpty
+                          ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () => setDialogState(() => searchQuery = ''))
+                          : null,
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Text('${filteredClients.length} clients available', style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      const Text('Click "Connect" to auto-populate', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: filteredClients.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.person_search_rounded, size: 48, color: Colors.grey.shade300),
+                                const SizedBox(height: 8),
+                                const Text('No clients match your search', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: filteredClients.length,
+                            separatorBuilder: (_, _) => const Divider(height: 1),
+                            itemBuilder: (context, idx) {
+                              final c = filteredClients[idx];
+                              final name = c['name']?.toString() ?? 'Unnamed';
+                              final phone = c['phone']?.toString() ?? '';
+                              final email = c['email']?.toString() ?? '';
+                              final company = c['companies']?.toString() ?? '';
+
+                              return ListTile(
+                                dense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                leading: CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: const Color(0xFFEFF6FF),
+                                  child: Text(
+                                    name.isNotEmpty ? name[0].toUpperCase() : 'C',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                                  ),
+                                ),
+                                title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A))),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (phone.isNotEmpty || email.isNotEmpty)
+                                      Text('$phone${phone.isNotEmpty && email.isNotEmpty ? " • " : ""}$email', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                                    if (company.isNotEmpty)
+                                      Text(company, style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade600, fontWeight: FontWeight.w500)),
+                                  ],
+                                ),
+                                trailing: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(ctx);
+                                    onClientSelected(c);
+                                  },
+                                  icon: const Icon(Icons.link_rounded, size: 14),
+                                  label: const Text('Connect', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF2563EB),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ==========================================
+  // ADD / EDIT FORM (REDESIGNED WITH CONNECT CLIENT)
   // ==========================================
   void _showRecordForm([DscRecord? record]) {
     if (record != null && !_isAdmin) {
@@ -154,6 +349,12 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
     final phoneController = TextEditingController(text: record?.phoneNo);
     final usernameController = TextEditingController(text: record?.username);
     final passwordController = TextEditingController(text: record?.password);
+
+    Map<String, dynamic>? connectedClient;
+    if (record?.clientName != null) {
+      final match = _clientsList.where((c) => (c['name']?.toString().toLowerCase() ?? '') == record!.clientName!.toLowerCase()).firstOrNull;
+      if (match != null) connectedClient = match;
+    }
 
     DateTime? takenDate = record?.dscTakenDate ?? DateTime.now();
     DateTime? expiryDate = record?.dscExpiryDate ?? DateTime.now().add(const Duration(days: 730)); // 2 years default
@@ -217,6 +418,77 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                     ),
                     const SizedBox(height: 22),
 
+                    // Client Section Header with Connect Client button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('CLIENT INFORMATION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.8)),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            _showConnectClientDialog((selected) {
+                              setModalState(() {
+                                connectedClient = selected;
+                                clientNameController.text = selected['name']?.toString() ?? '';
+                                if (selected['phone'] != null && selected['phone'].toString().isNotEmpty) {
+                                  phoneController.text = selected['phone'].toString();
+                                }
+                                if (selected['email'] != null && selected['email'].toString().isNotEmpty) {
+                                  emailController.text = selected['email'].toString();
+                                }
+                              });
+                            });
+                          },
+                          icon: const Icon(Icons.link_rounded, size: 15),
+                          label: const Text('Connect Client', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Connected Status Banner
+                    if (connectedClient != null || clientNameController.text.trim().isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFBBF7D0)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF16A34A)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Connected: ${clientNameController.text.trim()}${phoneController.text.isNotEmpty ? " • ${phoneController.text.trim()}" : ""}',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                setModalState(() {
+                                  connectedClient = null;
+                                  clientNameController.clear();
+                                  phoneController.clear();
+                                  emailController.clear();
+                                });
+                              },
+                              child: const Text('Disconnect', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
                     // Client Selection / Autocomplete
                     Autocomplete<Map<String, dynamic>>(
                       initialValue: TextEditingValue(text: clientNameController.text),
@@ -233,6 +505,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                       },
                       displayStringForOption: (option) => option['name']?.toString() ?? '',
                       onSelected: (option) {
+                        connectedClient = option;
                         clientNameController.text = option['name']?.toString() ?? '';
                         if (option['phone'] != null && option['phone'].toString().isNotEmpty) {
                           phoneController.text = option['phone'].toString();
@@ -254,8 +527,27 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                           onEditingComplete: onEditingComplete,
                           decoration: InputDecoration(
                             labelText: 'Client Name *',
-                            hintText: 'Type client name or select from directory',
+                            hintText: 'Type client name or click "Connect Client" above',
                             prefixIcon: const Icon(Icons.person_rounded, color: Color(0xFF2563EB)),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.link_rounded, color: Color(0xFF2563EB)),
+                              tooltip: 'Connect Client from Directory',
+                              onPressed: () {
+                                _showConnectClientDialog((selected) {
+                                  setModalState(() {
+                                    connectedClient = selected;
+                                    controller.text = selected['name']?.toString() ?? '';
+                                    clientNameController.text = controller.text;
+                                    if (selected['phone'] != null && selected['phone'].toString().isNotEmpty) {
+                                      phoneController.text = selected['phone'].toString();
+                                    }
+                                    if (selected['email'] != null && selected['email'].toString().isNotEmpty) {
+                                      emailController.text = selected['email'].toString();
+                                    }
+                                  });
+                                });
+                              },
+                            ),
                             filled: true,
                             fillColor: const Color(0xFFF8FAFC),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
@@ -294,6 +586,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                                     ),
                                     title: Text(opt['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                     subtitle: Text('${opt['phone'] ?? ''} • ${opt['email'] ?? ''}', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                                    trailing: const Icon(Icons.link_rounded, size: 18, color: Color(0xFF2563EB)),
                                     onTap: () => onSelected(opt),
                                   );
                                 },
@@ -343,6 +636,78 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                         ),
                       ],
                     ),
+
+                    // Quick Connect with Client bar if phone or email exists
+                    if (phoneController.text.trim().isNotEmpty || emailController.text.trim().isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            const Text('Connect Now: ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black54)),
+                            if (phoneController.text.trim().isNotEmpty) ...[
+                              InkWell(
+                                onTap: () => _launchWhatsApp(phoneController.text.trim(), clientNameController.text.trim(), expiryDate),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(color: const Color(0xFF25D366).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.chat_bubble_outline_rounded, size: 13, color: Color(0xFF128C7E)),
+                                      SizedBox(width: 4),
+                                      Text('WhatsApp', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF128C7E))),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              InkWell(
+                                onTap: () => _launchCall(phoneController.text.trim()),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(color: const Color(0xFF2563EB).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.phone_outlined, size: 13, color: Color(0xFF2563EB)),
+                                      SizedBox(width: 4),
+                                      Text('Call', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            if (emailController.text.trim().isNotEmpty) ...[
+                              InkWell(
+                                onTap: () => _launchEmail(emailController.text.trim(), clientNameController.text.trim(), expiryDate),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(6)),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.email_outlined, size: 13, color: Colors.amber.shade900),
+                                      const SizedBox(width: 4),
+                                      Text('Email', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
 
                     // Username & Password Row
@@ -985,7 +1350,14 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 8),
+              if (r.phoneNo != null && r.phoneNo!.trim().isNotEmpty) ...[
+                IconButton(
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF128C7E), size: 18),
+                  tooltip: 'Connect via WhatsApp',
+                  onPressed: () => _launchWhatsApp(r.phoneNo!, r.clientName ?? 'Client', r.dscExpiryDate),
+                ),
+              ],
+              const SizedBox(width: 4),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -1096,6 +1468,41 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
+                      // Connect Client Buttons
+                      if (r.phoneNo != null && r.phoneNo!.trim().isNotEmpty) ...[
+                        OutlinedButton.icon(
+                          onPressed: () => _launchWhatsApp(r.phoneNo!, r.clientName ?? 'Client', r.dscExpiryDate),
+                          icon: const Icon(Icons.chat_bubble_outline_rounded, size: 15, color: Color(0xFF128C7E)),
+                          label: const Text('WhatsApp', style: TextStyle(color: Color(0xFF128C7E), fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF128C7E)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => _launchCall(r.phoneNo!),
+                          icon: const Icon(Icons.phone_outlined, size: 15, color: Color(0xFF2563EB)),
+                          label: const Text('Call', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF2563EB)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      if (r.emailId != null && r.emailId!.trim().isNotEmpty) ...[
+                        OutlinedButton.icon(
+                          onPressed: () => _launchEmail(r.emailId!, r.clientName ?? 'Client', r.dscExpiryDate),
+                          icon: Icon(Icons.email_outlined, size: 15, color: Colors.amber.shade900),
+                          label: Text('Email', style: TextStyle(color: Colors.amber.shade900, fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.amber.shade700),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       if (_isAdmin) ...[
                         OutlinedButton.icon(
                           onPressed: () => _showRecordForm(r),
@@ -1107,7 +1514,7 @@ class _DscManagementScreenState extends State<DscManagementScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         OutlinedButton.icon(
                           onPressed: () => _deleteRecord(r.id!),
                           icon: const Icon(Icons.delete_outline_rounded, size: 16),

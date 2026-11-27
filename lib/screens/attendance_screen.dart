@@ -305,6 +305,43 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         registerDeletedFromLog(l['action']?.toString(), l['target_id']);
       }
 
+      // Confirmed active staff must NEVER be excluded, even if an old test deletion existed in cache
+      const Set<String> confirmedActiveUsernames = {
+        'harshina',
+        'anoop',
+        'arya',
+        'ashwini',
+        'nithya',
+        'poojapmadhu',
+        'sarath',
+        'irshad',
+      };
+      const Set<String> confirmedActiveEmails = {
+        'harshina@cuc.local',
+        'anoop@cuc.local',
+        'cucarya@gmail.com',
+        'ashwini@cuc.local',
+        'pooja@cochinunited.com',
+        'sarath@cuc.local',
+        'irshad@cuc.local',
+      };
+
+      // Safely purge active usernames/emails from deletedKeys set and SharedPreferences
+      for (var active in confirmedActiveUsernames) {
+        deletedKeys.remove(active);
+      }
+      for (var email in confirmedActiveEmails) {
+        deletedKeys.remove(email);
+      }
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final localDeleted = prefs.getStringList('deleted_staff_keys') ?? [];
+        if (localDeleted.any((k) => confirmedActiveUsernames.contains(k.toLowerCase().trim()) || confirmedActiveEmails.contains(k.toLowerCase().trim()))) {
+          final cleaned = localDeleted.where((k) => !confirmedActiveUsernames.contains(k.toLowerCase().trim()) && !confirmedActiveEmails.contains(k.toLowerCase().trim())).toList();
+          await prefs.setStringList('deleted_staff_keys', cleaned);
+        }
+      } catch (_) {}
+
       bool isExcludedStaff(dynamic id, String? username, String? email, String? name, String? role) {
         final r = (role ?? '').toLowerCase().trim();
         // Exclude system admin, clients, superadmin, or deleted roles
@@ -316,6 +353,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         final uNameStr = (name ?? '').toLowerCase().trim();
 
         if (uname == 'admin' || uNameStr == 'admin' || uNameStr == 'master admin') return true;
+
+        // Confirmed active team members must NEVER be excluded
+        if (confirmedActiveUsernames.contains(uname) ||
+            (uemail.isNotEmpty && confirmedActiveEmails.contains(uemail)) ||
+            uname == 'harshina' ||
+            uNameStr == 'harshina' ||
+            uemail == 'harshina@cuc.local') {
+          return false;
+        }
 
         if (uid.isNotEmpty && deletedKeys.contains(uid)) return true;
         if (uname.isNotEmpty && deletedKeys.contains(uname)) return true;

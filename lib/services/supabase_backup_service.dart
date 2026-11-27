@@ -1,11 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_api/amplify_api.dart';
-import 'package:path_provider/path_provider.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 /// Lightweight Supabase backup service.
 /// Mirrors critical DynamoDB data to Supabase for disaster recovery.
@@ -642,16 +639,19 @@ class SupabaseBackupService {
   Future<Map<String, int>> getUsernameToIdMap() async {
     try {
       final response = await http.get(
-        Uri.parse('$_supabaseUrl/rest/v1/users?select=id,username,email'),
+        Uri.parse('$_supabaseUrl/rest/v1/users?select=id,username,email,name'),
         headers: _headers,
       ).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         final map = <String, int>{};
         for (var u in data) {
-          final id = u['id'] as int;
-          if (u['username'] != null) map[u['username'].toString().toLowerCase()] = id;
-          if (u['email'] != null) map[u['email'].toString().toLowerCase()] = id;
+          final id = u['id'] is int ? u['id'] as int : int.tryParse(u['id']?.toString() ?? '') ?? 0;
+          if (id <= 0) continue;
+          map[id.toString()] = id;
+          if (u['username'] != null) map[u['username'].toString().toLowerCase().trim()] = id;
+          if (u['email'] != null) map[u['email'].toString().toLowerCase().trim()] = id;
+          if (u['name'] != null) map[u['name'].toString().toLowerCase().trim()] = id;
         }
         return map;
       }

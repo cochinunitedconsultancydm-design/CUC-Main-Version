@@ -661,10 +661,14 @@ class SupabaseBackupService {
     return {};
   }
 
-  Future<List<Map<String, dynamic>>> getActivityLogs() async {
+  Future<List<Map<String, dynamic>>> getActivityLogs([String? monthPrefix]) async {
     try {
+      String url = '$_supabaseUrl/rest/v1/activity_logs?select=*&order=created_at.desc&limit=10000';
+      if (monthPrefix != null && monthPrefix.isNotEmpty) {
+        url = '$_supabaseUrl/rest/v1/activity_logs?created_at=like.$monthPrefix%25&select=*&order=created_at.desc&limit=10000';
+      }
       final response = await http.get(
-        Uri.parse('$_supabaseUrl/rest/v1/activity_logs?select=*&order=created_at.desc&limit=10000'),
+        Uri.parse(url),
         headers: _headers,
       ).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {

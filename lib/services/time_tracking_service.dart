@@ -63,8 +63,9 @@ class TimeTrackingService with WindowListener {
 
   void registerActivity() {
     if (!_isTracking || _status == 'Minimized') return;
+    final wasInactive = _status == 'Idle' || _status == 'Offline';
     _lastActivityTime = DateTime.now();
-    if (_status == 'Idle') {
+    if (wasInactive) {
       _status = 'Active';
       syncToDatabase(); // Immediate sync on state change
     }
@@ -76,20 +77,32 @@ class TimeTrackingService with WindowListener {
     if (_status == 'Minimized') {
       _idleSeconds++;
     } else {
-      // Check for Idle (e.g., 3 minutes of no activity)
-      if (_lastActivityTime != null && DateTime.now().difference(_lastActivityTime!).inMinutes >= 3) {
-        if (_status == 'Active') {
-          _status = 'Idle';
-          syncToDatabase(); // Immediate sync on state change
+      // Check for Idle / Offline inactivity timeouts
+      if (_lastActivityTime != null) {
+        final idleMins = DateTime.now().difference(_lastActivityTime!).inMinutes;
+        if (idleMins >= 30) {
+          // Exceeded 30 minutes of total inactivity -> Auto-offline at last activity time
+          if (_status != 'Offline') {
+            _status = 'Offline';
+            syncToDatabase(isLogout: true, customLogoutTime: _lastActivityTime);
+          }
+          _idleSeconds++;
+        } else if (idleMins >= 3) {
+          if (_status == 'Active') {
+            _status = 'Idle';
+            syncToDatabase(); // Immediate sync on state change
+          }
+          _idleSeconds++;
+        } else {
+          _activeSeconds++;
         }
-        _idleSeconds++;
       } else {
         _activeSeconds++;
       }
     }
   }
 
-  Future<void> syncToDatabase({bool isLogout = false}) async {
+  Future<void> syncToDatabase({bool isLogout = false, DateTime? customLogoutTime}) async {
     if (_currentSessionId == null) return;
 
     try {
@@ -101,14 +114,11 @@ class TimeTrackingService with WindowListener {
           status: _status,
           active_seconds: _activeSeconds,
           idle_seconds: _idleSeconds,
+          logout_time: isLogout
+              ? (customLogoutTime ?? DateTime.now()).toIso8601String()
+              : DateTime.now().toIso8601String(),
+          is_active: !isLogout,
         );
-
-        if (isLogout) {
-          updated = updated.copyWith(
-            logout_time: DateTime.now().toIso8601String(),
-            is_active: false,
-          );
-        }
 
         await BackupAwareApi().update(updated);
       }
@@ -130,5 +140,12 @@ class TimeTrackingService with WindowListener {
     _status = 'Active';
     _lastActivityTime = DateTime.now();
     syncToDatabase();
+  }
+
+  @override
+  void onWindowClose() async {
+    if (!_isTracking) return;
+    _status = 'Offline';
+    await syncToDatabase(isLogout: true);
   }
 }

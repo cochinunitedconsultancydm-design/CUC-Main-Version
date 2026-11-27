@@ -17,6 +17,8 @@ class DailyAttendanceRecord {
   DateTime? checkInTime;
   DateTime? checkOutTime;
   bool isActive;
+  bool isAutoReconciled;
+  String? checkoutReason;
   final List<AttendanceEvent> events;
 
   DailyAttendanceRecord({
@@ -26,6 +28,8 @@ class DailyAttendanceRecord {
     this.checkInTime,
     this.checkOutTime,
     this.isActive = false,
+    this.isAutoReconciled = false,
+    this.checkoutReason,
     List<AttendanceEvent>? events,
   }) : events = events ?? [];
 
@@ -360,13 +364,36 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         debugPrint('Supabase getUserSessions error: $e');
       }
 
-      // 5. Construct Unified Matrix
+      // E: Activity Logs (for MNC Last-Activity Resolution)
+      List<amplify_models.ActivityLogs> ampLogs = [];
+      try {
+        final logsReq = ModelQueries.list(
+          amplify_models.ActivityLogs.classType,
+          limit: 10000,
+          authorizationMode: APIAuthorizationType.userPools,
+        );
+        final logsRes = await Amplify.API.query(request: logsReq).response;
+        ampLogs = (logsRes.data?.items ?? []).whereType<amplify_models.ActivityLogs>().toList();
+      } catch (e) {
+        debugPrint('Amplify ActivityLogs query error: $e');
+      }
+
+      List<Map<String, dynamic>> sbLogs = [];
+      try {
+        sbLogs = await SupabaseBackupService().getActivityLogs(monthStr);
+      } catch (e) {
+        debugPrint('Supabase getActivityLogs error: $e');
+      }
+
+      // 5. Construct Unified Matrix with Enterprise MNC Auto-Checkout Resolution
       _attendanceMatrix = _buildMatrix(
         lookupToStaffKey: lookupToStaffKey,
         ampAttendance: ampAttendance,
         sbAttendance: sbAttendance,
         ampSessions: ampSessions,
         sbSessions: sbSessions,
+        ampLogs: ampLogs,
+        sbLogs: sbLogs,
       );
 
       // Auto-scroll to today if current month
@@ -396,10 +423,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     required List<Map<String, dynamic>> sbAttendance,
     required List<amplify_models.UserSessions> ampSessions,
     required List<Map<String, dynamic>> sbSessions,
+    required List<amplify_models.ActivityLogs> ampLogs,
+    required List<Map<String, dynamic>> sbLogs,
   }) {
     final Map<String, Map<int, DailyAttendanceRecord>> matrix = {};
     final now = DateTime.now();
     final isCurrentMonth = _selectedMonth.year == now.year && _selectedMonth.month == now.month;
+    final todayStart = DateTime(now.year, now.month, now.day);
 
     // Helper to get or create daily record
     DailyAttendanceRecord getOrCreateRecord(String staffKey, int day, DateTime date) {
@@ -429,6 +459,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         if (lookupToStaffKey.containsKey(n)) return lookupToStaffKey[n];
       }
       return null;
+    }
+
+    // Map of latest activity log per staffKey per day (for MNC Last-Activity Resolution)
+    final Map<String, Map<int, DateTime>> latestLogByStaffAndDay = {};
+    void registerActivityLog(dynamic uid, dynamic uname, dynamic rawTs) {
+      final staffKey = resolveStaff(uid, uname);
+      if (staffKey == null) return;
+      final ts = _parseIST(rawTs);
+      if (ts == null) return;
+      if (ts.year == _selectedMonth.year && ts.month == _selectedMonth.month) {
+        final day = ts.day;
+        final existing = latestLogByStaffAndDay.putIfAbsent(staffKey, () => {})[day];
+        if (existing == null || ts.isAfter(existing)) {
+          latestLogByStaffAndDay[staffKey]![day] = ts;
+        }
+      }
+    }
+
+    for (var l in ampLogs) {
+      registerActivityLog(l.user_id, l.target_id, l.created_at ?? l.createdAt?.format());
+    }
+    for (var l in sbLogs) {
+      registerActivityLog(l['user_id'], l['user_name'] ?? l['username'], l['created_at']);
     }
 
     // 1. Process Amplify StaffAttendance (Manual Clock-In / Clock-Out)
@@ -620,6 +673,76 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         }
       } else if (isCurrentMonth && day == now.day && (sess['is_active'] == true || sess['status']?.toString().toLowerCase() == 'active')) {
         record.isActive = true;
+      }
+    }
+
+    // 5. Enterprise MNC Auto-Checkout & Presence Reconciliation
+    for (var userMap in matrix.values) {
+      for (var record in userMap.values) {
+        final dayDate = record.date;
+        final inTime = record.checkInTime;
+
+        if (inTime != null) {
+          // If checkout was stored across multiple days or > 16 hours, invalidate the dangling value
+          if (record.checkOutTime != null) {
+            if (record.checkOutTime!.day != inTime.day ||
+                record.checkOutTime!.difference(inTime).inHours > 16) {
+              record.checkOutTime = null;
+            }
+          }
+
+          // If checkout is missing for this day:
+          if (record.checkOutTime == null) {
+            final staffKey = record.staffKey;
+            final latestLog = latestLogByStaffAndDay[staffKey]?[record.day];
+
+            if (latestLog != null && latestLog.isAfter(inTime) && latestLog.day == inTime.day) {
+              // Priority 1: User's latest action log on that day
+              record.checkOutTime = latestLog;
+              record.checkoutReason = 'Last Active System Activity';
+              record.events.add(AttendanceEvent(
+                title: 'Last Activity Heartbeat',
+                time: latestLog,
+                type: 'OUT',
+                source: 'User Action Log',
+              ));
+            } else if (isCurrentMonth && record.day == now.day) {
+              // Priority 2: Today (Current Shift)
+              final sinceInMins = now.difference(inTime).inMinutes;
+              if (record.isActive || sinceInMins < 45) {
+                record.isActive = true;
+                record.checkoutReason = 'Currently Online';
+              } else {
+                record.checkOutTime = inTime.add(Duration(minutes: sinceInMins > 120 ? 120 : sinceInMins));
+                record.checkoutReason = 'Session Inactive';
+              }
+            } else if (dayDate.isBefore(todayStart)) {
+              // Priority 3: Past Work Day (Standard Shift Auto-Reconciliation)
+              record.isAutoReconciled = true;
+              if (inTime.hour < 12) {
+                // Morning check-in -> Standard 05:30 PM (standard 8-hour workday)
+                record.checkOutTime = DateTime(dayDate.year, dayDate.month, dayDate.day, 17, 30);
+                record.checkoutReason = 'Standard Shift Policy (Auto-Completed at 5:30 PM)';
+              } else if (inTime.hour < 16) {
+                // Afternoon check-in -> Standard 06:00 PM shift end
+                record.checkOutTime = DateTime(dayDate.year, dayDate.month, dayDate.day, 18, 0);
+                record.checkoutReason = 'Afternoon Shift Policy (Auto-Completed at 6:00 PM)';
+              } else {
+                // Late check-in (> 4:00 PM) -> 2h 30m shift
+                record.checkOutTime = inTime.add(const Duration(hours: 2, minutes: 30));
+                record.checkoutReason = 'Evening Session (Auto-Completed)';
+              }
+
+              record.events.add(AttendanceEvent(
+                title: 'Auto-Reconciled Shift Conclusion',
+                time: record.checkOutTime!,
+                type: 'OUT',
+                source: 'Enterprise Shift Policy',
+                status: 'Auto-Completed',
+              ));
+            }
+          }
+        }
       }
     }
 
@@ -869,6 +992,28 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ],
                         ),
                       ),
+                      if (record.isAutoReconciled || record.checkoutReason != null)
+                        Container(
+                          margin: const EdgeInsets.only(top: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.verified_outlined, size: 16, color: Colors.blue.shade700),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  record.checkoutReason ?? 'Shift auto-completed per company attendance policy.',
+                                  style: TextStyle(fontSize: 11.5, color: Colors.blue.shade900, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       const SizedBox(height: 18),
                       // Events Timeline
                       const Text('ACTIVITY TIMELINE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black54, letterSpacing: 0.8)),
@@ -1611,16 +1756,9 @@ class _AttendanceCell extends StatelessWidget {
     }
 
     final inTime = record!.firstIn;
-    final rawOutTime = record!.lastOut;
+    final outTime = record!.checkOutTime;
     final isActive = record!.isActive;
-
-    // Guard: ignore checkout if it occurred on a later day or after 16 hours (auto-closed dangling session)
-    DateTime? outTime = rawOutTime;
-    if (inTime != null && rawOutTime != null) {
-      if (rawOutTime.day != inTime.day || rawOutTime.difference(inTime).inHours > 16) {
-        outTime = null;
-      }
-    }
+    final isAuto = record!.isAutoReconciled;
 
     // Appearance colors based on state
     Color cardBg = const Color(0xFFF8FAFC);
@@ -1629,10 +1767,10 @@ class _AttendanceCell extends StatelessWidget {
       cardBg = const Color(0xFFF0FDF4); // Soft emerald green
       borderColor = Colors.green.shade400;
     } else if (outTime != null) {
-      cardBg = const Color(0xFFF8FAFC); // Clean slate
-      borderColor = Colors.grey.shade300;
+      cardBg = isAuto ? const Color(0xFFF0F7FF) : const Color(0xFFF8FAFC);
+      borderColor = isAuto ? Colors.blue.shade200 : Colors.grey.shade300;
     } else {
-      cardBg = const Color(0xFFFFFBEB); // Soft amber for unclosed session
+      cardBg = const Color(0xFFFFFBEB);
       borderColor = Colors.amber.shade300;
     }
 
@@ -1696,7 +1834,9 @@ class _AttendanceCell extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isActive
                         ? Colors.teal.shade100
-                        : (outTime != null ? Colors.orange.shade100 : Colors.grey.shade200),
+                        : (outTime != null
+                            ? (isAuto ? Colors.blue.shade100 : Colors.orange.shade100)
+                            : Colors.grey.shade200),
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Text(
@@ -1706,7 +1846,9 @@ class _AttendanceCell extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                       color: isActive
                           ? Colors.teal.shade900
-                          : (outTime != null ? Colors.orange.shade900 : Colors.grey.shade600),
+                          : (outTime != null
+                              ? (isAuto ? Colors.blue.shade900 : Colors.orange.shade900)
+                              : Colors.grey.shade600),
                     ),
                   ),
                 ),
@@ -1721,7 +1863,9 @@ class _AttendanceCell extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                       color: isActive
                           ? Colors.teal.shade800
-                          : (outTime != null ? Colors.orange.shade900 : Colors.grey.shade400),
+                          : (outTime != null
+                              ? (isAuto ? Colors.blue.shade900 : Colors.orange.shade900)
+                              : Colors.grey.shade400),
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),

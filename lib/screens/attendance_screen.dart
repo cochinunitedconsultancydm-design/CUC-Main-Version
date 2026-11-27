@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
@@ -37,6 +38,12 @@ class DailyAttendanceRecord {
     if (end == null) return null;
     final diff = end.difference(checkInTime!);
     if (diff.isNegative) return null;
+
+    // Filter out dangling sessions closed days later (exceeding 16 hours or across different dates)
+    if (diff.inHours > 16 || (checkOutTime != null && checkOutTime!.day != checkInTime!.day)) {
+      return null;
+    }
+
     final hours = diff.inHours;
     final mins = diff.inMinutes.remainder(60);
     if (hours > 0) {
@@ -80,14 +87,55 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   List<amplify_models.Users> _allStaff = [];
   Map<String, int> _usernameToIdMap = {};
-  
+
   // Matrix: staffKey -> (dayNumber -> DailyAttendanceRecord)
   Map<String, Map<int, DailyAttendanceRecord>> _attendanceMatrix = {};
+
+  // Synchronized scroll controllers
+  late final ScrollController _leftVerticalController;
+  late final ScrollController _verticalController;
+  late final ScrollController _headerHorizontalController;
+  late final ScrollController _bodyHorizontalController;
+
+  static const double _staffColWidth = 210.0;
+  static const double _dayColWidth = 92.0;
+  static const double _headerHeight = 58.0;
+  static const double _rowHeight = 76.0;
 
   @override
   void initState() {
     super.initState();
+    _leftVerticalController = ScrollController();
+    _verticalController = ScrollController();
+    _headerHorizontalController = ScrollController();
+    _bodyHorizontalController = ScrollController();
+
+    // Link vertical scrolling between left frozen staff pane and main grid
+    _verticalController.addListener(() {
+      if (_leftVerticalController.hasClients &&
+          _leftVerticalController.offset != _verticalController.offset) {
+        _leftVerticalController.jumpTo(_verticalController.offset);
+      }
+    });
+
+    // Link horizontal scrolling between top frozen day headers and main grid
+    _bodyHorizontalController.addListener(() {
+      if (_headerHorizontalController.hasClients &&
+          _headerHorizontalController.offset != _bodyHorizontalController.offset) {
+        _headerHorizontalController.jumpTo(_bodyHorizontalController.offset);
+      }
+    });
+
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _leftVerticalController.dispose();
+    _verticalController.dispose();
+    _headerHorizontalController.dispose();
+    _bodyHorizontalController.dispose();
+    super.dispose();
   }
 
   /// Parses timestamp to Indian Standard Time (IST)
@@ -301,7 +349,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         final sessRes = await Amplify.API.query(request: sessReq).response;
         ampSessions = (sessRes.data?.items ?? []).whereType<amplify_models.UserSessions>().toList();
       } catch (e) {
-        debugPrint('Amplify UserSessions query error: $e');
+        debugPrint('Amplify UserSessions error: $e');
       }
 
       // D: Supabase UserSessions
@@ -320,6 +368,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ampSessions: ampSessions,
         sbSessions: sbSessions,
       );
+
+      // Auto-scroll to today if current month
+      final now = DateTime.now();
+      if (_selectedMonth.year == now.year && _selectedMonth.month == now.month && now.day > 4) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToDay(now.day - 2);
+        });
+      }
 
     } catch (e) {
       debugPrint('Error loading attendance data: $e');
@@ -575,6 +631,33 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     return matrix;
+  }
+
+  /// Side Scroll helpers
+  void _scrollBy(double offset) {
+    if (!_bodyHorizontalController.hasClients) return;
+    final target = (_bodyHorizontalController.offset + offset).clamp(
+      0.0,
+      _bodyHorizontalController.position.maxScrollExtent,
+    );
+    _bodyHorizontalController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _scrollToDay(int day) {
+    if (!_bodyHorizontalController.hasClients) return;
+    final target = ((day - 1) * _dayColWidth).clamp(
+      0.0,
+      _bodyHorizontalController.position.maxScrollExtent,
+    );
+    _bodyHorizontalController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _previousMonth() {
@@ -865,6 +948,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final monthDisplayStr = DateFormat('MMMM yyyy').format(_selectedMonth);
     final daysInMonth = DateUtils.getDaysInMonth(_selectedMonth.year, _selectedMonth.month);
     final now = DateTime.now();
+    final isCurrentMonth = _selectedMonth.year == now.year && _selectedMonth.month == now.month;
 
     // Filter staff by search query
     final filteredStaff = _allStaff.where((u) {
@@ -879,7 +963,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     // Quick stats calculations
     int presentTodayCount = 0;
     int activeNowCount = 0;
-    if (_selectedMonth.year == now.year && _selectedMonth.month == now.month) {
+    if (isCurrentMonth) {
       for (var staff in _allStaff) {
         final staffKey = _staffKey(staff);
         final rec = _attendanceMatrix[staffKey]?[now.day];
@@ -887,6 +971,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         if (rec != null && rec.isActive) activeNowCount++;
       }
     }
+
+    final double totalDaysWidth = daysInMonth * _dayColWidth;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -910,7 +996,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               children: [
                 // Top Control Header
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     boxShadow: [
@@ -928,11 +1014,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           Text('Unified tracking of clock-ins, clock-outs, and login sessions', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                         ],
                       ),
-                      const SizedBox(width: 32),
+                      const SizedBox(width: 24),
                       // Search Box
                       Expanded(
                         child: SizedBox(
-                          height: 40,
+                          height: 38,
                           child: TextField(
                             onChanged: (val) => setState(() => _searchQuery = val),
                             decoration: InputDecoration(
@@ -947,7 +1033,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 24),
+                      const SizedBox(width: 20),
                       // Month Navigator Controls
                       Container(
                         decoration: BoxDecoration(
@@ -992,9 +1078,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                 ).animate().fadeIn().slideY(begin: -0.05),
 
-                // Sub-header Summary & Legend
+                // Sub-header Summary, Side-Scroll Quick Jump & Legend
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
                   child: Row(
                     children: [
                       // Total Staff Chip
@@ -1015,7 +1101,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ),
                       const SizedBox(width: 8),
                       // Present Today Chip
-                      if (_selectedMonth.year == now.year && _selectedMonth.month == now.month) ...[
+                      if (isCurrentMonth) ...[
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
@@ -1048,7 +1134,76 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             ],
                           ),
                         ),
+                        const SizedBox(width: 16),
                       ],
+                      // Side-Scroll Quick Jump Bar
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 1)),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 13),
+                              tooltip: 'Scroll Left (4 days)',
+                              onPressed: () => _scrollBy(-368),
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                            const SizedBox(width: 4),
+                            _weekJumpChip('1–7', 1),
+                            const SizedBox(width: 4),
+                            _weekJumpChip('8–14', 8),
+                            const SizedBox(width: 4),
+                            _weekJumpChip('15–21', 15),
+                            const SizedBox(width: 4),
+                            _weekJumpChip('22–28', 22),
+                            if (daysInMonth > 28) ...[
+                              const SizedBox(width: 4),
+                              _weekJumpChip('29–$daysInMonth', 29),
+                            ],
+                            if (isCurrentMonth) ...[
+                              const SizedBox(width: 6),
+                              InkWell(
+                                onTap: () => _scrollToDay(now.day > 2 ? now.day - 2 : 1),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.my_location_rounded, size: 11, color: Colors.white),
+                                      const SizedBox(width: 4),
+                                      Text('Today (${now.day})', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_forward_ios_rounded, size: 13),
+                              tooltip: 'Scroll Right (4 days)',
+                              onPressed: () => _scrollBy(368),
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                          ],
+                        ),
+                      ),
                       const Spacer(),
                       // Legend Elements
                       Row(
@@ -1059,29 +1214,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             child: Text('IN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade800)),
                           ),
                           const SizedBox(width: 4),
-                          Text('Clock-In / Login', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
-                          const SizedBox(width: 14),
+                          Text('Login', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+                          const SizedBox(width: 10),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(color: Colors.orange.shade100, borderRadius: BorderRadius.circular(4)),
                             child: Text('OUT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange.shade900)),
                           ),
                           const SizedBox(width: 4),
-                          Text('Clock-Out / Logout', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
-                          const SizedBox(width: 14),
-                          Icon(Icons.touch_app_outlined, size: 14, color: Colors.grey.shade500),
+                          Text('Logout', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+                          const SizedBox(width: 10),
+                          Icon(Icons.swipe_rounded, size: 14, color: Colors.blueGrey.shade600),
                           const SizedBox(width: 4),
-                          Text('Click cell for full breakdown', style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey.shade500)),
+                          Text('Drag / Scroll horizontally', style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade600, fontWeight: FontWeight.w500)),
                         ],
                       ),
                     ],
                   ),
                 ),
 
-                // Data Matrix Table
+                // Data Matrix Table with Sticky Staff Column & Fluid Side-Scrolling
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+                    padding: const EdgeInsets.fromLTRB(24, 4, 24, 20),
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -1093,110 +1248,259 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.vertical,
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: DataTable(
-                              columnSpacing: 10,
-                              headingRowColor: WidgetStateProperty.all(AppTheme.primaryColor.withValues(alpha: 0.05)),
-                              dataRowColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
-                                if (states.contains(WidgetState.hovered)) return AppTheme.primaryColor.withValues(alpha: 0.02);
-                                return null;
-                              }),
-                              dataRowMaxHeight: 76,
-                              dataRowMinHeight: 76,
-                              dividerThickness: 1,
-                              horizontalMargin: 20,
-                              columns: [
-                                // Staff Member Column
-                                const DataColumn(
-                                  label: SizedBox(
-                                    width: 200,
-                                    child: Text(
-                                      'STAFF MEMBER',
-                                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.black54, letterSpacing: 1.1),
-                                    ),
-                                  ),
+                        child: ScrollConfiguration(
+                          behavior: ScrollConfiguration.of(context).copyWith(
+                            dragDevices: {
+                              PointerDeviceKind.touch,
+                              PointerDeviceKind.mouse,
+                              PointerDeviceKind.trackpad,
+                              PointerDeviceKind.stylus,
+                            },
+                          ),
+                          child: Column(
+                            children: [
+                              // 1. TOP STICKY HEADER ROW (Staff Header + Days Headers)
+                              Container(
+                                height: _headerHeight,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.06),
+                                  border: Border(bottom: BorderSide(color: Colors.grey.shade300, width: 1.5)),
                                 ),
-                                // Days Columns (01..31)
-                                for (int day = 1; day <= daysInMonth; day++) ...[
-                                  DataColumn(
-                                    label: Container(
-                                      width: 90,
-                                      alignment: Alignment.center,
-                                      child: _buildDayColumnHeader(day),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                              rows: filteredStaff.map((user) {
-                                final staffKey = _staffKey(user);
-                                final userRecords = _attendanceMatrix[staffKey] ?? {};
-                                final daysPresent = userRecords.values.where((r) => r.firstIn != null).length;
-
-                                return DataRow(
-                                  cells: [
-                                    // Staff Name Cell
-                                    DataCell(
-                                      SizedBox(
-                                        width: 200,
-                                        child: Row(
-                                          children: [
-                                            CircleAvatar(
-                                              radius: 17,
-                                              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
-                                              child: Text(
-                                                user.name != null && user.name!.isNotEmpty ? user.name![0].toUpperCase() : '?',
-                                                style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 13),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    user.name ?? 'Unknown',
-                                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: Colors.black87),
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    '$daysPresent days present',
-                                                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                child: Row(
+                                  children: [
+                                    // Pinned Staff Column Header
+                                    Container(
+                                      width: _staffColWidth,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                                      alignment: Alignment.centerLeft,
+                                      decoration: BoxDecoration(
+                                        border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+                                      ),
+                                      child: const Text(
+                                        'STAFF MEMBER',
+                                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.black54, letterSpacing: 1.1),
                                       ),
                                     ),
-                                    // Attendance Days Cells
-                                    for (int day = 1; day <= daysInMonth; day++)
-                                      DataCell(
-                                        Container(
-                                          width: 90,
-                                          alignment: Alignment.center,
-                                          child: _AttendanceCell(
-                                            record: userRecords[day],
-                                            staffName: user.name ?? 'Staff',
-                                            date: DateTime(_selectedMonth.year, _selectedMonth.month, day),
-                                            onTap: () => _showAttendanceDetailsDialog(
-                                              context,
-                                              user.name ?? 'Staff',
-                                              DateTime(_selectedMonth.year, _selectedMonth.month, day),
-                                              userRecords[day],
-                                            ),
+                                    // Horizontally Linked Days Header
+                                    Expanded(
+                                      child: SingleChildScrollView(
+                                        controller: _headerHorizontalController,
+                                        scrollDirection: Axis.horizontal,
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        child: SizedBox(
+                                          width: totalDaysWidth,
+                                          child: Row(
+                                            children: [
+                                              for (int day = 1; day <= daysInMonth; day++)
+                                                Container(
+                                                  width: _dayColWidth,
+                                                  alignment: Alignment.center,
+                                                  decoration: BoxDecoration(
+                                                    border: Border(right: BorderSide(color: Colors.grey.shade200, width: 1)),
+                                                  ),
+                                                  child: _buildDayColumnHeader(day),
+                                                ),
+                                            ],
                                           ),
                                         ),
                                       ),
+                                    ),
                                   ],
-                                );
-                              }).toList(),
-                            ),
+                                ),
+                              ),
+
+                              // 2. MAIN SCROLLABLE TABLE BODY
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    // LEFT PINNED STAFF ROWS (Follows vertical scroll of grid)
+                                    SizedBox(
+                                      width: _staffColWidth,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+                                          color: Colors.white,
+                                        ),
+                                        child: SingleChildScrollView(
+                                          controller: _leftVerticalController,
+                                          scrollDirection: Axis.vertical,
+                                          physics: const NeverScrollableScrollPhysics(),
+                                          child: Column(
+                                            children: filteredStaff.map((user) {
+                                              final staffKey = _staffKey(user);
+                                              final userRecords = _attendanceMatrix[staffKey] ?? {};
+                                              final daysPresent = userRecords.values.where((r) => r.firstIn != null).length;
+
+                                              return Container(
+                                                height: _rowHeight,
+                                                padding: const EdgeInsets.symmetric(horizontal: 14),
+                                                decoration: BoxDecoration(
+                                                  border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1)),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    CircleAvatar(
+                                                      radius: 16,
+                                                      backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
+                                                      child: Text(
+                                                        user.name != null && user.name!.isNotEmpty ? user.name![0].toUpperCase() : '?',
+                                                        style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 13),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                      child: Column(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Text(
+                                                            user.name ?? 'Unknown',
+                                                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.black87),
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                          const SizedBox(height: 2),
+                                                          Text(
+                                                            '$daysPresent days present',
+                                                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    // RIGHT HORIZONTALLY & VERTICALLY SCROLLABLE DAYS MATRIX
+                                    Expanded(
+                                      child: Stack(
+                                        children: [
+                                          Scrollbar(
+                                            controller: _bodyHorizontalController,
+                                            thumbVisibility: true,
+                                            trackVisibility: true,
+                                            child: SingleChildScrollView(
+                                              controller: _bodyHorizontalController,
+                                              scrollDirection: Axis.horizontal,
+                                              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                                              child: SizedBox(
+                                                width: totalDaysWidth,
+                                                child: Scrollbar(
+                                                  controller: _verticalController,
+                                                  thumbVisibility: true,
+                                                  trackVisibility: true,
+                                                  child: SingleChildScrollView(
+                                                    controller: _verticalController,
+                                                    scrollDirection: Axis.vertical,
+                                                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                                                    child: Column(
+                                                      children: filteredStaff.map((user) {
+                                                        final staffKey = _staffKey(user);
+                                                        final userRecords = _attendanceMatrix[staffKey] ?? {};
+
+                                                        return Container(
+                                                          height: _rowHeight,
+                                                          decoration: BoxDecoration(
+                                                            border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1)),
+                                                          ),
+                                                          child: Row(
+                                                            children: [
+                                                              for (int day = 1; day <= daysInMonth; day++)
+                                                                Container(
+                                                                  width: _dayColWidth,
+                                                                  alignment: Alignment.center,
+                                                                  decoration: BoxDecoration(
+                                                                    border: Border(right: BorderSide(color: Colors.grey.shade100, width: 1)),
+                                                                  ),
+                                                                  child: _AttendanceCell(
+                                                                    record: userRecords[day],
+                                                                    staffName: user.name ?? 'Staff',
+                                                                    date: DateTime(_selectedMonth.year, _selectedMonth.month, day),
+                                                                    onTap: () => _showAttendanceDetailsDialog(
+                                                                      context,
+                                                                      user.name ?? 'Staff',
+                                                                      DateTime(_selectedMonth.year, _selectedMonth.month, day),
+                                                                      userRecords[day],
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                            ],
+                                                          ),
+                                                        );
+                                                      }).toList(),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+
+                                          // Floating Left Scroll Overlay Button
+                                          Positioned(
+                                            left: 6,
+                                            top: 0,
+                                            bottom: 16,
+                                            child: Center(
+                                              child: Material(
+                                                elevation: 4,
+                                                shape: const CircleBorder(),
+                                                color: Colors.white.withValues(alpha: 0.92),
+                                                child: InkWell(
+                                                  customBorder: const CircleBorder(),
+                                                  onTap: () => _scrollBy(-368),
+                                                  child: Container(
+                                                    width: 34,
+                                                    height: 34,
+                                                    alignment: Alignment.center,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(color: Colors.grey.shade300),
+                                                    ),
+                                                    child: const Icon(Icons.chevron_left_rounded, size: 24, color: AppTheme.primaryColor),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+
+                                          // Floating Right Scroll Overlay Button
+                                          Positioned(
+                                            right: 18,
+                                            top: 0,
+                                            bottom: 16,
+                                            child: Center(
+                                              child: Material(
+                                                elevation: 4,
+                                                shape: const CircleBorder(),
+                                                color: Colors.white.withValues(alpha: 0.92),
+                                                child: InkWell(
+                                                  customBorder: const CircleBorder(),
+                                                  onTap: () => _scrollBy(368),
+                                                  child: Container(
+                                                    width: 34,
+                                                    height: 34,
+                                                    alignment: Alignment.center,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(color: Colors.grey.shade300),
+                                                    ),
+                                                    child: const Icon(Icons.chevron_right_rounded, size: 24, color: AppTheme.primaryColor),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -1205,6 +1509,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _weekJumpChip(String label, int startDay) {
+    return InkWell(
+      onTap: () => _scrollToDay(startDay),
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+        ),
+      ),
     );
   }
 
@@ -1271,7 +1594,7 @@ class _AttendanceCell extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          width: 86,
+          width: 84,
           height: 62,
           decoration: BoxDecoration(
             color: Colors.grey.shade50,
@@ -1288,8 +1611,16 @@ class _AttendanceCell extends StatelessWidget {
     }
 
     final inTime = record!.firstIn;
-    final outTime = record!.lastOut;
+    final rawOutTime = record!.lastOut;
     final isActive = record!.isActive;
+
+    // Guard: ignore checkout if it occurred on a later day or after 16 hours (auto-closed dangling session)
+    DateTime? outTime = rawOutTime;
+    if (inTime != null && rawOutTime != null) {
+      if (rawOutTime.day != inTime.day || rawOutTime.difference(inTime).inHours > 16) {
+        outTime = null;
+      }
+    }
 
     // Appearance colors based on state
     Color cardBg = const Color(0xFFF8FAFC);
@@ -1309,7 +1640,7 @@ class _AttendanceCell extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        width: 86,
+        width: 84,
         height: 62,
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
         decoration: BoxDecoration(

@@ -885,12 +885,33 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.event_busy_rounded, size: 48, color: Colors.grey.shade400),
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: date.weekday == DateTime.sunday ? Colors.grey.shade100 : Colors.red.shade50,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            date.weekday == DateTime.sunday ? Icons.weekend_rounded : Icons.event_busy_rounded,
+                            size: 28,
+                            color: date.weekday == DateTime.sunday ? Colors.grey.shade600 : Colors.red.shade700,
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        const Text('No Attendance Recorded', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
                         Text(
-                          'No manual clock-in or application login session was recorded for this day.',
+                          date.weekday == DateTime.sunday ? 'Sunday (Weekly Off)' : 'Marked as Leave (Absent)',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: date.weekday == DateTime.sunday ? Colors.black87 : Colors.red.shade800,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          date.weekday == DateTime.sunday
+                              ? 'Sunday is a designated weekly off. No attendance is required.'
+                              : 'No clock-in, application login, or system activity was recorded for $staffName on this working day. Marked as Leave.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                         ),
@@ -1263,6 +1284,26 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
+                        // Leave Today Chip
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.event_busy_rounded, size: 16, color: Colors.red.shade700),
+                              const SizedBox(width: 6),
+                              Text(
+                                'On Leave: ${(_allStaff.length - presentTodayCount).clamp(0, _allStaff.length)}',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red.shade900),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         // Online Now Chip
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1368,6 +1409,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text('Logout', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: BorderRadius.circular(4)),
+                            child: Text('LEAVE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red.shade900)),
+                          ),
+                          const SizedBox(width: 4),
+                          Text('Leave', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
+                            child: Text('OFF', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+                          ),
+                          const SizedBox(width: 4),
+                          Text('Sunday Off', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
                           const SizedBox(width: 10),
                           Icon(Icons.swipe_rounded, size: 14, color: Colors.blueGrey.shade600),
                           const SizedBox(width: 4),
@@ -1475,6 +1532,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                               final staffKey = _staffKey(user);
                                               final userRecords = _attendanceMatrix[staffKey] ?? {};
                                               final daysPresent = userRecords.values.where((r) => r.firstIn != null).length;
+                                              int workingDaysPast = 0;
+                                              final maxDay = isCurrentMonth ? now.day : daysInMonth;
+                                              for (int d = 1; d <= maxDay; d++) {
+                                                final dt = DateTime(_selectedMonth.year, _selectedMonth.month, d);
+                                                if (dt.weekday != DateTime.sunday) {
+                                                  workingDaysPast++;
+                                                }
+                                              }
+                                              final leaveCount = (workingDaysPast - daysPresent).clamp(0, workingDaysPast);
 
                                               return Container(
                                                 height: _rowHeight,
@@ -1505,7 +1571,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                                           ),
                                                           const SizedBox(height: 2),
                                                           Text(
-                                                            '$daysPresent days present',
+                                                            '$daysPresent present • $leaveCount leave',
                                                             style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
                                                           ),
                                                         ],
@@ -1732,13 +1798,16 @@ class _AttendanceCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dayDate = DateTime(date.year, date.month, date.day);
+    final isFuture = dayDate.isAfter(today);
+    final isSunday = date.weekday == DateTime.sunday;
     final hasActivity = record != null && (record!.firstIn != null || record!.lastOut != null);
 
     if (!hasActivity) {
-      return InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
+      if (isFuture) {
+        return Container(
           width: 84,
           height: 62,
           decoration: BoxDecoration(
@@ -1749,7 +1818,104 @@ class _AttendanceCell extends StatelessWidget {
           alignment: Alignment.center,
           child: Text(
             '—',
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 18, fontWeight: FontWeight.w300),
+            style: TextStyle(color: Colors.grey.shade300, fontSize: 16, fontWeight: FontWeight.w300),
+          ),
+        );
+      }
+
+      if (isSunday) {
+        return InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: 84,
+            height: 62,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'OFF',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Sunday',
+                  style: TextStyle(
+                    fontSize: 8.5,
+                    color: Colors.grey.shade400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // Past or current working day with no attendance -> Mark as LEAVE!
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 84,
+          height: 62,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFEF2F2), // Soft rose/red
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.red.shade200, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.withValues(alpha: 0.04),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'LEAVE',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                    color: Colors.red.shade800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'Absent',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.red.shade700,
+                ),
+              ),
+            ],
           ),
         ),
       );

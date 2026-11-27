@@ -302,7 +302,7 @@ app.post('/api/verify-payment', (req, res) => {
 /**
  * Automatically update the bill in database and notify local webhook server
  */
-async function autoUpdateBillOnPayment({ orderId, paymentId, invoiceNo, billingId, amount }) {
+async function autoUpdateBillOnPayment({ orderId, paymentId, invoiceNo, billingId, amount, customerEmail, customerName }) {
   console.log(`[Auto-Sync] Processing paid invoice: ${invoiceNo || billingId || orderId}`);
   
   // 1. Notify local Flutter embedded webhook server on port 8088
@@ -381,7 +381,7 @@ async function autoUpdateBillOnPayment({ orderId, paymentId, invoiceNo, billingI
 
         // Dispatch official payment receipt email
         try {
-          const clientEmail = billData.client_email || billData.email || customerEmail;
+          const clientEmail = billData.client_email || billData.email || customerEmail || '';
           const clientName = bill.client_name || customerName || 'Valued Client';
           await sendReceiptEmail({
             to: clientEmail,

@@ -59,17 +59,21 @@ Future<void> main() async {
   }
 
   try {
-    final apiPlugin = AmplifyAPI(options: APIPluginOptions(modelProvider: ModelProvider.instance));
-    final authPlugin = AmplifyAuthCognito();
-    
-    final plugins = <AmplifyPluginInterface>[apiPlugin, authPlugin];
-    if (amplifyConfig.contains('"storage"')) {
-      plugins.add(AmplifyStorageS3());
+    if (!Amplify.isConfigured) {
+      final apiPlugin = AmplifyAPI(options: APIPluginOptions(modelProvider: ModelProvider.instance));
+      final authPlugin = AmplifyAuthCognito();
+      
+      final plugins = <AmplifyPluginInterface>[apiPlugin, authPlugin];
+      if (amplifyConfig.contains('"storage"')) {
+        plugins.add(AmplifyStorageS3());
+      }
+      
+      await Amplify.addPlugins(plugins);
+      await Amplify.configure(amplifyConfig);
+      debugPrint('✅ Amplify configured successfully');
+    } else {
+      debugPrint('⚠️ Amplify already configured (hot restart detected) - skipping re-init');
     }
-    
-    await Amplify.addPlugins(plugins);
-    await Amplify.configure(amplifyConfig);
-    debugPrint('✅ Amplify configured successfully');
   } on AmplifyAlreadyConfiguredException {
     debugPrint('⚠️ Amplify already configured (hot restart) - continuing');
   } catch (e, stacktrace) {

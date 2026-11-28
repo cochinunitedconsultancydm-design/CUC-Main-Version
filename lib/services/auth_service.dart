@@ -86,8 +86,8 @@ class AuthService {
       String successfulLoginEmail = candidateEmails.first;
       Object? lastError;
       // In Flutter Web debug mode (dartdevc), client-side SRP BigInt calculations (2048-bit modulus)
-      // take longer because interpreted JS is not AOT-optimized. We allow adequate timeout (60s in debug, 35s in release).
-      final timeoutDuration = kDebugMode ? const Duration(seconds: 60) : const Duration(seconds: 35);
+      // take longer because interpreted JS is not AOT-optimized.
+      final timeoutDuration = kDebugMode ? const Duration(seconds: 40) : const Duration(seconds: 30);
 
       for (final emailToTry in candidateEmails) {
         try {
@@ -109,7 +109,9 @@ class AuthService {
           } else if (errStr.contains('UserNotFoundException') || errStr.contains('User does not exist')) {
             lastLoginError = 'User account does not exist in Cognito.';
           } else if (errStr.contains('TimeoutException')) {
-            lastLoginError = 'Login request timed out. Please check your network connection or run in release mode.';
+            lastLoginError = kIsWeb
+                ? 'Login timed out. Please refresh the browser tab (F5 / Ctrl+R) to reset the web auth bridge after hot restart.'
+                : 'Login request timed out. Please check your network connection.';
           } else {
             lastLoginError = 'Login failed: $err';
           }

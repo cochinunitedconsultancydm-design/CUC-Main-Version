@@ -54,6 +54,8 @@ class _BillingScreenState extends State<BillingScreen> {
   bool _hasMore = true;
   String _searchTerm = '';
   Timer? _debounce;
+  Timer? _razorpayAutoSyncTimer;
+  bool _isAutoCheckingRazorpay = false;
   final FocusNode _searchFocusNode = FocusNode();
   String _statusFilter = 'All';
   String _typeFilter = 'All';
@@ -103,6 +105,11 @@ class _BillingScreenState extends State<BillingScreen> {
     if (widget.initialTypeFilter != null) _typeFilter = widget.initialTypeFilter!;
     _initRole();
     _fetchBillings(refresh: true); 
+
+    // Automatically check status of pending Razorpay payment links periodically (every 45s)
+    _razorpayAutoSyncTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+      if (mounted) _autoCheckPendingRazorpayLinks();
+    });
   }
 
   Future<void> _initRole() async {
@@ -122,6 +129,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
   @override
   void dispose() {
+    _razorpayAutoSyncTimer?.cancel();
     _debounce?.cancel();
     _searchFocusNode.dispose();
     super.dispose();
@@ -334,7 +342,36 @@ class _BillingScreenState extends State<BillingScreen> {
           _isLoading = false;
           _isFetchingMore = false;
         });
+        if (refresh) {
+          Future.microtask(() => _autoCheckPendingRazorpayLinks());
+        }
       }
+    }
+  }
+
+  Future<void> _autoCheckPendingRazorpayLinks() async {
+    if (_isAutoCheckingRazorpay || !mounted) return;
+    _isAutoCheckingRazorpay = true;
+    try {
+      final pendingWithLinks = _billings.where((b) {
+        final isPaid = b.status == 'Received' || b.data?['payment_received'] == true;
+        final hasLink = b.data?['razorpay_link_id'] != null || b.data?['payment_link_id'] != null;
+        return !isPaid && hasLink;
+      }).toList();
+
+      int newlySynced = 0;
+      for (final b in pendingWithLinks) {
+        final updated = await _billingService.syncRazorpayPaymentForBilling(b);
+        if (updated) newlySynced++;
+      }
+
+      if (newlySynced > 0 && mounted) {
+        _msg('Auto-synced $newlySynced newly paid invoice(s) into Bills & Accounts/Expenses!', true);
+        _fetchBillings(refresh: true);
+      }
+    } catch (_) {
+    } finally {
+      _isAutoCheckingRazorpay = false;
     }
   }
 

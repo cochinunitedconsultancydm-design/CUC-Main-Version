@@ -162,6 +162,16 @@ class ReceiptService {
 
       clientAddress = dataMap['client_address']?.toString() ?? '';
 
+      // Idempotency guard: Do not send duplicate receipt if already dispatched for this payment
+      final existingReceiptPaymentId = dataMap['receipt_payment_id']?.toString() ?? dataMap['receipt_sent_for']?.toString();
+      if (!forceSend && paymentId != null && existingReceiptPaymentId == paymentId) {
+        debugPrint('Receipt for $invoiceNo already sent for payment $paymentId. Skipping duplicate dispatch.');
+        return ReceiptSendResult(
+          success: true,
+          message: 'Receipt already sent for this transaction.',
+        );
+      }
+
       // 2. Resolve client phone number
       String recipientPhone = targetPhone?.trim() ?? '';
       if (recipientPhone.isEmpty) {
@@ -220,6 +230,10 @@ class ReceiptService {
         dataMap['receipt_url'] = receiptPdfUrl;
         dataMap['receipt_sent_at'] = DateTime.now().toIso8601String();
         dataMap['receipt_no'] = 'RCPT-$invoiceNo';
+        if (paymentId != null) {
+          dataMap['receipt_payment_id'] = paymentId;
+          dataMap['receipt_sent_for'] = paymentId;
+        }
 
         try {
           if (billing is amplify_models.Billings) {

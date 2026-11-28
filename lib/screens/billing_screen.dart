@@ -342,9 +342,6 @@ class _BillingScreenState extends State<BillingScreen> {
           _isLoading = false;
           _isFetchingMore = false;
         });
-        if (refresh) {
-          Future.microtask(() => _autoCheckPendingRazorpayLinks());
-        }
       }
     }
   }
@@ -354,7 +351,7 @@ class _BillingScreenState extends State<BillingScreen> {
     _isAutoCheckingRazorpay = true;
     try {
       final pendingWithLinks = _billings.where((b) {
-        final isPaid = b.status == 'Received' || b.data?['payment_received'] == true;
+        final isPaid = b.status == 'Received' || b.data?['payment_received'] == true || b.data?['payment_received'] == 'true';
         final hasLink = b.data?['razorpay_link_id'] != null || b.data?['payment_link_id'] != null;
         return !isPaid && hasLink;
       }).toList();
@@ -367,7 +364,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
       if (newlySynced > 0 && mounted) {
         _msg('Auto-synced $newlySynced newly paid invoice(s) into Bills & Accounts/Expenses!', true);
-        _fetchBillings(refresh: true);
+        _fetchBillings(refresh: false);
       }
     } catch (_) {
     } finally {

@@ -363,6 +363,12 @@ async function autoUpdateBillOnPayment({ orderId, paymentId, invoiceNo, billingI
           try { billData = typeof bill.data === 'string' ? JSON.parse(bill.data) : bill.data; } catch (_) {}
         }
 
+        // Idempotency: if this payment was already processed, skip duplicate webhook processing
+        if (paymentId && billData.razorpay_payment_id === paymentId) {
+          console.log(`[Auto-Sync] Payment ${paymentId} already processed for billing ${invoiceNo || billingId}. Skipping duplicate.`);
+          return;
+        }
+
         const totalBillAmount = parseFloat(String(bill.amount || '0').replace(/[^0-9.]/g, '')) || 0;
         const prevReceived = parseFloat(String(billData.advance_received || '0').replace(/[^0-9.]/g, '')) || 0;
         const newTotalReceived = prevReceived + (amount || totalBillAmount);

@@ -682,14 +682,19 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
 
     if (linkId == null || linkId.isEmpty) return false;
 
-    // If already marked as received and fully paid, return true
+    // If already marked as received and fully paid, return false (not newly updated)
     if (billing.status == 'Received' && (data['payment_received'] == true || data['payment_received'] == 'true')) {
-      return true;
+      return false;
     }
 
     try {
       final link = await RazorpayService().fetchPaymentLink(linkId);
       if (link != null && (link.status == 'paid' || link.status == 'partially_paid')) {
+        // Idempotency: if this exact payment ID was already processed, do not re-process
+        if (data['razorpay_payment_id'] != null && data['razorpay_payment_id'].toString() == link.id.toString()) {
+          return false;
+        }
+
         final paidAmt = link.amountPaid > 0 ? link.amountPaid : link.amount;
         await markBillingAsPaidFromRazorpay(
           billing: billing,
@@ -780,16 +785,21 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
       );
     } catch (_) {}
 
-    // 3. Automatically generate and dispatch official receipt via WhatsApp & Email
-    try {
-      await ReceiptService().sendReceiptAutomatically(
-        billing: billing,
-        paidAmount: paidAmount,
-        paymentId: paymentId,
-        paymentMode: paymentMode ?? 'Razorpay Online',
-      );
-    } catch (e) {
-      safePrint('Notice: Error auto-sending receipt for ${billing.invoiceNo}: $e');
+    // 3. Automatically generate and dispatch official receipt via WhatsApp & Email (once per payment)
+    if (paymentId != null && data['receipt_sent_for'] == paymentId) {
+      safePrint('Notice: Receipt already dispatched for payment $paymentId on ${billing.invoiceNo}. Skipping duplicate.');
+    } else {
+      try {
+        data['receipt_sent_for'] = paymentId;
+        await ReceiptService().sendReceiptAutomatically(
+          billing: billing,
+          paidAmount: paidAmount,
+          paymentId: paymentId,
+          paymentMode: paymentMode ?? 'Razorpay Online',
+        );
+      } catch (e) {
+        safePrint('Notice: Error auto-sending receipt for ${billing.invoiceNo}: $e');
+      }
     }
   }
 

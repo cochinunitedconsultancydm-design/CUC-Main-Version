@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'dart:convert';
 import 'package:amplify_flutter/amplify_flutter.dart';
@@ -443,6 +444,19 @@ class BillingService {
     return paginated;
   }
 
+  Future<Billing?> getBillingById(dynamic id) async {
+    try {
+      final req = ModelQueries.get(Billings.classType, BillingsModelIdentifier(id: id.toString()));
+      final res = await Amplify.API.query(request: req).response;
+      if (res.data != null) {
+        return Billing.fromMap(res.data!.toMap());
+      }
+    } catch (e) {
+      debugPrint('Error getting billing by id $id: $e');
+    }
+    return null;
+  }
+
   Future<void> updateBilling(dynamic id, Map<String, dynamic> updates) async {
     final req = ModelQueries.get(Billings.classType, BillingsModelIdentifier(id: id.toString()));
     final res = await Amplify.API.query(request: req).response;
@@ -761,6 +775,8 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
 
     await BackupAwareApi().update(model);
 
+    final updatedBilling = Billing.fromMap(model.toMap());
+
     if (billing.clientName != null && billing.clientName!.isNotEmpty) {
       try {
         await syncClientBalance(billing.clientName!);
@@ -769,7 +785,7 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
 
     // 1. AUTOMATICALLY LOG INTO COMPANY EXPENSE / ACCOUNTS REGISTER (CompanyBills)
     await logAccountingEntryForPayment(
-      billing: billing,
+      billing: updatedBilling,
       paidAmount: paidAmount,
       paymentId: paymentId,
       paymentMode: paymentMode,
@@ -792,7 +808,7 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
       try {
         data['receipt_sent_for'] = paymentId;
         await ReceiptService().sendReceiptAutomatically(
-          billing: billing,
+          billing: updatedBilling,
           paidAmount: paidAmount,
           paymentId: paymentId,
           paymentMode: paymentMode ?? 'Razorpay Online',

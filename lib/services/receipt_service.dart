@@ -2,13 +2,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:amplify_flutter/amplify_flutter.dart';
-import 'package:amplify_api/amplify_api.dart';
 import '../models/billing.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../utils/number_to_words.dart';
 import 'invoice_pdf_service.dart';
 import 'supabase_backup_service.dart';
-import 'backup_aware_api.dart';
 import 'meta_service.dart';
 import 'billing_service.dart';
 import 'logging_service.dart';
@@ -236,11 +234,18 @@ class ReceiptService {
         }
 
         try {
-          if (billing is amplify_models.Billings) {
-            final updated = billing.copyWith(data: jsonEncode(dataMap));
-            await BackupAwareApi().update(updated);
-          } else if (billing is Billing && billing.id != null) {
-            await BillingService().updateBilling(billing.id.toString(), {'data': dataMap});
+          final billId = billing is amplify_models.Billings ? billing.id : (billing as Billing).id;
+          if (billId != null) {
+            final latestBill = await BillingService().getBillingById(billId.toString());
+            final mergedData = latestBill?.data != null ? Map<String, dynamic>.from(latestBill!.data!) : Map<String, dynamic>.from(dataMap);
+            mergedData['receipt_url'] = receiptPdfUrl;
+            mergedData['receipt_sent_at'] = DateTime.now().toIso8601String();
+            mergedData['receipt_no'] = 'RCPT-$invoiceNo';
+            if (paymentId != null) {
+              mergedData['receipt_payment_id'] = paymentId;
+              mergedData['receipt_sent_for'] = paymentId;
+            }
+            await BillingService().updateBilling(billId.toString(), {'data': mergedData});
           }
         } catch (e) {
           debugPrint('Error updating bill data with receipt_url: $e');

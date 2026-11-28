@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../theme.dart';
 import '../services/supabase_backup_service.dart';
+import '../services/backup_aware_api.dart';
 
 /// Single unified attendance record for a staff member on a specific day
 class DailyAttendanceRecord {
@@ -19,6 +21,8 @@ class DailyAttendanceRecord {
   bool isActive;
   bool isAutoReconciled;
   String? checkoutReason;
+  String? manualStatus; // 'PRESENT', 'HALF_DAY', 'ABSENT'
+  bool isManual;
   final List<AttendanceEvent> events;
 
   DailyAttendanceRecord({
@@ -30,6 +34,8 @@ class DailyAttendanceRecord {
     this.isActive = false,
     this.isAutoReconciled = false,
     this.checkoutReason,
+    this.manualStatus,
+    this.isManual = false,
     List<AttendanceEvent>? events,
   }) : events = events ?? [];
 
@@ -37,6 +43,10 @@ class DailyAttendanceRecord {
   DateTime? get lastOut => checkOutTime;
 
   String? get durationStr {
+    if (manualStatus == 'ABSENT') return null;
+    if (manualStatus == 'HALF_DAY') return '4h 0m';
+    if (manualStatus == 'PRESENT') return '8h 0m';
+
     if (checkInTime == null) return null;
     final end = checkOutTime ?? (isActive ? DateTime.now() : null);
     if (end == null) return null;
@@ -88,6 +98,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
   bool _isLoading = true;
   String _searchQuery = '';
+  bool _isManualMode = false;
+  Map<String, String> _manualAttendanceOverrides = {}; // key: '$staffKey#$dateStr' -> 'PRESENT' | 'HALF_DAY' | 'ABSENT'
 
   List<amplify_models.Users> _allStaff = [];
   Map<String, int> _usernameToIdMap = {};
@@ -130,7 +142,289 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       }
     });
 
+    _loadManualOverrides();
     _loadData();
+  }
+
+  Future<void> _loadManualOverrides() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString('attendance_manual_overrides_v1');
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final Map<String, dynamic> decoded = json.decode(jsonStr);
+        if (mounted) {
+          setState(() {
+            _manualAttendanceOverrides = decoded.map((k, v) => MapEntry(k, v.toString()));
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading manual overrides: $e');
+    }
+  }
+
+  /// Cycles manual attendance:
+  /// Click 1: Present (Full Day 8h)
+  /// Click 2: Half Day (4h)
+  /// Click 3: Absent (Leave)
+  /// Click 4: Reset (Clear override back to auto system logs)
+  Future<void> _cycleManualAttendance(amplify_models.Users user, int day, DateTime date) async {
+    final staffKey = _staffKey(user);
+    final userRecords = _attendanceMatrix[staffKey] ?? {};
+    final currentRec = userRecords[day];
+    final currentStatus = currentRec?.manualStatus;
+
+    String? nextStatus;
+    String feedbackMsg = '';
+    Color feedbackColor = Colors.green.shade800;
+    IconData feedbackIcon = Icons.check_circle_rounded;
+
+    if (currentStatus == null) {
+      if (currentRec?.firstIn != null) {
+        nextStatus = 'HALF_DAY';
+        feedbackMsg = '${user.name ?? "Staff"} (Day $day): 🟠 Marked Half Day (4h - 2 Clicks)';
+        feedbackColor = Colors.orange.shade800;
+        feedbackIcon = Icons.timelapse_rounded;
+      } else {
+        nextStatus = 'PRESENT';
+        feedbackMsg = '${user.name ?? "Staff"} (Day $day): 🟢 Marked Present (Full Day 8h - 1 Click)';
+        feedbackColor = Colors.green.shade800;
+        feedbackIcon = Icons.check_circle_rounded;
+      }
+    } else if (currentStatus == 'PRESENT') {
+      nextStatus = 'HALF_DAY';
+      feedbackMsg = '${user.name ?? "Staff"} (Day $day): 🟠 Marked Half Day (4h - 2 Clicks)';
+      feedbackColor = Colors.orange.shade800;
+      feedbackIcon = Icons.timelapse_rounded;
+    } else if (currentStatus == 'HALF_DAY') {
+      nextStatus = 'ABSENT';
+      feedbackMsg = '${user.name ?? "Staff"} (Day $day): 🔴 Marked Absent (Leave - 3 Clicks)';
+      feedbackColor = Colors.red.shade800;
+      feedbackIcon = Icons.cancel_rounded;
+    } else if (currentStatus == 'ABSENT') {
+      nextStatus = null; // Reset
+      feedbackMsg = '${user.name ?? "Staff"} (Day $day): 🔄 Reset to Auto Attendance (4 Clicks)';
+      feedbackColor = Colors.blueGrey.shade800;
+      feedbackIcon = Icons.restart_alt_rounded;
+    }
+
+    await _setManualAttendance(user, day, date, nextStatus);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(feedbackIcon, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text(feedbackMsg, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+            ],
+          ),
+          backgroundColor: feedbackColor,
+          duration: const Duration(milliseconds: 1800),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
+
+  /// Explicitly sets manual attendance status ('PRESENT', 'HALF_DAY', 'ABSENT', or null for reset)
+  Future<void> _setManualAttendance(
+    amplify_models.Users user,
+    int day,
+    DateTime date,
+    String? newStatus,
+  ) async {
+    final staffKey = _staffKey(user);
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    final overrideKey = '$staffKey#$dateStr';
+
+    setState(() {
+      final userMap = _attendanceMatrix.putIfAbsent(staffKey, () => {});
+      DailyAttendanceRecord rec = userMap.putIfAbsent(
+        day,
+        () => DailyAttendanceRecord(staffKey: staffKey, day: day, date: date),
+      );
+
+      rec.manualStatus = newStatus;
+      rec.isManual = (newStatus != null);
+
+      // Clean up previous manual override events
+      rec.events.removeWhere((e) => e.source == 'Manual Override');
+
+      if (newStatus == 'PRESENT') {
+        rec.checkInTime = DateTime(date.year, date.month, date.day, 9, 30);
+        rec.checkOutTime = DateTime(date.year, date.month, date.day, 17, 30);
+        rec.isActive = false;
+        rec.isAutoReconciled = false;
+        rec.checkoutReason = 'Manual Attendance: Present (Full Day 8h)';
+        rec.events.add(AttendanceEvent(
+          title: 'Manual Full Day (09:30 AM)',
+          time: rec.checkInTime!,
+          type: 'IN',
+          source: 'Manual Override',
+        ));
+        rec.events.add(AttendanceEvent(
+          title: 'Manual Full Day (05:30 PM)',
+          time: rec.checkOutTime!,
+          type: 'OUT',
+          source: 'Manual Override',
+        ));
+        _manualAttendanceOverrides[overrideKey] = 'PRESENT';
+      } else if (newStatus == 'HALF_DAY') {
+        rec.checkInTime = DateTime(date.year, date.month, date.day, 9, 30);
+        rec.checkOutTime = DateTime(date.year, date.month, date.day, 13, 30);
+        rec.isActive = false;
+        rec.isAutoReconciled = false;
+        rec.checkoutReason = 'Manual Attendance: Half Day (4h)';
+        rec.events.add(AttendanceEvent(
+          title: 'Manual Half Day (09:30 AM)',
+          time: rec.checkInTime!,
+          type: 'IN',
+          source: 'Manual Override',
+        ));
+        rec.events.add(AttendanceEvent(
+          title: 'Manual Half Day (01:30 PM)',
+          time: rec.checkOutTime!,
+          type: 'OUT',
+          source: 'Manual Override',
+        ));
+        _manualAttendanceOverrides[overrideKey] = 'HALF_DAY';
+      } else if (newStatus == 'ABSENT') {
+        rec.checkInTime = null;
+        rec.checkOutTime = null;
+        rec.isActive = false;
+        rec.isAutoReconciled = false;
+        rec.checkoutReason = 'Manual Attendance: Marked Absent (Leave)';
+        rec.events.add(AttendanceEvent(
+          title: 'Manual Leave Entry',
+          time: DateTime(date.year, date.month, date.day, 9, 30),
+          type: 'OUT',
+          source: 'Manual Override',
+        ));
+        _manualAttendanceOverrides[overrideKey] = 'ABSENT';
+      } else {
+        // RESET: Restore natural system events if any
+        _manualAttendanceOverrides.remove(overrideKey);
+        rec.manualStatus = null;
+        rec.isManual = false;
+        rec.checkoutReason = null;
+
+        final inEvents = rec.events.where((e) => e.type == 'IN').toList();
+        final outEvents = rec.events.where((e) => e.type == 'OUT').toList();
+        if (inEvents.isNotEmpty) {
+          inEvents.sort((a, b) => a.time.compareTo(b.time));
+          rec.checkInTime = inEvents.first.time;
+        } else {
+          rec.checkInTime = null;
+        }
+        if (outEvents.isNotEmpty) {
+          outEvents.sort((a, b) => a.time.compareTo(b.time));
+          rec.checkOutTime = outEvents.last.time;
+        } else {
+          rec.checkOutTime = null;
+        }
+      }
+    });
+
+    // 2. Persist to SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('attendance_manual_overrides_v1', json.encode(_manualAttendanceOverrides));
+    } catch (e) {
+      debugPrint('Error saving manual overrides to prefs: $e');
+    }
+
+    // 3. Persist to DynamoDB & Supabase
+    final uid = _getUserId(user);
+    if (uid != null) {
+      _persistAttendanceToCloud(uid, dateStr, newStatus);
+    }
+  }
+
+  /// Cloud persistence for StaffAttendance
+  Future<void> _persistAttendanceToCloud(int uid, String dateStr, String? status) async {
+    try {
+      final req = ModelQueries.list(
+        amplify_models.StaffAttendance.classType,
+        where: amplify_models.StaffAttendance.USER_ID.eq(uid).and(
+          amplify_models.StaffAttendance.ATTENDANCE_DATE.eq(dateStr),
+        ),
+        limit: 10,
+        authorizationMode: APIAuthorizationType.userPools,
+      );
+      final res = await Amplify.API.query(request: req).response;
+      final existingList = (res.data?.items ?? []).whereType<amplify_models.StaffAttendance>().toList();
+
+      if (status == 'PRESENT') {
+        final inStr = '${dateStr}T09:30:00+05:30';
+        final outStr = '${dateStr}T17:30:00+05:30';
+        if (existingList.isNotEmpty) {
+          final updated = existingList.first.copyWith(
+            check_in_time: inStr,
+            check_out_time: outStr,
+            attendance_date: dateStr,
+          );
+          await BackupAwareApi().update(updated, authorizationMode: APIAuthorizationType.userPools);
+        } else {
+          final newAtt = amplify_models.StaffAttendance(
+            user_id: uid,
+            check_in_time: inStr,
+            check_out_time: outStr,
+            attendance_date: dateStr,
+          );
+          await BackupAwareApi().create(newAtt, authorizationMode: APIAuthorizationType.userPools);
+        }
+      } else if (status == 'HALF_DAY') {
+        final inStr = '${dateStr}T09:30:00+05:30';
+        final outStr = '${dateStr}T13:30:00+05:30';
+        if (existingList.isNotEmpty) {
+          final updated = existingList.first.copyWith(
+            check_in_time: inStr,
+            check_out_time: outStr,
+            attendance_date: dateStr,
+          );
+          await BackupAwareApi().update(updated, authorizationMode: APIAuthorizationType.userPools);
+        } else {
+          final newAtt = amplify_models.StaffAttendance(
+            user_id: uid,
+            check_in_time: inStr,
+            check_out_time: outStr,
+            attendance_date: dateStr,
+          );
+          await BackupAwareApi().create(newAtt, authorizationMode: APIAuthorizationType.userPools);
+        }
+      } else if (status == 'ABSENT') {
+        const inStr = 'ABSENT';
+        const outStr = 'ABSENT';
+        if (existingList.isNotEmpty) {
+          final updated = existingList.first.copyWith(
+            check_in_time: inStr,
+            check_out_time: outStr,
+            attendance_date: dateStr,
+          );
+          await BackupAwareApi().update(updated, authorizationMode: APIAuthorizationType.userPools);
+        } else {
+          final newAtt = amplify_models.StaffAttendance(
+            user_id: uid,
+            check_in_time: inStr,
+            check_out_time: outStr,
+            attendance_date: dateStr,
+          );
+          await BackupAwareApi().create(newAtt, authorizationMode: APIAuthorizationType.userPools);
+        }
+      } else {
+        // RESET: Delete any manual record
+        for (var existing in existingList) {
+          await BackupAwareApi().delete(existing, authorizationMode: APIAuthorizationType.userPools);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error persisting manual attendance to cloud: $e');
+    }
   }
 
   @override
@@ -146,7 +440,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   static DateTime? _parseIST(dynamic val) {
     if (val == null) return null;
     final ts = val.toString().trim();
-    if (ts.isEmpty) return null;
+    if (ts.isEmpty || ts == 'ABSENT') return null;
     try {
       if (ts.contains('+00')) {
         final clean = ts.split('+')[0];
@@ -675,6 +969,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final staffKey = resolveStaff(att.user_id);
       if (staffKey == null) continue;
 
+      if (att.check_in_time == 'ABSENT') {
+        DateTime? refDate;
+        if (att.attendance_date != null) {
+          refDate = DateTime.tryParse(att.attendance_date!);
+        }
+        if (refDate != null && refDate.year == _selectedMonth.year && refDate.month == _selectedMonth.month) {
+          final day = refDate.day;
+          final record = getOrCreateRecord(staffKey, day, refDate);
+          record.manualStatus = 'ABSENT';
+          record.isManual = true;
+          record.checkInTime = null;
+          record.checkOutTime = null;
+          record.isActive = false;
+          record.checkoutReason = 'Manual Attendance: Marked Absent (Leave)';
+        }
+        continue;
+      }
+
       DateTime? inTime = _parseIST(att.check_in_time);
       DateTime? outTime = _parseIST(att.check_out_time);
 
@@ -687,6 +999,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       final day = refDate.day;
       final record = getOrCreateRecord(staffKey, day, refDate);
+
+      if (inTime != null && outTime != null) {
+        if (inTime.hour == 9 && inTime.minute == 30 && outTime.hour == 13 && outTime.minute == 30) {
+          record.manualStatus = 'HALF_DAY';
+          record.isManual = true;
+          record.checkoutReason = 'Manual Attendance: Half Day (4h)';
+        } else if (inTime.hour == 9 && inTime.minute == 30 && outTime.hour == 17 && outTime.minute == 30) {
+          record.manualStatus = 'PRESENT';
+          record.isManual = true;
+          record.checkoutReason = 'Manual Attendance: Present (Full Day 8h)';
+        }
+      }
 
       if (inTime != null) {
         record.events.add(AttendanceEvent(
@@ -719,6 +1043,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final staffKey = resolveStaff(att['user_id']);
       if (staffKey == null) continue;
 
+      if (att['check_in_time'] == 'ABSENT') {
+        DateTime? refDate;
+        if (att['attendance_date'] != null) {
+          refDate = DateTime.tryParse(att['attendance_date'].toString());
+        }
+        if (refDate != null && refDate.year == _selectedMonth.year && refDate.month == _selectedMonth.month) {
+          final day = refDate.day;
+          final record = getOrCreateRecord(staffKey, day, refDate);
+          record.manualStatus = 'ABSENT';
+          record.isManual = true;
+          record.checkInTime = null;
+          record.checkOutTime = null;
+          record.isActive = false;
+          record.checkoutReason = 'Manual Attendance: Marked Absent (Leave)';
+        }
+        continue;
+      }
+
       DateTime? inTime = _parseIST(att['check_in_time']);
       DateTime? outTime = _parseIST(att['check_out_time']);
 
@@ -731,6 +1073,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       final day = refDate.day;
       final record = getOrCreateRecord(staffKey, day, refDate);
+
+      if (inTime != null && outTime != null) {
+        if (inTime.hour == 9 && inTime.minute == 30 && outTime.hour == 13 && outTime.minute == 30) {
+          record.manualStatus = 'HALF_DAY';
+          record.isManual = true;
+          record.checkoutReason = 'Manual Attendance: Half Day (4h)';
+        } else if (inTime.hour == 9 && inTime.minute == 30 && outTime.hour == 17 && outTime.minute == 30) {
+          record.manualStatus = 'PRESENT';
+          record.isManual = true;
+          record.checkoutReason = 'Manual Attendance: Present (Full Day 8h)';
+        }
+      }
 
       if (inTime != null) {
         final alreadyLogged = record.events.any((e) => e.type == 'IN' && e.time.difference(inTime).inMinutes.abs() < 2);
@@ -865,6 +1219,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     // 5. Enterprise MNC Auto-Checkout & Presence Reconciliation
     for (var userMap in matrix.values) {
       for (var record in userMap.values) {
+        if (record.isManual || record.manualStatus != null) {
+          // Manual attendance entries are explicitly locked against auto-reconciliation
+          continue;
+        }
+
         final dayDate = record.date;
         final inTime = record.checkInTime;
 
@@ -942,6 +1301,41 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         }
       }
     }
+
+    // 6. Enforce in-memory and SharedPreferences manual overrides
+    _manualAttendanceOverrides.forEach((key, status) {
+      final parts = key.split('#');
+      if (parts.length >= 2) {
+        final staffKey = parts[0];
+        final dateStr = parts[1];
+        final parsedDate = DateTime.tryParse(dateStr);
+        if (parsedDate != null && parsedDate.year == _selectedMonth.year && parsedDate.month == _selectedMonth.month) {
+          final day = parsedDate.day;
+          final record = getOrCreateRecord(staffKey, day, parsedDate);
+          record.manualStatus = status;
+          record.isManual = true;
+          if (status == 'PRESENT') {
+            record.checkInTime = DateTime(parsedDate.year, parsedDate.month, parsedDate.day, 9, 30);
+            record.checkOutTime = DateTime(parsedDate.year, parsedDate.month, parsedDate.day, 17, 30);
+            record.isActive = false;
+            record.isAutoReconciled = false;
+            record.checkoutReason = 'Manual Attendance: Present (Full Day 8h)';
+          } else if (status == 'HALF_DAY') {
+            record.checkInTime = DateTime(parsedDate.year, parsedDate.month, parsedDate.day, 9, 30);
+            record.checkOutTime = DateTime(parsedDate.year, parsedDate.month, parsedDate.day, 13, 30);
+            record.isActive = false;
+            record.isAutoReconciled = false;
+            record.checkoutReason = 'Manual Attendance: Half Day (4h)';
+          } else if (status == 'ABSENT') {
+            record.checkInTime = null;
+            record.checkOutTime = null;
+            record.isActive = false;
+            record.isAutoReconciled = false;
+            record.checkoutReason = 'Manual Attendance: Marked Absent (Leave)';
+          }
+        }
+      }
+    });
 
     // Sort events inside each record
     for (var userMap in matrix.values) {
@@ -1021,10 +1415,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   /// Interactive Modal Dialog displaying detailed In/Out logs for clicked cell
   void _showAttendanceDetailsDialog(
     BuildContext context,
-    String staffName,
+    amplify_models.Users user,
     DateTime date,
     DailyAttendanceRecord? record,
   ) {
+    final staffName = user.name ?? 'Staff';
     final dateDisplay = DateFormat('EEEE, d MMMM yyyy').format(date);
     final hasActivity = record != null && (record.checkInTime != null || record.checkOutTime != null);
 
@@ -1076,49 +1471,140 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
           content: SizedBox(
             width: 480,
-            child: !hasActivity
-                ? Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24.0),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Manual Attendance Quick Action Bar
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade50.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.purple.shade100),
+                    ),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: date.weekday == DateTime.sunday ? Colors.grey.shade100 : Colors.red.shade50,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            date.weekday == DateTime.sunday ? Icons.weekend_rounded : Icons.event_busy_rounded,
-                            size: 28,
-                            color: date.weekday == DateTime.sunday ? Colors.grey.shade600 : Colors.red.shade700,
-                          ),
+                        Row(
+                          children: [
+                            const Icon(Icons.touch_app_rounded, size: 16, color: Colors.deepPurple),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'MANUAL OVERRIDE',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.deepPurple, letterSpacing: 0.8),
+                            ),
+                            const Spacer(),
+                            if (record?.isManual == true)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: Colors.purple.shade100, borderRadius: BorderRadius.circular(4)),
+                                child: const Text('MANUAL ACTIVE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.deepPurple)),
+                              ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          date.weekday == DateTime.sunday ? 'Sunday (Weekly Off)' : 'Marked as Leave (Absent)',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: date.weekday == DateTime.sunday ? Colors.black87 : Colors.red.shade800,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          date.weekday == DateTime.sunday
-                              ? 'Sunday is a designated weekly off. No attendance is required.'
-                              : 'No clock-in, application login, or system activity was recorded for $staffName on this working day. Marked as Leave.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            // 1 Click: Present (8h)
+                            ActionChip(
+                              avatar: const Icon(Icons.check_circle_rounded, size: 16, color: Colors.green),
+                              label: const Text('1 Click: Present (8h)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              backgroundColor: record?.manualStatus == 'PRESENT' ? Colors.green.shade100 : Colors.white,
+                              side: BorderSide(color: record?.manualStatus == 'PRESENT' ? Colors.green : Colors.grey.shade300),
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _setManualAttendance(user, date.day, date, 'PRESENT');
+                              },
+                            ),
+                            // 2 Clicks: Half Day (4h)
+                            ActionChip(
+                              avatar: const Icon(Icons.timelapse_rounded, size: 16, color: Colors.orange),
+                              label: const Text('2 Clicks: Half Day (4h)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              backgroundColor: record?.manualStatus == 'HALF_DAY' ? Colors.orange.shade100 : Colors.white,
+                              side: BorderSide(color: record?.manualStatus == 'HALF_DAY' ? Colors.orange : Colors.grey.shade300),
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _setManualAttendance(user, date.day, date, 'HALF_DAY');
+                              },
+                            ),
+                            // 3 Clicks: Absent
+                            ActionChip(
+                              avatar: const Icon(Icons.cancel_rounded, size: 16, color: Colors.red),
+                              label: const Text('3 Clicks: Absent', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              backgroundColor: record?.manualStatus == 'ABSENT' ? Colors.red.shade100 : Colors.white,
+                              side: BorderSide(color: record?.manualStatus == 'ABSENT' ? Colors.red : Colors.grey.shade300),
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _setManualAttendance(user, date.day, date, 'ABSENT');
+                              },
+                            ),
+                            // Reset
+                            if (record?.isManual == true || record?.manualStatus != null)
+                              ActionChip(
+                                avatar: const Icon(Icons.restart_alt_rounded, size: 16, color: Colors.grey),
+                                label: const Text('Reset to Auto', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                backgroundColor: Colors.grey.shade100,
+                                side: BorderSide(color: Colors.grey.shade400),
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _setManualAttendance(user, date.day, date, null);
+                                },
+                              ),
+                          ],
                         ),
                       ],
                     ),
-                  )
-                : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+                  ),
+
+                  if (!hasActivity)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: date.weekday == DateTime.sunday ? Colors.grey.shade100 : Colors.red.shade50,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              date.weekday == DateTime.sunday ? Icons.weekend_rounded : Icons.event_busy_rounded,
+                              size: 28,
+                              color: date.weekday == DateTime.sunday ? Colors.grey.shade600 : Colors.red.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            date.weekday == DateTime.sunday ? 'Sunday (Weekly Off)' : 'Marked as Leave (Absent)',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: date.weekday == DateTime.sunday ? Colors.black87 : Colors.red.shade800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            date.weekday == DateTime.sunday
+                                ? 'Sunday is a designated weekly off. No attendance is required.'
+                                : 'No clock-in, application login, or system activity was recorded for $staffName on this working day. Marked as Leave.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                       // Summary Row Cards
                       Container(
                         padding: const EdgeInsets.all(14),
@@ -1294,6 +1780,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ),
                     ],
                   ),
+                ],
+              ),
+            ),
           ),
           actions: [
             TextButton(
@@ -1437,9 +1926,78 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ],
                         ),
                       ),
+                      const SizedBox(width: 16),
+                      // Manual Attendance Mode Toggle Button
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() => _isManualMode = !_isManualMode);
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                _isManualMode
+                                    ? '✍️ Manual Attendance Mode: ON (1 Click: Present | 2 Clicks: Half Day | 3 Clicks: Absent | 4 Clicks: Reset)'
+                                    : 'Manual Attendance Mode: OFF (Click cell to view timeline)',
+                              ),
+                              backgroundColor: _isManualMode ? Colors.deepPurple : Colors.blueGrey.shade800,
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        },
+                        icon: Icon(
+                          _isManualMode ? Icons.edit_note_rounded : Icons.touch_app_rounded,
+                          size: 18,
+                          color: _isManualMode ? Colors.white : Colors.deepPurple,
+                        ),
+                        label: Text(
+                          _isManualMode ? 'Manual Mode: ON' : 'Manual Mode',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: _isManualMode ? Colors.white : Colors.deepPurple,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isManualMode ? Colors.deepPurple : Colors.purple.shade50,
+                          elevation: _isManualMode ? 2 : 0,
+                          side: BorderSide(color: _isManualMode ? Colors.deepPurple : Colors.purple.shade200),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        ),
+                      ),
                     ],
                   ),
                 ).animate().fadeIn().slideY(begin: -0.05),
+
+                // Interactive Banner when Manual Attendance Mode is Active
+                if (_isManualMode)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.deepPurple.shade700, Colors.indigo.shade700],
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.touch_app_rounded, color: Colors.amberAccent, size: 20),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            '✍️ MANUAL ATTENDANCE ACTIVE: Tap any date cell to cycle — 1 Click = Present (8h) | 2 Clicks = Half Day (4h) | 3 Clicks = Absent (Leave) | 4 Clicks = Reset. Long-press cell to view timeline details.',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                          tooltip: 'Exit Manual Mode',
+                          onPressed: () => setState(() => _isManualMode = false),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                        ),
+                      ],
+                    ),
+                  ).animate().fadeIn().slideY(begin: -0.2),
 
                 // Sub-header Summary, Side-Scroll Quick Jump & Legend
                 Padding(
@@ -1608,6 +2166,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           Text('Logout', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
                           const SizedBox(width: 10),
                           Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(4)),
+                            child: Text('HD', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber.shade900)),
+                          ),
+                          const SizedBox(width: 4),
+                          Text('Half Day', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+                          const SizedBox(width: 10),
+                          Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: BorderRadius.circular(4)),
                             child: Text('LEAVE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red.shade900)),
@@ -1729,7 +2295,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                             children: filteredStaff.map((user) {
                                               final staffKey = _staffKey(user);
                                               final userRecords = _attendanceMatrix[staffKey] ?? {};
-                                              final daysPresent = userRecords.values.where((r) => r.firstIn != null).length;
+                                              double totalPresentUnits = 0;
+                                              for (var r in userRecords.values) {
+                                                if (r.manualStatus == 'ABSENT') {
+                                                  continue;
+                                                } else if (r.manualStatus == 'HALF_DAY') {
+                                                  totalPresentUnits += 0.5;
+                                                } else if (r.firstIn != null) {
+                                                  totalPresentUnits += 1.0;
+                                                }
+                                              }
                                               int workingDaysPast = 0;
                                               final maxDay = isCurrentMonth ? now.day : daysInMonth;
                                               for (int d = 1; d <= maxDay; d++) {
@@ -1738,7 +2313,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                                   workingDaysPast++;
                                                 }
                                               }
-                                              final leaveCount = (workingDaysPast - daysPresent).clamp(0, workingDaysPast);
+                                              final presentDisplay = (totalPresentUnits % 1 == 0)
+                                                  ? totalPresentUnits.toInt().toString()
+                                                  : totalPresentUnits.toStringAsFixed(1);
+                                              final leaveUnits = (workingDaysPast - totalPresentUnits).clamp(0.0, workingDaysPast.toDouble());
+                                              final leaveDisplay = (leaveUnits % 1 == 0)
+                                                  ? leaveUnits.toInt().toString()
+                                                  : leaveUnits.toStringAsFixed(1);
 
                                               return Container(
                                                 height: _rowHeight,
@@ -1769,7 +2350,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                                           ),
                                                           const SizedBox(height: 2),
                                                           Text(
-                                                            '$daysPresent present • $leaveCount leave',
+                                                            '$presentDisplay present • $leaveDisplay leave',
                                                             style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
                                                           ),
                                                         ],
@@ -1829,12 +2410,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                                                     record: userRecords[day],
                                                                     staffName: user.name ?? 'Staff',
                                                                     date: DateTime(_selectedMonth.year, _selectedMonth.month, day),
-                                                                    onTap: () => _showAttendanceDetailsDialog(
-                                                                      context,
-                                                                      user.name ?? 'Staff',
-                                                                      DateTime(_selectedMonth.year, _selectedMonth.month, day),
-                                                                      userRecords[day],
-                                                                    ),
+                                                                    isManualMode: _isManualMode,
+                                                                    onTap: () {
+                                                                      if (_isManualMode) {
+                                                                        _cycleManualAttendance(user, day, DateTime(_selectedMonth.year, _selectedMonth.month, day));
+                                                                      } else {
+                                                                        _showAttendanceDetailsDialog(
+                                                                          context,
+                                                                          user,
+                                                                          DateTime(_selectedMonth.year, _selectedMonth.month, day),
+                                                                          userRecords[day],
+                                                                        );
+                                                                      }
+                                                                    },
+                                                                    onLongPress: () {
+                                                                      if (_isManualMode) {
+                                                                        _showAttendanceDetailsDialog(
+                                                                          context,
+                                                                          user,
+                                                                          DateTime(_selectedMonth.year, _selectedMonth.month, day),
+                                                                          userRecords[day],
+                                                                        );
+                                                                      } else {
+                                                                        _cycleManualAttendance(user, day, DateTime(_selectedMonth.year, _selectedMonth.month, day));
+                                                                      }
+                                                                    },
                                                                   ),
                                                                 ),
                                                             ],
@@ -1986,12 +2586,16 @@ class _AttendanceCell extends StatelessWidget {
   final String staffName;
   final DateTime date;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final bool isManualMode;
 
   const _AttendanceCell({
     required this.record,
     required this.staffName,
     required this.date,
     required this.onTap,
+    this.onLongPress,
+    this.isManualMode = false,
   });
 
   @override
@@ -2001,37 +2605,188 @@ class _AttendanceCell extends StatelessWidget {
     final dayDate = DateTime(date.year, date.month, date.day);
     final isFuture = dayDate.isAfter(today);
     final isSunday = date.weekday == DateTime.sunday;
+    final manualStatus = record?.manualStatus;
+    final isManual = record?.isManual == true || manualStatus != null;
     final hasActivity = record != null && (record!.firstIn != null || record!.lastOut != null);
 
-    if (!hasActivity) {
-      if (isFuture) {
-        return Container(
-          width: 84,
-          height: 62,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            '—',
-            style: TextStyle(color: Colors.grey.shade300, fontSize: 16, fontWeight: FontWeight.w300),
-          ),
-        );
-      }
+    final tooltipMsg = isManualMode
+        ? 'Tap: Cycle (1: Present, 2: Half Day, 3: Absent, 4: Reset) | Long-press: Details'
+        : 'Tap: View timeline details | Long-press: Quick cycle attendance';
 
-      if (isSunday) {
-        return InkWell(
+    // 1. Explicit Manual Absent
+    if (manualStatus == 'ABSENT') {
+      return Tooltip(
+        message: tooltipMsg,
+        child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           borderRadius: BorderRadius.circular(10),
           child: Container(
             width: 84,
             height: 62,
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
+              color: const Color(0xFFFEF2F2), // Soft red
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(
+                color: isManualMode ? Colors.red.shade400 : Colors.red.shade200,
+                width: isManualMode ? 1.5 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'A • ABSENT',
+                        style: TextStyle(
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                          color: Colors.red.shade900,
+                        ),
+                      ),
+                      const SizedBox(width: 3),
+                      Icon(Icons.edit_note_rounded, size: 10, color: Colors.red.shade800),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Manual Leave',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.red.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 2. No activity recorded yet
+    if (!hasActivity) {
+      if (isFuture) {
+        return Tooltip(
+          message: tooltipMsg,
+          child: InkWell(
+            onTap: isManualMode ? onTap : null,
+            onLongPress: onLongPress,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: 84,
+              height: 62,
+              decoration: BoxDecoration(
+                color: isManualMode ? Colors.purple.shade50.withValues(alpha: 0.3) : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isManualMode ? Colors.purple.shade200 : Colors.grey.shade200,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: isManualMode
+                  ? Icon(Icons.add_rounded, size: 16, color: Colors.purple.shade300)
+                  : Text(
+                      '—',
+                      style: TextStyle(color: Colors.grey.shade300, fontSize: 16, fontWeight: FontWeight.w300),
+                    ),
+            ),
+          ),
+        );
+      }
+
+      if (isSunday) {
+        return Tooltip(
+          message: tooltipMsg,
+          child: InkWell(
+            onTap: onTap,
+            onLongPress: onLongPress,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: 84,
+              height: 62,
+              decoration: BoxDecoration(
+                color: isManualMode ? Colors.purple.shade50.withValues(alpha: 0.2) : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isManualMode ? Colors.purple.shade200 : Colors.grey.shade200,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'OFF',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Sunday',
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      // Past or current working day with no attendance -> Mark as LEAVE!
+      return Tooltip(
+        message: tooltipMsg,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: 84,
+            height: 62,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2), // Soft rose/red
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isManualMode ? Colors.purple.shade300 : Colors.red.shade200,
+                width: isManualMode ? 1.5 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.withValues(alpha: 0.04),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -2039,81 +2794,30 @@ class _AttendanceCell extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
+                    color: Colors.red.shade100,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    'OFF',
+                    'LEAVE',
                     style: TextStyle(
                       fontSize: 9,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w900,
                       letterSpacing: 0.5,
-                      color: Colors.grey.shade600,
+                      color: Colors.red.shade800,
                     ),
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Sunday',
+                  'Absent',
                   style: TextStyle(
-                    fontSize: 8.5,
-                    color: Colors.grey.shade400,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.red.shade700,
                   ),
                 ),
               ],
             ),
-          ),
-        );
-      }
-
-      // Past or current working day with no attendance -> Mark as LEAVE!
-      return InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          width: 84,
-          height: 62,
-          decoration: BoxDecoration(
-            color: const Color(0xFFFEF2F2), // Soft rose/red
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.red.shade200, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.red.withValues(alpha: 0.04),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade100,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  'LEAVE',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                    color: Colors.red.shade800,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'Absent',
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.red.shade700,
-                ),
-              ),
-            ],
           ),
         ),
       );
@@ -2123,11 +2827,19 @@ class _AttendanceCell extends StatelessWidget {
     final outTime = record!.checkOutTime;
     final isActive = record!.isActive;
     final isAuto = record!.isAutoReconciled;
+    final isHalfDay = manualStatus == 'HALF_DAY';
+    final isPresentManual = manualStatus == 'PRESENT';
 
     // Appearance colors based on state
     Color cardBg = const Color(0xFFF8FAFC);
     Color borderColor = Colors.blueGrey.shade200;
-    if (isActive) {
+    if (isHalfDay) {
+      cardBg = const Color(0xFFFFFBEB); // Soft warm amber
+      borderColor = isManualMode ? Colors.orange.shade500 : Colors.amber.shade400;
+    } else if (isPresentManual) {
+      cardBg = const Color(0xFFF0FDF4); // Soft emerald green
+      borderColor = isManualMode ? Colors.green.shade600 : Colors.green.shade400;
+    } else if (isActive) {
       cardBg = const Color(0xFFF0FDF4); // Soft emerald green
       borderColor = Colors.green.shade400;
     } else if (outTime != null) {
@@ -2138,118 +2850,140 @@ class _AttendanceCell extends StatelessWidget {
       borderColor = Colors.amber.shade300;
     }
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: 84,
-        height: 62,
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: borderColor, width: isActive ? 1.5 : 1),
-          boxShadow: [
-            BoxShadow(
-              color: (isActive ? Colors.green : Colors.black).withValues(alpha: 0.04),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Row 1: IN (Clock-In / Login)
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade100,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text(
-                    'IN',
-                    style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w900, color: Colors.green.shade900),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    inTime != null ? DateFormat('hh:mm a').format(inTime) : '--:--',
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      color: inTime != null ? Colors.green.shade900 : Colors.grey.shade400,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            // Row 2: OUT (Clock-Out / Logout / Active)
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? Colors.teal.shade100
-                        : (outTime != null
-                            ? (isAuto ? Colors.blue.shade100 : Colors.orange.shade100)
-                            : Colors.grey.shade200),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text(
-                    isActive ? 'ACT' : 'OUT',
-                    style: TextStyle(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w900,
-                      color: isActive
-                          ? Colors.teal.shade900
-                          : (outTime != null
-                              ? (isAuto ? Colors.blue.shade900 : Colors.orange.shade900)
-                              : Colors.grey.shade600),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    isActive
-                        ? 'Active'
-                        : (outTime != null ? DateFormat('hh:mm a').format(outTime) : '--:--'),
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      color: isActive
-                          ? Colors.teal.shade800
-                          : (outTime != null
-                              ? (isAuto ? Colors.blue.shade900 : Colors.orange.shade900)
-                              : Colors.grey.shade400),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            // Row 3: Duration string (if available)
-            if (record?.durationStr != null) ...[
-              const SizedBox(height: 1),
+    if (isManualMode && !isHalfDay && !isPresentManual) {
+      borderColor = Colors.purple.shade300;
+    }
+
+    return Tooltip(
+      message: tooltipMsg,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 84,
+          height: 62,
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3.5),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor, width: (isActive || isManual) ? 1.5 : 1),
+            boxShadow: [
+              BoxShadow(
+                color: (isActive ? Colors.green : (isHalfDay ? Colors.orange : Colors.black)).withValues(alpha: 0.04),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Row 1: IN (Clock-In / Login)
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text(
-                    '⏱ ${record!.durationStr}',
-                    style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600, color: Colors.blueGrey.shade700),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: isHalfDay ? Colors.orange.shade100 : Colors.green.shade100,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      isHalfDay ? 'HD' : (isPresentManual ? 'P' : 'IN'),
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w900,
+                        color: isHalfDay ? Colors.orange.shade900 : Colors.green.shade900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      inTime != null ? DateFormat('hh:mm a').format(inTime) : '--:--',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: inTime != null ? Colors.green.shade900 : Colors.grey.shade400,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (isManual)
+                    Icon(Icons.edit_note_rounded, size: 10, color: isHalfDay ? Colors.orange.shade800 : Colors.green.shade800),
+                ],
+              ),
+              const SizedBox(height: 2.5),
+              // Row 2: OUT (Clock-Out / Logout / Active)
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? Colors.teal.shade100
+                          : (isHalfDay
+                              ? Colors.amber.shade100
+                              : (outTime != null
+                                  ? (isAuto ? Colors.blue.shade100 : Colors.orange.shade100)
+                                  : Colors.grey.shade200)),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      isActive ? 'ACT' : 'OUT',
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w900,
+                        color: isActive
+                            ? Colors.teal.shade900
+                            : (isHalfDay
+                                ? Colors.amber.shade900
+                                : (outTime != null
+                                    ? (isAuto ? Colors.blue.shade900 : Colors.orange.shade900)
+                                    : Colors.grey.shade600)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      isActive
+                          ? 'Active'
+                          : (outTime != null ? DateFormat('hh:mm a').format(outTime) : '--:--'),
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: isActive
+                            ? Colors.teal.shade800
+                            : (outTime != null
+                                ? (isHalfDay ? Colors.orange.shade900 : (isAuto ? Colors.blue.shade900 : Colors.orange.shade900))
+                                : Colors.grey.shade400),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
+              // Row 3: Duration string (if available)
+              if (record?.durationStr != null) ...[
+                const SizedBox(height: 1),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      '⏱ ${record!.durationStr}',
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w600,
+                        color: isHalfDay ? Colors.orange.shade900 : Colors.blueGrey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

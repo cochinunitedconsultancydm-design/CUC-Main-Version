@@ -116,7 +116,7 @@ class TimeTrackingService with WindowListener {
           idle_seconds: _idleSeconds,
           logout_time: isLogout
               ? (customLogoutTime ?? DateTime.now()).toIso8601String()
-              : DateTime.now().toIso8601String(),
+              : null,
           is_active: !isLogout,
         );
 

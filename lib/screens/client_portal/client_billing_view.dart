@@ -5,6 +5,7 @@ import '../../models/ModelProvider.dart';
 import '../../theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/invoice_pdf_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 
 class ClientBillingView extends StatefulWidget {
@@ -178,19 +179,50 @@ class _ClientBillingViewState extends State<ClientBillingView> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: () => _viewBill(bill),
-                              icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
-                              label: const Text('View Bill'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppTheme.primaryColor,
-                                side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
+                          Builder(
+                            builder: (context) {
+                              final paymentLink = _parseData(bill.data, 'payment_link_url');
+                              final canPay = paymentLink.isNotEmpty && bill.status != 'Received';
+
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => _viewBill(bill),
+                                      icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                                      label: const Text('View Bill'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppTheme.primaryColor,
+                                        side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                      ),
+                                    ),
+                                  ),
+                                  if (canPay) ...[
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: () async {
+                                          final uri = Uri.tryParse(paymentLink);
+                                          if (uri != null && await canLaunchUrl(uri)) {
+                                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                          }
+                                        },
+                                        icon: const Icon(Icons.payment_rounded, size: 18),
+                                        label: const Text('Pay Online'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green.shade700,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),

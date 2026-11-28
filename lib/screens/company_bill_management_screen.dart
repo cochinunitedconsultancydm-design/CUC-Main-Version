@@ -12,6 +12,7 @@ import '../models/ModelProvider.dart' as amplify_models;
 import '../services/logging_service.dart';
 import '../widgets/premium_app_bar.dart';
 import '../widgets/compact_date_range_picker.dart';
+import '../services/billing_service.dart';
 class CompanyBillManagementScreen extends StatefulWidget {
   const CompanyBillManagementScreen({super.key});
 
@@ -524,6 +525,9 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                                   
                                   final updatedBill = b.copyWith(status: isPaid ? 'Received' : (totalReceived > 0 ? 'Part Payment' : 'Pending'), data: jsonEncode(oldData));
                                   await BackupAwareApi().update(updatedBill);
+                                  if (b.client_name != null) {
+                                    await BillingService().syncClientBalance(b.client_name!);
+                                  }
                                 }
                               } catch (e) {
                                 debugPrint('Error linking bill: $e');
@@ -534,7 +538,7 @@ class _CompanyBillManagementScreenState extends State<CompanyBillManagementScree
                             _fetchBills();
                             _msg('Saved successfully', true);
                           } catch (e) {
-                            _msg('Error: ', false);
+                            _msg('Error: $e', false);
                           }
                         },
                         style: ElevatedButton.styleFrom(

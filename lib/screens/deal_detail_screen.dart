@@ -26,6 +26,7 @@ import 'file_acknowledgement_screen.dart';
 import 'client_files_screen.dart';
 import '../services/meta_service.dart';
 import '../services/fiscal_year_service.dart';
+import '../services/billing_service.dart';
 
 class DealDetailScreen extends StatefulWidget {
   final Deal? deal;
@@ -973,25 +974,77 @@ final dLink = "";
     final activities = await _dealService.getActivities(dealId);
     final assignees = await _dealService.getAssignees(dealId);
 
-    // Auto-sync amount from linked bill
+    // Auto-sync amount and payments from linked bill
     if (_billingId != null) {
       try {
         final req = ModelQueries.list(amplify_models.Billings.classType, where: amplify_models.Billings.ID.eq(_billingId.toString()), limit: 10000);
         final resList = await Amplify.API.query(request: req).response;
         final billRes = resList.data?.items.isNotEmpty == true ? resList.data?.items.first : null;
             
-        if (billRes != null && billRes.amount != null) {
-          final rawAmt = billRes.amount.toString();
-          // Extract numeric part (e.g. "1500/-" -> "1500")
-          final cleanAmt = rawAmt.replaceAll(RegExp(r'[^0-9.]'), '');
-          if (cleanAmt.isNotEmpty) {
-            final parsed = double.tryParse(cleanAmt);
-            _invoiceAmountController.text =
-                parsed != null ? parsed.toInt().toString() : cleanAmt;
+        if (billRes != null) {
+          if (billRes.amount != null) {
+            final rawAmt = billRes.amount.toString();
+            // Extract numeric part (e.g. "1500/-" -> "1500")
+            final cleanAmt = rawAmt.replaceAll(RegExp(r'[^0-9.]'), '');
+            if (cleanAmt.isNotEmpty) {
+              final parsed = double.tryParse(cleanAmt);
+              _invoiceAmountController.text =
+                  parsed != null ? parsed.toInt().toString() : cleanAmt;
+            }
+          }
+          if (billRes.data != null && billRes.data!.isNotEmpty) {
+            try {
+              final bData = jsonDecode(billRes.data!);
+              if (bData is Map) {
+                final adv = bData['advance_received'];
+                if (adv != null && adv.toString().isNotEmpty) {
+                  final advVal = double.tryParse(adv.toString());
+                  if (advVal != null && advVal > 0) {
+                    _paymentReceivedController.text = advVal.toInt().toString();
+                    _partPaymentAmountController.text = advVal.toInt().toString();
+                  }
+                }
+              }
+            } catch (_) {}
           }
         }
       } catch (e) {
         debugPrint('Error syncing bill amount: $e');
+      }
+    } else if (dealId != null) {
+      try {
+        final req = ModelQueries.list(amplify_models.Billings.classType, limit: 10000);
+        final resList = await Amplify.API.query(request: req).response;
+        final allBills = resList.data?.items.whereType<amplify_models.Billings>().toList() ?? [];
+        for (final b in allBills) {
+          if (b.data != null && b.data!.isNotEmpty) {
+            try {
+              final bd = jsonDecode(b.data!);
+              if (bd is Map && (bd['workfile_id']?.toString() == dealId.toString())) {
+                _billingId = int.tryParse(b.id);
+                if (b.amount != null) {
+                  final rawAmt = b.amount.toString();
+                  final cleanAmt = rawAmt.replaceAll(RegExp(r'[^0-9.]'), '');
+                  if (cleanAmt.isNotEmpty) {
+                    final parsed = double.tryParse(cleanAmt);
+                    _invoiceAmountController.text = parsed != null ? parsed.toInt().toString() : cleanAmt;
+                  }
+                }
+                final adv = bd['advance_received'];
+                if (adv != null && adv.toString().isNotEmpty) {
+                  final advVal = double.tryParse(adv.toString());
+                  if (advVal != null && advVal > 0) {
+                    _paymentReceivedController.text = advVal.toInt().toString();
+                    _partPaymentAmountController.text = advVal.toInt().toString();
+                  }
+                }
+                break;
+              }
+            } catch (_) {}
+          }
+        }
+      } catch (e) {
+        debugPrint('Error auto-linking deal bill: $e');
       }
     }
 
@@ -1275,16 +1328,42 @@ final dLink = "";
           if (billObj != null) {
             Map<String, dynamic> data = {};
             if (billObj.data != null && billObj.data!.isNotEmpty) {
-              data = Map<String, dynamic>.from(jsonDecode(billObj.data!));
+              try {
+                data = Map<String, dynamic>.from(jsonDecode(billObj.data!));
+              } catch (_) {}
             }
+            final oldReceived = double.tryParse(data['advance_received']?.toString() ?? '0') ?? 0;
             data['advance_received'] = received.toString();
             data['balance_due'] = balance.toString();
 
-            final updatedBill = billObj.copyWith(data: jsonEncode(data));
+            final newStatus = (total > 0 && balance <= 0)
+                ? 'Received'
+                : (received > 0 ? 'Part Payment' : (billObj.status ?? 'Pending'));
+
+            final updatedBill = billObj.copyWith(
+              status: newStatus,
+              data: jsonEncode(data),
+            );
             await BackupAwareApi().update(updatedBill);
-          }
+
+            if (billObj.client_name != null) {
+              await BillingService().syncClientBalance(billObj.client_name!);
+            }
+
+            if (received > oldReceived) {
+              final newPaymentAmount = received - oldReceived;
+              final prefs = await SharedPreferences.getInstance();
+              final currentUserName = prefs.getString('user_name') ?? 'Staff';
+              await BillingService().logAccountingEntryForPayment(
+                billing: Billing.fromMap(billObj.toMap()),
+                paidAmount: newPaymentAmount,
+                paymentMode: 'Work File Direct Entry',
+                recorderName: currentUserName,
+              );
+            }
           }
         }
+      }
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {

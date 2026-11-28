@@ -35,6 +35,7 @@ class SupabaseBackupService {
     'LicenseBilling': 'license_billing',
     'Contacts': 'contacts',
     'DealActivities': 'deal_activities',
+    'CompanyBills': 'company_bills',
   };
 
 
@@ -68,6 +69,7 @@ class SupabaseBackupService {
     'license_billing': ['id', 'client_name', 'license_type', 'amount', 'date', 'status', 'data'],
     'contacts': ['id', 'name', 'email', 'phone', 'company', 'designation', 'data'],
     'deal_activities': ['id', 'deal_id', 'type', 'title', 'description', 'created_by', 'created_at', 'due_date', 'is_completed', 'data'],
+    'company_bills': ['id', 'category', 'title', 'amount', 'bill_date', 'status', 'description', 'spent_by_name', 'created_at', 'data'],
   };
 
   Map<String, String> get _headers => {

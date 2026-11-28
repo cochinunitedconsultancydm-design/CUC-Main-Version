@@ -475,7 +475,7 @@ app.post(['/api/webhook', '/webhook/razorpay', '/api/razorpay-webhook'], async (
     const billingId = notes.billing_id;
     const paymentId = payment?.id || paymentLink?.id;
     const orderId = payment?.order_id || req.body.payload?.order?.entity?.id;
-    const amount = (payment?.amount || paymentLink?.amount || 0) / 100;
+    const amount = (payment?.amount || paymentLink?.amount_paid || paymentLink?.amount || 0) / 100;
 
     await autoUpdateBillOnPayment({
       orderId,
@@ -510,6 +510,18 @@ app.post('/api/send-receipt-email', async (req, res) => {
   } else {
     return res.status(500).json(result);
   }
+});
+
+app.get(['/api/health', '/health'], (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+
+app.get(['/api/webhook', '/webhook/razorpay'], (req, res) => {
+  res.status(200).json({
+    status: 'active',
+    message: 'Razorpay webhook receiver is active. Set this URL as POST in the Razorpay Dashboard.',
+    supportedEvents: ['payment_link.paid', 'payment.captured', 'order.paid']
+  });
 });
 
 // Start the backend server

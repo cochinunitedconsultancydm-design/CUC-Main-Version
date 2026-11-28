@@ -848,24 +848,42 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
       safePrint('✅ Successfully logged payment of ₹$paidAmount for ${billing.invoiceNo} into CompanyBills (Expense/Accounts Register)');
 
       // If linked to a Work File / Deal, update the Deal's payment received
-      final workfileId = billing.data?['workfile_id']?.toString();
-      if (workfileId != null && workfileId.isNotEmpty) {
-        try {
-          final dealReq = ModelQueries.get(Deals.classType, DealsModelIdentifier(id: workfileId));
-          final dealRes = await Amplify.API.query(request: dealReq).response;
-          final deal = dealRes.data;
-          if (deal != null) {
-            final curRec = deal.payment_received ?? 0;
-            final updatedDeal = deal.copyWith(
-              payment_received: curRec + paidAmount,
-              payment_type: paymentType,
-            );
-            await BackupAwareApi().update(updatedDeal);
-            safePrint('✅ Successfully updated linked Deal $workfileId: payment_received = ${curRec + paidAmount}');
-          }
-        } catch (dealErr) {
-          safePrint('Notice: Non-fatal error updating linked deal $workfileId: $dealErr');
+      try {
+        final workfileId = billing.data?['workfile_id']?.toString();
+        Deals? linkedDeal;
+
+        if (workfileId != null && workfileId.isNotEmpty) {
+          try {
+            final dealReq = ModelQueries.get(Deals.classType, DealsModelIdentifier(id: workfileId));
+            final dealRes = await Amplify.API.query(request: dealReq).response;
+            linkedDeal = dealRes.data;
+          } catch (_) {}
         }
+
+        if (linkedDeal == null && billing.id != null) {
+          try {
+            final bIdInt = int.tryParse(billing.id.toString());
+            if (bIdInt != null) {
+              final dealReq = ModelQueries.list(Deals.classType, where: Deals.BILLING_ID.eq(bIdInt), limit: 1);
+              final dealRes = await Amplify.API.query(request: dealReq).response;
+              if (dealRes.data?.items.isNotEmpty == true) {
+                linkedDeal = dealRes.data!.items.first;
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (linkedDeal != null) {
+          final curRec = linkedDeal.payment_received ?? 0;
+          final updatedDeal = linkedDeal.copyWith(
+            payment_received: curRec + paidAmount,
+            payment_type: paymentType,
+          );
+          await BackupAwareApi().update(updatedDeal);
+          safePrint('✅ Successfully updated linked Deal ${linkedDeal.id}: payment_received = ${curRec + paidAmount}');
+        }
+      } catch (dealErr) {
+        safePrint('Notice: Non-fatal error updating linked deal: $dealErr');
       }
     } catch (e) {
       safePrint('Failed to log accounting entry for payment: $e');

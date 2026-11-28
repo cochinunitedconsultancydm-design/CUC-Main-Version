@@ -34,6 +34,18 @@ class AuthService {
 
       debugPrint('Attempting Cognito login...');
 
+      // 1. Ensure clean auth state: if an old/stale session is lingering, sign out first
+      // This prevents Web Worker deadlocks and AlreadySignedIn conflicts on Flutter Web
+      try {
+        final currentSession = await Amplify.Auth.fetchAuthSession().timeout(const Duration(seconds: 4));
+        if (currentSession.isSignedIn) {
+          debugPrint('Previous active Cognito session detected. Clearing prior session before login...');
+          await Amplify.Auth.signOut(options: const SignOutOptions(globalSignOut: false)).timeout(const Duration(seconds: 4));
+        }
+      } catch (e) {
+        debugPrint('Pre-login session check/signOut ignored: $e');
+      }
+
       final normalizedUser = username.toLowerCase().trim();
       final userPart = normalizedUser.contains('@') ? normalizedUser.split('@')[0] : normalizedUser;
 
@@ -57,7 +69,6 @@ class AuthService {
         } else if (userPart == 'arya') {
           candidateEmails.add('cucarya@gmail.com');
         }
-        candidateEmails.add('$userPart@cuc.com');
       }
 
       // Determine default role for new users if they don't exist
@@ -74,14 +85,17 @@ class AuthService {
       SignInResult? signInResult;
       String successfulLoginEmail = candidateEmails.first;
       Object? lastError;
+      // In Flutter Web debug mode (dartdevc), client-side SRP BigInt calculations (2048-bit modulus)
+      // take longer because interpreted JS is not AOT-optimized. We allow adequate timeout (60s in debug, 35s in release).
+      final timeoutDuration = kDebugMode ? const Duration(seconds: 60) : const Duration(seconds: 35);
 
       for (final emailToTry in candidateEmails) {
         try {
-          debugPrint('Trying Cognito signIn with: $emailToTry');
+          debugPrint('Trying Cognito signIn with: $emailToTry (timeout: ${timeoutDuration.inSeconds}s)');
           final res = await Amplify.Auth.signIn(
             username: emailToTry,
             password: password,
-          ).timeout(const Duration(seconds: 20));
+          ).timeout(timeoutDuration);
           debugPrint('Cognito signIn result: isSignedIn=${res.isSignedIn}, step=${res.nextStep.signInStep}');
           signInResult = res;
           successfulLoginEmail = emailToTry;
@@ -95,7 +109,7 @@ class AuthService {
           } else if (errStr.contains('UserNotFoundException') || errStr.contains('User does not exist')) {
             lastLoginError = 'User account does not exist in Cognito.';
           } else if (errStr.contains('TimeoutException')) {
-            lastLoginError = 'Login request timed out. Please check your network connection.';
+            lastLoginError = 'Login request timed out. Please check your network connection or run in release mode.';
           } else {
             lastLoginError = 'Login failed: $err';
           }
@@ -104,7 +118,11 @@ class AuthService {
 
       if (signInResult == null) {
         debugPrint('All Cognito signIn attempts failed. Last error: $lastError');
-        _security.recordFailedAttempt(username);
+        final lastErrStr = (lastError ?? '').toString();
+        // Timeouts or network stalls should NEVER count as bad password attempts towards account lockout!
+        if (!lastErrStr.contains('TimeoutException')) {
+          _security.recordFailedAttempt(username);
+        }
         return false;
       }
 
@@ -129,7 +147,7 @@ class AuthService {
           limit: 1000,
         );
         final response = await Amplify.API.query(request: request).response;
-        final allUsers = (response.data?.items ?? []).whereType<Users>().toList() ?? [];
+        final allUsers = (response.data?.items ?? []).whereType<Users>().toList();
 
         final users = allUsers.where((u) {
           final uName = u.username?.toLowerCase().trim();
@@ -310,7 +328,7 @@ class AuthService {
       if (response.hasErrors) {
         debugPrint('DEBUG: GraphQL Errors: ${response.errors}');
       }
-      final allClients = (response.data?.items ?? []).whereType<Clients>().toList() ?? [];
+      final allClients = (response.data?.items ?? []).whereType<Clients>().toList();
       debugPrint('DEBUG: Fetched ${allClients.length} clients to filter');
 
       final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
@@ -589,5 +607,9 @@ class AuthService {
 
   String? getRateLimitMessage(String username) {
     return _security.checkRateLimit(username);
+  }
+
+  void resetRateLimit(String username) {
+    _security.clearFailedAttempts(username);
   }
 }

@@ -30,13 +30,28 @@ function fetchSupabase(path) {
 }
 
 async function main() {
-  const logs = await fetchSupabase('/rest/v1/activity_logs?order=created_at.desc&limit=50&select=id,action,user_id,details,created_at');
-  console.log('--- SAMPLE 50 RECENT LOGS WITH EXTRACTED USER ---');
-  for (const l of logs) {
-    const match = /\[User:\s*([^\]]+)\]/i.exec(l.details || '');
-    const user = match ? match[1].trim() : 'NONE';
-    console.log(`Action: ${l.action.padEnd(25)} | Extracted User: ${user.padEnd(20)} | Time: ${l.created_at}`);
-  }
+  const sessions = await fetchSupabase('/rest/v1/user_sessions?order=login_time.desc&limit=30&select=*');
+  console.log('--- RECENT USER SESSIONS ---');
+  console.table(sessions.map(s => ({
+    id: s.id,
+    user_id: s.user_id,
+    username: s.username,
+    login_time: s.login_time,
+    logout_time: s.logout_time,
+    is_active: s.is_active,
+    status: s.status
+  })));
+
+  const authLogs = await fetchSupabase('/rest/v1/activity_logs?action=in.(LOGIN,LOGOUT)&order=created_at.desc&limit=30&select=*');
+  console.log('--- RECENT LOGIN/LOGOUT ACTIVITY LOGS ---');
+  console.table(authLogs.map(l => ({
+    id: l.id,
+    action: l.action,
+    user_id: l.user_id,
+    target_id: l.target_id,
+    details: l.details,
+    created_at: l.created_at
+  })));
 }
 
 main().catch(console.error);

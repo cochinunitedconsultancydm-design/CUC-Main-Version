@@ -659,34 +659,13 @@ class _BillingScreenState extends State<BillingScreen> {
 
   Future<void> _logAccountingEntry(Billing b, double amount) async {
     try {
-      final uid = await AuthService().getUserId();
       final uname = await AuthService().getUserName();
-      
-      String creatorName = uname ?? '';
-      if (b.authorities != null && b.authorities!.isNotEmpty) {
-        final parts = b.authorities!.split('-');
-        if (parts.length > 1) {
-          creatorName = parts.last.trim();
-        } else {
-          creatorName = b.authorities!.trim();
-        }
-      }
-      
-      double totalAmount = double.tryParse(b.amount?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0;
-      String paymentType = (amount >= totalAmount) ? 'Full Payment' : 'Part Payment';
-      
-      final bill = CompanyBills(
-        category: 'Client Payment',
-        title: '${b.type ?? 'Invoice'} Payment ($paymentType) - ${b.invoiceNo ?? ''}',
-        amount: -amount.abs(), // Income is stored as negative in CompanyBills
-        bill_date: DateTime.now().toIso8601String(),
-        status: 'Paid',
-        description: 'Payment from ${b.clientName ?? 'Client'}. Auto-logged from Billing.',
-        spent_by: int.tryParse(uid?.toString() ?? ''),
-        spent_by_name: creatorName,
+      await _billingService.logAccountingEntryForPayment(
+        billing: b,
+        paidAmount: amount,
+        recorderName: uname,
+        paymentMode: 'Manual Payment Entry',
       );
-      
-      await BackupAwareApi().create(bill);
     } catch (e) {
       debugPrint('Failed to log accounting entry: $e');
     }
@@ -2674,7 +2653,7 @@ class _BillingScreenState extends State<BillingScreen> {
                     }
                   }
                   if (syncedCount > 0) {
-                    _msg('Successfully synced $syncedCount paid invoice(s)!', true);
+                    _msg('Successfully synced $syncedCount paid invoice(s) into Bills & Accounts/Expenses!', true);
                     _fetchBillings(refresh: true);
                   } else {
                     _msg('Online payments are up to date.', true);

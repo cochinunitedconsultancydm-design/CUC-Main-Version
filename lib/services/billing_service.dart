@@ -8,6 +8,7 @@ import '../utils/number_to_words.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import 'razorpay_service.dart';
 import 'receipt_service.dart';
+import 'logging_service.dart';
 
 class BillingService {
   Future<List<Billing>> getPendingBillings() async {
@@ -672,26 +673,29 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
   }
 
   /// Check online payment status for a billing item with a Razorpay link or order.
-  /// If paid, automatically marks the bill as Received/Paid, sets payment_received=true,
-  /// balance_due='0/-', syncs client balance, and saves across DynamoDB and Supabase.
+  /// If paid, automatically marks the bill as Received / Part Payment,
+  /// creates an accounting entry in CompanyBills (Expenses & Accounts Ledger),
+  /// updates linked Deals (if workfile_id is set), syncs client balance, and sends receipts.
   Future<bool> syncRazorpayPaymentForBilling(Billing billing) async {
     final data = billing.data != null ? Map<String, dynamic>.from(billing.data!) : <String, dynamic>{};
     final linkId = data['razorpay_link_id']?.toString() ?? data['payment_link_id']?.toString();
 
     if (linkId == null || linkId.isEmpty) return false;
 
-    // If already marked as received, return true
-    if (billing.status == 'Received' && data['payment_received'] == true) {
+    // If already marked as received and fully paid, return true
+    if (billing.status == 'Received' && (data['payment_received'] == true || data['payment_received'] == 'true')) {
       return true;
     }
 
     try {
       final link = await RazorpayService().fetchPaymentLink(linkId);
       if (link != null && (link.status == 'paid' || link.status == 'partially_paid')) {
+        final paidAmt = link.amountPaid > 0 ? link.amountPaid : link.amount;
         await markBillingAsPaidFromRazorpay(
           billing: billing,
-          paidAmount: link.amount,
+          paidAmount: paidAmt,
           paymentId: link.id,
+          paymentMode: 'Razorpay Payment Link',
         );
         return true;
       }
@@ -701,17 +705,37 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
     return false;
   }
 
+  /// Automatically marks a billing item as paid/partially paid from a verified Razorpay payment,
+  /// updates the invoice record in DynamoDB & Supabase, logs into CompanyBills (Company Accounts/Expenses),
+  /// updates any linked Work File / Deal, updates client balance, and dispatches automated receipts.
   Future<void> markBillingAsPaidFromRazorpay({
     required Billing billing,
     required double paidAmount,
     String? paymentId,
+    String? paymentMode = 'Razorpay Online',
   }) async {
     final data = billing.data != null ? Map<String, dynamic>.from(billing.data!) : <String, dynamic>{};
-    data['payment_received'] = true;
+    
+    // Parse total amount and previously recorded advance/payments
+    double totalAmount = double.tryParse(billing.amount?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0;
+    double prevReceived = 0;
+    if (data['advance_received'] != null) {
+      prevReceived = double.tryParse(data['advance_received'].toString().replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+    }
+
+    // Determine updated total received and remaining balance
+    double totalReceived = prevReceived + paidAmount;
+    if (totalAmount > 0 && totalReceived > totalAmount) {
+      totalReceived = totalAmount;
+    }
+    double remainingBalance = (totalAmount - totalReceived).clamp(0, double.infinity);
+    bool isFullyPaid = remainingBalance <= 0 || (totalAmount > 0 && totalReceived >= totalAmount);
+
+    data['payment_received'] = isFullyPaid;
     data['payment_date'] = DateTime.now().toIso8601String();
-    data['marked_paid_by'] = 'Razorpay Auto-Sync';
-    data['balance_due'] = '0/-';
-    data['advance_received'] = paidAmount.toStringAsFixed(0);
+    data['marked_paid_by'] = paymentMode ?? 'Razorpay Auto-Sync';
+    data['balance_due'] = isFullyPaid ? '0/-' : '${remainingBalance.toStringAsFixed(0)}/-';
+    data['advance_received'] = totalReceived.toStringAsFixed(0);
     if (paymentId != null) {
       data['razorpay_payment_id'] = paymentId;
     }
@@ -726,27 +750,125 @@ b.invoice_no!.toLowerCase().startsWith(prefix.toLowerCase())).toList();
       type: billing.type,
       category: billing.category,
       authorities: billing.authorities,
-      status: 'Received',
+      status: isFullyPaid ? 'Received' : 'Part Payment',
       data: jsonEncode(data),
     );
 
     await BackupAwareApi().update(model);
+
     if (billing.clientName != null && billing.clientName!.isNotEmpty) {
       try {
         await syncClientBalance(billing.clientName!);
       } catch (_) {}
     }
 
-    // Automatically generate and dispatch official receipt via WhatsApp & Email
+    // 1. AUTOMATICALLY LOG INTO COMPANY EXPENSE / ACCOUNTS REGISTER (CompanyBills)
+    await logAccountingEntryForPayment(
+      billing: billing,
+      paidAmount: paidAmount,
+      paymentId: paymentId,
+      paymentMode: paymentMode,
+    );
+
+    // 2. Log system action
+    try {
+      await LoggingService().logAction(
+        action: 'RAZORPAY_PAYMENT_SYNCED',
+        targetType: 'Invoice',
+        targetId: billing.invoiceNo ?? billing.id.toString(),
+        details: 'Payment of ₹$paidAmount via ${paymentMode ?? "Razorpay Link"} (ID: $paymentId). Status: ${isFullyPaid ? "Received" : "Part Payment"}, Balance: ${data["balance_due"]}.',
+      );
+    } catch (_) {}
+
+    // 3. Automatically generate and dispatch official receipt via WhatsApp & Email
     try {
       await ReceiptService().sendReceiptAutomatically(
         billing: billing,
         paidAmount: paidAmount,
         paymentId: paymentId,
-        paymentMode: 'Razorpay Online',
+        paymentMode: paymentMode ?? 'Razorpay Online',
       );
     } catch (e) {
       safePrint('Notice: Error auto-sending receipt for ${billing.invoiceNo}: $e');
+    }
+  }
+
+  /// Automatically records an income/payment entry in the Company Bills / Expenses & Ledgers ledger.
+  /// In CUC accounts, client income is recorded as negative amount in CompanyBills to offset expenses.
+  Future<void> logAccountingEntryForPayment({
+    required Billing billing,
+    required double paidAmount,
+    String? paymentId,
+    String? paymentMode,
+    String? recorderName,
+  }) async {
+    try {
+      double totalAmount = double.tryParse(billing.amount?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0;
+      String paymentType = (paidAmount >= totalAmount && totalAmount > 0) ? 'Full Payment' : 'Part Payment';
+      final targetTitle = '${billing.type ?? 'Invoice'} Payment ($paymentType) - ${billing.invoiceNo ?? ''}';
+
+      // Duplicate guard: check if an accounting entry already exists for this invoice and payment ID
+      try {
+        final req = ModelQueries.list(CompanyBills.classType, limit: 10000);
+        final res = await Amplify.API.query(request: req).response;
+        final existingBills = (res.data?.items ?? []).whereType<CompanyBills>().toList();
+        final alreadyLogged = existingBills.any((eb) =>
+          (eb.title == targetTitle || (eb.title != null && billing.invoiceNo != null && eb.title!.contains(billing.invoiceNo!))) &&
+          (paymentId == null || (eb.description != null && eb.description!.contains(paymentId)))
+        );
+        if (alreadyLogged) {
+          safePrint('Notice: Accounting entry for ${billing.invoiceNo} ($paymentId) already exists in CompanyBills. Skipping duplicate.');
+          return;
+        }
+      } catch (err) {
+        safePrint('Notice: Non-fatal error while checking existing CompanyBills: $err');
+      }
+
+      String creatorName = recorderName ?? 'Razorpay Auto-Sync';
+      if (billing.authorities != null && billing.authorities!.isNotEmpty) {
+        final parts = billing.authorities!.split('-');
+        if (parts.length > 1) {
+          creatorName = parts.last.trim();
+        } else {
+          creatorName = billing.authorities!.trim();
+        }
+      }
+
+      final bill = CompanyBills(
+        category: 'Client Payment',
+        title: targetTitle,
+        amount: -paidAmount.abs(), // Income is recorded as negative in CompanyBills to offset expenses
+        bill_date: DateTime.now().toIso8601String(),
+        status: 'Paid',
+        description: 'Payment from ${billing.clientName ?? 'Client'} via ${paymentMode ?? "Razorpay Link"}${paymentId != null ? ' ($paymentId)' : ''}. Auto-logged from Billing.',
+        spent_by_name: creatorName,
+      );
+
+      await BackupAwareApi().create(bill);
+      safePrint('✅ Successfully logged payment of ₹$paidAmount for ${billing.invoiceNo} into CompanyBills (Expense/Accounts Register)');
+
+      // If linked to a Work File / Deal, update the Deal's payment received
+      final workfileId = billing.data?['workfile_id']?.toString();
+      if (workfileId != null && workfileId.isNotEmpty) {
+        try {
+          final dealReq = ModelQueries.get(Deals.classType, DealsModelIdentifier(id: workfileId));
+          final dealRes = await Amplify.API.query(request: dealReq).response;
+          final deal = dealRes.data;
+          if (deal != null) {
+            final curRec = deal.payment_received ?? 0;
+            final updatedDeal = deal.copyWith(
+              payment_received: curRec + paidAmount,
+              payment_type: paymentType,
+            );
+            await BackupAwareApi().update(updatedDeal);
+            safePrint('✅ Successfully updated linked Deal $workfileId: payment_received = ${curRec + paidAmount}');
+          }
+        } catch (dealErr) {
+          safePrint('Notice: Non-fatal error updating linked deal $workfileId: $dealErr');
+        }
+      }
+    } catch (e) {
+      safePrint('Failed to log accounting entry for payment: $e');
     }
   }
 }

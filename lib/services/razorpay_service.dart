@@ -30,6 +30,7 @@ class RazorpayPaymentLink {
   final String shortUrl;
   final String status;
   final double amount;
+  final double amountPaid;
   final String currency;
 
   RazorpayPaymentLink({
@@ -37,6 +38,7 @@ class RazorpayPaymentLink {
     required this.shortUrl,
     required this.status,
     required this.amount,
+    required this.amountPaid,
     required this.currency,
   });
 
@@ -46,6 +48,7 @@ class RazorpayPaymentLink {
       shortUrl: json['short_url']?.toString() ?? '',
       status: json['status']?.toString() ?? '',
       amount: ((json['amount'] as num?)?.toDouble() ?? 0.0) / 100.0,
+      amountPaid: ((json['amount_paid'] as num?)?.toDouble() ?? (json['amount'] as num?)?.toDouble() ?? 0.0) / 100.0,
       currency: json['currency']?.toString() ?? 'INR',
     );
   }

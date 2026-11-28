@@ -9,9 +9,14 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS and JSON parsing (limit up to 10mb for attached PDF bytes)
+// Enable CORS and JSON parsing (with rawBody capture for HMAC signature verification)
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Setup Nodemailer Gmail SMTP Transporter
@@ -357,12 +362,19 @@ async function autoUpdateBillOnPayment({ orderId, paymentId, invoiceNo, billingI
         if (bill.data) {
           try { billData = typeof bill.data === 'string' ? JSON.parse(bill.data) : bill.data; } catch (_) {}
         }
-        billData.payment_received = true;
+
+        const totalBillAmount = parseFloat(String(bill.amount || '0').replace(/[^0-9.]/g, '')) || 0;
+        const prevReceived = parseFloat(String(billData.advance_received || '0').replace(/[^0-9.]/g, '')) || 0;
+        const newTotalReceived = prevReceived + (amount || totalBillAmount);
+        const balanceRemaining = Math.max(0, totalBillAmount - newTotalReceived);
+        const isFullyPaid = balanceRemaining <= 0 || (totalBillAmount > 0 && newTotalReceived >= totalBillAmount);
+
+        billData.payment_received = isFullyPaid;
         billData.payment_date = new Date().toISOString();
         billData.razorpay_payment_id = paymentId;
-        billData.marked_paid_by = 'Razorpay Web Checkout';
-        billData.balance_due = '0/-';
-        if (amount) billData.advance_received = String(amount);
+        billData.marked_paid_by = 'Razorpay Payment Link';
+        billData.balance_due = isFullyPaid ? '0/-' : `${balanceRemaining}/-`;
+        billData.advance_received = String(newTotalReceived);
 
         await fetch(`${supabaseUrl}/rest/v1/billings?${filter}`, {
           method: 'PATCH',
@@ -373,16 +385,43 @@ async function autoUpdateBillOnPayment({ orderId, paymentId, invoiceNo, billingI
             'Prefer': 'return=representation'
           },
           body: JSON.stringify({
-            status: 'Received',
+            status: isFullyPaid ? 'Received' : 'Part Payment',
             data: billData
           })
         });
-        console.log(`[Auto-Sync] Supabase billing ${invoiceNo || billingId} updated to Received.`);
+        console.log(`[Auto-Sync] Supabase billing ${invoiceNo || billingId} updated to ${isFullyPaid ? 'Received' : 'Part Payment'}.`);
+
+        // Automatically log into Supabase company_bills (Company Accounts/Expense Register)
+        try {
+          const paymentType = isFullyPaid ? 'Full Payment' : 'Part Payment';
+          const targetTitle = `${bill.type || 'Invoice'} Payment (${paymentType}) - ${bill.invoice_no || invoiceNo}`;
+          await fetch(`${supabaseUrl}/rest/v1/company_bills`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              category: 'Client Payment',
+              title: targetTitle,
+              amount: -Math.abs(amount || totalBillAmount), // In CompanyBills, income is stored as negative
+              bill_date: new Date().toISOString(),
+              status: 'Paid',
+              description: `Payment from ${bill.client_name || 'Client'} via Razorpay Link (${paymentId}). Auto-logged from Billing.`,
+              spent_by_name: 'Razorpay Auto-Sync'
+            })
+          });
+          console.log(`[Auto-Sync] Supabase company_bills entry recorded for ${invoiceNo}.`);
+        } catch (cbErr) {
+          console.log(`[Auto-Sync] Notice logging company_bills in Supabase: ${cbErr.message}`);
+        }
 
         // Dispatch official payment receipt email
         try {
-          const clientEmail = billData.client_email || billData.email || customerEmail || '';
-          const clientName = bill.client_name || customerName || 'Valued Client';
+          const clientEmail = billData.client_email || billData.email || '';
+          const clientName = bill.client_name || 'Valued Client';
           await sendReceiptEmail({
             to: clientEmail,
             clientName,
@@ -407,6 +446,25 @@ async function autoUpdateBillOnPayment({ orderId, paymentId, invoiceNo, billingI
 app.post(['/api/webhook', '/webhook/razorpay', '/api/razorpay-webhook'], async (req, res) => {
   const event = req.body.event;
   console.log(`[Razorpay Webhook] Received event: ${event}`);
+
+  // Validate Razorpay webhook HMAC signature if secret is configured
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  const signature = req.headers['x-razorpay-signature'];
+  if (webhookSecret && signature) {
+    const rawBody = req.rawBody || JSON.stringify(req.body);
+    const expectedSig = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
+    try {
+      const sigBufA = Buffer.from(signature, 'utf8');
+      const sigBufB = Buffer.from(expectedSig, 'utf8');
+      if (sigBufA.length !== sigBufB.length || !crypto.timingSafeEqual(sigBufA, sigBufB)) {
+        console.warn('[Razorpay Webhook] Rejected: Invalid HMAC signature.');
+        return res.status(400).json({ error: 'Invalid webhook signature' });
+      }
+    } catch (err) {
+      console.warn('[Razorpay Webhook] Signature verification failed:', err.message);
+      return res.status(400).json({ error: 'Signature verification failed' });
+    }
+  }
 
   if (event === 'payment.captured' || event === 'payment_link.paid' || event === 'order.paid') {
     const payment = req.body.payload?.payment?.entity;

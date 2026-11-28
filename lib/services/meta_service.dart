@@ -11,12 +11,12 @@ import 'package:amplify_api/amplify_api.dart';
 import 'package:cuc_app/services/backup_aware_api.dart';
 import '../models/ModelProvider.dart' as amplify_models;
 import '../models/deal.dart';
+import '../models/billing.dart';
 import 'deal_service.dart';
 import 'notification_service.dart';
 import 'logging_service.dart';
 import 'supabase_backup_service.dart';
 import 'billing_service.dart';
-import 'receipt_service.dart';
 
 /// Configuration for Meta Developer Platform & WhatsApp Cloud API
 class MetaConfig {
@@ -2092,7 +2092,6 @@ class MetaWebhookServer {
       String? billingId;
       double paidAmount = 0.0;
       String? customerPhone;
-      String? customerName;
 
       if (paymentLinkEntity is Map<String, dynamic>) {
         final notes = paymentLinkEntity['notes'] as Map<String, dynamic>?;
@@ -2101,7 +2100,6 @@ class MetaWebhookServer {
         final amtNum = paymentLinkEntity['amount_paid'] ?? paymentLinkEntity['amount'];
         if (amtNum is num) paidAmount = amtNum.toDouble() / 100.0;
         customerPhone = paymentLinkEntity['customer']?['contact']?.toString();
-        customerName = paymentLinkEntity['customer']?['name']?.toString();
       }
 
       if (paymentEntity is Map<String, dynamic>) {
@@ -2141,57 +2139,38 @@ class MetaWebhookServer {
       }
 
       if (targetBill != null) {
-        Map<String, dynamic> updatedData = {};
+        Map<String, dynamic> currentData = {};
         if (targetBill.data != null && targetBill.data!.isNotEmpty) {
           try {
-            updatedData = Map<String, dynamic>.from(jsonDecode(targetBill.data!));
-          } catch (_) {}
-        }
-        updatedData['razorpay_paid_at'] = DateTime.now().toIso8601String();
-        updatedData['razorpay_payment_id'] = paymentEntity?['id']?.toString() ?? paymentLinkEntity?['id']?.toString();
-        updatedData['payment_received'] = true;
-        updatedData['payment_date'] = DateTime.now().toIso8601String();
-        updatedData['marked_paid_by'] = 'Razorpay Online';
-        updatedData['balance_due'] = '0/-';
-        if (paidAmount > 0) {
-          updatedData['advance_received'] = paidAmount.toStringAsFixed(0);
-        } else if (targetBill.amount != null) {
-          updatedData['advance_received'] = targetBill.amount;
-        }
-
-        final updatedModel = targetBill.copyWith(
-          status: 'Received',
-          data: jsonEncode(updatedData),
-        );
-
-        await BackupAwareApi().update(updatedModel);
-        if (targetBill.client_name != null && targetBill.client_name!.isNotEmpty) {
-          try {
-            await BillingService().syncClientBalance(targetBill.client_name!);
+            currentData = Map<String, dynamic>.from(jsonDecode(targetBill.data!));
           } catch (_) {}
         }
 
-        await LoggingService().logAction(
-          action: 'PAYMENT_RECEIVED_VIA_WEBHOOK',
-          targetType: 'Invoice',
-          targetId: targetBill.invoice_no ?? targetBill.id,
-          details: 'Razorpay payment hook received ($event). Marked invoice ${targetBill.invoice_no} as Received/Paid for ₹${paidAmount > 0 ? paidAmount.toStringAsFixed(2) : targetBill.amount}.',
+        final billingObj = Billing(
+          id: targetBill.id,
+          clientName: targetBill.client_name,
+          invoiceNo: targetBill.invoice_no,
+          date: targetBill.date,
+          amount: targetBill.amount,
+          type: targetBill.type,
+          category: targetBill.category,
+          authorities: targetBill.authorities,
+          status: targetBill.status,
+          data: currentData,
         );
 
-        // Automatically generate and dispatch official receipt via WhatsApp & Email to client
-        try {
-          final customerEmail = paymentEntity?['email']?.toString() ?? paymentLinkEntity?['customer']?['email']?.toString();
-          await ReceiptService().sendReceiptAutomatically(
-            billing: targetBill,
-            paidAmount: paidAmount > 0 ? paidAmount : null,
-            paymentId: paymentEntity?['id']?.toString() ?? paymentLinkEntity?['id']?.toString(),
-            paymentMode: 'Razorpay Online',
-            targetPhone: customerPhone,
-            targetEmail: customerEmail,
-          );
-        } catch (receiptErr) {
-          debugPrint('Error sending automated receipt on webhook: $receiptErr');
-        }
+        final actualPaidAmount = paidAmount > 0
+            ? paidAmount
+            : (double.tryParse(targetBill.amount?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0);
+
+        final pId = paymentEntity?['id']?.toString() ?? paymentLinkEntity?['id']?.toString();
+
+        await BillingService().markBillingAsPaidFromRazorpay(
+          billing: billingObj,
+          paidAmount: actualPaidAmount,
+          paymentId: pId,
+          paymentMode: 'Razorpay Online Link',
+        );
       }
     } catch (e) {
       debugPrint('Error processing Razorpay webhook: $e');

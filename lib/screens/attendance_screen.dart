@@ -345,28 +345,27 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       bool isExcludedStaff(dynamic id, String? username, String? email, String? name, String? role) {
         final r = (role ?? '').toLowerCase().trim();
         // Exclude system admin, clients, superadmin, or deleted roles
-        if (r == 'admin' || r == 'superadmin' || r == 'client' || r == 'deleted') return true;
+        if (r.contains('admin') || r.contains('client') || r.contains('deleted')) return true;
 
         final uid = id?.toString().toLowerCase().trim() ?? '';
         final uname = (username ?? '').toLowerCase().trim();
         final uemail = (email ?? '').toLowerCase().trim();
         final uNameStr = (name ?? '').toLowerCase().trim();
 
-        if (uname == 'admin' || uNameStr == 'admin' || uNameStr == 'master admin') return true;
+        if (uname.contains('admin') || uNameStr.contains('admin') || uemail.contains('admin')) return true;
 
-        // Confirmed active team members must NEVER be excluded
-        if (confirmedActiveUsernames.contains(uname) ||
-            (uemail.isNotEmpty && confirmedActiveEmails.contains(uemail)) ||
-            uname == 'harshina' ||
-            uNameStr == 'harshina' ||
-            uemail == 'harshina@cuc.local') {
-          return false;
+        // Exclude explicitly deleted keys
+        if (deletedKeys.contains(uid) || deletedKeys.contains(uname) || deletedKeys.contains(uemail) || deletedKeys.contains(uNameStr)) {
+          return true;
         }
 
-        if (uid.isNotEmpty && deletedKeys.contains(uid)) return true;
-        if (uname.isNotEmpty && deletedKeys.contains(uname)) return true;
-        if (uemail.isNotEmpty && deletedKeys.contains(uemail)) return true;
-        if (uNameStr.isNotEmpty && deletedKeys.contains(uNameStr)) return true;
+        // Must match one of the 8 confirmed active team members
+        final matchesActive = confirmedActiveUsernames.contains(uname) ||
+            confirmedActiveEmails.contains(uemail) ||
+            confirmedActiveUsernames.any((k) => uname.contains(k) || uNameStr.contains(k));
+        if (!matchesActive) {
+          return true;
+        }
 
         return false;
       }
@@ -413,6 +412,48 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         }
         if (staff.name != null && staff.name!.trim().isNotEmpty) {
           lookupToStaffKey[staff.name!.toLowerCase().trim()] = key;
+        }
+      }
+
+      // Explicit aliases for active team members to ensure all sessions and logs map reliably
+      void addStaffAlias(String alias, String key) {
+        lookupToStaffKey[alias.toLowerCase().trim()] = key;
+      }
+      for (var s in _allStaff) {
+        final k = _staffKey(s);
+        final un = (s.username ?? '').toLowerCase().trim();
+        final nm = (s.name ?? '').toLowerCase().trim();
+        if (un.contains('harshina') || nm.contains('harshina')) {
+          addStaffAlias('harshina', k);
+          addStaffAlias('harshina tt', k);
+          addStaffAlias('73', k);
+        } else if (un.contains('arya') || nm.contains('arya')) {
+          addStaffAlias('arya', k);
+          addStaffAlias('arya sudhakaran', k);
+          addStaffAlias('60', k);
+        } else if (un.contains('anoop') || nm.contains('anoop')) {
+          addStaffAlias('anoop', k);
+          addStaffAlias('anoop krishna pm', k);
+          addStaffAlias('anoop krishna', k);
+          addStaffAlias('61', k);
+        } else if (un.contains('ashwini') || nm.contains('ashwini')) {
+          addStaffAlias('ashwini', k);
+          addStaffAlias('8', k);
+        } else if (un.contains('pooja') || nm.contains('pooja')) {
+          addStaffAlias('poojapmadhu', k);
+          addStaffAlias('pooja', k);
+          addStaffAlias('pooja p madhu', k);
+          addStaffAlias('59', k);
+        } else if (un.contains('sarath') || nm.contains('sarath')) {
+          addStaffAlias('sarath', k);
+          addStaffAlias('3', k);
+        } else if (un.contains('irshad') || nm.contains('irshad')) {
+          addStaffAlias('irshad', k);
+          addStaffAlias('7', k);
+        } else if (un.contains('nithya') || nm.contains('nithya')) {
+          addStaffAlias('nithya', k);
+          addStaffAlias('nithya liju', k);
+          addStaffAlias('4', k);
         }
       }
 
@@ -567,6 +608,66 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
     for (var l in sbLogs) {
       registerActivityLog(l['user_id'], l['user_name'] ?? l['username'] ?? l['target_id'], l['created_at'], l['details']);
+    }
+
+    // Process Cognito LOGIN and LOGOUT actions from ActivityLogs
+    void processAuthLog(dynamic uid, dynamic uname, dynamic rawTs, dynamic action, dynamic details, dynamic targetId) {
+      final act = (action ?? '').toString().toUpperCase().trim();
+      if (act != 'LOGIN' && act != 'LOGOUT') return;
+
+      String? staffKey = resolveStaff(uid, uname);
+      if (staffKey == null && details != null) {
+        final match = RegExp(r'\[User:\s*([^\]]+)\]', caseSensitive: false).firstMatch(details.toString());
+        if (match != null && match.group(1) != null) {
+          staffKey = resolveStaff(null, match.group(1)!.trim());
+        }
+      }
+      if (staffKey == null && targetId != null) {
+        staffKey = resolveStaff(null, targetId.toString().trim());
+      }
+      if (staffKey == null) return;
+
+      final ts = _parseIST(rawTs);
+      if (ts == null) return;
+      if (ts.year != _selectedMonth.year || ts.month != _selectedMonth.month) return;
+
+      final day = ts.day;
+      final record = getOrCreateRecord(staffKey, day, ts);
+
+      if (act == 'LOGIN') {
+        final alreadyLogged = record.events.any((e) => e.type == 'IN' && e.time.difference(ts).inMinutes.abs() < 2);
+        if (!alreadyLogged) {
+          record.events.add(AttendanceEvent(
+            title: 'Cognito Login',
+            time: ts,
+            type: 'IN',
+            source: 'System Login',
+          ));
+        }
+        if (record.checkInTime == null || ts.isBefore(record.checkInTime!)) {
+          record.checkInTime = ts;
+        }
+      } else if (act == 'LOGOUT') {
+        final alreadyLogged = record.events.any((e) => e.type == 'OUT' && e.time.difference(ts).inMinutes.abs() < 2);
+        if (!alreadyLogged) {
+          record.events.add(AttendanceEvent(
+            title: 'Cognito Logout',
+            time: ts,
+            type: 'OUT',
+            source: 'System Logout',
+          ));
+        }
+        if (record.checkOutTime == null || ts.isAfter(record.checkOutTime!)) {
+          record.checkOutTime = ts;
+        }
+      }
+    }
+
+    for (var l in ampLogs) {
+      processAuthLog(l.user_id, l.target_id, l.created_at ?? l.createdAt?.format(), l.action, l.details, l.target_id);
+    }
+    for (var l in sbLogs) {
+      processAuthLog(l['user_id'], l['user_name'] ?? l['username'] ?? l['target_id'], l['created_at'], l['action'], l['details'], l['target_id']);
     }
 
     // 1. Process Amplify StaffAttendance (Manual Clock-In / Clock-Out)
@@ -768,21 +869,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         final inTime = record.checkInTime;
 
         if (inTime != null) {
-          // If checkout was stored across multiple days or > 16 hours, invalidate the dangling value
+          // Invalidate dangling checkout across multiple days, > 16 hours, or before inTime
           if (record.checkOutTime != null) {
             if (record.checkOutTime!.day != inTime.day ||
-                record.checkOutTime!.difference(inTime).inHours > 16) {
+                record.checkOutTime!.difference(inTime).inHours > 16 ||
+                record.checkOutTime!.isBefore(inTime)) {
               record.checkOutTime = null;
             }
           }
 
-          // If checkout is missing for this day:
-          if (record.checkOutTime == null) {
-            final staffKey = record.staffKey;
-            final latestLog = latestLogByStaffAndDay[staffKey]?[record.day];
+          final staffKey = record.staffKey;
+          final latestLog = latestLogByStaffAndDay[staffKey]?[record.day];
 
-            if (latestLog != null && latestLog.isAfter(inTime) && latestLog.day == inTime.day) {
-              // Priority 1: User's latest action log on that day
+          // Priority 1: If user had system activity after checkout on the same day, update checkout to latest active time
+          if (latestLog != null && latestLog.isAfter(inTime) && latestLog.day == inTime.day) {
+            if (record.checkOutTime == null || latestLog.isAfter(record.checkOutTime!)) {
               record.checkOutTime = latestLog;
               record.checkoutReason = 'Last Active System Activity';
               record.events.add(AttendanceEvent(
@@ -791,7 +892,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 type: 'OUT',
                 source: 'User Action Log',
               ));
-            } else if (isCurrentMonth && record.day == now.day) {
+            }
+          }
+
+          // If checkout is missing for this day:
+          if (record.checkOutTime == null) {
+            if (isCurrentMonth && record.day == now.day) {
               // Priority 2: Today (Current Shift)
               final sinceInMins = now.difference(inTime).inMinutes;
               if (record.isActive || sinceInMins < 45) {
@@ -806,13 +912,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               record.isAutoReconciled = true;
               DateTime actualOutTime = inTime;
 
-              // Check if latest activity log on that day has a time after check-in
-              final lastAct = latestLogByStaffAndDay[staffKey]?[record.day];
-              if (lastAct != null && lastAct.isAfter(actualOutTime) && lastAct.day == inTime.day) {
-                actualOutTime = lastAct;
+              if (latestLog != null && latestLog.isAfter(actualOutTime) && latestLog.day == inTime.day) {
+                actualOutTime = latestLog;
               }
 
-              // Check if any registered session or log event has a later time
               for (var ev in record.events) {
                 if (ev.time.isAfter(actualOutTime) && ev.time.day == inTime.day) {
                   actualOutTime = ev.time;
@@ -1570,6 +1673,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                       padding: const EdgeInsets.symmetric(horizontal: 16),
                                       alignment: Alignment.centerLeft,
                                       decoration: BoxDecoration(
+                                        color: const Color(0xFFF7F8FA),
                                         border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
                                       ),
                                       child: const Text(
